@@ -36,9 +36,6 @@
             background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 30px 30px; opacity: 0.3;
         }
-        .pdf-icon-gradient {
-            background: linear-gradient(135deg, #ff4d4d 0%, #cc0000 100%);
-        }
         
         /* 新增紅色下載按鈕樣式 */
         .download-btn {
@@ -224,29 +221,25 @@
                     </a>`;
                 }
 
+                // 移除 hover 效果與圖示，簡化樣式
                 container.innerHTML += `
-                <div class="group block bg-white border border-gray-200 rounded-xl p-5 hover:border-thuBlue hover:shadow-lg transition duration-300 transform hover:-translate-y-1 cursor-default">
+                <div class="group block bg-white border border-gray-200 rounded-lg p-5 transition cursor-default mb-3">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                         
-                        <!-- Icon & Info -->
-                        <div class="flex items-start gap-4 flex-grow">
-                            <div class="flex-shrink-0 w-12 h-12 rounded-lg pdf-icon-gradient text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-300">
-                                <i class="fas fa-file-pdf text-2xl"></i>
+                        <!-- Content -->
+                        <div class="flex-grow min-w-0">
+                            <div class="flex flex-wrap items-center gap-2 mb-1">
+                                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${catInfo.class}">${catInfo.text}</span>
+                                ${date ? `<span class="text-[10px] text-gray-400 flex items-center gap-1"><i class="far fa-clock"></i> 最新修正: ${date}</span>` : ''}
                             </div>
-                            <div class="flex-grow min-w-0">
-                                <div class="flex flex-wrap items-center gap-2 mb-1">
-                                    <span class="text-[10px] font-bold px-2 py-0.5 rounded ${catInfo.class}">${catInfo.text}</span>
-                                    ${date ? `<span class="text-[10px] text-gray-400 flex items-center gap-1"><i class="far fa-clock"></i> 最新修正: ${date}</span>` : ''}
-                                </div>
-                                <h3 class="text-lg font-bold text-gray-800 group-hover:text-thuBlue transition truncate leading-tight mb-0.5">
-                                    ${item.title}
-                                </h3>
-                                ${titleEn ? `<p class="text-xs text-gray-400 font-medium truncate">${titleEn}</p>` : ''}
-                            </div>
+                            <h3 class="text-lg font-bold text-gray-800 transition truncate leading-tight mb-0.5">
+                                ${item.title}
+                            </h3>
+                            ${titleEn ? `<p class="text-xs text-gray-400 font-medium truncate">${titleEn}</p>` : ''}
                         </div>
 
                         <!-- Action Buttons -->
-                        <div class="flex flex-wrap gap-2 sm:justify-end mt-2 sm:mt-0">
+                        <div class="flex flex-wrap gap-2 sm:justify-end mt-2 sm:mt-0 flex-shrink-0">
                             ${buttonsHtml}
                         </div>
                     </div>
