@@ -37,7 +37,6 @@
             background-size: 30px 30px; opacity: 0.3;
         }
         
-        /* 新增紅色下載按鈕樣式 */
         .download-btn {
             background-color: #dc2626;
             color: white;
@@ -55,6 +54,29 @@
             background-color: #b91c1c;
             transform: translateY(-1px);
             box-shadow: 0 2px 4px rgba(0,0,0,0.15);
+        }
+
+        /* 修正篩選按鈕樣式，確保 active 狀態優先於 hover */
+        .filter-btn {
+            /* 基本樣式 */
+            transition: all 0.2s;
+        }
+        .filter-btn:hover:not(.active) {
+            /* 非 active 狀態下的 hover 效果 */
+            border-color: #002E5D; /* thuBlue */
+            color: #002E5D; /* thuBlue */
+        }
+        .filter-btn.active, .filter-btn.active:hover {
+            /* 鎖定 active 狀態的樣式，覆蓋 hover */
+            background-color: #002E5D; /* thuBlue */
+            color: white; 
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            border-color: transparent;
+        }
+        .filter-btn:active {
+            /* 點擊時強制維持 active 樣式 */
+            background-color: #002E5D !important;
+            color: white !important;
         }
     </style>
 </head>
@@ -87,7 +109,7 @@
         
         <!-- Filter Buttons -->
         <div class="flex flex-wrap justify-center gap-2 mb-10 animate-fade-in-up">
-            <button onclick="filterLaws('all')" class="filter-btn active px-5 py-2 rounded-full text-sm font-bold transition-all border border-transparent bg-thuBlue text-white shadow-md hover:shadow-lg ring-2 ring-offset-2 ring-thuBlue" id="btn-all">
+            <button onclick="filterLaws('all')" class="filter-btn active px-5 py-2 rounded-full text-sm font-bold transition-all border border-transparent bg-thuBlue text-white shadow-md ring-2 ring-offset-2 ring-thuBlue" id="btn-all">
                 全部顯示
             </button>
             <button onclick="filterLaws('edu')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium transition-all border border-gray-300 bg-white text-gray-600 hover:border-thuBlue hover:text-thuBlue" id="btn-edu">
@@ -156,21 +178,29 @@
         });
 
         function filterLaws(category) {
-            document.querySelectorAll('.filter-btn').forEach(btn => {
-                btn.classList.remove('bg-thuBlue', 'text-white', 'shadow-md', 'ring-2', 'ring-offset-2', 'ring-thuBlue', 'font-bold');
-                btn.classList.add('bg-white', 'text-gray-600', 'border-gray-300', 'font-medium');
-            });
-            
-            const activeBtn = document.getElementById(`btn-${category}`);
-            activeBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-300', 'font-medium');
-            activeBtn.classList.add('bg-thuBlue', 'text-white', 'shadow-md', 'ring-2', 'ring-offset-2', 'ring-thuBlue', 'font-bold');
-
-            if (category === 'all') {
-                renderLaws(allLaws);
-            } else {
-                const filtered = allLaws.filter(item => item.category === category);
+            // 由於 requestAnimationFrame 是非同步的，將 DOM 操作放在裡面可以讓切換感覺更流暢
+            requestAnimationFrame(() => {
+                document.querySelectorAll('.filter-btn').forEach(btn => {
+                    // 移除 active 狀態
+                    btn.classList.remove('active', 'bg-thuBlue', 'text-white', 'shadow-md', 'ring-2', 'ring-offset-2', 'ring-thuBlue', 'font-bold');
+                    // 添加非 active 狀態的基礎樣式
+                    btn.classList.add('bg-white', 'text-gray-600', 'border-gray-300', 'font-medium');
+                });
+                
+                const activeBtn = document.getElementById(`btn-${category}`);
+                // 設定 active 狀態
+                activeBtn.classList.add('active', 'bg-thuBlue', 'text-white', 'shadow-md', 'ring-2', 'ring-offset-2', 'ring-thuBlue', 'font-bold');
+                
+                let filtered;
+                if (category === 'all') {
+                    filtered = allLaws;
+                } else {
+                    // Filter based on the category stored in JSON
+                    filtered = allLaws.filter(item => item.category === category);
+                }
+                
                 renderLaws(filtered);
-            }
+            });
         }
 
         function renderLaws(items) {
@@ -182,22 +212,14 @@
                 return;
             }
 
-            const categoryLabels = {
-                'edu': { text: '教育部', class: 'bg-blue-100 text-blue-800' },
-                'admin': { text: '行政函釋', class: 'bg-green-100 text-green-800' },
-                'school': { text: '校內法規', class: 'bg-purple-100 text-purple-800' }
-            };
-
             items.forEach(item => {
                 const titleEn = item.title_en || '';
                 const date = item.date || '';
-                const catKey = item.category || 'school';
-                const catInfo = categoryLabels[catKey] || { text: '其他', class: 'bg-gray-100 text-gray-600' };
-
+                const issuer = item.issuer || '東海大學'; // Use issuer field
+                
                 // Determine buttons based on available URLs
                 let buttonsHtml = '';
                 
-                // 1. Check specific ZH URL
                 if (item.url_zh) {
                     buttonsHtml += `
                     <a href="${item.url_zh}" target="_blank" class="download-btn">
@@ -205,7 +227,6 @@
                     </a>`;
                 }
                 
-                // 2. Check specific EN URL
                 if (item.url_en) {
                     buttonsHtml += `
                     <a href="${item.url_en}" target="_blank" class="download-btn">
@@ -213,7 +234,7 @@
                     </a>`;
                 }
                 
-                // 3. Fallback: Check generic URL if no specific ones
+                // Fallback for old/generic URL
                 if (!item.url_zh && !item.url_en && item.url) {
                     buttonsHtml += `
                     <a href="${item.url}" target="_blank" class="download-btn">
@@ -229,9 +250,13 @@
                         <!-- Content -->
                         <div class="flex-grow min-w-0">
                             <div class="flex flex-wrap items-center gap-2 mb-1">
-                                <span class="text-[10px] font-bold px-2 py-0.5 rounded ${catInfo.class}">${catInfo.text}</span>
-                                ${date ? `<span class="text-[10px] text-gray-400 flex items-center gap-1"><i class="far fa-clock"></i> 最新修正: ${date}</span>` : ''}
+                                <!-- 1. 發布單位 (藍色粗體) -->
+                                <span class="text-sm font-bold text-thuBlue">${issuer}</span>
+                                
+                                <!-- 2. 最新修正日期 -->
+                                ${date ? `<span class="text-xs text-gray-400 flex items-center gap-1 ml-2"><i class="far fa-clock"></i> 最新修正日期: ${date}</span>` : ''}
                             </div>
+                            
                             <h3 class="text-lg font-bold text-gray-800 transition truncate leading-tight mb-0.5">
                                 ${item.title}
                             </h3>
