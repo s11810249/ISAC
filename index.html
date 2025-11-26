@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>東海大學實習業務協作專區</title>
+    <title>東海大學實習業務協作平台</title>
     <!-- 引入 Tailwind CSS (快速排版) -->
     <script src="https://cdn.tailwindcss.com"></script>
     <!-- 引入 Font Awesome (圖示) -->
@@ -34,12 +34,15 @@
             position: relative;
             overflow: hidden;
         }
+        /* 背景網格紋理 */
         .hero-bg::before {
             content: '';
             position: absolute;
             top: 0; left: 0; right: 0; bottom: 0;
-            background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 20%),
-                              radial-gradient(circle at 80% 30%, rgba(255,255,255,0.05) 0%, transparent 20%);
+            background-image: 
+                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px;
             z-index: 1;
         }
         /* Modal 動畫 */
@@ -49,53 +52,83 @@
         body.modal-active {
             overflow-y: hidden !important;
         }
+        /* 簡單的淡入動畫 */
+        @keyframes fadeInUp {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fade-in-up {
+            animation: fadeInUp 0.8s ease-out forwards;
+        }
+        .animation-delay-200 { animation-delay: 0.2s; opacity: 0; }
+        .animation-delay-400 { animation-delay: 0.4s; opacity: 0; }
     </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen">
 
-    <!-- Header / Navbar -->
-    <div class="fixed top-0 left-0 w-full bg-thuBlue z-50 shadow-md">
-        <div class="w-full px-4 md:px-8 h-[80px] flex items-center justify-between">
-            <div class="flex items-center gap-4">
-                <!-- 使用官方 Logo 圖片 -->
-                <img src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="THU Logo" class="h-10 w-auto">
-                <div class="flex flex-col justify-center text-white">
-                    <div class="text-lg md:text-xl font-bold tracking-wide leading-tight">東海大學實習業務協作專區</div>
-                    <div class="text-xs text-thuGold opacity-90 font-sans leading-tight mt-0.5">Internship Business Collaboration Zone</div>
+    <!-- Hero Section (重新設計版本) -->
+    <div class="hero-bg text-white pb-32 pt-24 relative">
+        
+        <!-- 右上角：東海大學首頁 (絕對定位) -->
+        <div class="absolute top-6 right-6 z-30">
+            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full hover:bg-white hover:text-thuBlue transition-all duration-300 font-medium backdrop-blur-sm shadow-sm">
+                <i class="fa-solid fa-house"></i> 東海大學首頁
+            </a>
+        </div>
+
+        <!-- 背景裝飾光暈 -->
+        <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+             <div class="absolute -top-20 -right-20 w-96 h-96 bg-thuGold opacity-10 rounded-full blur-3xl"></div>
+             <div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
+        </div>
+
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center min-h-[40vh]">
+            
+            <!-- Logo 與 主標題整合 -->
+            <div class="flex flex-col md:flex-row items-center justify-center gap-5 mb-8 animate-fade-in-up">
+                <!-- Logo -->
+                <img src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="THU Logo" class="h-20 w-auto drop-shadow-lg opacity-90 hover:opacity-100 transition-opacity duration-300">
+                
+                <!-- 標題 -->
+                <div class="text-center flex flex-col justify-center items-center h-20">
+                    <h1 class="text-3xl md:text-5xl font-bold tracking-widest leading-none drop-shadow-xl mb-1">
+                        實習業務<span class="text-thuGold">協作平台</span>
+                    </h1>
+                    <p class="text-base text-blue-200 tracking-wide font-light hidden md:block opacity-90">Internship Coordination Platform</p>
                 </div>
             </div>
-            
-            <div class="hidden md:flex gap-3 text-sm">
-                <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="flex items-center gap-2 px-4 py-2 border border-thuGold text-thuGold rounded-full hover:bg-thuGold hover:text-thuBlue transition-all duration-200 font-medium">
-                    <i class="fa-solid fa-link"></i> 實習中心網頁
-                </a>
-                <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-white text-thuBlue rounded-full hover:bg-gray-100 shadow-sm transition-all duration-200 font-medium">
-                    <i class="fa-solid fa-house"></i> 東海大學首頁
-                </a>
-            </div>
-        </div>
-    </div>
 
-    <!-- Hero Section -->
-    <div class="hero-bg text-white pb-24 pt-32">
-        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-            <div class="text-center mb-10">
-                <h1 class="text-4xl md:text-5xl font-bold mb-4 tracking-wide">實習業務協作專區</h1>
-                <p class="text-xl text-blue-100 font-light mb-8">整合法規資源、數位表單與校務數據的一站式平台</p>
-                
-                <!-- 計畫緣起按鈕 -->
-                <button onclick="toggleModal('origin-modal')" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-sm px-6 py-3 rounded-full transition-all duration-300 hover:scale-105 group">
-                    <i class="fas fa-feather-alt text-thuGold group-hover:rotate-12 transition-transform"></i>
-                    <span>查看計畫緣起</span>
+            <!-- 副標題 -->
+            <p class="text-lg md:text-xl text-blue-100/80 font-light mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-in-up animation-delay-200">
+                整合法規資源、數位表單與校務數據的一站式平台，<br class="hidden md:block">為師生打造更簡單、高效的實習行政流程。
+            </p>
+            
+            <!-- 按鈕群組 -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up animation-delay-400 w-full sm:w-auto">
+                <!-- 1. 查看計畫緣起 -->
+                <button onclick="toggleModal('origin-modal')" class="group relative px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
+                    <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
+                    <span class="relative flex items-center justify-center gap-2 text-lg">
+                        <i class="fas fa-feather-alt"></i>
+                        查看計畫緣起
+                    </span>
                 </button>
+
+                <!-- 2. 實習中心網頁 -->
+                <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white border border-white/20 backdrop-blur-sm font-medium rounded-full transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 hover:border-white/40 w-full sm:w-60">
+                    <i class="fa-solid fa-link text-blue-300"></i>
+                    實習中心網頁
+                </a>
             </div>
         </div>
     </div>
 
     <!-- Main Content Area (Cards) -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-20 pb-20 flex-grow">
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 pb-20 flex-grow">
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
 
+            <!-- Row 1: 基礎資源 -->
+            
             <!-- Card 1: 實習相關法規 -->
             <a href="#laws" class="group bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
                 <div class="p-8">
@@ -141,7 +174,39 @@
                 </div>
             </a>
 
-            <!-- Card 4: 實習文件產生器 (Highlight Tool - 已更新連結) -->
+            <!-- Row 2: 學生資源 -->
+
+            <!-- Card 4: 實習前哨站系列線上輔導課程 (New) -->
+            <a href="#courses" class="group bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-blue-50 text-thuBlue rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-chalkboard-teacher"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習前哨站線上課程</h3>
+                    <p class="text-gray-500 leading-relaxed">提供職場軟實力、履歷撰寫與面試技巧等線上影音課程，隨時強化競爭力。</p>
+                </div>
+                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuBlue">前往觀看</span>
+                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Card 5: 東海人才網 (New) -->
+            <a href="#talent" class="group bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-blue-50 text-thuBlue rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-briefcase"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">東海人才網</h3>
+                    <p class="text-gray-500 leading-relaxed">媒合優質企業與實習職缺，提供履歷投遞與職涯諮詢服務，最佳實習入口。</p>
+                </div>
+                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuBlue">尋找職缺</span>
+                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Card 6: 實習文件產生器 (Highlight Tool) -->
             <a href="./Contract/index.html" class="group bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
                 <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                     推薦工具
@@ -159,7 +224,9 @@
                 </div>
             </a>
 
-            <!-- Card 5: 校庫填報協作工具 (Highlight Tool) -->
+            <!-- Row 3: 行政專區 -->
+
+            <!-- Card 7: 校庫填報協作工具 (Highlight Tool - Admin) -->
             <a href="#database" class="group bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
                 <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
                     行政專用
@@ -177,7 +244,25 @@
                 </div>
             </a>
 
-            <!-- Contact / Support Card -->
+            <!-- Card 8: 系所評鑑資料上傳專區 (New - Admin) -->
+            <a href="#evaluation" class="group bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
+                <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                    行政專用
+                </div>
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-yellow-100 text-thuGold rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuGold transition-colors">系所評鑑資料上傳</h3>
+                    <p class="text-gray-500 leading-relaxed">供各系所上傳實習相關佐證資料，支援批次上傳與管理，便利評鑑審查。</p>
+                </div>
+                <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuGold">前往上傳</span>
+                    <i class="fas fa-play text-thuGold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Card 9: Contact / Support Card -->
             <div class="bg-gray-100 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center p-8 text-center">
                 <div class="w-12 h-12 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center text-xl mb-4">
                     <i class="fas fa-headset"></i>
@@ -253,4 +338,26 @@
     <!-- JavaScript for Modal -->
     <script>
         function toggleModal(modalID) {
-            const modal = document
+            const modal = document.getElementById(modalID);
+            const body = document.querySelector('body');
+            
+            modal.classList.toggle('opacity-0');
+            modal.classList.toggle('pointer-events-none');
+            body.classList.toggle('modal-active');
+        }
+
+        document.onkeydown = function(evt) {
+            evt = evt || window.event;
+            var isEscape = false;
+            if ("key" in evt) {
+                isEscape = (evt.key === "Escape" || evt.key === "Esc");
+            } else {
+                isEscape = (evt.keyCode === 27);
+            }
+            if (isEscape && document.body.classList.contains('modal-active')) {
+                toggleModal('origin-modal');
+            }
+        };
+    </script>
+</body>
+</html>
