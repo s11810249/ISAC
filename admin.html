@@ -17,15 +17,47 @@
 <body class="bg-gray-100 min-h-screen font-sans">
 
     <!-- Login Overlay -->
-    <div id="login-overlay" class="fixed inset-0 bg-thuBlue z-[9999] flex flex-col items-center justify-center p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 text-center">
+    <div id="login-overlay" class="fixed inset-0 bg-thuBlue z-[9999] flex flex-col items-center justify-center p-4 overflow-y-auto">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 text-center relative">
+            <!-- Help Toggle Button -->
+            <button onclick="toggleHelp()" class="absolute top-5 right-5 text-gray-400 hover:text-thuBlue transition" title="如何設定?">
+                <i class="fas fa-question-circle text-xl"></i>
+            </button>
+
             <h2 class="text-2xl font-bold text-gray-800 mb-2">管理員登入</h2>
             <p class="text-sm text-gray-500 mb-6">請輸入 GitHub 連線資訊</p>
+            
             <div class="space-y-3 text-left">
-                <input type="text" id="gh-owner" class="w-full p-3 border rounded bg-gray-50" placeholder="GitHub 帳號 (Owner)">
-                <input type="text" id="gh-repo" class="w-full p-3 border rounded bg-gray-50" placeholder="專案名稱 (Repo)">
-                <input type="password" id="gh-token" class="w-full p-3 border rounded bg-gray-50" placeholder="GitHub Token">
-                <button onclick="login()" class="w-full bg-thuGold text-white font-bold py-3 rounded hover:bg-yellow-600 transition">登入系統</button>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">GitHub 帳號 (Owner)</label>
+                    <input type="text" id="gh-owner" class="w-full p-3 border rounded bg-gray-50 focus:ring-2 focus:ring-thuBlue outline-none transition" placeholder="例如: your-username">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">專案名稱 (Repo)</label>
+                    <input type="text" id="gh-repo" class="w-full p-3 border rounded bg-gray-50 focus:ring-2 focus:ring-thuBlue outline-none transition" placeholder="例如: THU-ISAC">
+                </div>
+                <div>
+                    <label class="text-xs font-bold text-gray-500 ml-1">存取金鑰 (Token)</label>
+                    <input type="password" id="gh-token" class="w-full p-3 border rounded bg-gray-50 focus:ring-2 focus:ring-thuBlue outline-none transition" placeholder="github_pat_...">
+                </div>
+                <button onclick="login()" class="w-full bg-thuGold text-white font-bold py-3 rounded hover:bg-yellow-600 transition shadow-md mt-2">登入系統</button>
+            </div>
+
+            <!-- Help Content (Hidden by default) -->
+            <div id="login-help" class="hidden mt-6 text-left text-xs text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <h4 class="font-bold text-thuBlue mb-2 text-sm"><i class="fas fa-info-circle mr-1"></i> 如何取得金鑰 (Token)?</h4>
+                <ol class="list-decimal list-inside space-y-1.5">
+                    <li>登入 GitHub，點擊右上角頭像 &gt; <strong>Settings</strong>。</li>
+                    <li>左側選單最下方 &gt; <strong>Developer settings</strong>。</li>
+                    <li>選 <strong>Personal access tokens</strong> &gt; <strong>Fine-grained tokens</strong>。</li>
+                    <li>點擊 <strong>Generate new token</strong>：
+                        <ul class="list-disc list-inside ml-3 mt-1 text-gray-500 space-y-0.5">
+                            <li>Repository access: 選 <strong>Only select repositories</strong> (選擇本專案)。</li>
+                            <li>Permissions: 點開 <strong>Contents</strong>，選 <strong>Read and write</strong>。</li>
+                        </ul>
+                    </li>
+                    <li>複製產生的 <code>github_pat_...</code> 字串即為 Token。</li>
+                </ol>
             </div>
         </div>
     </div>
@@ -36,16 +68,21 @@
         <!-- Header -->
         <div class="flex justify-between items-center mb-8 bg-white p-5 rounded-xl shadow-sm">
             <h1 class="text-2xl font-bold text-thuBlue"><i class="fas fa-cogs mr-2"></i>網站內容管理系統</h1>
-            <button onclick="saveToGitHub()" id="btn-save" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold shadow flex items-center gap-2">
-                <i class="fas fa-cloud-upload-alt"></i> 儲存變更至網站
-            </button>
+            <div class="flex gap-3">
+                <button onclick="saveToGitHub()" id="btn-save" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition">
+                    <i class="fas fa-cloud-upload-alt"></i> 儲存變更至網站
+                </button>
+                <button onclick="logout()" class="bg-gray-200 hover:bg-gray-300 text-gray-600 px-4 py-2 rounded-lg font-bold transition">
+                    <i class="fas fa-sign-out-alt"></i>
+                </button>
+            </div>
         </div>
 
         <!-- Tabs -->
         <div class="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
-            <button onclick="switchTab('home')" id="tab-home" class="px-6 py-3 font-bold text-thuBlue border-b-4 border-thuBlue bg-white rounded-t-lg">首頁卡片管理</button>
-            <button onclick="switchTab('pages')" id="tab-pages" class="px-6 py-3 font-bold text-gray-500 hover:text-thuBlue">分頁內容管理</button>
-            <button onclick="switchTab('news')" id="tab-news" class="px-6 py-3 font-bold text-gray-500 hover:text-thuBlue">最新消息</button>
+            <button onclick="switchTab('home')" id="tab-home" class="px-6 py-3 font-bold text-thuBlue border-b-4 border-thuBlue bg-white rounded-t-lg transition">首頁卡片管理</button>
+            <button onclick="switchTab('pages')" id="tab-pages" class="px-6 py-3 font-bold text-gray-500 hover:text-thuBlue transition">分頁內容管理</button>
+            <button onclick="switchTab('news')" id="tab-news" class="px-6 py-3 font-bold text-gray-500 hover:text-thuBlue transition">最新消息</button>
         </div>
 
         <!-- Tab Content: Home Cards -->
@@ -69,7 +106,7 @@
                 <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm">
                     <div class="flex justify-between mb-4 border-b pb-2">
                         <h3 class="font-bold text-xl text-thuBlue" id="current-page-name">請選擇頁面</h3>
-                        <button onclick="addItem()" class="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 font-bold">+ 新增項目</button>
+                        <button onclick="addItem()" class="text-sm bg-blue-50 text-blue-600 px-3 py-1 rounded hover:bg-blue-100 font-bold transition">+ 新增項目</button>
                     </div>
                     <div id="items-editor" class="space-y-3">
                         <!-- Items generated by JS -->
@@ -79,12 +116,14 @@
             </div>
         </div>
 
-        <!-- Tab Content: News (Simplified for demo) -->
+        <!-- Tab Content: News -->
         <div id="view-news" class="view-section hidden">
             <div class="bg-white p-6 rounded-xl shadow-sm">
-                <p class="text-gray-500 mb-4">管理首頁公告欄與最新消息列表。</p>
-                <textarea id="news-json-editor" class="w-full h-96 font-mono text-sm p-4 border rounded bg-gray-50 focus:ring-2 focus:ring-thuBlue outline-none"></textarea>
-                <p class="text-xs text-gray-400 mt-2">※ 此處直接編輯 JSON 格式，請小心操作。</p>
+                <p class="text-gray-500 mb-4 flex justify-between">
+                    <span>管理首頁公告欄與最新消息列表。</span>
+                    <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded">注意：此處直接編輯 JSON 格式</span>
+                </p>
+                <textarea id="news-json-editor" class="w-full h-96 font-mono text-sm p-4 border rounded bg-gray-50 focus:ring-2 focus:ring-thuBlue outline-none resize-y"></textarea>
             </div>
         </div>
 
@@ -95,24 +134,38 @@
         let currentSha = null;
         let currentPageId = null;
         
-        // 1. Login Logic
+        // --- 0. UI Helpers ---
+        function toggleHelp() {
+            const help = document.getElementById('login-help');
+            help.classList.toggle('hidden');
+        }
+
+        function logout() {
+            if(confirm("確定要登出嗎？這將會清除瀏覽器紀錄的連線資訊。")) {
+                localStorage.removeItem('gh_config');
+                location.reload();
+            }
+        }
+
+        // --- 1. Login Logic ---
         async function login() {
-            const owner = document.getElementById('gh-owner').value;
-            const repo = document.getElementById('gh-repo').value;
-            const token = document.getElementById('gh-token').value;
+            const owner = document.getElementById('gh-owner').value.trim();
+            const repo = document.getElementById('gh-repo').value.trim();
+            const token = document.getElementById('gh-token').value.trim();
             
-            if(!owner || !repo || !token) return alert("請填寫完整");
+            if(!owner || !repo || !token) return alert("請填寫完整資訊");
 
             try {
-                // Fetch site_data.json
+                // Fetch site_data.json to verify credentials
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/site_data.json?t=${Date.now()}`;
                 const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
                 
-                if(!res.ok) throw new Error("連線失敗或找不到 site_data.json");
+                if(!res.ok) throw new Error("連線失敗：請檢查帳號、專案名稱或 Token 是否正確，以及是否開啟了 Contents 權限。");
                 
                 const data = await res.json();
                 currentSha = data.sha;
-                fullData = JSON.parse(decodeURIComponent(escape(atob(data.content)))); // UTF-8 fix
+                // UTF-8 decode
+                fullData = JSON.parse(decodeURIComponent(escape(atob(data.content))));
 
                 // Save credentials
                 localStorage.setItem('gh_config', JSON.stringify({ owner, repo, token }));
@@ -135,20 +188,21 @@
             document.getElementById('gh-owner').value = savedConfig.owner;
             document.getElementById('gh-repo').value = savedConfig.repo;
             document.getElementById('gh-token').value = savedConfig.token;
+            // Optional: Auto login on load
+            // login(); 
         }
 
-        // 2. Render Logic
+        // --- 2. Render Logic ---
         function switchTab(tab) {
             document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
             document.getElementById('view-' + tab).classList.remove('hidden');
             
-            // Update buttons
             ['home', 'pages', 'news'].forEach(t => {
                 const btn = document.getElementById('tab-' + t);
                 if(t === tab) {
-                    btn.className = "px-6 py-3 font-bold text-thuBlue border-b-4 border-thuBlue bg-white rounded-t-lg";
+                    btn.className = "px-6 py-3 font-bold text-thuBlue border-b-4 border-thuBlue bg-white rounded-t-lg transition";
                 } else {
-                    btn.className = "px-6 py-3 font-bold text-gray-500 hover:text-thuBlue";
+                    btn.className = "px-6 py-3 font-bold text-gray-500 hover:text-thuBlue transition";
                 }
             });
         }
@@ -157,24 +211,39 @@
         function renderHomeCards() {
             const container = document.getElementById('cards-editor');
             container.innerHTML = '';
+            if(!fullData.homeCards) fullData.homeCards = [];
+            
             fullData.homeCards.forEach((card, index) => {
                 container.innerHTML += `
-                <div class="border rounded-lg p-4 bg-gray-50 hover:bg-white hover:shadow transition">
+                <div class="border rounded-lg p-4 bg-gray-50 hover:bg-white hover:shadow transition group">
                     <div class="flex justify-between mb-2">
                         <span class="font-bold text-gray-700">#${index+1} ${card.id}</span>
-                        <i class="${card.icon} text-gray-400"></i>
+                        <i class="${card.icon} text-gray-400 group-hover:text-thuBlue"></i>
                     </div>
                     <div class="space-y-2">
-                        <input type="text" class="w-full p-1 border rounded" value="${card.title}" onchange="updateCard(${index}, 'title', this.value)" placeholder="標題">
-                        <input type="text" class="w-full p-1 border rounded" value="${card.desc}" onchange="updateCard(${index}, 'desc', this.value)" placeholder="描述">
+                        <div>
+                            <label class="text-xs text-gray-400">標題</label>
+                            <input type="text" class="w-full p-1 border rounded text-sm focus:border-thuBlue outline-none" value="${card.title}" onchange="updateCard(${index}, 'title', this.value)">
+                        </div>
+                        <div>
+                            <label class="text-xs text-gray-400">描述</label>
+                            <input type="text" class="w-full p-1 border rounded text-sm focus:border-thuBlue outline-none" value="${card.desc}" onchange="updateCard(${index}, 'desc', this.value)">
+                        </div>
                         <div class="flex gap-2">
-                            <select class="p-1 border rounded text-sm" onchange="updateCard(${index}, 'type', this.value)">
-                                <option value="blue" ${card.type==='blue'?'selected':''}>藍色 (一般)</option>
-                                <option value="gold" ${card.type==='gold'?'selected':''}>金色 (工具)</option>
-                                <option value="rose" ${card.type==='rose'?'selected':''}>粉紅</option>
-                                <option value="teal" ${card.type==='teal'?'selected':''}>藍綠</option>
-                            </select>
-                            <input type="text" class="flex-1 p-1 border rounded text-sm" value="${card.link}" onchange="updateCard(${index}, 'link', this.value)" placeholder="連結">
+                            <div class="w-1/3">
+                                <label class="text-xs text-gray-400">顏色類型</label>
+                                <select class="w-full p-1 border rounded text-sm focus:border-thuBlue outline-none" onchange="updateCard(${index}, 'type', this.value)">
+                                    <option value="blue" ${card.type==='blue'?'selected':''}>藍色 (一般)</option>
+                                    <option value="gold" ${card.type==='gold'?'selected':''}>金色 (工具)</option>
+                                    <option value="rose" ${card.type==='rose'?'selected':''}>粉紅</option>
+                                    <option value="teal" ${card.type==='teal'?'selected':''}>藍綠</option>
+                                    <option value="indigo" ${card.type==='indigo'?'selected':''}>靛藍</option>
+                                </select>
+                            </div>
+                            <div class="w-2/3">
+                                <label class="text-xs text-gray-400">連結</label>
+                                <input type="text" class="w-full p-1 border rounded text-sm focus:border-thuBlue outline-none" value="${card.link}" onchange="updateCard(${index}, 'link', this.value)">
+                            </div>
                         </div>
                     </div>
                 </div>`;
@@ -187,12 +256,15 @@
         function renderPageList() {
             const list = document.getElementById('page-list');
             list.innerHTML = '';
+            if(!fullData.pages) fullData.pages = {};
+
             Object.keys(fullData.pages).forEach(key => {
                 const page = fullData.pages[key];
+                const activeClass = (currentPageId === key) ? 'bg-thuBlue text-white' : 'hover:bg-blue-50 text-gray-700';
                 list.innerHTML += `
                 <li>
-                    <button onclick="selectPage('${key}')" class="w-full text-left px-4 py-2 rounded hover:bg-blue-50 text-gray-700 font-medium transition focus:bg-thuBlue focus:text-white">
-                        ${page.title}
+                    <button onclick="selectPage('${key}')" class="w-full text-left px-4 py-2 rounded font-medium transition ${activeClass}">
+                        ${page.title} <span class="text-xs opacity-50 ml-1">(${key})</span>
                     </button>
                 </li>`;
             });
@@ -200,6 +272,7 @@
 
         window.selectPage = (pageId) => {
             currentPageId = pageId;
+            renderPageList(); // Re-render to update active state
             const page = fullData.pages[pageId];
             document.getElementById('current-page-name').innerText = page.title;
             renderPageItems();
@@ -208,49 +281,67 @@
         function renderPageItems() {
             const container = document.getElementById('items-editor');
             container.innerHTML = '';
+            
+            if (!currentPageId) return;
+            
             const items = fullData.pages[currentPageId].items || [];
             
+            if(items.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-8 border-2 border-dashed rounded-lg">尚無內容，請新增項目</div>';
+            }
+
             items.forEach((item, index) => {
                 container.innerHTML += `
-                <div class="flex gap-2 items-center bg-gray-50 p-2 rounded border">
-                    <input type="text" class="w-20 p-1 border rounded text-sm text-center" value="${item.tag}" onchange="updateItem(${index}, 'tag', this.value)" placeholder="標籤">
-                    <input type="text" class="flex-1 p-1 border rounded" value="${item.title}" onchange="updateItem(${index}, 'title', this.value)" placeholder="標題">
-                    <input type="text" class="flex-1 p-1 border rounded text-sm" value="${item.url}" onchange="updateItem(${index}, 'url', this.value)" placeholder="網址/檔案">
-                    <button onclick="deleteItem(${index})" class="text-red-500 hover:text-red-700 px-2"><i class="fas fa-trash"></i></button>
+                <div class="flex gap-2 items-center bg-gray-50 p-3 rounded border hover:border-blue-300 transition group">
+                    <div class="flex-none w-6 text-center text-gray-400 text-xs">${index+1}</div>
+                    <div class="w-24">
+                        <input type="text" class="w-full p-1 border rounded text-sm text-center focus:border-thuBlue outline-none" value="${item.tag || ''}" onchange="updateItem(${index}, 'tag', this.value)" placeholder="標籤 (如PDF)">
+                    </div>
+                    <div class="flex-1">
+                        <input type="text" class="w-full p-1 border rounded text-sm font-bold focus:border-thuBlue outline-none mb-1" value="${item.title}" onchange="updateItem(${index}, 'title', this.value)" placeholder="標題">
+                        <input type="text" class="w-full p-1 border rounded text-xs text-gray-500 focus:border-thuBlue outline-none" value="${item.url}" onchange="updateItem(${index}, 'url', this.value)" placeholder="連結網址">
+                    </div>
+                    <button onclick="deleteItem(${index})" class="text-gray-300 hover:text-red-500 px-2 transition" title="刪除"><i class="fas fa-trash"></i></button>
                 </div>`;
             });
         }
 
         window.updateItem = (index, field, value) => { fullData.pages[currentPageId].items[index][field] = value; };
         window.addItem = () => {
-            if(!currentPageId) return;
+            if(!currentPageId) return alert("請先從左側選擇一個頁面");
+            if(!fullData.pages[currentPageId].items) fullData.pages[currentPageId].items = [];
             fullData.pages[currentPageId].items.push({ title: "新項目", url: "#", tag: "New" });
             renderPageItems();
         };
         window.deleteItem = (index) => {
-            if(!confirm("確定刪除?")) return;
+            if(!confirm("確定要刪除這個項目嗎?")) return;
             fullData.pages[currentPageId].items.splice(index, 1);
             renderPageItems();
         };
 
         // --- News Editor ---
         function renderNewsEditor() {
+            if(!fullData.news) fullData.news = [];
             document.getElementById('news-json-editor').value = JSON.stringify(fullData.news, null, 2);
         }
 
         // 3. Save Logic
         async function saveToGitHub() {
-            // Update news from text area before saving
+            // Sync news from textarea
             try {
-                fullData.news = JSON.parse(document.getElementById('news-json-editor').value);
+                const newsContent = document.getElementById('news-json-editor').value;
+                if(newsContent) fullData.news = JSON.parse(newsContent);
             } catch(e) {
-                return alert("最新消息 JSON 格式錯誤，請檢查！");
+                return alert("最新消息的 JSON 格式有誤，請檢查引號或逗號是否正確！");
             }
 
             const btn = document.getElementById('btn-save');
-            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 儲存中...';
+            const originalText = btn.innerHTML;
+            btn.disabled = true; 
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 儲存中...';
 
             const { owner, repo, token } = JSON.parse(localStorage.getItem('gh_config'));
+            // Encode with UTF-8 support
             const contentBase64 = btoa(unescape(encodeURIComponent(JSON.stringify(fullData, null, 2))));
 
             try {
@@ -261,7 +352,7 @@
                         'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
-                        message: "Update via Admin Panel",
+                        message: "Update via Admin Panel " + new Date().toLocaleString(),
                         content: contentBase64,
                         sha: currentSha
                     })
@@ -269,15 +360,17 @@
 
                 if(res.ok) {
                     const data = await res.json();
-                    currentSha = data.content.sha;
-                    alert("✅ 更新成功！網站約 1-3 分鐘後生效。");
+                    currentSha = data.content.sha; // Update SHA for next save
+                    alert("✅ 更新成功！\nGitHub Pages 約需 1-3 分鐘才會顯示最新內容，請稍候重新整理網站。");
                 } else {
-                    throw new Error("GitHub API 回傳錯誤");
+                    const err = await res.json();
+                    throw new Error(err.message || "GitHub API 回傳錯誤");
                 }
             } catch (e) {
                 alert("❌ 儲存失敗: " + e.message);
             } finally {
-                btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 儲存變更至網站';
+                btn.disabled = false; 
+                btn.innerHTML = originalText;
             }
         }
     </script>
