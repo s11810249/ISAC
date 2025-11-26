@@ -16,7 +16,11 @@
                         thuBlue: '#002E5D',
                         thuLightBlue: '#eef6fc',
                         thuGold: '#C6A87C',
-                        darkBg: '#0f172a'
+                        darkBg: '#0f172a',
+                        btnGreen: '#219653',
+                        btnGreenHover: '#1e874b',
+                        pdfRed: '#dc2626',
+                        pdfRedHover: '#b91c1c'
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -36,6 +40,31 @@
         .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002E5D; }
         .drag-handle { cursor: grab; }
         .drag-handle:active { cursor: grabbing; }
+        
+        /* 側邊欄按鈕樣式 */
+        .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
+        .sidebar-btn:hover { background-color: #f3f4f6; color: #002E5D; }
+        .sidebar-btn.active { background-color: #002E5D; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .sidebar-btn.active i { color: #C6A87C; }
+
+        /* 自定義上傳按鈕樣式 (PDF 紅色) */
+        .upload-pdf-btn {
+            background-color: #dc2626;
+            color: white;
+            padding: 6px 12px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.85rem;
+            font-weight: bold;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid #b91c1c;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        .upload-pdf-btn:hover { background-color: #b91c1c; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
+        .upload-pdf-btn:active { transform: translateY(0); }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
@@ -115,32 +144,34 @@
                             </div>
                         </div>
 
-                        <!-- Tab: Pages (Enhanced with Upload) -->
+                        <!-- Tab: Pages (Split Layout) -->
                         <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
-                            <div class="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-4 border-b border-gray-100">
-                                <div>
-                                    <h3 class="text-lg font-bold text-gray-800">分頁內容管理</h3>
-                                    <p class="text-sm text-gray-500 mt-1" id="page-desc">選擇「實習相關法規」會顯示日期與檔案上傳功能。</p>
+                            <div class="flex flex-col md:flex-row gap-6 h-full">
+                                <!-- Left Sidebar -->
+                                <div class="w-full md:w-64 shrink-0 space-y-1">
+                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">選擇編輯頁面</div>
+                                    <div id="pages-sidebar" class="space-y-1"></div>
+                                    <div class="mt-6 pt-4 border-t border-gray-100">
+                                        <div class="bg-blue-50 p-4 rounded-lg">
+                                            <p class="text-xs text-blue-800 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i> 提示</p>
+                                            <p class="text-xs text-blue-600 leading-relaxed">點擊左側項目切換不同頁面的內容編輯器。</p>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="relative">
-                                    <select id="page-selector" onchange="renderPageEditor()" class="appearance-none bg-white border border-thuBlue text-thuBlue font-bold py-2 pl-4 pr-10 rounded-lg shadow-sm focus:outline-none focus:ring-2 focus:ring-blue-200 cursor-pointer">
-                                        <option value="laws">實習相關法規 (含上傳)</option>
-                                        <option value="downloads">實習表單下載</option>
-                                        <option value="insurance">實習保險專區</option>
-                                        <option value="courses">實習前哨站課程</option>
-                                        <option value="evaluation">系所評鑑資料</option>
-                                    </select>
-                                    <div class="pointer-events-none absolute inset-y-0 right-0 flex items-center px-3 text-thuBlue"><i class="fas fa-chevron-down text-xs"></i></div>
+
+                                <!-- Right Content -->
+                                <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col">
+                                    <div class="flex justify-between items-center p-6 border-b border-gray-100">
+                                        <div>
+                                            <h3 id="editor-page-title" class="text-xl font-bold text-thuBlue">載入中...</h3>
+                                            <p id="editor-page-desc" class="text-sm text-gray-500 mt-1">管理本頁面的資料。</p>
+                                        </div>
+                                        <button onclick="addPageItem()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2">
+                                            <i class="fas fa-plus"></i> 新增項目
+                                        </button>
+                                    </div>
+                                    <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[800px]"></div>
                                 </div>
-                            </div>
-                            
-                            <div class="bg-gray-50 rounded-xl border border-gray-200 p-6">
-                                <div class="flex justify-between items-center mb-4">
-                                    <h4 id="current-page-title" class="text-md font-bold text-gray-700">資料列表</h4>
-                                    <button onclick="addPageItem()" class="bg-green-600 text-white px-3 py-1.5 rounded text-xs hover:bg-green-700 shadow flex items-center"><i class="fas fa-plus mr-1"></i> 新增項目</button>
-                                </div>
-                                <!-- 分頁編輯器容器 -->
-                                <div id="page-items-editor" class="space-y-0 md:space-y-2"></div>
                             </div>
                         </div>
 
@@ -192,6 +223,7 @@
         let sortableStaff = null; 
         let sortablePageItems = null; 
         let sessionToken = ''; 
+        let activePageId = 'laws'; 
 
         const settingFieldsMap = {
             'SiteTitle': { label: '網站主標題 (中文)', type: 'text', help: '顯示於瀏覽器分頁標籤與導覽列' },
@@ -210,6 +242,14 @@
             "evaluation": { title: "系所評鑑資料", items: [] }
         };
 
+        const pageDefinitions = [
+            { id: 'laws', name: '實習相關法規', icon: 'fa-balance-scale' },
+            { id: 'downloads', name: '實習表單下載', icon: 'fa-file-download' },
+            { id: 'insurance', name: '實習保險專區', icon: 'fa-shield-alt' },
+            { id: 'courses', name: '實習前哨站課程', icon: 'fa-graduation-cap' },
+            { id: 'evaluation', name: '系所評鑑資料', icon: 'fa-chart-line' }
+        ];
+
         document.addEventListener('DOMContentLoaded', () => {
             const savedOwner = localStorage.getItem('gh_owner');
             const savedRepo = localStorage.getItem('gh_repo');
@@ -224,6 +264,8 @@
             if (input.type === 'password') { input.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); } 
             else { input.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
         }
+
+        // --- Core Data Functions ---
 
         async function loadData() {
             const owner = document.getElementById('gh-owner').value.trim();
@@ -258,7 +300,8 @@
                 localStorage.setItem('gh_repo', repo);
 
                 document.getElementById('current-repo-label').innerText = `${owner}/${repo}`;
-                renderEditors();
+                
+                renderEditors(); // Function called here
                 
                 const loginScreen = document.getElementById('login-screen');
                 loginScreen.classList.add('animate-fade-out');
@@ -281,6 +324,11 @@
             if (!sessionToken) { alert("連線逾時，請重新登入"); location.reload(); return; }
             
             collectDataFromEditors();
+            
+            if (activePageId === 'laws') {
+                if (!validateLawsItems(currentData.pages['laws'].items)) return;
+            }
+
             const owner = localStorage.getItem('gh_owner');
             const repo = localStorage.getItem('gh_repo');
             const status = document.getElementById('save-status');
@@ -315,57 +363,21 @@
             }
         }
 
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            document.querySelectorAll('.tab-btn').forEach(btn => {
-                btn.classList.remove('text-thuBlue', 'border-thuBlue', 'bg-white');
-                btn.classList.add('border-transparent', 'text-gray-500');
-            });
-            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-            activeBtn.classList.remove('border-transparent', 'text-gray-500');
-            activeBtn.classList.add('text-thuBlue', 'border-thuBlue', 'bg-white');
-            
-            collectDataFromEditors();
-            if(tabId === 'raw') document.getElementById('raw-json').value = JSON.stringify(currentData, null, 4);
-            if(tabId === 'cards') renderCardsList(); 
-            if(tabId === 'contacts') renderContactsList();
-            if(tabId === 'pages') renderPageEditor();
-        }
-
-        function renderEditors() {
-            // Settings
-            const settingsContainer = document.getElementById('settings-form');
-            settingsContainer.innerHTML = '';
-            for (const [key, config] of Object.entries(settingFieldsMap)) {
-                let value = currentData.settings[key] || '';
-                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n').replace(/<br[^>]*>/gi, '\n');
-                
-                let inputHtml = '';
-                if (config.type === 'textarea') {
-                    const limitAttrs = key === 'HeroSubtitle' ? 'maxlength="100" rows="3"' : 'rows="6"';
-                    const charCountId = `count-${key}`;
-                    inputHtml = `<div class="relative"><textarea data-key="${key}" ${limitAttrs} oninput="updateCharCount(this, '${charCountId}')" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm leading-relaxed shadow-sm font-mono text-gray-600">${value}</textarea>${key === 'HeroSubtitle' ? `<div id="${charCountId}" class="text-right text-xs text-gray-400 mt-1">目前字數: ${value.length}/100</div>` : ''}</div>`;
-                } else {
-                    inputHtml = `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm shadow-sm font-medium text-gray-700">`;
-                }
-                settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:border-blue-200 transition duration-300"><label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">${config.label}</label>${inputHtml}<p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle"></i> ${config.help}</p></div>`;
+        function validateLawsItems(items) {
+            for (let i = 0; i < items.length; i++) {
+                const item = items[i];
+                if (!item.title || !item.title.trim()) { alert(`第 ${i + 1} 項法規：請輸入「中文法規名稱」`); return false; }
+                if (!item.date || !item.date.trim()) { alert(`第 ${i + 1} 項法規：請輸入「最新修正日期」`); return false; }
+                if (!item.category || item.category === "") { alert(`第 ${i + 1} 項法規：請選擇「法規分類」`); return false; }
+                const hasZh = item.url_zh && item.url_zh.trim() !== "";
+                const hasEn = item.url_en && item.url_en.trim() !== "";
+                if (!hasZh && !hasEn) { alert(`第 ${i + 1} 項法規：請至少上傳或輸入一個檔案 (中文版或英文版)`); return false; }
             }
-            renderCardsList();
-            renderContactsList();
-            renderNewsList();
-            renderPageEditor();
-        }
-        
-        window.updateCharCount = function(el, displayId) {
-            const count = el.value.length;
-            const display = document.getElementById(displayId);
-            if(display) display.innerText = `目前字數: ${count}/100`;
+            return true;
         }
 
         function collectDataFromEditors() {
             if (!currentData) return;
-            // Settings
             document.querySelectorAll('.setting-input').forEach(input => {
                 const key = input.getAttribute('data-key');
                 let val = input.value;
@@ -376,7 +388,6 @@
             const yearStr = currentYear > 2025 ? `2025-${currentYear}` : "2025";
             currentData.settings['Copyright'] = `Copyright © ${yearStr} 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.`;
 
-            // News
             const newsItems = [];
             document.querySelectorAll('.news-item').forEach(div => {
                 newsItems.push({
@@ -390,7 +401,6 @@
             });
             currentData.news = newsItems;
 
-            // Cards
             const cardItems = [];
             document.querySelectorAll('.card-item').forEach(div => {
                 cardItems.push({
@@ -404,7 +414,6 @@
             });
             currentData.cards = cardItems;
 
-            // Contacts
             const contactItems = [];
             const officeDiv = document.querySelector('.office-item');
             if(officeDiv) {
@@ -429,28 +438,211 @@
             });
             currentData.contacts = contactItems;
 
-            // Pages
-            const pageId = document.getElementById('page-selector').value;
-            if (currentData.pages && currentData.pages[pageId]) {
+            if (currentData.pages && currentData.pages[activePageId]) {
                 const items = [];
                 document.querySelectorAll('.page-item').forEach(div => {
-                    // Basic fields
                     const item = {
                         title: div.querySelector('.p-title').value,
-                        url: div.querySelector('.p-url').value
+                        url: div.querySelector('.p-url') ? div.querySelector('.p-url').value : ''
                     };
-                    
-                    // Conditional fields based on page type
-                    if (pageId === 'laws') {
+                    if (activePageId === 'laws') {
                         item.title_en = div.querySelector('.p-title-en').value;
                         item.date = div.querySelector('.p-date').value;
                         item.category = div.querySelector('.p-cat-select').value;
+                        item.url_zh = div.querySelector('.p-url-zh').value; 
+                        item.url_en = div.querySelector('.p-url-en').value; 
+                        delete item.url;
                     } else {
                         item.category = div.querySelector('.p-category').value;
                     }
                     items.push(item);
                 });
-                currentData.pages[pageId].items = items;
+                currentData.pages[activePageId].items = items;
+            }
+        }
+
+        // --- Render Functions ---
+
+        function renderEditors() {
+            const settingsContainer = document.getElementById('settings-form');
+            settingsContainer.innerHTML = '';
+            for (const [key, config] of Object.entries(settingFieldsMap)) {
+                let value = currentData.settings[key] || '';
+                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n').replace(/<br[^>]*>/gi, '\n');
+                
+                let inputHtml = '';
+                if (config.type === 'textarea') {
+                    const limitAttrs = key === 'HeroSubtitle' ? 'maxlength="100" rows="3"' : 'rows="6"';
+                    const charCountId = `count-${key}`;
+                    inputHtml = `<div class="relative"><textarea data-key="${key}" ${limitAttrs} oninput="updateCharCount(this, '${charCountId}')" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm leading-relaxed shadow-sm font-mono text-gray-600">${value}</textarea>${key === 'HeroSubtitle' ? `<div id="${charCountId}" class="text-right text-xs text-gray-400 mt-1">目前字數: ${value.length}/100</div>` : ''}</div>`;
+                } else {
+                    inputHtml = `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm shadow-sm font-medium text-gray-700">`;
+                }
+                settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:border-blue-200 transition duration-300"><label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">${config.label}</label>${inputHtml}<p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle"></i> ${config.help}</p></div>`;
+            }
+            renderCardsList();
+            renderContactsList();
+            renderNewsList();
+            renderPageEditor();
+        }
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('text-thuBlue', 'border-thuBlue', 'bg-white');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            activeBtn.classList.remove('border-transparent', 'text-gray-500');
+            activeBtn.classList.add('text-thuBlue', 'border-thuBlue', 'bg-white');
+            
+            collectDataFromEditors();
+            if(tabId === 'raw') document.getElementById('raw-json').value = JSON.stringify(currentData, null, 4);
+            if(tabId === 'cards') renderCardsList(); 
+            if(tabId === 'contacts') renderContactsList();
+            if(tabId === 'pages') renderPageEditor(); 
+        }
+
+        function switchPageEditor(pageId) {
+            collectDataFromEditors(); 
+            activePageId = pageId;
+            renderPageEditor();
+        }
+
+        function renderPageEditor() {
+            const sidebar = document.getElementById('pages-sidebar');
+            const container = document.getElementById('page-items-editor');
+            const editorTitle = document.getElementById('editor-page-title');
+            const editorDesc = document.getElementById('editor-page-desc');
+            
+            sidebar.innerHTML = '';
+            container.innerHTML = '';
+            
+            if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
+            if (!currentData.pages[activePageId]) currentData.pages[activePageId] = { title: "新頁面", items: [] };
+
+            pageDefinitions.forEach(page => {
+                const isActive = page.id === activePageId;
+                const activeClass = isActive ? 'active' : '';
+                sidebar.innerHTML += `
+                    <div onclick="switchPageEditor('${page.id}')" class="sidebar-btn ${activeClass}">
+                        <i class="fas ${page.icon} w-5 text-center"></i>
+                        <span>${page.name}</span>
+                    </div>
+                `;
+            });
+
+            const currentPageData = currentData.pages[activePageId];
+            editorTitle.innerText = currentPageData.title;
+            editorDesc.innerText = activePageId === 'laws' ? "管理本頁面的雙語法規與PDF檔案。" : "管理本頁面的資料列表連結。";
+
+            const isLaws = activePageId === 'laws';
+
+            if (currentPageData.items.length === 0) {
+                container.innerHTML = '<div class="text-center py-20 text-gray-400 flex flex-col items-center gap-3"><i class="far fa-folder-open text-4xl opacity-50"></i><span>目前尚無資料，請點擊右上角「新增項目」</span></div>';
+            } else {
+                currentPageData.items.forEach((item, index) => {
+                    if (isLaws) {
+                        // Optimized Laws Editor (New Design with Red Buttons)
+                        container.innerHTML += `
+                        <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4 group hover:border-thuBlue/50 transition-all page-item" data-index="${index}">
+                            <div class="flex justify-between items-start border-b border-gray-100 pb-3">
+                                <div class="flex items-center gap-2 text-gray-400 cursor-move handle-page hover:text-thuBlue">
+                                    <i class="fas fa-grip-vertical"></i>
+                                    <span class="text-xs font-bold tracking-wider">Item #${index + 1}</span>
+                                </div>
+                                <button onclick="deletePageItem('${activePageId}', ${index})" class="text-gray-300 hover:text-red-500 px-2 transition"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+
+                            <div class="space-y-4">
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 mb-1">法規名稱 (中/英) <span class="text-red-500">*</span></label>
+                                    <input type="text" class="p-title w-full border border-gray-200 rounded-t-lg p-2.5 text-sm font-bold text-gray-800 focus:ring-2 focus:ring-thuBlue focus:z-10 outline-none placeholder-gray-300" placeholder="中文標題 (例如: 教育部實習辦法)" value="${item.title}">
+                                    <input type="text" class="p-title-en w-full border border-gray-200 border-t-0 rounded-b-lg p-2.5 text-xs text-gray-500 focus:ring-2 focus:ring-thuBlue outline-none bg-gray-50/50 placeholder-gray-300" placeholder="English Title" value="${item.title_en || ''}">
+                                </div>
+
+                                <div class="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-400 mb-1">最新修正日期 <span class="text-red-500">*</span></label>
+                                        <input type="text" class="p-date w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none" placeholder="YYYY-MM-DD" value="${item.date || ''}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-400 mb-1">法規分類 <span class="text-red-500">*</span></label>
+                                        <select class="p-cat-select w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none bg-white cursor-pointer">
+                                            <option value="" disabled ${!item.category ? 'selected' : ''} class="text-gray-300">-- 請選擇分類 --</option>
+                                            <option value="edu" ${item.category === 'edu' ? 'selected' : ''}>教育部法規</option>
+                                            <option value="admin" ${item.category === 'admin' ? 'selected' : ''}>行政函釋</option>
+                                            <option value="school" ${item.category === 'school' ? 'selected' : ''}>校內法規</option>
+                                        </select>
+                                    </div>
+                                </div>
+
+                                <div>
+                                    <label class="block text-xs font-bold text-gray-400 mb-2">檔案上傳 / 設定 <span class="text-red-500">*</span> (至少擇一)</label>
+                                    <div class="flex flex-col sm:flex-row gap-4">
+                                        <!-- ZH File -->
+                                        <div class="flex-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <span class="text-xs font-bold text-gray-500">中文版 PDF</span>
+                                                <label class="upload-pdf-btn ml-auto" title="上傳中文版 PDF">
+                                                    <i class="fas fa-file-pdf"></i> 上傳檔案
+                                                    <input type="file" class="hidden" accept=".pdf" onchange="uploadFile(this, 'p-url-zh-${index}')">
+                                                </label>
+                                            </div>
+                                            <input type="text" id="p-url-zh-${index}" class="p-url-zh w-full border border-gray-200 rounded p-1.5 text-xs text-blue-600 focus:ring-1 focus:ring-thuBlue outline-none bg-white" placeholder="laws/file_zh.pdf" value="${item.url_zh || item.url || ''}">
+                                        </div>
+
+                                        <!-- EN File -->
+                                        <div class="flex-1 bg-gray-50 p-3 rounded-lg border border-gray-100">
+                                            <div class="flex items-center gap-2 mb-2">
+                                                <span class="text-xs font-bold text-gray-500">英文版 PDF</span>
+                                                <label class="upload-pdf-btn ml-auto" title="上傳英文版 PDF">
+                                                    <i class="fas fa-file-pdf"></i> 上傳檔案
+                                                    <input type="file" class="hidden" accept=".pdf" onchange="uploadFile(this, 'p-url-en-${index}')">
+                                                </label>
+                                            </div>
+                                            <input type="text" id="p-url-en-${index}" class="p-url-en w-full border border-gray-200 rounded p-1.5 text-xs text-blue-600 focus:ring-1 focus:ring-thuBlue outline-none bg-white" placeholder="laws/file_en.pdf" value="${item.url_en || ''}">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>`;
+                    } else {
+                        // Generic Layout
+                        container.innerHTML += `
+                        <div class="page-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3 group mb-3" data-index="${index}">
+                            <div class="flex items-center gap-3">
+                                <div class="cursor-move text-gray-300 hover:text-thuBlue handle-page"><i class="fas fa-grip-lines"></i></div>
+                                <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-400 mb-1">標題</label>
+                                        <input type="text" class="p-title w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold" value="${item.title}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-400 mb-1">連結網址</label>
+                                        <input type="text" class="p-url w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none text-blue-600" value="${item.url}">
+                                    </div>
+                                </div>
+                                <div class="self-end pb-1">
+                                    <button onclick="deletePageItem('${activePageId}', ${index})" class="text-gray-300 hover:text-red-500 p-2 rounded hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
+                                </div>
+                            </div>
+                            <div class="pl-8">
+                                <label class="block text-xs font-bold text-gray-400 mb-1">分類/描述</label>
+                                <input type="text" class="p-category w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${item.category || ''}">
+                            </div>
+                        </div>`;
+                    }
+                });
+                
+                if (sortablePageItems) sortablePageItems.destroy();
+                sortablePageItems = new Sortable(container, { 
+                    animation: 150, 
+                    handle: '.handle-page', 
+                    ghostClass: 'sortable-ghost',
+                    onEnd: function(){ collectDataFromEditors(); } 
+                });
             }
         }
 
@@ -481,7 +673,6 @@
         function addCardItem() { collectDataFromEditors(); currentData.cards.push({ Title: "新功能卡片", Description: "請輸入功能描述...", Link: "#", Icon: "fa-star", Badge: "", Type: "thu" }); renderCardsList(); }
         function deleteCard(index) { if(!confirm("確定刪除此卡片？")) return; collectDataFromEditors(); currentData.cards.splice(index, 1); renderCardsList(); updateCardIndices(); }
 
-        // Contacts Logic
         function renderContactsList() {
             const officeContainer = document.getElementById('office-contact-editor');
             const staffContainer = document.getElementById('staff-contacts-editor');
@@ -559,126 +750,32 @@
             renderContactsList();
         }
 
-        // Render Pages Editor (Updated for Laws)
-        function renderPageEditor() {
-            const pageId = document.getElementById('page-selector').value;
-            const container = document.getElementById('page-items-editor');
-            const titleLabel = document.getElementById('current-page-title');
-            container.innerHTML = '';
+        function addPageItem() {
+            collectDataFromEditors();
+            if (!currentData.pages[activePageId].items) currentData.pages[activePageId].items = [];
             
-            if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
-            if (!currentData.pages[pageId]) currentData.pages[pageId] = { title: "新頁面", items: [] };
-
-            const pageData = currentData.pages[pageId];
-            titleLabel.innerText = `${pageData.title} - 資料列表`;
-
-            const isLaws = pageId === 'laws';
-
-            // Header Row (Only for Laws)
-            let headerHtml = '';
-            if (isLaws && pageData.items.length > 0) {
-                headerHtml = `
-                <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-bold text-gray-500 border-b border-gray-200 bg-gray-50 rounded-t-lg mb-2">
-                    <div class="col-span-1 text-center">排序</div>
-                    <div class="col-span-5">法規名稱 (中/英)</div>
-                    <div class="col-span-3">日期 & 分類</div>
-                    <div class="col-span-2">檔案連結</div>
-                    <div class="col-span-1 text-center">刪除</div>
-                </div>`;
-                container.innerHTML = headerHtml;
-            }
-
-            if (pageData.items.length === 0) {
-                container.innerHTML = '<div class="text-center py-8 text-gray-400">尚無資料，請點擊「新增項目」</div>';
+            if (activePageId === 'laws') {
+                currentData.pages[activePageId].items.push({ 
+                    title: "", 
+                    title_en: "", 
+                    date: "", 
+                    category: "", 
+                    url_zh: "", 
+                    url_en: "" 
+                });
             } else {
-                pageData.items.forEach((item, index) => {
-                    if (isLaws) {
-                        // Specialized Grid Layout for Laws
-                        container.innerHTML += `
-                        <div class="page-item bg-white border-b border-gray-100 md:border-0 p-4 md:p-0 grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-center group hover:bg-gray-50 md:rounded-lg md:border md:mb-2" data-index="${index}">
-                            
-                            <!-- Drag Handle -->
-                            <div class="md:col-span-1 flex md:justify-center">
-                                <div class="cursor-move text-gray-300 hover:text-thuBlue handle-page p-2"><i class="fas fa-grip-lines"></i></div>
-                            </div>
-
-                            <!-- Title Section -->
-                            <div class="md:col-span-5 space-y-1 md:py-3">
-                                <label class="md:hidden text-xs font-bold text-gray-400 block">法規名稱</label>
-                                <input type="text" class="p-title w-full border border-gray-200 rounded p-2 text-sm font-bold text-gray-800 focus:ring-2 focus:ring-thuBlue outline-none placeholder-gray-300" placeholder="中文標題" value="${item.title}">
-                                <input type="text" class="p-title-en w-full border border-gray-200 rounded p-2 text-xs text-gray-500 focus:ring-2 focus:ring-thuBlue outline-none placeholder-gray-300 bg-gray-50/50" placeholder="English Title" value="${item.title_en || ''}">
-                            </div>
-
-                            <!-- Date & Category -->
-                            <div class="md:col-span-3 space-y-1 md:py-3">
-                                <label class="md:hidden text-xs font-bold text-gray-400 block">日期/分類</label>
-                                <div class="flex gap-1">
-                                    <input type="text" class="p-date w-1/2 border border-gray-200 rounded p-2 text-xs text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none" placeholder="YYYY-MM-DD" value="${item.date || ''}">
-                                    <select class="p-cat-select w-1/2 border border-gray-200 rounded p-2 text-xs text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none bg-white cursor-pointer">
-                                        <option value="edu" ${item.category === 'edu' ? 'selected' : ''}>教育部法規</option>
-                                        <option value="admin" ${item.category === 'admin' ? 'selected' : ''}>行政函釋</option>
-                                        <option value="school" ${item.category === 'school' ? 'selected' : ''}>校內法規</option>
-                                    </select>
-                                </div>
-                            </div>
-
-                            <!-- File Link -->
-                            <div class="md:col-span-2 md:py-3">
-                                <label class="md:hidden text-xs font-bold text-gray-400 block mb-1">檔案</label>
-                                <div class="flex rounded-md shadow-sm">
-                                    <input type="text" id="p-url-${index}" class="p-url flex-grow border border-gray-200 rounded-l-md p-2 text-xs text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none truncate" placeholder="URL" value="${item.url}">
-                                    <label class="bg-gray-100 hover:bg-gray-200 text-gray-600 border border-l-0 border-gray-200 rounded-r-md px-3 flex items-center justify-center cursor-pointer transition" title="上傳 PDF">
-                                        <i class="fas fa-upload"></i>
-                                        <input type="file" class="hidden" accept=".pdf" onchange="uploadFile(this, 'p-url-${index}')">
-                                    </label>
-                                </div>
-                            </div>
-
-                            <!-- Delete -->
-                            <div class="md:col-span-1 flex md:justify-center justify-end md:py-3">
-                                <button onclick="deletePageItem('${pageId}', ${index})" class="text-gray-300 hover:text-red-500 p-2 rounded hover:bg-red-50 transition"><i class="fas fa-trash-alt"></i></button>
-                            </div>
-                        </div>`;
-                    } else {
-                        // Generic Layout (Standard)
-                        container.innerHTML += `
-                        <div class="page-item bg-white p-4 rounded-lg border border-gray-200 flex flex-col gap-3 group mb-3" data-index="${index}">
-                            <div class="flex items-center gap-3">
-                                <div class="cursor-move text-gray-300 hover:text-thuBlue handle-page"><i class="fas fa-grip-lines"></i></div>
-                                <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-400 mb-1">標題</label>
-                                        <input type="text" class="p-title w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold" value="${item.title}">
-                                    </div>
-                                    <div>
-                                        <label class="block text-xs font-bold text-gray-400 mb-1">連結網址</label>
-                                        <input type="text" class="p-url w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none text-blue-600" value="${item.url}">
-                                    </div>
-                                </div>
-                                <div class="self-end pb-1">
-                                    <button onclick="deletePageItem('${pageId}', ${index})" class="text-gray-300 hover:text-red-500 p-2 rounded hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
-                                </div>
-                            </div>
-                            <div class="pl-8">
-                                <label class="block text-xs font-bold text-gray-400 mb-1">分類/描述</label>
-                                <input type="text" class="p-category w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${item.category || ''}">
-                            </div>
-                        </div>`;
-                    }
-                });
-                
-                if (sortablePageItems) sortablePageItems.destroy();
-                sortablePageItems = new Sortable(container, { 
-                    animation: 150, 
-                    handle: '.handle-page', 
-                    ghostClass: 'sortable-ghost',
-                    onEnd: function(){ collectDataFromEditors(); } 
-                });
+                currentData.pages[activePageId].items.push({ title: "", category: "", url: "" });
             }
+            renderPageEditor();
         }
 
-        // New Upload Function
-        async function uploadFile(input, targetInputId) {
+        function deletePageItem(pageId, index) {
+            collectDataFromEditors();
+            currentData.pages[pageId].items.splice(index, 1);
+            renderPageEditor();
+        }
+
+        function uploadFile(input, targetInputId) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             const owner = document.getElementById('gh-owner').value;
@@ -699,7 +796,6 @@
                 const path = `laws/${file.name}`;
                 const apiUrl = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
 
-                // 1. Check if file exists to get SHA (for update)
                 let sha = null;
                 try {
                     const getRes = await fetch(apiUrl, { headers: { 'Authorization': `token ${token}` } });
@@ -709,7 +805,6 @@
                     }
                 } catch (e) { console.log("File not found, creating new."); }
 
-                // 2. Upload (PUT)
                 try {
                     const body = {
                         message: `Upload ${file.name} via Admin CMS`,
@@ -728,9 +823,8 @@
 
                     if (putRes.ok) {
                         alert("上傳成功！");
-                        // Auto-fill the URL field
                         document.getElementById(targetInputId).value = path;
-                        collectDataFromEditors(); // Auto save state to memory
+                        collectDataFromEditors();
                     } else {
                         const err = await putRes.json();
                         throw new Error(err.message);
@@ -741,43 +835,11 @@
             };
         }
 
-        function addPageItem() {
-            const pageId = document.getElementById('page-selector').value;
-            collectDataFromEditors(); // Save current state
-            if (!currentData.pages[pageId].items) currentData.pages[pageId].items = [];
-            currentData.pages[pageId].items.push({ title: "", category: "", url: "" });
-            renderPageEditor();
+        window.updateCharCount = function(el, displayId) {
+            const count = el.value.length;
+            const display = document.getElementById(displayId);
+            if(display) display.innerText = `目前字數: ${count}/100`;
         }
-
-        function deletePageItem(pageId, index) {
-            collectDataFromEditors();
-            currentData.pages[pageId].items.splice(index, 1);
-            renderPageEditor();
-        }
-
-        function renderNewsList() {
-            const listContainer = document.getElementById('news-list-editor');
-            listContainer.innerHTML = '';
-            currentData.news.forEach((item, index) => {
-                const isNewChecked = (item.IsNew === true || item.IsNew === 'true') ? 'checked' : '';
-                listContainer.innerHTML += `
-                <div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4 relative group transition hover:shadow-md hover:border-thuBlue/30" data-index="${index}">
-                    <div class="absolute top-4 right-4 flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity"><button onclick="deleteNews(${index})" class="text-gray-300 hover:text-red-500 transition p-2 bg-gray-50 rounded-full hover:bg-red-50"><i class="fas fa-trash-alt"></i></button></div>
-                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
-                        <div class="md:col-span-3"><label class="block text-xs font-bold text-gray-400 mb-1">日期</label><input type="date" class="news-date w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-thuBlue outline-none" value="${item.Date}"></div>
-                        <div class="md:col-span-3"><label class="block text-xs font-bold text-gray-400 mb-1">類型</label><div class="relative"><select class="news-type w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-thuBlue outline-none appearance-none"><option value="一般公告" ${item.Type === '一般公告' ? 'selected' : ''}>一般公告</option><option value="重要公告" ${item.Type === '重要公告' ? 'selected' : ''}>重要公告</option><option value="活動訊息" ${item.Type === '活動訊息' ? 'selected' : ''}>活動訊息</option><option value="計畫申請" ${item.Type === '計畫申請' ? 'selected' : ''}>計畫申請</option><option value="系統公告" ${item.Type === '系統公告' ? 'selected' : ''}>系統公告</option></select><i class="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i></div></div>
-                        <div class="md:col-span-6"><label class="block text-xs font-bold text-gray-400 mb-1">標題</label><input type="text" class="news-title w-full border border-gray-200 rounded-lg p-2.5 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-thuBlue outline-none" value="${item.Title.replace(/"/g, '&quot;')}"></div>
-                    </div>
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-400 mb-1">連結 (Link)</label><div class="relative"><i class="fas fa-link absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300 text-xs"></i><input type="text" class="news-link w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none" value="${item.Link || ''}" placeholder="https://..."></div></div>
-                        <div><label class="block text-xs font-bold text-gray-400 mb-1">內文簡述 (HTML)</label><input type="text" class="news-content w-full border border-gray-200 rounded-lg p-2.5 text-sm text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none" value="${(item.Content || '').replace(/"/g, '&quot;')}" placeholder="<p>...</p>"></div>
-                    </div>
-                    <div class="flex items-center pt-1"><label class="flex items-center cursor-pointer select-none group/toggle"><div class="relative"><input type="checkbox" class="news-isnew sr-only" ${isNewChecked}><div class="w-10 h-6 bg-gray-200 rounded-full shadow-inner transition-colors group-has-[:checked]/toggle:bg-red-400"></div><div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-transform group-has-[:checked]/toggle:translate-x-4"></div></div><span class="ml-2 text-sm text-gray-500 font-medium group-has-[:checked]/toggle:text-red-500">標示為最新 (NEW)</span></label></div>
-                </div>`;
-            });
-        }
-        function addNewsItem() { collectDataFromEditors(); const today = new Date().toISOString().split('T')[0]; currentData.news.unshift({ Date: today, Title: "新公告標題", Type: "一般公告", Link: "", Content: "", IsNew: true }); renderNewsList(); }
-        function deleteNews(index) { if(!confirm("確定刪除此則公告？")) return; collectDataFromEditors(); currentData.news.splice(index, 1); renderNewsList(); }
     </script>
 </body>
 </html>
