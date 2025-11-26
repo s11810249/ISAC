@@ -1,1 +1,279 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="doc-title">系所評鑑資料上傳 | 東海大學實習中心</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        thuBlue: '#002E5D',
+                        thuLightBlue: '#eef6fc',
+                        thuGold: '#C6A87C',
+                        alertRed: '#f87171' 
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 基礎樣式 */
+        .page-header {
+            background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px; opacity: 0.3;
+        }
+        .dept-link {
+            transition: all 0.2s;
+            color: #002E5D;
+            font-weight: 500;
+            padding: 4px 8px;
+            border-radius: 4px;
+        }
+        .dept-link:hover {
+            background-color: #eef6fc;
+            text-decoration: underline;
+        }
+        /* Modal 樣式 */
+        .modal { transition: opacity 0.25s ease; }
+        .modal-active { overflow-y: hidden !important; }
 
+        /* 警示區塊新樣式 (黃色系優化) */
+        .yellow-alert {
+            background-color: #fffbeb; /* bg-yellow-50 */
+            border: 1px solid #fcd34d; /* border-yellow-300 */
+        }
+        .yellow-alert .alert-icon {
+            color: #ef4444; /* text-red-500 (警示用) */
+        }
+        .yellow-alert .alert-text {
+            color: #b45309; /* text-amber-700 */
+        }
+
+        /* 確保 Modal 內的粗體字正常顯示 */
+        #auth-modal .prose strong {
+            font-weight: 700 !important; /* 强制使用 Tailwind font-bold */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen pb-20"> <!-- 增加底部 padding 以容納 fixed footer -->
+
+    <!-- Modal: 權限說明 -->
+    <div id="auth-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('auth-modal')"></div>
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+            <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
+                <div class="flex items-center gap-2"><i class="fas fa-question-circle text-thuGold text-xl"></i><p class="text-2xl font-bold text-thuBlue">雲端硬碟存取權限說明</p></div>
+                <div class="cursor-pointer z-50" onclick="toggleModal('auth-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
+            </div>
+            <div class="px-8 py-6 text-left">
+                <div class="prose max-w-none text-gray-600 space-y-6"> <!-- 增加主間距 -->
+                    <p class="font-bold text-lg text-gray-800">如何取得雲端硬碟存取權限？</p>
+                    <ul class="list-disc list-outside space-y-4 text-gray-700 pl-6"> <!-- 修正: 改為 list-outside 和 pl-6 以修正換行縮排 -->
+                        <li>因蒐集的資料涉及學生個資管理與保護，故僅開放各院/系(學程)人員使用經授權之 <strong>T-Drive 帳號</strong>進入。</li>
+                        <li>帳號格式：<span class="text-blue-600 font-medium">THU-NID@tdrive.thu.edu.tw</span>；密碼同THU-NID密碼。</li>
+                        <li><span class="font-bold">【登入失敗處理】</span> 請您先確認是否誤登入到單位帳號或未經授權的 T-Drive 帳號。</li>
+                        <li>如各院/系(學程)承辦窗口未申請權限或承辦人員有異動，請聯繫<strong>實習中心承辦人</strong>開通權限（分機：22526）。</li>
+                        <li>如仍無法登入或有其他任何問題，請聯繫<strong>實習中心承辦人</strong>（分機：22526）。</li>
+                    </ul>
+                </div>
+            </div>
+            <div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
+                <button onclick="toggleModal('auth-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉視窗</button>
+            </div>
+        </div>
+    </div>
+
+
+    <!-- Header (比照首頁導覽列風格) -->
+    <nav class="bg-thuBlue text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3 hover:opacity-90 transition">
+                <img id="nav-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-8 w-auto">
+                <span id="nav-title" class="font-bold tracking-wide hidden sm:inline">實習業務協作平台</span>
+            </a>
+            <a href="index.html" class="text-sm bg-white/10 hover:bg-white/20 px-4 py-1.5 rounded-full transition flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i> 回首頁
+            </a>
+        </div>
+    </nav>
+
+    <!-- Page Title -->
+    <header class="page-header text-white py-12">
+        <div class="max-w-6xl mx-auto px-4 text-center relative z-10">
+            <div class="inline-block bg-white/10 backdrop-blur-sm px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20">Evaluation Data Upload</div>
+            <h1 class="text-3xl md:text-4xl font-bold mb-2 tracking-widest">系所評鑑資料上傳</h1>
+            <p class="text-gray-400 text-sm">請點擊對應系所名稱，進入雲端連結上傳資料。</p>
+        </div>
+    </header>
+
+    <!-- Content -->
+    <main class="flex-grow max-w-6xl mx-auto px-4 py-12 w-full">
+        
+        <!-- 資安與授權提醒區塊 (黃色系優化) -->
+        <div class="yellow-alert p-6 rounded-xl shadow-lg mb-8">
+            <div class="flex items-start gap-3">
+                <!-- 警告圖示 (紅色驚嘆號) -->
+                <i class="fas fa-exclamation-circle text-2xl alert-icon mt-0.5 flex-shrink-0"></i>
+                
+                <p class="font-bold text-base alert-text flex-grow flex items-center gap-2 flex-wrap">
+                    請各院/系(學程)人員使用經授權之
+                    <strong class="text-thuBlue">T-Drive 帳號</strong>
+                    
+                    <!-- 帳號格式 (正常字體大小) -->
+                    <span class="text-base font-medium text-gray-700">（THU-NID@tdrive.thu.edu.tw）</span>
+                    
+                    <!-- 修正: 問號圖示放在 "進入！" 的旁邊 -->
+                    <span class="font-bold text-base alert-text flex-grow-0">進入！</span>
+                    <button onclick="toggleModal('auth-modal')" class="flex-shrink-0 text-gray-500 hover:text-thuBlue transition">
+                        <i class="fas fa-question-circle text-2xl"></i>
+                    </button>
+                </p>
+            </div>
+        </div>
+
+
+        <div id="departments-container" class="space-y-6">
+            <div class="text-center py-12 text-gray-400">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>載入系所資料中...</p>
+            </div>
+        </div>
+    </main>
+
+    <!-- Fixed Footer (與首頁完全一致) -->
+    <footer id="footer-trigger" style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col items-center justify-center gap-1">
+                <p id="footer-copyright" class="font-bold text-white tracking-wide text-[10px]"></p>
+                <p class="text-[9px] text-gray-500">網頁製作：張博堯 | Assisted by Google Gemini | <a href="admin.html" target="_blank" class="hover:text-white">後台管理</a></p>
+            </div>
+        </div>
+    </footer>
+
+    <script>
+        const deptIcons = {
+            '文學院': 'fa-book-open',
+            '理學院': 'fa-flask',
+            '工學院': 'fa-cogs',
+            '管理學院': 'fa-chart-line',
+            '社科院': 'fa-users',
+            '農業暨健康學院': 'fa-leaf',
+            '創藝學院': 'fa-paint-brush',
+            '法律學院': 'fa-gavel',
+            '國際學院': 'fa-globe-asia',
+            '跨域創新學院': 'fa-brain',
+            '農學院': 'fa-leaf', 
+            '設計學院': 'fa-paint-brush'
+        };
+
+        const toggleModal = (id) => {
+            const m = document.getElementById(id); 
+            m.classList.toggle('opacity-0'); 
+            m.classList.toggle('pointer-events-none'); 
+            document.querySelector('body').classList.toggle('modal-active');
+        };
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch(`data.json?t=${new Date().getTime()}`);
+                if (!response.ok) throw new Error("無法讀取資料庫");
+                const data = await response.json();
+
+                // 設置版權和標題
+                if (data.settings) {
+                    document.getElementById('footer-copyright').innerText = data.settings.Copyright || '© 2025 Tunghai University. All Rights Reserved.';
+                    document.getElementById('nav-title').innerText = data.settings.SiteTitle || '實習業務協作平台';
+                    document.getElementById('doc-title').innerText = '系所評鑑資料上傳 | ' + data.settings.SiteTitle;
+                }
+                
+                if (data.departments && data.departments.length > 0) {
+                    renderDepartments(data.departments);
+                } else {
+                    showError("後台尚未設定任何院系資料");
+                }
+            } catch (error) {
+                console.error("載入失敗:", error);
+                showError("資料載入錯誤，請檢查 data.json 是否存在或格式正確。");
+            }
+        });
+
+        function getDeptIcon(facultyName) {
+            // 處理複合名稱，例如 '農業暨健康學院' -> '農業健康學院'
+            const key = facultyName.replace('暨', '').replace(/學院$/, ''); 
+            
+            // 處理特定縮寫
+            if (key.includes('社會科學')) return deptIcons['社科院'];
+            if (key.includes('創意設計')) return deptIcons['創藝學院'];
+            
+            return deptIcons[key] || 'fa-building';
+        }
+
+        function renderDepartments(faculties) {
+            const container = document.getElementById('departments-container');
+            container.innerHTML = '';
+
+            faculties.forEach(faculty => {
+                if (!faculty.departments || faculty.departments.length === 0) return;
+
+                // 確保圖標類名只包含 fa-xxxx
+                const iconClass = faculty.icon || getDeptIcon(faculty.name);
+                let linksHtml = '';
+                
+                faculty.departments.forEach(dept => {
+                    const link = dept.link || '#';
+                    const target = link.startsWith('http') ? '_blank' : '_self';
+                    linksHtml += `
+                        <a href="${link}" target="${target}" class="dept-link text-sm hover:font-bold">
+                            ${dept.name}
+                        </a>`;
+                });
+
+                container.innerHTML += `
+                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-thuBlue flex flex-col lg:flex-row transition-all duration-300 hover:shadow-xl">
+                    <!-- 左側: 學院 -->
+                    <div class="flex flex-col items-center justify-center w-full lg:w-48 shrink-0 border-b lg:border-b-0 lg:border-r border-gray-100 pb-4 lg:pb-0 lg:pr-6">
+                        <div class="w-16 h-16 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-2">
+                            <i class="fas ${iconClass}"></i>
+                        </div>
+                        <h2 class="text-xl font-bold text-thuBlue text-center">${faculty.name}</h2>
+                    </div>
+                    <!-- 右側: 系所連結 -->
+                    <div class="flex-grow pt-4 lg:pt-0 lg:pl-6">
+                        <h3 class="text-base font-semibold text-gray-600 mb-2 border-b border-gray-100 pb-1">系所 / 學程雲端連結：</h3>
+                        <div class="flex flex-wrap gap-x-6 gap-y-2">
+                            ${linksHtml}
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+
+            if (container.innerHTML === '') {
+                showError("後台已設定院系資料，但目前沒有有效的系所連結。");
+            }
+        }
+
+        function showError(msg) {
+            document.getElementById('departments-container').innerHTML = `
+                <div class="bg-red-50 border border-red-200 p-10 rounded-xl shadow-sm text-center text-red-700">
+                    <i class="fas fa-exclamation-triangle text-2xl mb-3"></i>
+                    <p class="font-bold">${msg}</p>
+                </div>`;
+        }
+    </script>
+</body>
+</html>
