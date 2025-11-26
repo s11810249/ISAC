@@ -141,6 +141,11 @@
             opacity: 1;
             visibility: visible;
         }
+        
+        /* 確保按鈕堆棧在 Footer 之上 */
+        #action-stack {
+            z-index: 100;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen">
@@ -244,7 +249,6 @@
     </div>
 
     <!-- Main Content Area -->
-    <!-- 移除 -mt-10，改用 JS 修正滾動位置 -->
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow">
         <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
@@ -265,7 +269,7 @@
     <!-- 修正 2: 整合 Chatbot Button 和 Scroll-to-Top Button 到一個堆棧容器，並調整位置 -->
     <div id="action-stack" class="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2">
         
-        <!-- 滑到最上方的按鈕 (z-index 確保在 Footer 之上) -->
+        <!-- 滑到最上方的按鈕 -->
         <button id="scroll-to-top" onclick="scrollToTop()" class="w-12 h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center z-50">
             <i class="fas fa-chevron-up text-xl"></i>
         </button>
