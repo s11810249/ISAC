@@ -3,508 +3,301 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Loading...</title>
-    <!-- 核心函式庫 -->
+    <title>網站管理後台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
-    <!-- 設定 Tailwind 主題色 -->
     <script>
         tailwind.config = {
             theme: {
-                extend: {
-                    colors: {
-                        thuBlue: '#002E5D',
-                        thuLightBlue: '#eef6fc',
-                        thuGold: '#C6A87C',
-                    },
-                    fontFamily: {
-                        sans: ['"Noto Sans TC"', 'sans-serif'],
-                    }
-                }
+                extend: { colors: { thuBlue: '#002E5D', thuGold: '#C6A87C' } }
             }
         }
     </script>
-    <style>
-        .hero-bg {
-            background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
-            position: relative;
-            overflow: hidden;
-        }
-        .hero-bg::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px; z-index: 1;
-        }
-        /* Modal 動畫 */
-        .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow-y: hidden !important; }
-        .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-    </style>
 </head>
-<body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen pb-16">
+<body class="bg-gray-100 min-h-screen font-sans">
 
-    <!-- 1. 導覽列 (Sticky Header) -->
-    <nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
-        <div class="w-full max-w-7xl mx-auto flex justify-between items-center">
-            <!-- 左側：Logo & Title -->
-            <div class="flex items-center gap-3">
-                <img id="nav-logo" src="" alt="Logo" class="h-8 w-auto hidden">
-                <div class="text-white leading-none flex flex-col justify-center">
-                    <span class="font-bold text-lg tracking-widest" id="nav-title"></span>
-                </div>
+    <!-- Login Overlay -->
+    <div id="login-overlay" class="fixed inset-0 bg-thuBlue z-[9999] flex flex-col items-center justify-center p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-8 text-center relative">
+             <button onclick="toggleHelp()" class="absolute top-5 right-5 text-gray-400 hover:text-thuBlue transition" title="如何設定?"><i class="fas fa-question-circle text-xl"></i></button>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">管理員登入</h2>
+            <p class="text-sm text-gray-500 mb-6">請輸入 GitHub 連線資訊</p>
+            <div class="space-y-3 text-left">
+                <input type="text" id="gh-owner" class="w-full p-3 border rounded bg-gray-50" placeholder="GitHub 帳號 (Owner)">
+                <input type="text" id="gh-repo" class="w-full p-3 border rounded bg-gray-50" placeholder="專案名稱 (Repo)">
+                <input type="password" id="gh-token" class="w-full p-3 border rounded bg-gray-50" placeholder="GitHub Token">
+                <button onclick="login()" class="w-full bg-thuGold text-white font-bold py-3 rounded hover:bg-yellow-600 transition">登入系統</button>
             </div>
-            <!-- 右側：Home Link -->
-            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 text-white hover:text-thuGold transition-colors text-sm font-medium">
-                <i class="fa-solid fa-house"></i> <span class="hidden sm:inline">東海大學首頁</span>
-            </a>
+             <div id="login-help" class="hidden mt-6 text-left text-xs text-gray-600 bg-blue-50 p-4 rounded-lg border border-blue-100">
+                <h4 class="font-bold text-thuBlue mb-2 text-sm"><i class="fas fa-info-circle mr-1"></i> 如何取得金鑰?</h4>
+                <ol class="list-decimal list-inside space-y-1.5">
+                    <li>GitHub > Settings > Developer settings</li>
+                    <li>Personal access tokens > Fine-grained tokens</li>
+                    <li>Generate new token (權限選 Contents: Read and write)</li>
+                </ol>
+            </div>
         </div>
-    </nav>
+    </div>
 
-    <!-- 2. 主視覺區塊 (Hero Section) -->
-    <div class="hero-bg text-white pb-32 pt-24 relative">
-        <!-- 右上角靜態連結 -->
-        <div class="absolute top-6 right-6 z-30">
-            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full hover:bg-white hover:text-thuBlue transition-all duration-300 font-medium backdrop-blur-sm shadow-sm">
-                <i class="fa-solid fa-house"></i> 東海大學首頁
-            </a>
-        </div>
+    <!-- Main App -->
+    <div id="app" class="hidden max-w-7xl mx-auto p-6">
         
-        <!-- 背景光暈裝飾 -->
-        <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-             <div class="absolute -top-20 -right-20 w-96 h-96 bg-thuGold opacity-10 rounded-full blur-3xl"></div>
-             <div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
-        </div>
-
-        <!-- Hero 內容容器 -->
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center min-h-[40vh]">
-            
-            <!-- Logo & Main Title -->
-            <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 mb-8 animate-fade-in-up group cursor-default">
-                <img id="hero-logo" src="" alt="Logo" class="h-20 w-auto drop-shadow-lg opacity-90 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-110 hidden">
-                <div class="text-center flex flex-col justify-center items-center h-20">
-                    <h1 id="hero-title-container" class="text-3xl md:text-5xl font-bold tracking-widest leading-none drop-shadow-xl mb-1 transition-all duration-500 ease-out group-hover:scale-110 group-hover:tracking-[0.15em]">
-                        <!-- JS 填入標題 -->
-                    </h1>
-                    <p id="hero-eng-title" class="text-base text-blue-200 tracking-wide font-light hidden md:block opacity-90 transition-all duration-500 group-hover:text-white group-hover:tracking-widest"></p>
-                </div>
-            </div>
-            
-            <!-- Subtitle -->
-            <div id="hero-subtitle" class="text-lg md:text-xl text-blue-100/80 font-light mb-8 max-w-2xl mx-auto leading-relaxed animate-fade-in-up" style="animation-delay: 0.2s; opacity: 0;"></div>
-            
-            <!-- Action Buttons -->
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-5 mb-10 animate-fade-in-up w-full sm:w-auto" style="animation-delay: 0.4s; opacity: 0;">
-                <button onclick="toggleModal('origin-modal')" class="group relative px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
-                    <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
-                    <span class="relative flex items-center justify-center gap-2 text-lg"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
+        <!-- Header -->
+        <div class="flex justify-between items-center mb-8 bg-white p-5 rounded-xl shadow-sm sticky top-0 z-40 border-b border-gray-100">
+            <h1 class="text-2xl font-bold text-thuBlue flex items-center gap-2"><i class="fas fa-cogs"></i> 網站內容管理</h1>
+            <div class="flex gap-3">
+                <button onclick="saveToGitHub()" id="btn-save" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-lg font-bold shadow flex items-center gap-2 transition transform active:scale-95">
+                    <i class="fas fa-cloud-upload-alt"></i> 儲存發布
                 </button>
-                <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white border border-white/20 backdrop-blur-sm font-medium rounded-full transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 hover:border-white/40 w-full sm:w-60">
-                    <i class="fa-solid fa-link text-blue-300"></i> 實習中心網頁
-                </a>
-            </div>
-
-            <!-- 最新公告欄 (預設隱藏，有資料才顯示) -->
-            <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-5 text-left animate-fade-in-up hidden" style="animation-delay: 0.6s; opacity: 0;">
-                <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-bullhorn text-thuGold animate-pulse"></i>
-                        <span class="font-bold text-white text-base tracking-wide">最新公告</span>
-                    </div>
-                    <!-- 查看更多按鈕 -->
-                    <button id="view-more-news-btn" onclick="openAllNewsModal()" class="hidden text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 border border-white/10">
-                        查看所有 <i class="fas fa-chevron-right text-[10px]"></i>
-                    </button>
-                </div>
-                <ul id="news-list" class="space-y-3 text-sm text-blue-50">
-                    <!-- JS 動態填入前 3 筆 -->
-                </ul>
-            </div>
-
-        </div>
-    </div>
-
-    <!-- 3. 主要內容區 (功能卡片) -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 pb-20 flex-grow">
-        <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <!-- Loading State -->
-            <div class="col-span-full text-center py-10 text-white">
-                <i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i>
-                <p>正在讀取 site_data.json 設定檔...</p>
+                <button onclick="logout()" class="bg-gray-100 hover:bg-gray-200 text-gray-600 px-4 py-2 rounded-lg font-bold transition">登出</button>
             </div>
         </div>
-    </main>
 
-    <!-- 4. 固定頁尾 (Footer) -->
-    <footer style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col items-center justify-center gap-1">
-                <p id="footer-copyright" class="font-bold text-white tracking-wide text-[10px]"></p>
-                <p class="text-[9px] text-gray-500">網頁製作：張博堯 | Assisted by Google Gemini</p>
+        <!-- Tabs -->
+        <div class="flex gap-2 mb-6 border-b border-gray-200 overflow-x-auto">
+            <button onclick="switchTab('home')" id="tab-home" class="px-6 py-3 font-bold text-thuBlue border-b-4 border-thuBlue bg-white rounded-t-lg transition whitespace-nowrap">首頁卡片</button>
+            <button onclick="switchTab('pages')" id="tab-pages" class="px-6 py-3 font-bold text-gray-500 hover:text-thuBlue transition whitespace-nowrap">分頁內容</button>
+            <button onclick="switchTab('news')" id="tab-news" class="px-6 py-3 font-bold text-gray-500 hover:text-thuBlue transition whitespace-nowrap">最新消息</button>
+        </div>
+
+        <!-- 1. 首頁卡片管理 -->
+        <div id="view-home" class="view-section">
+            <div class="flex justify-between items-center mb-4">
+                <p class="text-sm text-gray-500"><i class="fas fa-info-circle mr-1"></i> 請編輯首頁的功能方塊，可自由拖曳排序或增減。</p>
+                <button onclick="addCard()" class="bg-blue-50 text-blue-600 hover:bg-blue-100 px-4 py-2 rounded-lg font-bold transition flex items-center gap-2 shadow-sm border border-blue-100">
+                    <i class="fas fa-plus-circle"></i> 新增卡片
+                </button>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5" id="cards-editor">
+                <!-- JS 生成卡片編輯器 -->
             </div>
         </div>
-    </footer>
 
-    <!-- 5. 懸浮 Chatbot 按鈕 -->
-    <div class="fixed bottom-20 right-8 z-40 flex flex-col items-end">
-        <div class="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-lg border border-gray-100 text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
-            需要協助嗎？
-            <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div>
-        </div>
-        <button onclick="toggleModal('contact-modal')" class="w-14 h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white">
-            <i class="fas fa-headset text-2xl group-hover:animate-pulse"></i>
-        </button>
-    </div>
-
-    <!-- ========== MODALS ========== -->
-
-    <!-- Modal 1: 計畫緣起 -->
-    <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
-            <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
-                <div class="flex items-center gap-2"><i class="fas fa-feather-alt text-thuGold text-xl"></i><p class="text-2xl font-bold text-thuBlue">計畫緣起</p></div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
-            </div>
-            <div class="px-8 py-6 text-left"><div id="modal-origin-content" class="prose prose-blue max-w-none text-gray-600 space-y-4">Loading...</div></div>
-            <div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
-                <button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉視窗</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal 2: 聯絡資訊 -->
-    <div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
-            <div class="flex-none flex justify-between items-center py-5 px-8 border-b border-gray-200 bg-white rounded-t-2xl z-10">
-                <div class="flex items-center gap-3"><i class="fas fa-address-book text-thuGold text-2xl"></i><p class="text-2xl font-bold text-thuBlue">聯絡資訊</p></div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-2xl transition"></i></div>
-            </div>
-            <div class="flex-grow overflow-y-auto px-8 py-8 bg-gray-50">
-                <div class="mb-6 text-center bg-blue-50 border border-blue-100 rounded-xl p-5">
-                    <p class="text-gray-700 font-medium text-base"><i class="fas fa-info-circle text-thuBlue mr-2"></i>如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。</p>
+        <!-- 2. 分頁內容管理 -->
+        <div id="view-pages" class="view-section hidden">
+            <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+                <div class="bg-white p-4 rounded-xl shadow-sm h-fit border border-gray-100">
+                    <h3 class="font-bold text-gray-700 mb-3 px-2">選擇頁面</h3>
+                    <ul id="page-list" class="space-y-1"></ul>
                 </div>
-                <div id="contacts-container" class="flex flex-col gap-6">
-                    <!-- JS 動態填入聯絡人 -->
-                </div>
-            </div>
-            <div class="flex-none flex justify-end py-5 px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10">
-                <button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">關閉</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal 3: 公告詳情 -->
-    <div id="news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('news-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
-            <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-bullhorn text-thuGold text-xl"></i>
-                    <p class="text-xl font-bold text-thuBlue">公告詳情</p>
-                </div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
-            </div>
-            <div class="px-8 py-6 text-left">
-                <div class="mb-4">
-                    <span id="modal-news-date" class="text-sm text-gray-500 font-mono"></span>
-                    <h2 id="modal-news-title" class="text-2xl font-bold text-gray-800 mt-1"></h2>
-                </div>
-                <hr class="border-gray-200 mb-4">
-                <div id="modal-news-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 leading-relaxed"></div>
-            </div>
-            <div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
-                <button onclick="toggleModal('news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Modal 4: 所有公告列表 -->
-    <div id="all-news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('all-news-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded-xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
-            <!-- Header -->
-            <div class="flex-none flex justify-between items-center py-5 px-8 border-b border-gray-200 bg-white rounded-t-xl z-10">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-list-ul text-thuGold text-2xl"></i>
-                    <p class="text-2xl font-bold text-thuBlue">所有公告</p>
-                </div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('all-news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-2xl transition"></i></div>
-            </div>
-            <!-- 工具列 -->
-            <div class="flex-none px-8 pt-6 pb-2 bg-gray-50">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <div class="relative flex-grow">
-                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" id="news-search" placeholder="搜尋公告標題..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm transition-all" oninput="renderAllNewsUI()">
-                    </div>
-                    <select id="news-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm bg-white text-gray-600 min-w-[120px] cursor-pointer" onchange="renderAllNewsUI()">
-                        <option value="all">所有類型</option>
-                    </select>
-                </div>
-            </div>
-            <!-- 列表 -->
-            <div class="flex-grow overflow-y-auto px-8 py-2 bg-gray-50 min-h-[300px]">
-                <ul id="all-news-list" class="space-y-2"></ul>
-                <div id="no-news-msg" class="hidden text-center py-10 text-gray-400">
-                    <i class="fas fa-inbox text-4xl mb-2"></i><p>沒有符合條件的公告</p>
-                </div>
-            </div>
-            <!-- Pagination -->
-            <div class="flex-none bg-white border-t border-gray-100 rounded-b-xl z-10">
-                <div id="news-pagination" class="flex justify-center items-center gap-2 py-3 border-b border-gray-50"></div>
-                <div class="flex justify-end py-4 px-8">
-                    <button onclick="toggleModal('all-news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300">關閉</button>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <!-- 邏輯腳本 -->
-    <script>
-        // 全域變數
-        let siteData = {};
-        let siteNews = [];
-        let filteredNews = [];
-        let currentNewsPage = 1;
-        const newsPerPage = 5;
-
-        // 顏色對照表
-        const colorMap = { 'thu': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' }, 'gold': { border: 'border-thuGold', icon: 'bg-thuGold', text: 'text-thuGold', hoverText: 'group-hover:text-thuGold', isGradient: true }, 'blue': { border: 'border-blue-500', icon: 'bg-blue-500', text: 'text-blue-600', hoverText: 'group-hover:text-blue-800' }, 'purple': { border: 'border-purple-500', icon: 'bg-purple-500', text: 'text-purple-600', hoverText: 'group-hover:text-purple-800' }, 'orange': { border: 'border-orange-500', icon: 'bg-orange-500', text: 'text-orange-600', hoverText: 'group-hover:text-orange-800' }, 'green': { border: 'border-green-500', icon: 'bg-green-500', text: 'text-green-600', hoverText: 'group-hover:text-green-800' }, 'red': { border: 'border-red-500', icon: 'bg-red-500', text: 'text-red-600', hoverText: 'group-hover:text-red-800' }, 'teal': { border: 'border-teal-500', icon: 'bg-teal-500', text: 'text-teal-600', hoverText: 'group-hover:text-teal-800' }, 'indigo': { border: 'border-indigo-500', icon: 'bg-indigo-500', text: 'text-indigo-600', hoverText: 'group-hover:text-indigo-800' }, 'cyan': { border: 'border-cyan-500', icon: 'bg-cyan-500', text: 'text-cyan-600', hoverText: 'group-hover:text-cyan-800' }, 'rose': { border: 'border-rose-500', icon: 'bg-rose-500', text: 'text-rose-600', hoverText: 'group-hover:text-rose-800' } };
-        const contactColorMap = { 'thu': { bg: 'bg-blue-50', text: 'text-thuBlue', badge: 'bg-gray-100 text-gray-600', border: 'hover:border-thuBlue' }, 'gold': { bg: 'bg-yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-yellow-500' }, 'purple': { bg: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800', border: 'hover:border-purple-500' }, 'orange': { bg: 'bg-orange-50', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-orange-500' }, 'blue': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', border: 'hover:border-blue-500' }, 'default': { bg: 'bg-gray-50', text: 'text-gray-600', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-gray-400' } };
-
-        // 初始化
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                const res = await fetch('site_data.json?t=' + new Date().getTime());
-                if (!res.ok) throw new Error("JSON not found");
-                siteData = await res.json();
-                
-                renderSettings();
-                renderHomeCards();
-                if(siteData.news) {
-                    siteNews = siteData.news;
-                    renderNewsWidget(siteNews);
-                }
-                // 聯絡人彈窗是動態渲染，資料準備好即可
-            } catch (e) {
-                console.error("Load Error:", e);
-                document.getElementById('cards-container').innerHTML = 
-                    '<div class="col-span-full text-center text-white py-10">無法讀取 site_data.json，請確認檔案存在。</div>';
-            }
-        });
-
-        function renderSettings() {
-            const s = siteData.settings || {};
-            document.title = s.siteTitle || "東海大學實習業務協作平台";
-            setText('nav-title', s.navTitle || s.siteTitle);
-            setText('footer-copyright', s.footerText);
-            
-            // Hero Title logic
-            const fullTitle = s.siteTitle || "";
-            if (fullTitle.includes("協作平台")) {
-                setText('hero-title-1', fullTitle.split("協作平台")[0]);
-                setText('hero-title-2', "協作平台");
-            } else { setText('hero-title-1', fullTitle); }
-            
-            setText('hero-eng-title', "Internship Coordination Platform"); // 可選：從 json 讀取
-            
-            // Hero Subtitle
-            document.getElementById('hero-subtitle').innerHTML = "整合法規資源、數位表單與校務數據的一站式平台，<br class='hidden md:block'>為師生打造更簡單、高效的實習行政流程。";
-            
-            // Origin Modal
-            // 這裡簡化處理，假設 JSON 沒有 Origin 內容則用預設
-            // 若需完整功能可在 JSON settings 增加 originTitle/Content
-            document.getElementById('modal-origin-content').innerHTML = "<p class='font-bold text-lg text-gray-800'>產學攜手，共創未來</p><p>隨著高等教育與產業需求的連結日益緊密...</p>"; // 預設
-        }
-
-        function renderHomeCards() {
-            const container = document.getElementById('cards-container');
-            container.innerHTML = '';
-            const cards = siteData.homeCards || [];
-            
-            cards.forEach(item => {
-                const colorKey = (item.type || 'blue').toLowerCase();
-                const theme = colorMap[colorKey] || colorMap['blue'];
-                const bgClass = theme.isGradient ? 'bg-gradient-to-br from-white to-blue-50' : 'bg-white';
-                const badgeHtml = item.badge ? `<div class="absolute top-0 right-0 ${theme.icon} text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">${item.badge}</div>` : '';
-                const target = item.external ? 'target="_blank"' : '';
-
-                container.innerHTML += `
-                <a href="${item.link}" ${target} class="group flex flex-col h-full ${bgClass} rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 ${theme.border} relative">
-                    ${badgeHtml}
-                    <div class="p-8 flex-grow">
-                        <div class="w-16 h-16 ${theme.icon} text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300"><i class="fas ${item.icon}"></i></div>
-                        <h3 class="text-2xl font-bold text-gray-800 mb-3 ${theme.hoverText} transition-colors">${item.title}</h3>
-                        <p class="text-gray-500 leading-relaxed">${item.desc}</p>
-                    </div>
-                    <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                        <span class="text-sm font-medium ${theme.text}">${theme.isGradient ? '立即使用' : '查看詳情'}</span>
-                        <i class="fas fa-arrow-right ${theme.text} opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                    </div>
-                </a>`;
-            });
-        }
-
-        // --- NEWS FUNCTIONS ---
-        
-        function renderNewsWidget(data) {
-            const container = document.getElementById('news-list');
-            const wrapper = document.getElementById('news-container');
-            const moreBtn = document.getElementById('view-more-news-btn');
-            container.innerHTML = '';
-
-            if (!data || data.length === 0) {
-                wrapper.classList.add('hidden');
-                return;
-            }
-            wrapper.classList.remove('hidden');
-
-            if (data.length > 3) moreBtn.classList.remove('hidden');
-            else moreBtn.classList.add('hidden');
-
-            // Render first 3
-            data.slice(0, 3).forEach((item, index) => {
-                const isNew = item.isNew;
-                const newBadge = isNew ? '<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 align-middle">NEW</span>' : '';
-                
-                // 判斷點擊行為
-                const hasLink = item.link && item.link !== '#';
-                const href = hasLink ? item.link : 'javascript:void(0)';
-                const target = hasLink ? 'target="_blank"' : '';
-                const onClick = hasLink ? '' : `onclick="openNewsModal(${index})"`;
-
-                const html = `
-                <li class="flex items-start gap-3 hover:bg-white/5 p-1 rounded transition-colors">
-                    <span class="text-thuGold font-mono whitespace-nowrap mt-0.5">${item.date}</span>
-                    <a href="${href}" ${target} ${onClick} class="hover:text-white hover:underline transition-colors leading-relaxed cursor-pointer truncate block">
-                        ${item.title} ${newBadge}
-                    </a>
-                </li>`;
-                container.innerHTML += html;
-            });
-            
-            // Init Filters
-            initNewsFilters();
-        }
-
-        function initNewsFilters() {
-            const types = [...new Set(siteNews.map(n => n.type || '一般公告'))];
-            const select = document.getElementById('news-filter');
-            select.innerHTML = '<option value="all">所有類型</option>';
-            types.forEach(t => {
-                select.innerHTML += `<option value="${t}">${t}</option>`;
-            });
-        }
-
-        function renderAllNewsUI() {
-            const search = document.getElementById('news-search').value.toLowerCase();
-            const type = document.getElementById('news-filter').value;
-
-            filteredNews = siteNews.filter(item => {
-                const matchSearch = item.title.toLowerCase().includes(search);
-                const matchType = type === 'all' || (item.type || '一般公告') === type;
-                return matchSearch && matchType;
-            });
-
-            const totalPages = Math.ceil(filteredNews.length / newsPerPage);
-            if (currentNewsPage > totalPages) currentNewsPage = 1;
-            if (totalPages > 0 && currentNewsPage < 1) currentNewsPage = 1;
-
-            const start = (currentNewsPage - 1) * newsPerPage;
-            const end = start + newsPerPage;
-            const pageItems = filteredNews.slice(start, end);
-
-            const list = document.getElementById('all-news-list');
-            const noMsg = document.getElementById('no-news-msg');
-            list.innerHTML = '';
-
-            if (pageItems.length === 0) {
-                noMsg.classList.remove('hidden');
-            } else {
-                noMsg.classList.add('hidden');
-                pageItems.forEach(item => {
-                    // Find original index for modal opening
-                    const originalIndex = siteNews.indexOf(item);
-                    
-                    const hasLink = item.link && item.link !== '#';
-                    const href = hasLink ? item.link : 'javascript:void(0)';
-                    const target = hasLink ? 'target="_blank"' : '';
-                    const onClick = hasLink ? '' : `onclick="openNewsModal(${originalIndex});"`; 
-
-                    const typeTag = item.type ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full mr-2">${item.type}</span>` : '';
-
-                    list.innerHTML += `
-                    <li class="border-b border-gray-100 pb-3 last:border-0">
-                        <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span class="text-gray-400 font-mono text-sm">${item.date}</span>
-                                ${typeTag}
-                            </div>
-                            <a href="${href}" ${target} ${onClick} class="text-gray-700 hover:text-thuBlue hover:underline font-medium cursor-pointer block truncate">
-                                ${item.title}
-                            </a>
+                <div class="lg:col-span-3 bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                    <div class="flex justify-between mb-6 border-b pb-4 items-center">
+                        <div>
+                            <h3 class="font-bold text-xl text-thuBlue" id="current-page-name">請選擇左側頁面</h3>
+                            <p class="text-xs text-gray-400 mt-1" id="current-page-desc"></p>
                         </div>
-                    </li>`;
+                        <button onclick="addItem()" class="text-sm bg-blue-50 text-blue-600 px-4 py-2 rounded-lg hover:bg-blue-100 font-bold transition shadow-sm">+ 新增連結項目</button>
+                    </div>
+                    <div id="items-editor" class="space-y-3">
+                        <p class="text-gray-400 text-center py-20 bg-gray-50 rounded-lg border-2 border-dashed border-gray-200">👈 請從左側選擇要編輯的頁面</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. 最新消息管理 -->
+        <div id="view-news" class="view-section hidden">
+             <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="font-bold text-lg text-gray-800">JSON 編輯器</h3>
+                    <span class="text-xs bg-yellow-100 text-yellow-800 px-2 py-1 rounded font-mono">news.json</span>
+                </div>
+                <textarea id="news-json-editor" class="w-full h-[500px] font-mono text-sm p-4 border rounded bg-gray-50 focus:ring-2 focus:ring-thuBlue outline-none resize-y leading-relaxed"></textarea>
+                <p class="text-xs text-gray-400 mt-2"><i class="fas fa-exclamation-triangle mr-1"></i> 此處直接編輯資料庫結構，請小心符號格式。</p>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        let fullData = null;
+        let currentSha = null;
+        let currentPageId = null;
+        
+        function toggleHelp() { document.getElementById('login-help').classList.toggle('hidden'); }
+        
+        async function login() {
+            const owner = document.getElementById('gh-owner').value.trim();
+            const repo = document.getElementById('gh-repo').value.trim();
+            const token = document.getElementById('gh-token').value.trim();
+            if(!owner || !repo || !token) return alert("請填寫完整");
+
+            try {
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/site_data.json?t=${Date.now()}`;
+                const res = await fetch(url, { headers: { 'Authorization': `Bearer ${token}` } });
+                if(!res.ok) throw new Error("連線失敗");
+                const data = await res.json();
+                currentSha = data.sha;
+                // Handle UTF-8 decoding correctly
+                fullData = JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(data.content), c => c.charCodeAt(0))));
+
+                localStorage.setItem('gh_config', JSON.stringify({ owner, repo, token }));
+                document.getElementById('login-overlay').classList.add('hidden');
+                document.getElementById('app').classList.remove('hidden');
+                renderAll();
+            } catch (e) { alert("錯誤: " + e.message); }
+        }
+
+        const savedConfig = JSON.parse(localStorage.getItem('gh_config'));
+        if(savedConfig) {
+            document.getElementById('gh-owner').value = savedConfig.owner;
+            document.getElementById('gh-repo').value = savedConfig.repo;
+            document.getElementById('gh-token').value = savedConfig.token;
+        }
+
+        function logout() {
+            if(confirm("確定登出?")) { localStorage.removeItem('gh_config'); location.reload(); }
+        }
+
+        function switchTab(tab) {
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            document.getElementById('view-' + tab).classList.remove('hidden');
+            ['home', 'pages', 'news'].forEach(t => {
+                const btn = document.getElementById('tab-' + t);
+                btn.className = (t === tab) ? 
+                    "px-6 py-3 font-bold text-thuBlue border-b-4 border-thuBlue bg-white rounded-t-lg transition whitespace-nowrap shadow-sm" : 
+                    "px-6 py-3 font-bold text-gray-500 hover:text-thuBlue transition whitespace-nowrap";
+            });
+        }
+
+        function renderAll() {
+            renderHomeCards();
+            renderPageList();
+            document.getElementById('news-json-editor').value = JSON.stringify(fullData.news || [], null, 4);
+        }
+
+        // --- Home Cards ---
+        function renderHomeCards() {
+            const container = document.getElementById('cards-editor');
+            container.innerHTML = '';
+            if(!fullData.homeCards) fullData.homeCards = [];
+            
+            fullData.homeCards.forEach((card, index) => {
+                container.innerHTML += `
+                <div class="border border-gray-200 rounded-xl p-5 bg-white shadow-sm hover:shadow-md transition relative group">
+                    <div class="absolute top-3 right-3 flex gap-2">
+                        <button onclick="deleteCard(${index})" class="text-gray-300 hover:text-red-500 transition p-1" title="刪除"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    <div class="flex items-center gap-2 mb-4">
+                        <span class="bg-gray-100 text-gray-500 text-xs font-bold px-2 py-1 rounded">#${index+1}</span>
+                    </div>
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-3 gap-3">
+                            <div class="col-span-2">
+                                <label class="block text-xs font-bold text-gray-400 mb-1">標題 (Title)</label>
+                                <input type="text" class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-thuBlue outline-none transition" value="${card.title || ''}" onchange="updateCard(${index}, 'title', this.value)">
+                            </div>
+                            <div class="col-span-1">
+                                <label class="block text-xs font-bold text-gray-400 mb-1">標籤 (Badge)</label>
+                                <input type="text" class="w-full p-2 border rounded text-sm text-center text-red-500 font-bold focus:ring-2 focus:ring-thuBlue outline-none transition" value="${card.badge || ''}" onchange="updateCard(${index}, 'badge', this.value)" placeholder="選填">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 mb-1">描述 (Desc)</label>
+                            <textarea class="w-full p-2 border rounded text-sm focus:ring-2 focus:ring-thuBlue outline-none resize-none transition" rows="2" onchange="updateCard(${index}, 'desc', this.value)">${card.desc || ''}</textarea>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 mb-1">圖示 (Icon)</label>
+                                <div class="relative">
+                                    <i class="fas ${card.icon} absolute left-3 top-2.5 text-gray-400"></i>
+                                    <input type="text" class="w-full pl-9 p-2 border rounded text-sm font-mono focus:ring-2 focus:ring-thuBlue outline-none transition" value="${card.icon || ''}" onchange="updateCard(${index}, 'icon', this.value)">
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 mb-1">顏色 (Type)</label>
+                                <select class="w-full p-2 border rounded text-sm bg-white focus:ring-2 focus:ring-thuBlue outline-none transition cursor-pointer" onchange="updateCard(${index}, 'type', this.value)">
+                                    ${generateColorOptions(card.type)}
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 mb-1">連結 (Link)</label>
+                            <input type="text" class="w-full p-2 border rounded text-sm text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none transition" value="${card.link || ''}" onchange="updateCard(${index}, 'link', this.value)">
+                        </div>
+                    </div>
+                </div>`;
+            });
+        }
+
+        function generateColorOptions(selected) {
+            const colors = [
+                {v:'blue', n:'標準藍'}, {v:'gold', n:'工具金'}, {v:'thu', n:'東海藍'}, 
+                {v:'red', n:'警示紅'}, {v:'green', n:'成功綠'}, {v:'purple', n:'紫色'}, 
+                {v:'orange', n:'橘色'}, {v:'teal', n:'藍綠'}, {v:'rose', n:'玫瑰紅'}, {v:'slate', n:'灰岩'}
+            ];
+            return colors.map(c => `<option value="${c.v}" ${selected === c.v ? 'selected' : ''}>${c.n}</option>`).join('');
+        }
+        
+        window.updateCard = (i, f, v) => { fullData.homeCards[i][f] = v; };
+        window.addCard = () => {
+            fullData.homeCards.push({ title: "新卡片", desc: "請輸入描述", link: "#", icon: "fa-star", badge: "", type: "blue" });
+            renderHomeCards();
+        };
+        window.deleteCard = (i) => { if(confirm("刪除此卡片?")) { fullData.homeCards.splice(i, 1); renderHomeCards(); } };
+
+        // --- Pages ---
+        function renderPageList() {
+            const list = document.getElementById('page-list'); list.innerHTML = '';
+            if(!fullData.pages) fullData.pages = {};
+            Object.keys(fullData.pages).forEach(key => {
+                const page = fullData.pages[key];
+                const active = (currentPageId === key) ? 'bg-thuBlue text-white shadow-md transform scale-105' : 'hover:bg-blue-50 text-gray-700';
+                list.innerHTML += `<li><button onclick="selectPage('${key}')" class="w-full text-left px-4 py-3 rounded-lg font-medium transition duration-200 ${active}">${page.title}</button></li>`;
+            });
+        }
+        window.selectPage = (id) => { currentPageId = id; renderPageList(); document.getElementById('current-page-name').innerText = fullData.pages[id].title; document.getElementById('current-page-desc').innerText = fullData.pages[id].subtitle || ""; renderPageItems(); }
+        function renderPageItems() {
+            const container = document.getElementById('items-editor'); container.innerHTML = '';
+            const items = fullData.pages[currentPageId].items || [];
+            if(items.length === 0) container.innerHTML = '<div class="text-center text-gray-400 py-10 border-2 border-dashed border-gray-200 rounded-xl bg-gray-50">此頁面尚無內容，請點擊右上角新增</div>';
+            
+            items.forEach((item, index) => {
+                container.innerHTML += `
+                <div class="flex flex-col sm:flex-row gap-3 items-start sm:items-center bg-white p-4 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition group">
+                    <div class="flex items-center gap-2 w-full sm:w-auto">
+                        <span class="text-xs text-gray-400 font-mono w-6 text-center">${index+1}</span>
+                        <input type="text" class="w-24 p-2 border rounded text-sm text-center focus:ring-2 focus:ring-thuBlue outline-none" value="${item.tag || ''}" onchange="updateItem(${index}, 'tag', this.value)" placeholder="標籤">
+                    </div>
+                    <div class="flex-1 w-full sm:w-auto space-y-2 sm:space-y-0 sm:flex sm:gap-3">
+                        <input type="text" class="w-full p-2 border rounded text-sm font-bold focus:ring-2 focus:ring-thuBlue outline-none" value="${item.title}" onchange="updateItem(${index}, 'title', this.value)" placeholder="標題">
+                        <input type="text" class="w-full p-2 border rounded text-sm text-gray-500 focus:ring-2 focus:ring-thuBlue outline-none font-mono" value="${item.url}" onchange="updateItem(${index}, 'url', this.value)" placeholder="連結">
+                    </div>
+                    <button onclick="deleteItem(${index})" class="text-gray-300 hover:text-red-500 px-2 transition sm:self-center self-end"><i class="fas fa-trash-alt"></i></button>
+                </div>`;
+            });
+        }
+        window.updateItem = (i, f, v) => { fullData.pages[currentPageId].items[i][f] = v; };
+        window.addItem = () => { if(!currentPageId) return alert("請先選擇頁面"); if(!fullData.pages[currentPageId].items) fullData.pages[currentPageId].items=[]; fullData.pages[currentPageId].items.push({ title: "新項目", url: "#", tag: "New" }); renderPageItems(); };
+        window.deleteItem = (i) => { if(confirm("刪除?")) { fullData.pages[currentPageId].items.splice(i, 1); renderPageItems(); } };
+
+        // 3. Save
+        async function saveToGitHub() {
+            try {
+                fullData.news = JSON.parse(document.getElementById('news-json-editor').value);
+            } catch(e) { return alert("最新消息 JSON 格式錯誤"); }
+
+            const btn = document.getElementById('btn-save');
+            const originalText = btn.innerHTML;
+            btn.disabled = true; btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 處理中...';
+
+            const { owner, repo, token } = JSON.parse(localStorage.getItem('gh_config'));
+            // Use text encoder for proper UTF-8 base64
+            const contentBase64 = btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(fullData, null, 2))));
+
+            try {
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/site_data.json`, {
+                    method: 'PUT',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: "Update via Admin Panel", content: contentBase64, sha: currentSha })
                 });
-            }
-
-            // Pagination
-            const pag = document.getElementById('news-pagination');
-            pag.innerHTML = '';
-            if (totalPages > 1) {
-                pag.innerHTML += `<button onclick="changePage(${currentNewsPage - 1})" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50" ${currentNewsPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left text-gray-500"></i></button>`;
-                for (let i = 1; i <= totalPages; i++) {
-                    const activeClass = i === currentNewsPage ? 'bg-thuBlue text-white' : 'bg-white text-gray-600 hover:bg-gray-100';
-                    pag.innerHTML += `<button onclick="changePage(${i})" class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${activeClass}">${i}</button>`;
-                }
-                pag.innerHTML += `<button onclick="changePage(${currentNewsPage + 1})" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50" ${currentNewsPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right text-gray-500"></i></button>`;
-            }
+                if(res.ok) {
+                    const data = await res.json(); currentSha = data.content.sha;
+                    alert("✅ 發布成功！請等待約 1 分鐘讓 GitHub Pages 更新。");
+                } else throw new Error("API Error");
+            } catch (e) { alert("❌ 失敗: " + e.message); } 
+            finally { btn.disabled = false; btn.innerHTML = originalText; }
         }
-
-        window.changePage = function(p) { currentNewsPage = p; renderAllNewsUI(); };
-        window.openAllNewsModal = function() {
-            currentNewsPage = 1;
-            document.getElementById('news-search').value = '';
-            document.getElementById('news-filter').value = 'all';
-            renderAllNewsUI();
-            toggleModal('all-news-modal');
-        };
-        window.openNewsModal = function(index) {
-            const item = siteNews[index];
-            if(!item) return;
-            document.getElementById('modal-news-date').innerText = item.date;
-            document.getElementById('modal-news-title').innerText = item.title;
-            document.getElementById('modal-news-content').innerHTML = item.content || "無詳細內容";
-            toggleModal('news-modal');
-        };
-
-        // --- CONTACTS --- (Hardcoded logic for demo based on typical JSON structure, ideally fetch from JSON too)
-        // Here I will create a dummy render function that you can replace with real logic if contacts are in JSON
-        // But based on your prompt, you wanted to manage via API. The admin.html handles updating the JSON.
-        // This index.html just reads it.
-        // To keep code short, I'll implement basic rendering if data exists in JSON
-        // NOTE: You need to add "contacts" array to your JSON structure.
-
-        // Helper
-        function setText(id, val) { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; }
-        function toggleModal(id) {
-            const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active');
-        }
-        document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
-        window.addEventListener('scroll', () => { 
-            const h=document.getElementById('sticky-header'); 
-            if(window.scrollY>200){ h.classList.remove('-translate-y-full','opacity-0'); h.classList.add('translate-y-0','opacity-100'); } 
-            else { h.classList.add('-translate-y-full','opacity-0'); h.classList.remove('translate-y-0','opacity-100'); }
-        });
-
-        // Initial logo handling
-        document.querySelectorAll('img[alt="Logo"]').forEach(img => { img.src = "https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg"; img.classList.remove('hidden'); });
     </script>
 </body>
 </html>
