@@ -86,49 +86,69 @@
             font-weight: 700 !important; /* 强制使用 Tailwind font-bold */
         }
         
-        /* 學院區塊自適應調整 */
-        .faculty-card-layout {
-            /* 主佈局：Icon 和名稱放左側，連結放右側 */
-            display: flex;
-            align-items: flex-start;
-            padding: 1rem;
+        /* 恢復到固定寬度樣式 (上個版本) */
+        .faculty-name-section {
+            width: 100%;
+            flex-direction: row; /* 在手機上橫向排列 Icon 和名稱 */
+            border-right: none;
+            border-bottom: 1px solid #e5e7eb;
+            padding: 0 0 1rem 0;
+            justify-content: flex-start;
             gap: 1rem;
         }
-
-        .faculty-name-section {
-            flex-shrink: 0;
-            width: 130px; /* 固定寬度給 Icon 和名稱 */
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            text-align: center;
-            border-right: 1px solid #e5e7eb; /* 灰色分隔線 */
-            padding-right: 1rem;
+        @media (min-width: 768px) {
+            /* 桌面版恢復固定寬度 */
+            .faculty-card-layout > div:first-child {
+                width: 200px; /* 增加寬度以避免長名稱換行 */
+                min-width: 200px;
+                flex-direction: column; 
+                border-right: 1px solid #e5e7eb; 
+                border-bottom: none;
+                padding-right: 1rem;
+                justify-content: center;
+                gap: 0;
+            }
         }
-
         .dept-links-section {
             flex-grow: 1;
             padding-left: 1rem;
         }
-
         @media (max-width: 768px) {
-            .faculty-card-layout {
-                flex-direction: column;
-                padding: 1.5rem 1rem;
-            }
-            .faculty-name-section {
-                width: 100%;
-                flex-direction: row; /* 在手機上橫向排列 Icon 和名稱 */
-                border-right: none;
-                border-bottom: 1px solid #e5e7eb;
-                padding: 0 0 1rem 0;
-                justify-content: flex-start;
-                gap: 1rem;
-            }
             .dept-links-section {
                 padding-left: 0;
                 padding-top: 1rem;
             }
+        }
+        
+        /* 滾動按鈕樣式 */
+        #scroll-to-top {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            width: 48px;
+            height: 48px;
+            background-color: #002E5D; /* thuBlue */
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.25rem;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.3s, visibility 0.3s, transform 0.3s;
+            cursor: pointer;
+            z-index: 1000;
+        }
+        #scroll-to-top.show {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+        #scroll-to-top:hover {
+            background-color: #001a35;
+            transform: translateY(-2px);
         }
     </style>
 </head>
@@ -226,6 +246,11 @@
             </div>
         </div>
     </footer>
+    
+    <!-- 滑到最上方按鈕 -->
+    <button id="scroll-to-top" onclick="scrollToTop()">
+        <i class="fas fa-chevron-up"></i>
+    </button>
 
     <script>
         const deptIcons = {
@@ -249,6 +274,25 @@
             m.classList.toggle('pointer-events-none'); 
             document.querySelector('body').classList.toggle('modal-active');
         };
+
+        // 滾動到頂部功能
+        window.scrollToTop = function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        };
+
+        // 控制滾動按鈕顯示/隱藏
+        document.addEventListener('scroll', function() {
+            const button = document.getElementById('scroll-to-top');
+            if (window.scrollY > 300) {
+                if (button) button.classList.add('show');
+            } else {
+                if (button) button.classList.remove('show');
+            }
+        });
+
 
         document.addEventListener('DOMContentLoaded', async function() {
             try {
@@ -306,18 +350,18 @@
 
                 container.innerHTML += `
                 <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
-                    <div class="faculty-card-layout">
-                        <!-- 左側: 學院名稱與 Icon -->
-                        <div class="faculty-name-section bg-blue-50/50">
-                            <div class="w-14 h-14 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm md:mb-0 md:mr-4">
+                    <div class="flex flex-col md:flex-row">
+                        <!-- 左側: 學院 (md:w-48 固定寬度) -->
+                        <div class="bg-blue-50/50 md:w-48 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
+                            <div class="w-14 h-14 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm">
                                 <i class="fas ${iconClass}"></i>
                             </div>
-                            <!-- 修正：學院名稱字體縮小為 text-base，並確保在手機上可以水平對齊 -->
-                            <h2 class="text-base font-bold text-thuBlue text-center md:text-left">${faculty.name}</h2>
+                            <!-- 修正：學院名稱字體縮小為 text-base，允許換行 -->
+                            <h2 class="text-base font-bold text-thuBlue text-center">${faculty.name}</h2>
                         </div>
                         
                         <!-- 右側: 系所連結 -->
-                        <div class="dept-links-section">
+                        <div class="flex-grow p-6">
                             <div class="flex flex-wrap gap-3">
                                 ${linksHtml}
                             </div>
