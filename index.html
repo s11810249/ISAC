@@ -31,6 +31,11 @@
             background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
             position: relative;
             overflow: hidden;
+            min-height: 100vh; /* 確保填滿畫面 */
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
         }
         .hero-bg::before {
             content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
@@ -89,9 +94,46 @@
             color: white;
             font-family: monospace;
         }
+        
+        /* 滾動箭頭動畫 */
+        @keyframes bounce {
+          0%, 20%, 50%, 80%, 100% {
+            transform: translateY(0);
+          }
+          40% {
+            transform: translateY(-10px);
+          }
+          60% {
+            transform: translateY(-5px);
+          }
+        }
+        .animate-scroll-down {
+          animation: bounce 2s infinite;
+        }
+        
+        /* 1. LOGO獨立陰影與發光效果 (平時的陰影) */
+        #hero-logo {
+            filter: drop-shadow(0 0 15px rgba(0, 0, 0, 1)) drop-shadow(0 0 3px rgba(255, 255, 255, 0.4)); 
+            transition: all 0.3s ease-out;
+        }
+        
+        /* 2. 標題與 LOGO hover 發光效果 */
+        .title-group:hover #hero-logo {
+             /* hover發光 */
+             filter: drop-shadow(0 0 20px #C6A87C) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)); 
+             transform: scale(1.05);
+        }
+        .title-group:hover #hero-title-1,
+        .title-group:hover #hero-title-2,
+        .title-group:hover #hero-eng-title {
+            /* 修正 1: 降低發光強度 */
+            text-shadow: 0 0 4px #fff, 0 0 10px #C6A87C;
+            transform: scale(1.02);
+            transition: text-shadow 0.3s ease-out, transform 0.3s ease-out;
+        }
     </style>
 </head>
-<body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen pb-16">
+<body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen">
     
     <!-- 載入畫面 -->
     <div id="loading-overlay">
@@ -99,16 +141,18 @@
             <div class="spinner"></div>
             <div id="loading-percent">0%</div>
         </div>
+        <!-- 載入文字修正為「載入中...」 -->
         <div class="text-white font-medium text-lg">載入中...</div>
     </div>
 
-    <!-- Sticky Header -->
+    <!-- Sticky Header (滾動後出現的頂部導覽列) -->
     <nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
         <div class="w-full max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <img id="nav-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-8 w-auto">
                 <div class="text-white leading-none flex flex-col justify-center">
-                    <span class="font-bold text-lg tracking-widest" id="nav-title">實習業務協作平台</span>
+                    <!-- 修正 3: 矮頁首標題修正為完整名稱 -->
+                    <span class="font-bold text-lg tracking-widest" id="nav-title">東海大學實習業務協作平台</span>
                 </div>
             </div>
             <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 text-white hover:text-thuGold transition-colors text-sm font-medium">
@@ -117,8 +161,8 @@
         </div>
     </nav>
 
-    <!-- Hero Section -->
-    <div class="hero-bg text-white pb-32 pt-24 relative">
+    <!-- Hero Section (填滿畫面, min-h-screen) -->
+    <div class="hero-bg text-white relative">
         <div class="absolute top-6 right-6 z-30">
             <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full hover:bg-white hover:text-thuBlue transition-all duration-300 font-medium backdrop-blur-sm shadow-sm">
                 <i class="fa-solid fa-house"></i> 東海大學首頁
@@ -130,20 +174,30 @@
              <div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
         </div>
 
-        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center min-h-[40vh]">
-            <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 mb-8 animate-fade-in-up group cursor-default">
-                <img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-20 w-auto drop-shadow-lg opacity-90 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]">
-                <div class="text-center flex flex-col justify-center items-center h-20">
-                    <h1 class="text-3xl md:text-5xl font-bold tracking-widest leading-none drop-shadow-xl mb-1 transition-all duration-500 ease-out group-hover:scale-110 group-hover:tracking-[0.15em] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]">
-                        <span id="hero-title-1">實習業務</span><span class="text-thuGold transition-colors duration-300 group-hover:text-white" id="hero-title-2">協作平台</span>
+        <!-- Hero Content (Primary Focus) -->
+        <!-- 增加 pb-32 以擴大底部間距 -->
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center pt-24 pb-32">
+            
+            <!-- 1. Logo (獨立一行, 陰影效果, hover發光) -->
+            <!-- 2. 標題 (加入 title-group class, 統一控制 logo 與文字的 hover 效果) -->
+            <div class="title-group group flex flex-col items-center cursor-pointer animate-fade-in-up">
+                <div class="logo-container mb-10">
+                    <img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-28 w-auto">
+                </div>
+                
+                <div class="text-center mb-6" style="animation-delay: 0.2s;">
+                    <h1 class="text-4xl md:text-6xl font-black tracking-widest leading-tight drop-shadow-xl mb-2">
+                        <span id="hero-title-1">實習業務</span><span class="text-thuGold" id="hero-title-2">協作平台</span>
                     </h1>
-                    <p id="hero-eng-title" class="text-base text-blue-200 tracking-wide font-light hidden md:block opacity-90 transition-all duration-500 group-hover:text-white group-hover:tracking-widest">Internship Coordination Platform</p>
+                    <p id="hero-eng-title" class="text-lg text-blue-200 tracking-wide font-light opacity-90">Internship Coordination Platform</p>
                 </div>
             </div>
             
-            <p id="hero-subtitle" class="text-lg md:text-xl text-blue-100/80 font-light mb-8 max-w-2xl mx-auto leading-relaxed animate-fade-in-up" style="animation-delay: 0.2s; opacity: 0;">載入中...</p>
+            <!-- 3. 標語 -->
+            <p id="hero-subtitle" class="text-xl text-blue-100/90 font-light mb-16 max-w-3xl mx-auto leading-relaxed animate-fade-in-up" style="animation-delay: 0.4s;">載入中...</p>
             
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-5 mb-10 animate-fade-in-up w-full sm:w-auto" style="animation-delay: 0.4s; opacity: 0;">
+            <!-- 4. 操作按鈕 -->
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up w-full sm:w-auto" style="animation-delay: 0.6s;">
                 <button onclick="toggleModal('origin-modal')" class="group relative px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
                     <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
                     <span class="relative flex items-center justify-center gap-2 text-lg"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
@@ -153,8 +207,8 @@
                 </a>
             </div>
 
-            <!-- 最新公告欄 -->
-            <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-5 text-left animate-fade-in-up hidden" style="animation-delay: 0.6s; opacity: 0;">
+            <!-- 5. 最新消息 -->
+            <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-5 text-left animate-fade-in-up hidden mt-10" style="animation-delay: 0.8s;">
                 <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
                     <div class="flex items-center gap-2">
                         <i class="fas fa-bullhorn text-thuGold animate-pulse"></i>
@@ -168,19 +222,24 @@
                     <li class="text-center py-2 text-gray-300">讀取公告中...</li>
                 </ul>
             </div>
-
+            
+            <!-- 6. 滾動箭頭 -->
+            <!-- 修正 2: 調整箭頭的 bottom 距離，使其離按鈕更遠 -->
+            <div onclick="document.getElementById('main-content').scrollIntoView({ behavior: 'smooth' });" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 2vh;">
+                <i class="fas fa-chevron-down text-3xl"></i>
+            </div>
         </div>
     </div>
 
     <!-- Main Content Area -->
-    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 pb-20 flex-grow">
+    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow">
         <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
         </div>
     </main>
 
-    <!-- Fixed Footer -->
-    <footer id="footer-trigger" style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
+    <!-- Fixed Footer (預設隱藏) -->
+    <footer id="footer-trigger" class="fixed bottom-0 left-0 w-full z-50 bg-gray-800 text-gray-400 py-3 text-center text-xs border-t-3 border-thuGold hidden">
         <div class="container mx-auto px-4">
             <div class="flex flex-col items-center justify-center gap-1">
                 <p id="footer-copyright" class="font-bold text-white tracking-wide text-[10px]"></p>
@@ -190,6 +249,7 @@
     </footer>
 
     <!-- Chatbot Button -->
+    <!-- 放置在 bottom-20 right-8 -->
     <div class="fixed bottom-20 right-8 z-40 flex flex-col items-end">
         <div class="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-lg border border-gray-100 text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
             需要協助嗎？
@@ -199,6 +259,11 @@
             <i class="fas fa-headset text-2xl group-hover:animate-pulse"></i>
         </button>
     </div>
+    
+    <!-- 滑到最上方的按鈕 (bottom-80px 避免與 chatbot 重疊) -->
+    <button id="scroll-to-top" onclick="scrollToTop()" class="fixed bottom-[80px] right-6 z-40 w-12 h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 opacity-0 visibility-hidden md:flex items-center justify-center hidden">
+        <i class="fas fa-chevron-up text-xl"></i>
+    </button>
 
     <!-- Modal 1: 計畫緣起 -->
     <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
@@ -317,7 +382,8 @@
         let siteContacts = [];
         
         let initialLoadStartTime = Date.now();
-        const minLoadingTime = 1000; // 最小載入時間（毫秒）
+        const minLoadingTime = 3000; // 修正 4: 最小載入時間（毫秒）
+        const maxSimulatedProgress = 90; // 修正 4: 最大模擬進度
 
         // 輔助函式
         const setText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
@@ -352,6 +418,24 @@
             }, delay);
         }
 
+        // 滾動到頂部功能
+        window.scrollToTop = function() {
+            window.scrollTo({
+                top: 0,
+                behavior: 'smooth'
+            });
+        };
+
+        // 控制滾動按鈕顯示/隱藏
+        document.addEventListener('scroll', function() {
+            const button = document.getElementById('scroll-to-top');
+            if (window.scrollY > 300) {
+                if (button) button.classList.add('show');
+            } else {
+                if (button) button.classList.remove('show');
+            }
+        });
+
 
         // 頁面載入初始化
         document.addEventListener('DOMContentLoaded', async function() {
@@ -359,7 +443,7 @@
             // 步驟 1: 模擬開始載入
             let progress = 0;
             const interval = setInterval(() => {
-                if (progress < 90) {
+                if (progress < maxSimulatedProgress) {
                     progress += 5; // 模擬較快的開始進度
                 }
                 updateProgress(progress);
@@ -374,7 +458,7 @@
 
                 // 停止模擬進度
                 clearInterval(interval);
-                updateProgress(90);
+                updateProgress(maxSimulatedProgress);
 
                 // 步驟 3: 處理資料
                 const settings = data.settings;
@@ -409,7 +493,8 @@
         function renderSettings(settings) {
             if (!settings) return;
             document.title = settings.SiteTitle;
-            setText('nav-title', settings.SiteTitle);
+            // 修正 3: 矮頁首標題修正為完整名稱
+            document.getElementById('sticky-header').querySelector('#nav-title').innerText = settings.SiteTitle; 
             setText('hero-eng-title', settings.SiteEngTitle);
             setHTML('hero-subtitle', settings.HeroSubtitle);
             setText('footer-copyright', settings.Copyright);
@@ -626,16 +711,34 @@
             if(!item) return;
             document.getElementById('modal-news-date').innerText = item.Date;
             document.getElementById('modal-news-title').innerText = item.Title;
-            const typeBadge = item.Type ? `<span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-2">${item.Type}</span><br>` : '';
+            const typeBadge = item.Type ? `<span class=\"inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-2\">${item.Type}</span><br>` : '';
             document.getElementById('modal-news-content').innerHTML = typeBadge + (item.Content || "無詳細內容");
             toggleModal('news-modal');
         };
 
         document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
+        
+        // --- Custom Scroll Logic for Footer ---
+        const heroHeightThreshold = 600; // 滾動超過這個高度才顯示 footer
         window.addEventListener('scroll', () => { 
-            const h=document.getElementById('sticky-header'); 
-            if(window.scrollY>200){ h.classList.remove('-translate-y-full','opacity-0'); h.classList.add('translate-y-0','opacity-100'); } 
-            else { h.classList.add('-translate-y-full','opacity-0'); h.classList.remove('translate-y-0','opacity-100'); }
+            const stickyHeader = document.getElementById('sticky-header'); 
+            const footerTrigger = document.getElementById('footer-trigger'); 
+            
+            if(window.scrollY > 200){ 
+                stickyHeader.classList.remove('-translate-y-full','opacity-0'); 
+                stickyHeader.classList.add('translate-y-0','opacity-100'); 
+            } else { 
+                stickyHeader.classList.add('-translate-y-full','opacity-0'); 
+                stickyHeader.classList.remove('translate-y-0','opacity-100'); 
+            }
+
+            // 控制版權頁顯示
+            // 修正邏輯：滾動距離大於 Hero區塊高度的 90% 時顯示 footer
+            if (window.scrollY >= window.innerHeight * 0.9) {
+                footerTrigger.classList.remove('hidden');
+            } else {
+                footerTrigger.classList.add('hidden');
+            }
         });
     </script>
 </body>
