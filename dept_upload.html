@@ -36,17 +36,35 @@
             background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
             background-size: 30px 30px; opacity: 0.3;
         }
-        .dept-link {
+        
+        /* 連結按鈕化 */
+        .dept-link-btn {
             transition: all 0.2s;
+            background-color: #f3f4f6;
             color: #002E5D;
             font-weight: 500;
-            padding: 4px 8px;
-            border-radius: 4px;
+            padding: 8px 12px;
+            border-radius: 6px;
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            font-size: 0.9rem;
         }
-        .dept-link:hover {
+        .dept-link-btn:hover {
             background-color: #eef6fc;
-            text-decoration: underline;
+            color: #C6A87C; /* thuGold */
+            transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
         }
+        .dept-link-btn i {
+            font-size: 0.8rem;
+            opacity: 0.5;
+            transition: opacity 0.2s;
+        }
+        .dept-link-btn:hover i {
+            opacity: 1;
+        }
+
         /* Modal 樣式 */
         .modal { transition: opacity 0.25s ease; }
         .modal-active { overflow-y: hidden !important; }
@@ -82,12 +100,12 @@
             <div class="px-8 py-6 text-left">
                 <div class="prose max-w-none text-gray-600 space-y-6"> <!-- 增加主間距 -->
                     <p class="font-bold text-lg text-gray-800">如何取得雲端硬碟存取權限？</p>
-                    <ul class="list-disc list-outside space-y-4 text-gray-700 pl-6"> <!-- 修正: 改為 list-outside 和 pl-6 以修正換行縮排 -->
-                        <li>因蒐集的資料涉及學生個資管理與保護，故僅開放各院/系(學程)人員使用經授權之 <strong>T-Drive 帳號</strong>進入。</li>
-                        <li>帳號格式：<span class="text-blue-600 font-medium">THU-NID@tdrive.thu.edu.tw</span>；密碼同THU-NID密碼。</li>
-                        <li><span class="font-bold">【登入失敗處理】</span> 請您先確認是否誤登入到單位帳號或未經授權的 T-Drive 帳號。</li>
-                        <li>如各院/系(學程)承辦窗口未申請權限或承辦人員有異動，請聯繫<strong>實習中心承辦人</strong>開通權限（分機：22526）。</li>
-                        <li>如仍無法登入或有其他任何問題，請聯繫<strong>實習中心承辦人</strong>（分機：22526）。</li>
+                    <ul class="list-disc list-inside space-y-4 text-gray-700 ml-4"> <!-- 增加列表間距和左側縮排 -->
+                        <li class="pl-1">因蒐集的資料涉及學生個資管理與保護，故僅開放各院/系(學程)人員使用經授權之 <strong>T-Drive 帳號</strong>進入。</li>
+                        <li class="pl-1">帳號格式：<span class="text-blue-600 font-medium">THU-NID@tdrive.thu.edu.tw</span>；密碼同THU-NID密碼。</li>
+                        <li class="pl-1"><span class="font-bold">【登入失敗處理】</span> 請您先確認是否誤登入到單位帳號或未經授權的 T-Drive 帳號。</li>
+                        <li class="pl-1">如各院/系(學程)承辦窗口未申請權限或承辦人員有異動，請聯繫<strong>實習中心承辦人</strong>開通權限（分機：22526）。</li>
+                        <li class="pl-1">如仍無法登入或有其他任何問題，請聯繫<strong>實習中心承辦人</strong>（分機：22526）。</li>
                     </ul>
                 </div>
             </div>
@@ -229,7 +247,6 @@
             faculties.forEach(faculty => {
                 if (!faculty.departments || faculty.departments.length === 0) return;
 
-                // 確保圖標類名只包含 fa-xxxx
                 const iconClass = faculty.icon || getDeptIcon(faculty.name);
                 let linksHtml = '';
                 
@@ -237,25 +254,27 @@
                     const link = dept.link || '#';
                     const target = link.startsWith('http') ? '_blank' : '_self';
                     linksHtml += `
-                        <a href="${link}" target="${target}" class="dept-link text-sm hover:font-bold">
-                            ${dept.name}
+                        <a href="${link}" target="${target}" class="dept-link-btn">
+                            ${dept.name} <i class="fas fa-external-link-alt"></i>
                         </a>`;
                 });
 
                 container.innerHTML += `
-                <div class="bg-white p-6 rounded-xl shadow-lg border-l-4 border-thuBlue flex flex-col lg:flex-row transition-all duration-300 hover:shadow-xl">
-                    <!-- 左側: 學院 -->
-                    <div class="flex flex-col items-center justify-center w-full lg:w-48 shrink-0 border-b lg:border-b-0 lg:border-r border-gray-100 pb-4 lg:pb-0 lg:pr-6">
-                        <div class="w-16 h-16 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-2">
-                            <i class="fas ${iconClass}"></i>
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
+                    <div class="flex flex-col md:flex-row">
+                        <!-- 左側: 學院 -->
+                        <div class="bg-blue-50/50 md:w-48 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
+                            <div class="w-14 h-14 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm">
+                                <i class="fas ${iconClass}"></i>
+                            </div>
+                            <h2 class="text-lg font-bold text-thuBlue text-center">${faculty.name}</h2>
                         </div>
-                        <h2 class="text-xl font-bold text-thuBlue text-center">${faculty.name}</h2>
-                    </div>
-                    <!-- 右側: 系所連結 -->
-                    <div class="flex-grow pt-4 lg:pt-0 lg:pl-6">
-                        <h3 class="text-base font-semibold text-gray-600 mb-2 border-b border-gray-100 pb-1">系所 / 學程雲端連結：</h3>
-                        <div class="flex flex-wrap gap-x-6 gap-y-2">
-                            ${linksHtml}
+                        
+                        <!-- 右側: 系所連結 -->
+                        <div class="flex-grow p-6">
+                            <div class="flex flex-wrap gap-3">
+                                ${linksHtml}
+                            </div>
                         </div>
                     </div>
                 </div>
