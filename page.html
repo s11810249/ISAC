@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>載入中...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: { colors: { thuBlue: '#002E5D', thuGold: '#C6A87C' } }
+            }
+        }
+    </script>
+</head>
+<body class="bg-gray-50 font-sans flex flex-col min-h-screen">
+
+    <!-- Navbar -->
+    <nav class="bg-thuBlue text-white p-4 shadow-md sticky top-0 z-50">
+        <div class="max-w-5xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.href='index.html'">
+                <i class="fas fa-chevron-left text-thuGold"></i>
+                <span class="font-bold tracking-wide">返回首頁</span>
+            </div>
+            <div class="text-sm opacity-80 hidden sm:block">實習業務協作平台</div>
+        </div>
+    </nav>
+
+    <!-- Main Content -->
+    <main class="flex-grow max-w-5xl mx-auto w-full p-6">
+        
+        <!-- Header Section -->
+        <header class="mb-10 text-center animate-fade-in-up">
+            <h1 id="page-title" class="text-3xl md:text-4xl font-bold text-thuBlue mb-3">...</h1>
+            <p id="page-subtitle" class="text-gray-500 text-lg">...</p>
+            <div class="h-1 w-20 bg-thuGold mx-auto mt-6 rounded-full"></div>
+        </header>
+
+        <!-- List Content -->
+        <div id="list-container" class="grid gap-4">
+            <!-- JS will populate this -->
+            <div class="text-center py-20 text-gray-400">
+                <i class="fas fa-circle-notch fa-spin text-3xl"></i>
+                <p class="mt-2">資料讀取中...</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Footer -->
+    <footer class="bg-gray-800 text-gray-400 text-center p-4 text-xs mt-auto">
+        <span id="footer-text">© 2025 Tunghai University</span>
+    </footer>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. Get ID from URL (e.g., page.html?id=laws)
+            const params = new URLSearchParams(window.location.search);
+            const pageId = params.get('id');
+
+            if (!pageId) {
+                alert("無效的頁面參數");
+                window.location.href = 'index.html';
+                return;
+            }
+
+            // 2. Fetch Data
+            try {
+                const res = await fetch('site_data.json?t=' + new Date().getTime());
+                const data = await res.json();
+                
+                const pageData = data.pages[pageId];
+                if (!pageData) throw new Error("找不到此頁面資料");
+
+                // 3. Render Page
+                document.title = pageData.title + " - 東海大學";
+                document.getElementById('page-title').innerText = pageData.title;
+                document.getElementById('page-subtitle').innerText = pageData.subtitle || "";
+                if(data.settings && data.settings.footerText) {
+                    document.getElementById('footer-text').innerText = data.settings.footerText;
+                }
+
+                renderList(pageData.items);
+
+            } catch (error) {
+                console.error(error);
+                document.getElementById('list-container').innerHTML = `
+                    <div class="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-100">
+                        <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
+                        <p>無法載入頁面資料 (${pageId})</p>
+                        <p class="text-sm text-red-400 mt-1">請確認 site_data.json 設定是否正確</p>
+                    </div>`;
+            }
+        });
+
+        function renderList(items) {
+            const container = document.getElementById('list-container');
+            container.innerHTML = '';
+
+            if (!items || items.length === 0) {
+                container.innerHTML = '<div class="text-center text-gray-400 py-10">暫無資料</div>';
+                return;
+            }
+
+            items.forEach(item => {
+                const tagHtml = item.tag ? `<span class="bg-blue-100 text-thuBlue text-xs px-2 py-1 rounded mr-3 whitespace-nowrap font-bold">${item.tag}</span>` : '';
+                
+                const html = `
+                <a href="${item.url}" target="_blank" class="block bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-thuGold hover:shadow-md transition-all group flex items-center justify-between">
+                    <div class="flex items-center overflow-hidden">
+                        ${tagHtml}
+                        <span class="text-gray-700 font-medium group-hover:text-thuBlue truncate text-lg">${item.title}</span>
+                    </div>
+                    <i class="fas fa-external-link-alt text-gray-300 group-hover:text-thuGold ml-4"></i>
+                </a>`;
+                container.innerHTML += html;
+            });
+        }
+    </script>
+</body>
+</html>
