@@ -141,6 +141,27 @@
             opacity: 1;
             visibility: visible;
         }
+        
+        /* Chatbot 堆棧容器 */
+        #chatbot-stack {
+            position: fixed;
+            bottom: 8px; /* 貼近底部 */
+            right: 8px;
+            z-index: 100; /* Chatbot 氣泡在最上層 */
+            display: flex;
+            flex-direction: column;
+            align-items: flex-end;
+            gap: 8px; /* 按鈕間距 */
+        }
+        
+        /* 滑到最上方按鈕 */
+        #scroll-to-top {
+            position: absolute; /* 相對於父容器堆棧 */
+            z-index: 90; /* 確保在 Chatbot 按鈕之下，但比 Footer 高 */
+            /* 調整位置，使其與 Chatbot 垂直對齊 */
+            bottom: 72px; 
+            right: 16px; 
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen">
@@ -237,15 +258,16 @@
             
             <!-- 6. 滾動箭頭 -->
             <!-- 修正 2: 調整箭頭的 bottom 距離 -->
-            <div onclick="document.getElementById('main-content').scrollIntoView({ behavior: 'smooth' });" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;">
+            <!-- 移除 onclick，改用 JavaScript 執行自訂滾動 -->
+            <div id="scroll-arrow-target" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;" onclick="customScrollToMain()">
                 <i class="fas fa-chevron-down text-3xl"></i>
             </div>
         </div>
     </div>
 
     <!-- Main Content Area -->
-    <!-- 修正 4: 增加負邊距以抵銷 pt-10，防止卡片被 Sticky Header 遮擋 -->
-    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow -mt-10">
+    <!-- 移除 -mt-10，改用 JS 修正滾動位置 -->
+    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow">
         <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
         </div>
@@ -261,22 +283,27 @@
         </div>
     </footer>
 
-    <!-- Chatbot Button -->
-    <!-- 修正 2: 放置在 bottom-8 right-8，使其更貼近底部 -->
-    <div class="fixed bottom-8 right-8 z-40 flex flex-col items-end">
-        <div class="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-lg border border-gray-100 text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
-            需要協助嗎？
-            <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div>
-        </div>
-        <button onclick="toggleModal('contact-modal')" class="w-14 h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white">
-            <i class="fas fa-headset text-2xl group-hover:animate-pulse"></i>
+    <!-- Chatbot Button Stack -->
+    <!-- 修正 2: 整合 Chatbot Button 和 Scroll-to-Top Button 到一個堆棧容器，並調整位置 -->
+    <div id="action-stack" class="fixed bottom-8 right-8 z-40 flex flex-col items-end gap-2">
+        
+        <!-- 滑到最上方的按鈕 -->
+        <button id="scroll-to-top" onclick="scrollToTop()" class="w-12 h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center">
+            <i class="fas fa-chevron-up text-xl"></i>
         </button>
+
+        <!-- Chatbot Button -->
+        <div class="flex flex-col items-end">
+            <div class="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-lg border border-gray-100 text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
+                需要協助嗎？
+                <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div>
+            </div>
+            <button onclick="toggleModal('contact-modal')" class="w-14 h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white">
+                <i class="fas fa-headset text-2xl group-hover:animate-pulse"></i>
+            </button>
+        </div>
     </div>
-    
-    <!-- 滑到最上方的按鈕 (修正 2: 避免重疊，調整 bottom 和 right) -->
-    <button id="scroll-to-top" onclick="scrollToTop()" class="fixed bottom-[72px] right-6 z-40 w-12 h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center">
-        <i class="fas fa-chevron-up text-xl"></i>
-    </button>
+
 
     <!-- Modal 1: 計畫緣起 -->
     <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
@@ -439,6 +466,23 @@
                 behavior: 'smooth'
             });
         };
+        
+        // 修正 4: 自訂滾動邏輯，避開 Sticky Header
+        window.customScrollToMain = function() {
+            const mainContent = document.getElementById('main-content');
+            const stickyHeader = document.getElementById('sticky-header');
+            
+            if (mainContent && stickyHeader) {
+                const headerHeight = stickyHeader.offsetHeight || 64; // 預設 64px
+                const targetPosition = mainContent.offsetTop - headerHeight;
+                
+                window.scrollTo({
+                    top: targetPosition,
+                    behavior: 'smooth'
+                });
+            }
+        };
+
 
         // 控制滾動按鈕顯示/隱藏
         document.addEventListener('scroll', function() {
