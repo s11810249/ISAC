@@ -87,12 +87,48 @@
         }
         
         /* 學院區塊自適應調整 */
-        .faculty-name-container {
-            /* 允許文字換行，並在必要時壓縮 */
-            min-width: 0;
-            flex-shrink: 1;
-            /* 確保文字不會過度拉伸 */
-            max-width: 100%;
+        .faculty-card-layout {
+            /* 主佈局：Icon 和名稱放左側，連結放右側 */
+            display: flex;
+            align-items: flex-start;
+            padding: 1rem;
+            gap: 1rem;
+        }
+
+        .faculty-name-section {
+            flex-shrink: 0;
+            width: 130px; /* 固定寬度給 Icon 和名稱 */
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            border-right: 1px solid #e5e7eb; /* 灰色分隔線 */
+            padding-right: 1rem;
+        }
+
+        .dept-links-section {
+            flex-grow: 1;
+            padding-left: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .faculty-card-layout {
+                flex-direction: column;
+                padding: 1.5rem 1rem;
+            }
+            .faculty-name-section {
+                width: 100%;
+                flex-direction: row; /* 在手機上橫向排列 Icon 和名稱 */
+                border-right: none;
+                border-bottom: 1px solid #e5e7eb;
+                padding: 0 0 1rem 0;
+                justify-content: flex-start;
+                gap: 1rem;
+            }
+            .dept-links-section {
+                padding-left: 0;
+                padding-top: 1rem;
+            }
         }
     </style>
 </head>
@@ -269,19 +305,19 @@
                 });
 
                 container.innerHTML += `
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
-                    <div class="grid grid-cols-1 md:grid-cols-12">
-                        <!-- 左側: 學院 (佔 4 欄，自適應空間) -->
-                        <div class="bg-blue-50/50 col-span-12 md:col-span-3 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 faculty-info">
-                            <div class="w-14 h-14 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm">
+                <div class="bg-white rounded-xl shadow-md border border-gray-200 overflow-hidden hover:shadow-xl transition-all duration-300">
+                    <div class="faculty-card-layout">
+                        <!-- 左側: 學院名稱與 Icon -->
+                        <div class="faculty-name-section bg-blue-50/50">
+                            <div class="w-14 h-14 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm md:mb-0 md:mr-4">
                                 <i class="fas ${iconClass}"></i>
                             </div>
-                            <!-- 修正：學院名稱字體縮小為 text-sm，在小屏上更為緊湊 -->
-                            <h2 class="text-sm font-bold text-thuBlue text-center">${faculty.name}</h2>
+                            <!-- 修正：學院名稱字體縮小為 text-base，並確保在手機上可以水平對齊 -->
+                            <h2 class="text-base font-bold text-thuBlue text-center md:text-left">${faculty.name}</h2>
                         </div>
                         
-                        <!-- 右側: 系所連結 (佔 8 欄) -->
-                        <div class="flex-grow col-span-12 md:col-span-9 p-6">
+                        <!-- 右側: 系所連結 -->
+                        <div class="dept-links-section">
                             <div class="flex flex-wrap gap-3">
                                 ${linksHtml}
                             </div>
