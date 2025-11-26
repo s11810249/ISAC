@@ -85,6 +85,15 @@
         #auth-modal .prose strong {
             font-weight: 700 !important; /* 强制使用 Tailwind font-bold */
         }
+        
+        /* 學院區塊自適應調整 */
+        .faculty-name-container {
+            /* 允許文字換行，並在必要時壓縮 */
+            min-width: 0;
+            flex-shrink: 1;
+            /* 確保文字不會過度拉伸 */
+            max-width: 100%;
+        }
     </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen pb-20"> <!-- 增加底部 padding 以容納 fixed footer -->
@@ -184,16 +193,16 @@
 
     <script>
         const deptIcons = {
-            '文學院': 'fa-book-open',
+            '文學院': 'fa-language',
             '理學院': 'fa-flask',
             '工學院': 'fa-cogs',
             '管理學院': 'fa-chart-line',
             '社科院': 'fa-users',
-            '農業暨健康學院': 'fa-leaf',
-            '創藝學院': 'fa-paint-brush',
-            '法律學院': 'fa-gavel',
-            '國際學院': 'fa-globe-asia',
-            '跨域創新學院': 'fa-brain',
+            '農業暨健康學院': 'fa-wheat-awn',
+            '創藝學院': 'fa-palette',
+            '法律學院': 'fa-scale-balanced',
+            '國際學院': 'fa-earth-asia',
+            '跨域創新學院': 'fa-cubes',
             '農學院': 'fa-leaf', 
             '設計學院': 'fa-paint-brush'
         };
@@ -261,18 +270,18 @@
 
                 container.innerHTML += `
                 <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden hover:shadow-lg transition-all duration-300">
-                    <div class="flex flex-col md:flex-row">
-                        <!-- 左側: 學院 -->
-                        <div class="bg-blue-50/50 md:w-48 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100">
+                    <div class="grid grid-cols-1 md:grid-cols-12">
+                        <!-- 左側: 學院 (佔 4 欄，自適應空間) -->
+                        <div class="bg-blue-50/50 col-span-12 md:col-span-3 p-6 flex flex-col items-center justify-center border-b md:border-b-0 md:border-r border-gray-100 faculty-info">
                             <div class="w-14 h-14 bg-thuBlue text-white rounded-full flex items-center justify-center text-2xl mb-3 shadow-sm">
                                 <i class="fas ${iconClass}"></i>
                             </div>
-                            <!-- 修正：學院名稱字體縮小為 text-base -->
-                            <h2 class="text-base font-bold text-thuBlue text-center">${faculty.name}</h2>
+                            <!-- 修正：學院名稱字體縮小為 text-sm，在小屏上更為緊湊 -->
+                            <h2 class="text-sm font-bold text-thuBlue text-center">${faculty.name}</h2>
                         </div>
                         
-                        <!-- 右側: 系所連結 -->
-                        <div class="flex-grow p-6">
+                        <!-- 右側: 系所連結 (佔 8 欄) -->
+                        <div class="flex-grow col-span-12 md:col-span-9 p-6">
                             <div class="flex flex-wrap gap-3">
                                 ${linksHtml}
                             </div>
