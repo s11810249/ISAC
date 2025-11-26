@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>東海大學實習業務協作專區</title>
+    <!-- 引入 Tailwind CSS (快速排版) -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- 引入 Font Awesome (圖示) -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        thuBlue: '#002E5D', // 東海深藍
+                        thuLightBlue: '#eef6fc',
+                        thuGold: '#C6A87C', // 東海金
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 自定義漸層背景 */
+        .hero-bg {
+            background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .hero-bg::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(circle at 20% 50%, rgba(255,255,255,0.05) 0%, transparent 20%),
+                              radial-gradient(circle at 80% 30%, rgba(255,255,255,0.05) 0%, transparent 20%);
+            z-index: 1;
+        }
+        /* Modal 動畫 */
+        .modal {
+            transition: opacity 0.25s ease;
+        }
+        body.modal-active {
+            overflow-y: hidden !important;
+        }
+    </style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen">
+
+    <!-- Header / Navbar -->
+    <div class="fixed top-0 left-0 w-full bg-thuBlue z-50 shadow-md">
+        <div class="w-full px-4 md:px-8 h-[80px] flex items-center justify-between">
+            <div class="flex items-center gap-4">
+                <!-- 使用官方 Logo 圖片 -->
+                <img src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="THU Logo" class="h-10 w-auto">
+                <div class="flex flex-col justify-center text-white">
+                    <div class="text-lg md:text-xl font-bold tracking-wide leading-tight">東海大學實習業務協作專區</div>
+                    <div class="text-xs text-thuGold opacity-90 font-sans leading-tight mt-0.5">Internship Business Collaboration Zone</div>
+                </div>
+            </div>
+            
+            <div class="hidden md:flex gap-3 text-sm">
+                <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="flex items-center gap-2 px-4 py-2 border border-thuGold text-thuGold rounded-full hover:bg-thuGold hover:text-thuBlue transition-all duration-200 font-medium">
+                    <i class="fa-solid fa-link"></i> 實習中心網頁
+                </a>
+                <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-white text-thuBlue rounded-full hover:bg-gray-100 shadow-sm transition-all duration-200 font-medium">
+                    <i class="fa-solid fa-house"></i> 東海大學首頁
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Hero Section -->
+    <div class="hero-bg text-white pb-24 pt-32">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+            <div class="text-center mb-10">
+                <h1 class="text-4xl md:text-5xl font-bold mb-4 tracking-wide">實習業務協作專區</h1>
+                <p class="text-xl text-blue-100 font-light mb-8">整合法規資源、數位表單與校務數據的一站式平台</p>
+                
+                <!-- 計畫緣起按鈕 -->
+                <button onclick="toggleModal('origin-modal')" class="inline-flex items-center gap-2 bg-white/10 hover:bg-white/20 text-white border border-white/30 backdrop-blur-sm px-6 py-3 rounded-full transition-all duration-300 hover:scale-105 group">
+                    <i class="fas fa-feather-alt text-thuGold group-hover:rotate-12 transition-transform"></i>
+                    <span>查看計畫緣起</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Main Content Area (Cards) -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-16 relative z-20 pb-20 flex-grow">
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+
+            <!-- Card 1: 實習相關法規 -->
+            <a href="#laws" class="group bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-blue-50 text-thuBlue rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-scale-balanced"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習相關法規</h3>
+                    <p class="text-gray-500 leading-relaxed">查詢教育部與校內最新實習辦法、權利義務規範及標準作業流程。</p>
+                </div>
+                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuBlue">查看詳情</span>
+                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Card 2: 實習表單下載 -->
+            <a href="#downloads" class="group bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-blue-50 text-thuBlue rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-file-arrow-down"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習表單下載</h3>
+                    <p class="text-gray-500 leading-relaxed">提供家長同意書、合約書範本、實習評量表及週誌等文件下載。</p>
+                </div>
+                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuBlue">前往下載</span>
+                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Card 3: 實習保險專區 -->
+            <a href="#insurance" class="group bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-blue-50 text-thuBlue rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-shield-heart"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習保險專區</h3>
+                    <p class="text-gray-500 leading-relaxed">團體保險加保流程說明、理賠申請須知及投保名冊上傳入口。</p>
+                </div>
+                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuBlue">進入專區</span>
+                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Card 4: 實習文件產生器 (Highlight Tool - 已更新連結) -->
+            <a href="./Contract/index.html" class="group bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
+                <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                    推薦工具
+                </div>
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-yellow-100 text-thuGold rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-wand-magic-sparkles"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuGold transition-colors">實習文件產生器</h3>
+                    <p class="text-gray-500 leading-relaxed">智能化工具！輸入基本資料即可一鍵自動生成合約書與計畫書，減少文書錯誤。</p>
+                </div>
+                <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuGold">立即使用</span>
+                    <i class="fas fa-play text-thuGold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Card 5: 校庫填報協作工具 (Highlight Tool) -->
+            <a href="#database" class="group bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
+                <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
+                    行政專用
+                </div>
+                <div class="p-8">
+                    <div class="w-16 h-16 bg-yellow-100 text-thuGold rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
+                        <i class="fas fa-database"></i>
+                    </div>
+                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuGold transition-colors">校庫填報協作</h3>
+                    <p class="text-gray-500 leading-relaxed">協助系所助教彙整實習數據，檢核並產出符合校務資料庫格式之報表。</p>
+                </div>
+                <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                    <span class="text-sm font-medium text-thuGold">開始填報</span>
+                    <i class="fas fa-play text-thuGold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                </div>
+            </a>
+
+            <!-- Contact / Support Card -->
+            <div class="bg-gray-100 rounded-xl border border-dashed border-gray-300 flex flex-col items-center justify-center p-8 text-center">
+                <div class="w-12 h-12 bg-gray-200 text-gray-400 rounded-full flex items-center justify-center text-xl mb-4">
+                    <i class="fas fa-headset"></i>
+                </div>
+                <h3 class="text-lg font-bold text-gray-600 mb-2">需要協助嗎？</h3>
+                <p class="text-sm text-gray-500 mb-4">如果您在操作上有任何問題，歡迎聯繫就友室或相關承辦人員。</p>
+                <a href="#" class="text-sm font-medium text-thuBlue hover:underline">查看聯絡資訊</a>
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer style="background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col items-center justify-center gap-1">
+                <p class="font-bold text-white tracking-wide text-[10px]">&copy; 2025 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p>
+                <p class="text-[9px] text-gray-500">網頁製作：張博堯 | Assisted by Google Gemini</p>
+            </div>
+        </div>
+    </footer>
+
+    <!-- Modal (計畫緣起) -->
+    <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
+        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div>
+        
+        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+            
+            <!-- Modal Header -->
+            <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
+                <div class="flex items-center gap-2">
+                    <i class="fas fa-feather-alt text-thuGold text-xl"></i>
+                    <p class="text-2xl font-bold text-thuBlue">計畫緣起</p>
+                </div>
+                <div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')">
+                    <i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i>
+                </div>
+            </div>
+
+            <!-- Modal Body (Long Content) -->
+            <div class="px-8 py-6 text-left">
+                <div class="prose prose-blue max-w-none text-gray-600 space-y-4">
+                    <p class="font-bold text-lg text-gray-800">產學攜手，共創未來</p>
+                    <p>
+                        隨著高等教育與產業需求的連結日益緊密，實習已成為學生職涯探索與專業實踐的關鍵環節。為深化產學合作並優化校內實習行政流程，本校特建置「實習業務協作專區」。
+                    </p>
+                    <p>
+                        本計畫的核心目標在於透過數位化轉型，將過往繁瑣的紙本作業轉化為高效的線上協作模式。在傳統的實習業務中，學生、系所助教與企業端往往面臨合約往返耗時、表單格式不一、保險名單彙整不易等挑戰。
+                    </p>
+                    <p>
+                        透過此平台，我們期望達成以下效益：
+                    </p>
+                    <ul class="list-disc pl-5 space-y-2">
+                        <li><strong>行政效能提升：</strong>提供標準化表單與自動生成工具，大幅減少重複填寫與人工檢核的時間。</li>
+                        <li><strong>法規遵循落實：</strong>整合最新教育部法規與校內辦法，確保實習課程符合規範，保障學生權益。</li>
+                        <li><strong>數據決策支援：</strong>透過系統化的數據收集，協助學校準確掌握實習現況，作為校務發展與課程調整之依據。</li>
+                    </ul>
+                    <p>
+                        我們串聯系所、學生與企業端，提供從法規查詢、合約簽署到數據填報的完整支持，以期提升實習品質，真正落實「學用合一」之教育目標，培育具備實戰能力的優秀人才。
+                    </p>
+                </div>
+            </div>
+
+            <!-- Modal Footer -->
+            <div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
+                <button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
+                    關閉視窗
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- JavaScript for Modal -->
+    <script>
+        function toggleModal(modalID) {
+            const modal = document
