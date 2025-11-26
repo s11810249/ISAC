@@ -139,7 +139,8 @@
                                     <h4 id="current-page-title" class="text-md font-bold text-gray-700">資料列表</h4>
                                     <button onclick="addPageItem()" class="bg-green-600 text-white px-3 py-1.5 rounded text-xs hover:bg-green-700 shadow flex items-center"><i class="fas fa-plus mr-1"></i> 新增項目</button>
                                 </div>
-                                <div id="page-items-editor" class="space-y-3"></div>
+                                <!-- 分頁編輯器容器 -->
+                                <div id="page-items-editor" class="space-y-0 md:space-y-2"></div>
                             </div>
                         </div>
 
@@ -573,63 +574,106 @@
 
             const isLaws = pageId === 'laws';
 
+            // Header Row (Only for Laws)
+            let headerHtml = '';
+            if (isLaws && pageData.items.length > 0) {
+                headerHtml = `
+                <div class="hidden md:grid grid-cols-12 gap-4 px-4 py-2 text-xs font-bold text-gray-500 border-b border-gray-200 bg-gray-50 rounded-t-lg mb-2">
+                    <div class="col-span-1 text-center">排序</div>
+                    <div class="col-span-5">法規名稱 (中/英)</div>
+                    <div class="col-span-3">日期 & 分類</div>
+                    <div class="col-span-2">檔案連結</div>
+                    <div class="col-span-1 text-center">刪除</div>
+                </div>`;
+                container.innerHTML = headerHtml;
+            }
+
             if (pageData.items.length === 0) {
                 container.innerHTML = '<div class="text-center py-8 text-gray-400">尚無資料，請點擊「新增項目」</div>';
             } else {
                 pageData.items.forEach((item, index) => {
-                    let specializedFields = '';
-                    let linkField = '';
-
                     if (isLaws) {
-                        // Laws specific fields
-                        specializedFields = `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-2 border-t border-gray-100 pt-2">
-                            <input type="text" class="p-title-en border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none bg-gray-50 placeholder-gray-400" placeholder="英文標題 (English Title)" value="${item.title_en || ''}">
-                            <div class="flex gap-2">
-                                <input type="text" class="p-date border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none w-1/2" placeholder="修正日期 (YYYY-MM-DD)" value="${item.date || ''}">
-                                <select class="p-cat-select border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none w-1/2 bg-white">
-                                    <option value="edu" ${item.category === 'edu' ? 'selected' : ''}>教育部法規</option>
-                                    <option value="admin" ${item.category === 'admin' ? 'selected' : ''}>行政函釋</option>
-                                    <option value="school" ${item.category === 'school' ? 'selected' : ''}>校內法規</option>
-                                </select>
+                        // Specialized Grid Layout for Laws
+                        container.innerHTML += `
+                        <div class="page-item bg-white border-b border-gray-100 md:border-0 p-4 md:p-0 grid grid-cols-1 md:grid-cols-12 gap-2 md:gap-4 items-center group hover:bg-gray-50 md:rounded-lg md:border md:mb-2" data-index="${index}">
+                            
+                            <!-- Drag Handle -->
+                            <div class="md:col-span-1 flex md:justify-center">
+                                <div class="cursor-move text-gray-300 hover:text-thuBlue handle-page p-2"><i class="fas fa-grip-lines"></i></div>
                             </div>
-                        </div>`;
-                        
-                        // Link field with upload button for Laws
-                        linkField = `
-                        <div class="flex gap-1">
-                            <input type="text" id="p-url-${index}" class="p-url border border-gray-200 rounded-l p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none text-blue-600 w-full" placeholder="連結網址 (URL)" value="${item.url}">
-                            <label class="bg-gray-100 hover:bg-gray-200 text-gray-600 border border-l-0 border-gray-200 rounded-r px-3 flex items-center justify-center cursor-pointer transition" title="上傳 PDF">
-                                <i class="fas fa-upload"></i>
-                                <input type="file" class="hidden" accept=".pdf" onchange="uploadFile(this, 'p-url-${index}')">
-                            </label>
+
+                            <!-- Title Section -->
+                            <div class="md:col-span-5 space-y-1 md:py-3">
+                                <label class="md:hidden text-xs font-bold text-gray-400 block">法規名稱</label>
+                                <input type="text" class="p-title w-full border border-gray-200 rounded p-2 text-sm font-bold text-gray-800 focus:ring-2 focus:ring-thuBlue outline-none placeholder-gray-300" placeholder="中文標題" value="${item.title}">
+                                <input type="text" class="p-title-en w-full border border-gray-200 rounded p-2 text-xs text-gray-500 focus:ring-2 focus:ring-thuBlue outline-none placeholder-gray-300 bg-gray-50/50" placeholder="English Title" value="${item.title_en || ''}">
+                            </div>
+
+                            <!-- Date & Category -->
+                            <div class="md:col-span-3 space-y-1 md:py-3">
+                                <label class="md:hidden text-xs font-bold text-gray-400 block">日期/分類</label>
+                                <div class="flex gap-1">
+                                    <input type="text" class="p-date w-1/2 border border-gray-200 rounded p-2 text-xs text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none" placeholder="YYYY-MM-DD" value="${item.date || ''}">
+                                    <select class="p-cat-select w-1/2 border border-gray-200 rounded p-2 text-xs text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none bg-white cursor-pointer">
+                                        <option value="edu" ${item.category === 'edu' ? 'selected' : ''}>教育部法規</option>
+                                        <option value="admin" ${item.category === 'admin' ? 'selected' : ''}>行政函釋</option>
+                                        <option value="school" ${item.category === 'school' ? 'selected' : ''}>校內法規</option>
+                                    </select>
+                                </div>
+                            </div>
+
+                            <!-- File Link -->
+                            <div class="md:col-span-2 md:py-3">
+                                <label class="md:hidden text-xs font-bold text-gray-400 block mb-1">檔案</label>
+                                <div class="flex rounded-md shadow-sm">
+                                    <input type="text" id="p-url-${index}" class="p-url flex-grow border border-gray-200 rounded-l-md p-2 text-xs text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none truncate" placeholder="URL" value="${item.url}">
+                                    <label class="bg-gray-100 hover:bg-gray-200 text-gray-600 border border-l-0 border-gray-200 rounded-r-md px-3 flex items-center justify-center cursor-pointer transition" title="上傳 PDF">
+                                        <i class="fas fa-upload"></i>
+                                        <input type="file" class="hidden" accept=".pdf" onchange="uploadFile(this, 'p-url-${index}')">
+                                    </label>
+                                </div>
+                            </div>
+
+                            <!-- Delete -->
+                            <div class="md:col-span-1 flex md:justify-center justify-end md:py-3">
+                                <button onclick="deletePageItem('${pageId}', ${index})" class="text-gray-300 hover:text-red-500 p-2 rounded hover:bg-red-50 transition"><i class="fas fa-trash-alt"></i></button>
+                            </div>
                         </div>`;
                     } else {
-                        // Generic page category & link
-                        specializedFields = `
-                        <div class="mt-2">
-                            <input type="text" class="p-category border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none w-full" placeholder="分類/描述 (例如: 表單、大四專用...)" value="${item.category || ''}">
-                        </div>`;
-                        
-                        linkField = `<input type="text" class="p-url border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none text-blue-600" placeholder="連結網址 (URL)" value="${item.url}">`;
-                    }
-
-                    container.innerHTML += `
-                    <div class="page-item bg-white p-4 rounded-lg border border-gray-200 flex flex-col gap-2 group" data-index="${index}">
-                        <div class="flex items-center gap-4">
-                            <div class="cursor-move text-gray-300 hover:text-thuBlue handle-page"><i class="fas fa-grip-lines"></i></div>
-                            <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <input type="text" class="p-title border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold" placeholder="標題 (Title)" value="${item.title}">
-                                ${linkField}
+                        // Generic Layout (Standard)
+                        container.innerHTML += `
+                        <div class="page-item bg-white p-4 rounded-lg border border-gray-200 flex flex-col gap-3 group mb-3" data-index="${index}">
+                            <div class="flex items-center gap-3">
+                                <div class="cursor-move text-gray-300 hover:text-thuBlue handle-page"><i class="fas fa-grip-lines"></i></div>
+                                <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-400 mb-1">標題</label>
+                                        <input type="text" class="p-title w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold" value="${item.title}">
+                                    </div>
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-400 mb-1">連結網址</label>
+                                        <input type="text" class="p-url w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none text-blue-600" value="${item.url}">
+                                    </div>
+                                </div>
+                                <div class="self-end pb-1">
+                                    <button onclick="deletePageItem('${pageId}', ${index})" class="text-gray-300 hover:text-red-500 p-2 rounded hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
+                                </div>
                             </div>
-                            <button onclick="deletePageItem('${pageId}', ${index})" class="text-gray-300 hover:text-red-500 p-2"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                        ${specializedFields}
-                    </div>`;
+                            <div class="pl-8">
+                                <label class="block text-xs font-bold text-gray-400 mb-1">分類/描述</label>
+                                <input type="text" class="p-category w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${item.category || ''}">
+                            </div>
+                        </div>`;
+                    }
                 });
                 
                 if (sortablePageItems) sortablePageItems.destroy();
-                sortablePageItems = new Sortable(container, { animation: 150, handle: '.handle-page', onEnd: function(){ collectDataFromEditors(); } });
+                sortablePageItems = new Sortable(container, { 
+                    animation: 150, 
+                    handle: '.handle-page', 
+                    ghostClass: 'sortable-ghost',
+                    onEnd: function(){ collectDataFromEditors(); } 
+                });
             }
         }
 
