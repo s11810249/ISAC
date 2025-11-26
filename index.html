@@ -3,22 +3,21 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>東海大學實習業務協作平台</title>
-    <!-- 引入 Tailwind CSS (快速排版) -->
+    <title>載入中...</title>
+    <!-- 外部資源 -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 引入 Font Awesome (圖示) -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        thuBlue: '#002E5D', // 東海深藍
+                        thuBlue: '#002E5D',
                         thuLightBlue: '#eef6fc',
-                        thuGold: '#C6A87C', // 東海金
+                        thuGold: '#C6A87C',
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -28,537 +27,261 @@
         }
     </script>
     <style>
-        /* 自定義漸層背景 */
+        /* 自定義樣式 */
         .hero-bg {
             background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
             position: relative;
             overflow: hidden;
         }
-        /* 背景網格紋理 */
         .hero-bg::before {
-            content: '';
-            position: absolute;
-            top: 0; left: 0; right: 0; bottom: 0;
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
             background-image: 
                 linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
                 linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px;
-            z-index: 1;
+            background-size: 30px 30px; z-index: 1;
         }
-        /* Modal 動畫 */
-        .modal {
-            transition: opacity 0.25s ease;
-        }
-        body.modal-active {
-            overflow-y: hidden !important;
-        }
-        /* 簡單的淡入動畫 */
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(20px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fade-in-up {
-            animation: fadeInUp 0.8s ease-out forwards;
-        }
-        .animation-delay-200 { animation-delay: 0.2s; opacity: 0; }
-        .animation-delay-400 { animation-delay: 0.4s; opacity: 0; }
+        .modal { transition: opacity 0.25s ease; }
+        body.modal-active { overflow-y: hidden !important; }
+        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
     </style>
 </head>
-<body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen">
+<body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen pb-16">
 
-    <!-- Hero Section (重新設計版本) -->
+    <!-- Sticky Header (動態載入) -->
+    <nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
+        <div class="w-full max-w-7xl mx-auto flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img id="nav-logo" src="" alt="Logo" class="h-8 w-auto hidden">
+                <div class="text-white leading-none flex flex-col justify-center">
+                    <span class="font-bold text-lg tracking-widest" id="nav-title"></span>
+                </div>
+            </div>
+            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 text-white hover:text-thuGold transition-colors text-sm font-medium">
+                <i class="fa-solid fa-house"></i> <span class="hidden sm:inline">東海大學首頁</span>
+            </a>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
     <div class="hero-bg text-white pb-32 pt-24 relative">
-        
-        <!-- 右上角：東海大學首頁 (絕對定位) -->
         <div class="absolute top-6 right-6 z-30">
             <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-4 py-2 bg-white/10 text-white border border-white/20 rounded-full hover:bg-white hover:text-thuBlue transition-all duration-300 font-medium backdrop-blur-sm shadow-sm">
                 <i class="fa-solid fa-house"></i> 東海大學首頁
             </a>
         </div>
-
-        <!-- 背景裝飾光暈 -->
         <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
              <div class="absolute -top-20 -right-20 w-96 h-96 bg-thuGold opacity-10 rounded-full blur-3xl"></div>
              <div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
         </div>
 
         <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center min-h-[40vh]">
-            
-            <!-- Logo 與 主標題整合 -->
-            <!-- 修改：增加 gap-8 md:gap-12 (原 gap-5) 以解決標題放大時卡到 Logo 的問題 -->
             <div class="flex flex-col md:flex-row items-center justify-center gap-8 md:gap-12 mb-8 animate-fade-in-up group cursor-default">
-                <!-- Logo -->
-                <img src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="THU Logo" class="h-20 w-auto drop-shadow-lg opacity-90 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]">
-                
-                <!-- 標題 -->
+                <img id="hero-logo" src="" alt="Logo" class="h-20 w-auto drop-shadow-lg opacity-90 transition-all duration-500 ease-out group-hover:opacity-100 group-hover:scale-110 group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)] hidden">
                 <div class="text-center flex flex-col justify-center items-center h-20">
                     <h1 class="text-3xl md:text-5xl font-bold tracking-widest leading-none drop-shadow-xl mb-1 transition-all duration-500 ease-out group-hover:scale-110 group-hover:tracking-[0.15em] group-hover:drop-shadow-[0_0_15px_rgba(255,255,255,0.6)]">
-                        實習業務<span class="text-thuGold transition-colors duration-300 group-hover:text-white">協作平台</span>
+                        <span id="hero-title-1"></span><span class="text-thuGold transition-colors duration-300 group-hover:text-white" id="hero-title-2"></span>
                     </h1>
-                    <p class="text-base text-blue-200 tracking-wide font-light hidden md:block opacity-90 transition-all duration-500 group-hover:text-white group-hover:tracking-widest group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]">Internship Coordination Platform</p>
+                    <p id="hero-eng-title" class="text-base text-blue-200 tracking-wide font-light hidden md:block opacity-90 transition-all duration-500 group-hover:text-white group-hover:tracking-widest group-hover:drop-shadow-[0_0_5px_rgba(255,255,255,0.8)]"></p>
                 </div>
             </div>
-
-            <!-- 副標題 -->
-            <p class="text-lg md:text-xl text-blue-100/80 font-light mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-in-up animation-delay-200">
-                整合法規資源、數位表單與校務數據的一站式平台，<br class="hidden md:block">為師生打造更簡單、高效的實習行政流程。
-            </p>
-            
-            <!-- 按鈕群組 -->
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up animation-delay-400 w-full sm:w-auto">
-                <!-- 1. 查看計畫緣起 -->
+            <p id="hero-subtitle" class="text-lg md:text-xl text-blue-100/80 font-light mb-12 max-w-2xl mx-auto leading-relaxed animate-fade-in-up" style="animation-delay: 0.2s; opacity: 0;"></p>
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up w-full sm:w-auto" style="animation-delay: 0.4s; opacity: 0;">
                 <button onclick="toggleModal('origin-modal')" class="group relative px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
                     <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
-                    <span class="relative flex items-center justify-center gap-2 text-lg">
-                        <i class="fas fa-feather-alt"></i>
-                        查看計畫緣起
-                    </span>
+                    <span class="relative flex items-center justify-center gap-2 text-lg"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
                 </button>
-
-                <!-- 2. 實習中心網頁 -->
                 <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white border border-white/20 backdrop-blur-sm font-medium rounded-full transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 hover:border-white/40 w-full sm:w-60">
-                    <i class="fa-solid fa-link text-blue-300"></i>
-                    實習中心網頁
+                    <i class="fa-solid fa-link text-blue-300"></i> 實習中心網頁
                 </a>
             </div>
         </div>
     </div>
 
-    <!-- Main Content Area (Cards) -->
+    <!-- Main Content Area -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 pb-20 flex-grow">
-        <!-- 修改：改回一排三個 (lg:grid-cols-3)，並增加間距 (gap-8) -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-
-            <!-- Row 1: 基礎資源 -->
-            
-            <!-- Card 1: 實習相關法規 -->
-            <a href="#laws" class="group flex flex-col h-full bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
-                <!-- 修改：恢復內距 p-8 -->
-                <div class="p-8 flex-grow">
-                    <!-- 修改：恢復圖示大小 w-16 h-16 text-3xl -->
-                    <div class="w-16 h-16 bg-thuBlue text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-scale-balanced"></i>
-                    </div>
-                    <!-- 修改：恢復標題 text-2xl -->
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習相關法規</h3>
-                    <p class="text-gray-500 leading-relaxed">查詢教育部與校內最新實習辦法、權利義務規範及標準作業流程。</p>
-                </div>
-                <!-- 修改：恢復 footer 內距 px-8 py-4 -->
-                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuBlue">查看詳情</span>
-                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
-            <!-- Card 2: 實習表單下載 -->
-            <a href="#downloads" class="group flex flex-col h-full bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
-                <div class="p-8 flex-grow">
-                    <div class="w-16 h-16 bg-thuBlue text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-file-arrow-down"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習表單下載</h3>
-                    <p class="text-gray-500 leading-relaxed">提供家長同意書、合約書範本、實習評量表及週誌等文件下載。</p>
-                </div>
-                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuBlue">前往下載</span>
-                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
-            <!-- Card 3: 實習保險專區 -->
-            <a href="#insurance" class="group flex flex-col h-full bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
-                <div class="p-8 flex-grow">
-                    <div class="w-16 h-16 bg-thuBlue text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-shield-heart"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習保險專區</h3>
-                    <p class="text-gray-500 leading-relaxed">團體保險加保流程說明、理賠申請須知及投保名冊上傳入口。</p>
-                </div>
-                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuBlue">進入專區</span>
-                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
-            <!-- Row 2: 學生資源 -->
-
-            <!-- Card 4: 實習前哨站系列線上輔導課程 -->
-            <a href="#courses" class="group flex flex-col h-full bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
-                <div class="p-8 flex-grow">
-                    <div class="w-16 h-16 bg-thuBlue text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-chalkboard-teacher"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">實習前哨站線上課程</h3>
-                    <p class="text-gray-500 leading-relaxed">提供職場軟實力、履歷撰寫與面試技巧等線上影音課程，隨時強化競爭力。</p>
-                </div>
-                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuBlue">前往觀看</span>
-                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
-            <!-- Card 5: 東海人才網 -->
-            <a href="https://jobs.thu.edu.tw/" target="_blank" class="group flex flex-col h-full bg-white rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuBlue">
-                <div class="p-8 flex-grow">
-                    <div class="w-16 h-16 bg-thuBlue text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-briefcase"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuBlue transition-colors">東海人才網</h3>
-                    <p class="text-gray-500 leading-relaxed">媒合優質企業與實習職缺，提供履歷投遞與職涯諮詢服務，最佳實習入口。</p>
-                </div>
-                <div class="bg-gray-50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuBlue">尋找職缺</span>
-                    <i class="fas fa-arrow-right text-thuBlue opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
-            <!-- Card 6: 實習文件產生器 (Highlight Tool) -->
-            <a href="./Contract/index.html" class="group flex flex-col h-full bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
-                <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                    推薦工具
-                </div>
-                <div class="p-8 flex-grow">
-                    <div class="w-16 h-16 bg-thuGold text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-wand-magic-sparkles"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuGold transition-colors">實習文件產生器</h3>
-                    <p class="text-gray-500 leading-relaxed">智能化工具！輸入基本資料即可一鍵自動生成合約書與計畫書，減少文書錯誤。</p>
-                </div>
-                <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuGold">立即使用</span>
-                    <i class="fas fa-arrow-right text-thuGold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
-            <!-- Row 3: 行政專區 -->
-
-            <!-- Card 7: 校庫填報協作工具 (Highlight Tool - Admin) -->
-            <a href="#database" class="group flex flex-col h-full bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
-                <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                    行政專用
-                </div>
-                <div class="p-8 flex-grow">
-                    <div class="w-16 h-16 bg-thuGold text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-database"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuGold transition-colors">校庫填報協作</h3>
-                    <p class="text-gray-500 leading-relaxed">協助系所助教彙整實習數據，檢核並產出符合校務資料庫格式之報表。</p>
-                </div>
-                <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuGold">開始填報</span>
-                    <i class="fas fa-arrow-right text-thuGold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
-            <!-- Card 8: 系所評鑑資料上傳專區 (New - Admin) -->
-            <a href="#evaluation" class="group flex flex-col h-full bg-gradient-to-br from-white to-blue-50 rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 border-thuGold relative">
-                <div class="absolute top-0 right-0 bg-thuGold text-white text-xs font-bold px-3 py-1 rounded-bl-lg">
-                    行政專用
-                </div>
-                <div class="p-8 flex-grow">
-                    <!-- 修改：顏色改為 bg-thuGold text-white 以保持一致 -->
-                    <div class="w-16 h-16 bg-thuGold text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300">
-                        <i class="fas fa-cloud-upload-alt"></i>
-                    </div>
-                    <h3 class="text-2xl font-bold text-gray-800 mb-3 group-hover:text-thuGold transition-colors">系所評鑑資料上傳</h3>
-                    <p class="text-gray-500 leading-relaxed">供各系所上傳實習相關佐證資料，支援批次上傳與管理，便利評鑑審查。</p>
-                </div>
-                <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                    <span class="text-sm font-medium text-thuGold">前往上傳</span>
-                    <i class="fas fa-arrow-right text-thuGold opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                </div>
-            </a>
-
+        <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div class="col-span-full text-center py-10 text-white">
+                <i class="fas fa-circle-notch fa-spin text-3xl mb-3"></i>
+                <p>正在讀取 site_data.xlsx ...</p>
+            </div>
         </div>
     </main>
 
-    <!-- Footer -->
-    <!-- 修改：增加 position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; 讓頁尾固定在底部 -->
+    <!-- Fixed Footer -->
     <footer style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
         <div class="container mx-auto px-4">
             <div class="flex flex-col items-center justify-center gap-1">
-                <p class="font-bold text-white tracking-wide text-[10px]">&copy; 2025 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p>
+                <p id="footer-copyright" class="font-bold text-white tracking-wide text-[10px]"></p>
                 <p class="text-[9px] text-gray-500">網頁製作：張博堯 | Assisted by Google Gemini</p>
             </div>
         </div>
     </footer>
 
-    <!-- Chatbot Style Floating Button (New) -->
-    <!-- 修改：將 bottom-8 改為 bottom-20，避免被固定頁尾遮擋 -->
+    <!-- Chatbot Button -->
     <div class="fixed bottom-20 right-8 z-40 flex flex-col items-end">
-        <!-- Speech Bubble -->
         <div class="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-lg border border-gray-100 text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
             需要協助嗎？
             <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div>
         </div>
-        <!-- FAB Button -->
         <button onclick="toggleModal('contact-modal')" class="w-14 h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white">
             <i class="fas fa-headset text-2xl group-hover:animate-pulse"></i>
         </button>
     </div>
 
-    <!-- Modal 1 (計畫緣起) -->
+    <!-- Modal 1: 計畫緣起 -->
     <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div>
-        
         <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
-            
-            <!-- Modal Header -->
             <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-feather-alt text-thuGold text-xl"></i>
-                    <p class="text-2xl font-bold text-thuBlue">計畫緣起</p>
-                </div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')">
-                    <i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i>
-                </div>
+                <div class="flex items-center gap-2"><i class="fas fa-feather-alt text-thuGold text-xl"></i><p class="text-2xl font-bold text-thuBlue" id="modal-origin-title">計畫緣起</p></div>
+                <div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
             </div>
-
-            <!-- Modal Body (Long Content) -->
-            <div class="px-8 py-6 text-left">
-                <div class="prose prose-blue max-w-none text-gray-600 space-y-4">
-                    <p class="font-bold text-lg text-gray-800">產學攜手，共創未來</p>
-                    <p>
-                        隨著高等教育與產業需求的連結日益緊密，實習已成為學生職涯探索與專業實踐的關鍵環節。為深化產學合作並優化校內實習行政流程，本校特建置「實習業務協作專區」。
-                    </p>
-                    <p>
-                        本計畫的核心目標在於透過數位化轉型，將過往繁瑣的紙本作業轉化為高效的線上協作模式。在傳統的實習業務中，學生、系所助教與企業端往往面臨合約往返耗時、表單格式不一、保險名單彙整不易等挑戰。
-                    </p>
-                    <p>
-                        透過此平台，我們期望達成以下效益：
-                    </p>
-                    <ul class="list-disc pl-5 space-y-2">
-                        <li><strong>行政效能提升：</strong>提供標準化表單與自動生成工具，大幅減少重複填寫與人工檢核的時間。</li>
-                        <li><strong>法規遵循落實：</strong>整合最新教育部法規與校內辦法，確保實習課程符合規範，保障學生權益。</li>
-                        <li><strong>數據決策支援：</strong>透過系統化的數據收集，協助學校準確掌握實習現況，作為校務發展與課程調整之依據。</li>
-                    </ul>
-                    <p>
-                        我們串聯系所、學生與企業端，提供從法規查詢、合約簽署到數據填報的完整支持，以期提升實習品質，真正落實「學用合一」之教育目標，培育具備實戰能力的優秀人才。
-                    </p>
-                </div>
-            </div>
-
-            <!-- Modal Footer -->
+            <div class="px-8 py-6 text-left"><div id="modal-origin-content" class="prose prose-blue max-w-none text-gray-600 space-y-4"></div></div>
             <div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
-                <button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">
-                    關閉視窗
-                </button>
+                <button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉視窗</button>
             </div>
         </div>
     </div>
 
-    <!-- Modal 2 (聯絡資訊 - 新增) -->
+    <!-- Modal 2: 聯絡資訊 -->
     <div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div>
-        
-        <!-- 修改：
-             1. 寬度改為 max-w-5xl (比之前稍微縮小) 
-             2. 加入 flex flex-col 以支援固定頁尾
-             3. 移除 overflow-y-auto (改到內容區塊) -->
         <div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
-            
-            <!-- Modal Header (固定在頂部) -->
-            <!-- 修改：加入 flex-none 防止壓縮 -->
             <div class="flex-none flex justify-between items-center py-5 px-8 border-b border-gray-200 bg-white rounded-t-2xl z-10">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-address-book text-thuGold text-2xl"></i>
-                    <p class="text-2xl font-bold text-thuBlue">聯絡資訊</p>
-                </div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')">
-                    <i class="fas fa-times text-gray-500 hover:text-gray-800 text-2xl transition"></i>
-                </div>
+                <div class="flex items-center gap-3"><i class="fas fa-address-book text-thuGold text-2xl"></i><p class="text-2xl font-bold text-thuBlue">聯絡資訊</p></div>
+                <div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-2xl transition"></i></div>
             </div>
-
-            <!-- Modal Body (可捲動區域) -->
-            <!-- 修改：加入 flex-grow overflow-y-auto 讓內容可捲動且填滿空間 -->
             <div class="flex-grow overflow-y-auto px-8 py-8 bg-gray-50">
-                
-                <!-- 提示文字 -->
                 <div class="mb-6 text-center bg-blue-50 border border-blue-100 rounded-xl p-5">
-                    <p class="text-gray-700 font-medium text-base">
-                        <i class="fas fa-info-circle text-thuBlue mr-2"></i>
-                        如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。
-                    </p>
+                    <p class="text-gray-700 font-medium text-base"><i class="fas fa-info-circle text-thuBlue mr-2"></i>如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。</p>
                 </div>
-
-                <!-- 1. 單位公務信箱 -->
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition-colors flex flex-col md:flex-row items-center justify-between gap-5 mb-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-full bg-green-50 text-green-600 flex items-center justify-center font-bold text-2xl shrink-0">
-                            <i class="fas fa-building"></i>
-                        </div>
-                        <div class="text-center md:text-left">
-                            <h4 class="text-xl font-bold text-gray-800">單位公務信箱</h4>
-                            <span class="text-sm bg-green-100 text-green-800 px-2.5 py-1 rounded-md mt-1 inline-block">實習與學生成就中心</span>
-                        </div>
-                    </div>
-                    
-                    <div class="flex flex-col md:items-end text-center md:text-right">
-                        <div class="flex items-center gap-2 mb-1 justify-center md:justify-end">
-                            <i class="fas fa-envelope text-gray-400 text-lg"></i>
-                            <a href="mailto:isac@thu.edu.tw" class="text-thuBlue font-bold text-xl hover:underline">isac@thu.edu.tw</a>
-                        </div>
-                        <p class="text-sm text-gray-500">※ 若您無法聯繫上個別承辦人，或有一般性業務問題，請寄送至此信箱。</p>
-                    </div>
-                </div>
-
-                <!-- 人員卡片區塊 (Grid 1 row, 3 columns) -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-                    
-                    <!-- 2. 主任：郭獻文 -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-purple-500 transition-colors flex flex-col h-full">
-                        <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
-                            <div class="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xl shrink-0">
-                                郭
-                            </div>
-                            <div class="min-w-0">
-                                <h4 class="text-lg font-bold text-gray-800 truncate">郭獻文</h4>
-                                <span class="text-sm bg-purple-100 text-purple-800 px-2 py-0.5 rounded mt-1 inline-block">主任</span>
-                            </div>
-                        </div>
-                        
-                        <div class="space-y-2 text-sm text-gray-600 flex-grow">
-                            <div class="flex items-start gap-2">
-                                <i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
-                                <div>
-                                    <p class="font-medium text-gray-700 mb-0.5">負責業務：</p>
-                                    <ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">
-                                        <li>綜理推動實習中心業務</li>
-                                        <li>督導單位業務推動進度</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-phone-alt text-gray-400 w-3"></i>
-                                <a href="tel:0423590121,22520" class="text-thuBlue font-medium hover:underline">#22520 / #33635</a>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-envelope text-gray-400 w-3"></i>
-                                <a href="mailto:hwkuo@thu.edu.tw" class="text-thuBlue font-medium hover:underline truncate">hwkuo@thu.edu.tw</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 3. 副主任：陳梅鄉 -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-orange-500 transition-colors flex flex-col h-full">
-                        <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
-                            <div class="w-12 h-12 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-xl shrink-0">
-                                陳
-                            </div>
-                            <div class="min-w-0">
-                                <h4 class="text-lg font-bold text-gray-800 truncate">陳梅鄉</h4>
-                                <span class="text-sm bg-orange-100 text-orange-800 px-2 py-0.5 rounded mt-1 inline-block">副主任</span>
-                            </div>
-                        </div>
-                        
-                        <div class="space-y-2 text-sm text-gray-600 flex-grow">
-                            <div class="flex items-start gap-2">
-                                <i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
-                                <div>
-                                    <p class="font-medium text-gray-700 mb-0.5">負責業務：</p>
-                                    <ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">
-                                        <li>實習中心窗口</li>
-                                        <li>跨院系實習</li>
-                                        <li>職涯輔導業務</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-phone-alt text-gray-400 w-3"></i>
-                                <a href="tel:0423590121,22523" class="text-thuBlue font-medium hover:underline">04-23590121 #22523</a>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-envelope text-gray-400 w-3"></i>
-                                <a href="mailto:kellygf@thu.edu.tw" class="text-thuBlue font-medium hover:underline truncate">kellygf@thu.edu.tw</a>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- 4. 承辦人：陳宣云 -->
-                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-blue-500 transition-colors flex flex-col h-full">
-                        <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
-                            <div class="w-12 h-12 rounded-full bg-blue-50 text-thuBlue flex items-center justify-center font-bold text-xl shrink-0">
-                                陳
-                            </div>
-                            <div class="min-w-0">
-                                <h4 class="text-lg font-bold text-gray-800 truncate">陳宣云</h4>
-                                <span class="text-sm bg-gray-100 text-gray-600 px-2 py-0.5 rounded mt-1 inline-block">承辦人</span>
-                            </div>
-                        </div>
-                        
-                        <div class="space-y-2 text-sm text-gray-600 flex-grow">
-                            <div class="flex items-start gap-2">
-                                <i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
-                                <div>
-                                    <p class="font-medium text-gray-700 mb-0.5">負責業務：</p>
-                                    <ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">
-                                        <li>實習系統平台 (人才網)</li>
-                                        <li>職涯業務、高教深耕</li>
-                                        <li>企業導師業務</li>
-                                    </ul>
-                                </div>
-                            </div>
-                        </div>
-
-                        <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-phone-alt text-gray-400 w-3"></i>
-                                <a href="tel:0423590121,22521" class="text-thuBlue font-medium hover:underline">04-23590121 #22521</a>
-                            </div>
-                            <div class="flex items-center gap-2">
-                                <i class="fas fa-envelope text-gray-400 w-3"></i>
-                                <a href="mailto:hsuanyun@thu.edu.tw" class="text-thuBlue font-medium hover:underline truncate">hsuanyun@thu.edu.tw</a>
-                            </div>
-                        </div>
-                    </div>
-
-                </div>
+                <div id="contacts-container" class="flex flex-col gap-6"></div>
             </div>
-
-            <!-- Modal Footer (固定在底部) -->
-            <!-- 修改：加入 flex-none 確保不被壓縮，並設置圓角與背景 -->
             <div class="flex-none flex justify-end py-5 px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10">
-                <button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">
-                    關閉
-                </button>
+                <button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">關閉</button>
             </div>
         </div>
     </div>
 
-    <!-- JavaScript for Modal -->
     <script>
-        function toggleModal(modalID) {
-            const modal = document.getElementById(modalID);
-            const body = document.querySelector('body');
+        // 讀取與渲染邏輯
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const response = await fetch('./site_data.xlsx');
+                if (!response.ok) throw new Error("無法讀取 site_data.xlsx");
+                const arrayBuffer = await response.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+
+                renderSettings(XLSX.utils.sheet_to_json(workbook.Sheets['Settings']));
+                renderCards(XLSX.utils.sheet_to_json(workbook.Sheets['Cards']));
+                renderContacts(XLSX.utils.sheet_to_json(workbook.Sheets['Contacts']));
+            } catch (error) {
+                console.error("Error:", error);
+                document.getElementById('cards-container').innerHTML = `<div class="col-span-full text-center text-white bg-red-500/50 p-4 rounded">讀取設定檔失敗，請確認 site_data.xlsx 存在。</div>`;
+            }
+        });
+
+        function renderSettings(data) {
+            const settings = {}; data.forEach(row => { settings[row.Key] = row.Value; });
+            const setText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
+            const setHTML = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerHTML = val || ''; };
             
-            modal.classList.toggle('opacity-0');
-            modal.classList.toggle('pointer-events-none');
-            body.classList.toggle('modal-active');
+            document.title = settings['SiteTitle'];
+            setText('nav-title', settings['SiteTitle']);
+            setText('hero-eng-title', settings['SiteEngTitle']);
+            setHTML('hero-subtitle', settings['HeroSubtitle']);
+            setText('footer-copyright', settings['Copyright']);
+            setText('modal-origin-title', settings['OriginTitle']);
+            setHTML('modal-origin-content', settings['OriginContent']);
+
+            const fullTitle = settings['SiteTitle'] || "";
+            if (fullTitle.includes("協作平台")) {
+                setText('hero-title-1', fullTitle.split("協作平台")[0]);
+                setText('hero-title-2', "協作平台");
+            } else { setText('hero-title-1', fullTitle); }
+
+            if (settings['LogoUrl']) {
+                document.querySelectorAll('img[alt="Logo"]').forEach(img => { img.src = settings['LogoUrl']; img.classList.remove('hidden'); });
+            }
         }
 
-        // 監聽 ESC 鍵關閉所有 Modal
-        document.onkeydown = function(evt) {
-            evt = evt || window.event;
-            var isEscape = false;
-            if ("key" in evt) {
-                isEscape = (evt.key === "Escape" || evt.key === "Esc");
-            } else {
-                isEscape = (evt.keyCode === 27);
+        function renderCards(data) {
+            const container = document.getElementById('cards-container'); container.innerHTML = ''; 
+            data.forEach(item => {
+                const isGold = item.Type === 'gold';
+                const borderColor = isGold ? 'border-thuGold' : 'border-thuBlue';
+                const iconBg = isGold ? 'bg-thuGold' : 'bg-thuBlue';
+                const textColor = isGold ? 'text-thuGold' : 'text-thuBlue';
+                const hoverColor = isGold ? 'group-hover:text-thuGold' : 'group-hover:text-thuBlue';
+                const bgClass = isGold ? 'bg-gradient-to-br from-white to-blue-50' : 'bg-white';
+                const badgeHtml = item.Badge ? `<div class="absolute top-0 right-0 ${isGold ? 'bg-thuGold' : 'bg-thuBlue'} text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">${item.Badge}</div>` : '';
+
+                container.innerHTML += `
+                <a href="${item.Link}" ${item.Link && item.Link.startsWith('http') ? 'target="_blank"' : ''} class="group flex flex-col h-full ${bgClass} rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 ${borderColor} relative">
+                    ${badgeHtml}
+                    <div class="p-8 flex-grow">
+                        <div class="w-16 h-16 ${iconBg} text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300"><i class="fas ${item.Icon}"></i></div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-3 ${hoverColor} transition-colors">${item.Title}</h3>
+                        <p class="text-gray-500 leading-relaxed">${item.Description}</p>
+                    </div>
+                    <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                        <span class="text-sm font-medium ${textColor}">${isGold ? '立即使用' : '查看詳情'}</span>
+                        <i class="fas fa-arrow-right ${textColor} opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                    </div>
+                </a>`;
+            });
+        }
+
+        function renderContacts(data) {
+            const container = document.getElementById('contacts-container'); container.innerHTML = '';
+            const office = data.find(d => d.Type === 'office');
+            const staff = data.filter(d => d.Type !== 'office');
+
+            if (office) {
+                container.innerHTML += `
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition-colors flex flex-col md:flex-row items-center justify-between gap-5 mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-full bg-green-50 text-green-600 flex items-center justify-center font-bold text-2xl shrink-0"><i class="fas fa-building"></i></div>
+                        <div class="text-center md:text-left"><h4 class="text-xl font-bold text-gray-800">${office.Name}</h4><span class="text-sm bg-green-100 text-green-800 px-2.5 py-1 rounded-md mt-1 inline-block">${office.Title}</span></div>
+                    </div>
+                    <div class="flex flex-col md:items-end text-center md:text-right">
+                        <div class="flex items-center gap-2 mb-1 justify-center md:justify-end"><i class="fas fa-envelope text-gray-400 text-lg"></i><a href="mailto:${office.Email}" class="text-thuBlue font-bold text-xl hover:underline">${office.Email}</a></div>
+                        <p class="text-sm text-gray-500">${office.Description || ''}</p>
+                    </div>
+                </div>`;
             }
-            if (isEscape && document.body.classList.contains('modal-active')) {
-                // 關閉所有開啟的 modal
-                const activeModals = document.querySelectorAll('.modal:not(.opacity-0)');
-                activeModals.forEach(modal => {
-                    toggleModal(modal.id);
-                });
-            }
-        };
+
+            let staffHtml = '<div class="grid grid-cols-1 md:grid-cols-3 gap-5">';
+            staff.forEach(p => {
+                let c = { text: 'text-thuBlue', bg: 'bg-blue-50', badgeBg: 'bg-gray-100', badgeText: 'text-gray-600', border: 'hover:border-blue-500' };
+                if (p.Title.includes('主任') && !p.Title.includes('副')) c = { text: 'text-purple-600', bg: 'bg-purple-50', badgeBg: 'bg-purple-100', badgeText: 'text-purple-800', border: 'hover:border-purple-500' };
+                if (p.Title.includes('副主任')) c = { text: 'text-orange-600', bg: 'bg-orange-50', badgeBg: 'bg-orange-100', badgeText: 'text-orange-800', border: 'hover:border-orange-500' };
+                staffHtml += `
+                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${c.border} transition-colors flex flex-col h-full">
+                    <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
+                        <div class="w-12 h-12 rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold text-xl shrink-0">${p.Name.charAt(0)}</div>
+                        <div class="min-w-0"><h4 class="text-lg font-bold text-gray-800 truncate">${p.Name}</h4><span class="text-sm ${c.badgeBg} ${c.badgeText} px-2 py-0.5 rounded mt-1 inline-block">${p.Title}</span></div>
+                    </div>
+                    <div class="space-y-2 text-sm text-gray-600 flex-grow">
+                        <div class="flex items-start gap-2"><i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
+                            <div><p class="font-medium text-gray-700 mb-0.5">負責業務：</p><ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">${p.Description ? p.Description.split('\n').map(i => `<li>${i}</li>`).join('') : ''}</ul></div>
+                        </div>
+                    </div>
+                    <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
+                        <div class="flex items-center gap-2"><i class="fas fa-phone-alt text-gray-400 w-3"></i><a href="tel:${p.Phone}" class="text-thuBlue font-medium hover:underline">${p.Phone}</a></div>
+                        <div class="flex items-center gap-2"><i class="fas fa-envelope text-gray-400 w-3"></i><a href="mailto:${p.Email}" class="text-thuBlue font-medium hover:underline truncate">${p.Email}</a></div>
+                    </div>
+                </div>`;
+            });
+            staffHtml += '</div>'; container.innerHTML += staffHtml;
+        }
+
+        function toggleModal(id) {
+            const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active');
+        }
+        document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)&&document.body.classList.contains('modal-active')) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
+        window.addEventListener('scroll', () => { const h=document.getElementById('sticky-header'); if(window.scrollY>200){h.classList.remove('-translate-y-full','opacity-0');h.classList.add('translate-y-0','opacity-100');}else{h.classList.add('-translate-y-full','opacity-0');h.classList.remove('translate-y-0','opacity-100');} });
     </script>
 </body>
 </html>
