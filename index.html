@@ -273,7 +273,8 @@
     </main>
 
     <!-- Footer -->
-    <footer style="background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
+    <!-- 修改：增加 position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; 讓頁尾固定在底部 -->
+    <footer style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
         <div class="container mx-auto px-4">
             <div class="flex flex-col items-center justify-center gap-1">
                 <p class="font-bold text-white tracking-wide text-[10px]">&copy; 2025 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p>
@@ -283,7 +284,8 @@
     </footer>
 
     <!-- Chatbot Style Floating Button (New) -->
-    <div class="fixed bottom-8 right-8 z-40 flex flex-col items-end">
+    <!-- 修改：將 bottom-8 改為 bottom-20，避免被固定頁尾遮擋 -->
+    <div class="fixed bottom-20 right-8 z-40 flex flex-col items-end">
         <!-- Speech Bubble -->
         <div class="bg-white text-gray-800 px-4 py-2 rounded-2xl shadow-lg border border-gray-100 text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
             需要協助嗎？
@@ -349,84 +351,78 @@
     <div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div>
         
-        <!-- 修改：加大視窗寬度至 max-w-6xl -->
-        <div class="modal-container bg-white w-11/12 md:max-w-6xl mx-auto rounded-2xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+        <!-- 修改：
+             1. 寬度改為 max-w-5xl (比之前稍微縮小) 
+             2. 加入 flex flex-col 以支援固定頁尾
+             3. 移除 overflow-y-auto (改到內容區塊) -->
+        <div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
             
-            <!-- Modal Header -->
-            <div class="flex justify-between items-center py-6 px-8 border-b border-gray-200 sticky top-0 bg-white z-10">
+            <!-- Modal Header (固定在頂部) -->
+            <!-- 修改：加入 flex-none 防止壓縮 -->
+            <div class="flex-none flex justify-between items-center py-5 px-8 border-b border-gray-200 bg-white rounded-t-2xl z-10">
                 <div class="flex items-center gap-3">
-                    <!-- 修改：加大圖示與標題 -->
-                    <i class="fas fa-address-book text-thuGold text-3xl"></i>
-                    <p class="text-3xl font-bold text-thuBlue">聯絡資訊</p>
+                    <i class="fas fa-address-book text-thuGold text-2xl"></i>
+                    <p class="text-2xl font-bold text-thuBlue">聯絡資訊</p>
                 </div>
                 <div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')">
-                    <i class="fas fa-times text-gray-500 hover:text-gray-800 text-3xl transition"></i>
+                    <i class="fas fa-times text-gray-500 hover:text-gray-800 text-2xl transition"></i>
                 </div>
             </div>
 
-            <!-- Modal Body -->
-            <div class="px-8 py-10 bg-gray-50">
+            <!-- Modal Body (可捲動區域) -->
+            <!-- 修改：加入 flex-grow overflow-y-auto 讓內容可捲動且填滿空間 -->
+            <div class="flex-grow overflow-y-auto px-8 py-8 bg-gray-50">
                 
-                <!-- 新增提示文字 -->
-                <div class="mb-8 text-center bg-blue-50 border border-blue-100 rounded-xl p-6">
-                    <!-- 修改：加大文字 -->
-                    <p class="text-gray-700 font-medium text-lg">
+                <!-- 提示文字 -->
+                <div class="mb-6 text-center bg-blue-50 border border-blue-100 rounded-xl p-5">
+                    <p class="text-gray-700 font-medium text-base">
                         <i class="fas fa-info-circle text-thuBlue mr-2"></i>
                         如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。
                     </p>
                 </div>
 
-                <!-- 1. 單位公務信箱 (Moved to Top, Full Width, Compact Height) -->
-                <!-- 修改：加大內距、圓角 -->
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-200 hover:border-green-500 transition-colors flex flex-col md:flex-row items-center justify-between gap-6 mb-8">
-                    <div class="flex items-center gap-5">
-                        <!-- 修改：加大頭像尺寸 -->
-                        <div class="w-16 h-16 rounded-full bg-green-50 text-green-600 flex items-center justify-center font-bold text-3xl shrink-0">
+                <!-- 1. 單位公務信箱 -->
+                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition-colors flex flex-col md:flex-row items-center justify-between gap-5 mb-6">
+                    <div class="flex items-center gap-4">
+                        <div class="w-14 h-14 rounded-full bg-green-50 text-green-600 flex items-center justify-center font-bold text-2xl shrink-0">
                             <i class="fas fa-building"></i>
                         </div>
                         <div class="text-center md:text-left">
-                            <!-- 修改：加大標題與副標題 -->
-                            <h4 class="text-2xl font-bold text-gray-800">單位公務信箱</h4>
-                            <span class="text-sm bg-green-100 text-green-800 px-3 py-1 rounded-md mt-1.5 inline-block">實習與學生成就中心</span>
+                            <h4 class="text-xl font-bold text-gray-800">單位公務信箱</h4>
+                            <span class="text-sm bg-green-100 text-green-800 px-2.5 py-1 rounded-md mt-1 inline-block">實習與學生成就中心</span>
                         </div>
                     </div>
                     
                     <div class="flex flex-col md:items-end text-center md:text-right">
-                        <div class="flex items-center gap-3 mb-1 justify-center md:justify-end">
-                            <i class="fas fa-envelope text-gray-400 text-xl"></i>
-                            <!-- 修改：加大 Email 字體 -->
-                            <a href="mailto:isac@thu.edu.tw" class="text-thuBlue font-bold text-2xl hover:underline">isac@thu.edu.tw</a>
+                        <div class="flex items-center gap-2 mb-1 justify-center md:justify-end">
+                            <i class="fas fa-envelope text-gray-400 text-lg"></i>
+                            <a href="mailto:isac@thu.edu.tw" class="text-thuBlue font-bold text-xl hover:underline">isac@thu.edu.tw</a>
                         </div>
-                        <!-- 修改：加大備註文字 -->
                         <p class="text-sm text-gray-500">※ 若您無法聯繫上個別承辦人，或有一般性業務問題，請寄送至此信箱。</p>
                     </div>
                 </div>
 
                 <!-- 人員卡片區塊 (Grid 1 row, 3 columns) -->
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
                     
                     <!-- 2. 主任：郭獻文 -->
-                    <!-- 修改：加大內距 p-8 -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:border-purple-500 transition-colors flex flex-col h-full">
-                        <div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-                            <!-- 修改：加大頭像 -->
-                            <div class="w-14 h-14 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-2xl shrink-0">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-purple-500 transition-colors flex flex-col h-full">
+                        <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
+                            <div class="w-12 h-12 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center font-bold text-xl shrink-0">
                                 郭
                             </div>
                             <div class="min-w-0">
-                                <!-- 修改：加大姓名與職稱 -->
-                                <h4 class="text-xl font-bold text-gray-800 truncate">郭獻文</h4>
-                                <span class="text-sm bg-purple-100 text-purple-800 px-2.5 py-1 rounded mt-1 inline-block">主任</span>
+                                <h4 class="text-lg font-bold text-gray-800 truncate">郭獻文</h4>
+                                <span class="text-sm bg-purple-100 text-purple-800 px-2 py-0.5 rounded mt-1 inline-block">主任</span>
                             </div>
                         </div>
                         
-                        <!-- 修改：加大內文 text-sm -> text-base -->
-                        <div class="space-y-3 text-base text-gray-600 flex-grow">
-                            <div class="flex items-start gap-3">
-                                <i class="fas fa-tasks mt-1 text-thuGold w-4"></i>
+                        <div class="space-y-2 text-sm text-gray-600 flex-grow">
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
                                 <div>
-                                    <p class="font-medium text-gray-700 mb-1">負責業務：</p>
-                                    <ul class="list-disc list-inside text-gray-500 space-y-1 pl-1">
+                                    <p class="font-medium text-gray-700 mb-0.5">負責業務：</p>
+                                    <ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">
                                         <li>綜理推動實習中心業務</li>
                                         <li>督導單位業務推動進度</li>
                                     </ul>
@@ -434,37 +430,36 @@
                             </div>
                         </div>
 
-                        <!-- 修改：加大 Footer 字體與間距 -->
-                        <div class="mt-6 pt-4 border-t border-gray-100 space-y-2 text-base">
-                            <div class="flex items-center gap-3">
-                                <i class="fas fa-phone-alt text-gray-400 w-4"></i>
+                        <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-phone-alt text-gray-400 w-3"></i>
                                 <a href="tel:0423590121,22520" class="text-thuBlue font-medium hover:underline">#22520 / #33635</a>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <i class="fas fa-envelope text-gray-400 w-4"></i>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-envelope text-gray-400 w-3"></i>
                                 <a href="mailto:hwkuo@thu.edu.tw" class="text-thuBlue font-medium hover:underline truncate">hwkuo@thu.edu.tw</a>
                             </div>
                         </div>
                     </div>
 
                     <!-- 3. 副主任：陳梅鄉 -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:border-orange-500 transition-colors flex flex-col h-full">
-                        <div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-                            <div class="w-14 h-14 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-2xl shrink-0">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-orange-500 transition-colors flex flex-col h-full">
+                        <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
+                            <div class="w-12 h-12 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center font-bold text-xl shrink-0">
                                 陳
                             </div>
                             <div class="min-w-0">
-                                <h4 class="text-xl font-bold text-gray-800 truncate">陳梅鄉</h4>
-                                <span class="text-sm bg-orange-100 text-orange-800 px-2.5 py-1 rounded mt-1 inline-block">副主任</span>
+                                <h4 class="text-lg font-bold text-gray-800 truncate">陳梅鄉</h4>
+                                <span class="text-sm bg-orange-100 text-orange-800 px-2 py-0.5 rounded mt-1 inline-block">副主任</span>
                             </div>
                         </div>
                         
-                        <div class="space-y-3 text-base text-gray-600 flex-grow">
-                            <div class="flex items-start gap-3">
-                                <i class="fas fa-tasks mt-1 text-thuGold w-4"></i>
+                        <div class="space-y-2 text-sm text-gray-600 flex-grow">
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
                                 <div>
-                                    <p class="font-medium text-gray-700 mb-1">負責業務：</p>
-                                    <ul class="list-disc list-inside text-gray-500 space-y-1 pl-1">
+                                    <p class="font-medium text-gray-700 mb-0.5">負責業務：</p>
+                                    <ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">
                                         <li>實習中心窗口</li>
                                         <li>跨院系實習</li>
                                         <li>職涯輔導業務</li>
@@ -473,36 +468,36 @@
                             </div>
                         </div>
 
-                        <div class="mt-6 pt-4 border-t border-gray-100 space-y-2 text-base">
-                            <div class="flex items-center gap-3">
-                                <i class="fas fa-phone-alt text-gray-400 w-4"></i>
+                        <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-phone-alt text-gray-400 w-3"></i>
                                 <a href="tel:0423590121,22523" class="text-thuBlue font-medium hover:underline">04-23590121 #22523</a>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <i class="fas fa-envelope text-gray-400 w-4"></i>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-envelope text-gray-400 w-3"></i>
                                 <a href="mailto:kellygf@thu.edu.tw" class="text-thuBlue font-medium hover:underline truncate">kellygf@thu.edu.tw</a>
                             </div>
                         </div>
                     </div>
 
                     <!-- 4. 承辦人：陳宣云 -->
-                    <div class="bg-white p-8 rounded-2xl shadow-sm border border-gray-200 hover:border-blue-500 transition-colors flex flex-col h-full">
-                        <div class="flex items-center gap-4 mb-6 border-b border-gray-100 pb-4">
-                            <div class="w-14 h-14 rounded-full bg-blue-50 text-thuBlue flex items-center justify-center font-bold text-2xl shrink-0">
+                    <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 hover:border-blue-500 transition-colors flex flex-col h-full">
+                        <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
+                            <div class="w-12 h-12 rounded-full bg-blue-50 text-thuBlue flex items-center justify-center font-bold text-xl shrink-0">
                                 陳
                             </div>
                             <div class="min-w-0">
-                                <h4 class="text-xl font-bold text-gray-800 truncate">陳宣云</h4>
-                                <span class="text-sm bg-gray-100 text-gray-600 px-2.5 py-1 rounded mt-1 inline-block">承辦人</span>
+                                <h4 class="text-lg font-bold text-gray-800 truncate">陳宣云</h4>
+                                <span class="text-sm bg-gray-100 text-gray-600 px-2 py-0.5 rounded mt-1 inline-block">承辦人</span>
                             </div>
                         </div>
                         
-                        <div class="space-y-3 text-base text-gray-600 flex-grow">
-                            <div class="flex items-start gap-3">
-                                <i class="fas fa-tasks mt-1 text-thuGold w-4"></i>
+                        <div class="space-y-2 text-sm text-gray-600 flex-grow">
+                            <div class="flex items-start gap-2">
+                                <i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
                                 <div>
-                                    <p class="font-medium text-gray-700 mb-1">負責業務：</p>
-                                    <ul class="list-disc list-inside text-gray-500 space-y-1 pl-1">
+                                    <p class="font-medium text-gray-700 mb-0.5">負責業務：</p>
+                                    <ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">
                                         <li>實習系統平台 (人才網)</li>
                                         <li>職涯業務、高教深耕</li>
                                         <li>企業導師業務</li>
@@ -511,13 +506,13 @@
                             </div>
                         </div>
 
-                        <div class="mt-6 pt-4 border-t border-gray-100 space-y-2 text-base">
-                            <div class="flex items-center gap-3">
-                                <i class="fas fa-phone-alt text-gray-400 w-4"></i>
+                        <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-phone-alt text-gray-400 w-3"></i>
                                 <a href="tel:0423590121,22521" class="text-thuBlue font-medium hover:underline">04-23590121 #22521</a>
                             </div>
-                            <div class="flex items-center gap-3">
-                                <i class="fas fa-envelope text-gray-400 w-4"></i>
+                            <div class="flex items-center gap-2">
+                                <i class="fas fa-envelope text-gray-400 w-3"></i>
                                 <a href="mailto:hsuanyun@thu.edu.tw" class="text-thuBlue font-medium hover:underline truncate">hsuanyun@thu.edu.tw</a>
                             </div>
                         </div>
@@ -526,9 +521,10 @@
                 </div>
             </div>
 
-            <!-- Modal Footer -->
-            <div class="flex justify-end pt-6 pb-8 px-8 bg-white rounded-b-2xl border-t border-gray-100">
-                <button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2.5 px-8 rounded-xl transition duration-300 text-lg">
+            <!-- Modal Footer (固定在底部) -->
+            <!-- 修改：加入 flex-none 確保不被壓縮，並設置圓角與背景 -->
+            <div class="flex-none flex justify-end py-5 px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10">
+                <button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">
                     關閉
                 </button>
             </div>
