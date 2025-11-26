@@ -48,9 +48,59 @@
         ::-webkit-scrollbar-track { background: #f1f1f1; }
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+        /* 載入畫面樣式 */
+        #loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #001a35; /* 深藍色背景 */
+            z-index: 9999;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-direction: column;
+            transition: opacity 0.5s ease-out;
+        }
+
+        .spinner {
+            width: 80px;
+            height: 80px;
+            border: 6px solid #eef6fc; /* 輕量化底色 */
+            border-top-color: #C6A87C; /* 主色 */
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            position: relative;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #loading-percent {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.1rem;
+            font-weight: bold;
+            color: white;
+            font-family: monospace;
+        }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen pb-16">
+    
+    <!-- 載入畫面 -->
+    <div id="loading-overlay">
+        <div class="relative w-20 h-20 mb-4">
+            <div class="spinner"></div>
+            <div id="loading-percent">0%</div>
+        </div>
+        <div class="text-white font-medium text-lg">載入中...</div>
+    </div>
 
     <!-- Sticky Header -->
     <nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
@@ -115,7 +165,7 @@
                     </button>
                 </div>
                 <ul id="news-list" class="space-y-3 text-sm text-blue-50">
-                    <li class="text-center py-2"><i class="fas fa-spinner fa-spin"></i> 載入公告中...</li>
+                    <li class="text-center py-2 text-gray-300">讀取公告中...</li>
                 </ul>
             </div>
 
@@ -125,10 +175,7 @@
     <!-- Main Content Area -->
     <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 -mt-20 relative z-20 pb-20 flex-grow">
         <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-            <div class="col-span-full text-center py-10 bg-white rounded-xl shadow-lg">
-                <i class="fas fa-circle-notch fa-spin text-thuBlue text-3xl mb-3"></i>
-                <p class="text-gray-500">正在讀取資料庫...</p>
-            </div>
+             <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
         </div>
     </main>
 
@@ -181,7 +228,7 @@
                     <p class="text-gray-700 font-medium text-base"><i class="fas fa-info-circle text-thuBlue mr-2"></i>如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。</p>
                 </div>
                 <div id="contacts-container" class="flex flex-col gap-6">
-                    <div class="text-center text-gray-400"><i class="fas fa-spinner fa-spin"></i> 載入中...</div>
+                    <div class="text-center text-gray-400">載入中...</div>
                 </div>
             </div>
             <div class="flex-none flex justify-end py-5 px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10">
@@ -267,6 +314,10 @@
         const newsPerPage = 5;
         let siteNews = []; // 全域變數
         let filteredNews = [];
+        let siteContacts = [];
+        
+        let initialLoadStartTime = Date.now();
+        const minLoadingTime = 1000; // 最小載入時間（毫秒）
 
         // 輔助函式
         const setText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
@@ -275,27 +326,83 @@
             const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active');
         };
 
+        // 模擬進度條更新
+        function updateProgress(progress) {
+            const percentElement = document.getElementById('loading-percent');
+            if (percentElement) {
+                percentElement.innerText = `${Math.min(100, progress)}%`;
+            }
+        }
+
+        // 隱藏載入畫面
+        function hideLoadingOverlay() {
+            const elapsedTime = Date.now() - initialLoadStartTime;
+            const delay = Math.max(0, minLoadingTime - elapsedTime);
+
+            updateProgress(100);
+
+            setTimeout(() => {
+                const overlay = document.getElementById('loading-overlay');
+                if (overlay) {
+                    overlay.style.opacity = '0';
+                    setTimeout(() => {
+                        overlay.style.display = 'none';
+                    }, 500); // 等待淡出動畫完成
+                }
+            }, delay);
+        }
+
+
         // 頁面載入初始化
         document.addEventListener('DOMContentLoaded', async function() {
+            
+            // 步驟 1: 模擬開始載入
+            let progress = 0;
+            const interval = setInterval(() => {
+                if (progress < 90) {
+                    progress += 5; // 模擬較快的開始進度
+                }
+                updateProgress(progress);
+            }, 100);
+
+
             try {
-                // 讀取 JSON 資料 (加入 timestamp 避免快取)
+                // 步驟 2: 讀取 JSON 資料
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
                 if (!response.ok) throw new Error("無法讀取資料庫");
                 const data = await response.json();
 
-                // 排序新聞 (降序)
+                // 停止模擬進度
+                clearInterval(interval);
+                updateProgress(90);
+
+                // 步驟 3: 處理資料
+                const settings = data.settings;
+                const cards = data.cards;
+                siteContacts = data.contacts;
                 siteNews = data.news || [];
+                
+                // 排序新聞 (降序)
                 siteNews.sort((a, b) => new Date(b.Date) - new Date(a.Date));
 
-                // 渲染
-                renderSettings(data.settings);
-                renderCards(data.cards);
-                renderContacts(data.contacts);
+                // 步驟 4: 渲染內容
+                renderSettings(settings);
+                renderCards(cards);
+                renderContacts(siteContacts);
                 renderNewsWidget(siteNews);
+
+                // 步驟 5: 完成載入
+                hideLoadingOverlay();
+
 
             } catch (error) {
                 console.error("Error loading data:", error);
-                document.getElementById('cards-container').innerHTML = `<div class="col-span-full text-center text-red-500 p-10">資料載入失敗，請確認 data.json 是否存在。</div>`;
+                clearInterval(interval);
+                updateProgress(100);
+                hideLoadingOverlay();
+
+                document.getElementById('cards-container').innerHTML = `<div class="col-span-full text-center text-red-500 p-10 bg-white rounded-xl shadow-lg">資料載入失敗，請確認 data.json 是否存在。</div>`;
+                document.getElementById('news-container').classList.add('hidden');
             }
         });
 
@@ -356,11 +463,12 @@
             const office = data.find(d => d.Type === 'office');
             const staff = data.filter(d => d.Type !== 'office');
             if (office) {
+                const c = contactColorMap['office'] || contactColorMap['default'];
                 container.innerHTML += `
                 <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition-colors flex flex-col md:flex-row items-center justify-between gap-5 mb-6">
                     <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-full bg-green-50 text-green-600 flex items-center justify-center font-bold text-2xl shrink-0"><i class="fas fa-building"></i></div>
-                        <div class="text-center md:text-left"><h4 class="text-xl font-bold text-gray-800">${office.Name}</h4><span class="text-sm bg-green-100 text-green-800 px-2.5 py-1 rounded-md mt-1 inline-block">${office.Title}</span></div>
+                        <div class="w-14 h-14 rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold text-2xl shrink-0"><i class="fas fa-building"></i></div>
+                        <div class="text-center md:text-left"><h4 class="text-xl font-bold text-gray-800">${office.Name}</h4><span class="text-sm ${c.badge} px-2.5 py-1 rounded-md mt-1 inline-block">${office.Title}</span></div>
                     </div>
                     <div class="flex flex-col md:items-end text-center md:text-right">
                         <div class="flex items-center gap-2 mb-1 justify-center md:justify-end"><i class="fas fa-envelope text-gray-400 text-lg"></i><a href="mailto:${office.Email}" class="text-thuBlue font-bold text-xl hover:underline">${office.Email}</a></div>
