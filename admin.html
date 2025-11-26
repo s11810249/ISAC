@@ -41,13 +41,11 @@
         .drag-handle { cursor: grab; }
         .drag-handle:active { cursor: grabbing; }
         
-        /* 側邊欄按鈕樣式 */
         .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
         .sidebar-btn:hover { background-color: #f3f4f6; color: #002E5D; }
         .sidebar-btn.active { background-color: #002E5D; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
         .sidebar-btn.active i { color: #C6A87C; }
 
-        /* 自定義上傳按鈕樣式 (PDF 紅色) */
         .upload-pdf-btn {
             background-color: #dc2626;
             color: white;
@@ -111,7 +109,8 @@
                     </div>
 
                     <div class="p-6 md:p-8 flex-grow relative pb-24">
-                        <!-- Cards Tab -->
+                        
+                        <!-- Tab: Cards -->
                         <div id="tab-cards" class="tab-content block animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">首頁功能卡片管理</h3><p class="text-sm text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i> 按住卡片上方標題列（握把）即可拖曳。</p></div>
@@ -120,21 +119,15 @@
                             <div id="cards-list-editor" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
                         </div>
 
-                        <!-- Contacts Tab -->
+                        <!-- Tab: Contacts -->
                         <div id="tab-contacts" class="tab-content hidden animate-fade-in-up">
                             <div class="mb-10">
-                                <div class="flex items-center gap-2 mb-4">
-                                    <div class="w-1 h-6 bg-green-500 rounded-full"></div>
-                                    <h3 class="text-lg font-bold text-gray-800">單位基本資料 (固定)</h3>
-                                </div>
+                                <div class="flex items-center gap-2 mb-4"><div class="w-1 h-6 bg-green-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">單位基本資料 (固定)</h3></div>
                                 <div id="office-contact-editor" class="grid grid-cols-1 lg:grid-cols-1 gap-6"></div>
                             </div>
                             <div>
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b border-gray-100 pb-2">
-                                    <div class="flex items-center gap-2">
-                                        <div class="w-1 h-6 bg-blue-500 rounded-full"></div>
-                                        <h3 class="text-lg font-bold text-gray-800">團隊成員管理</h3>
-                                    </div>
+                                    <div class="flex items-center gap-2"><div class="w-1 h-6 bg-blue-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">團隊成員管理</h3></div>
                                     <div class="flex gap-2">
                                         <button onclick="autoSortContacts()" class="bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 hover:text-thuBlue shadow-sm transition"><i class="fas fa-sort-amount-down mr-1.5"></i> 職級排序</button>
                                         <button onclick="addContactItem()" class="bg-thuBlue text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-800 shadow-md transition flex items-center"><i class="fas fa-user-plus mr-1.5"></i> 新增人員</button>
@@ -144,31 +137,33 @@
                             </div>
                         </div>
 
-                        <!-- Tab: Pages (Split Layout) -->
+                        <!-- Tab: Pages (Split View) -->
                         <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
                             <div class="flex flex-col md:flex-row gap-6 h-full">
-                                <!-- Left Sidebar -->
                                 <div class="w-full md:w-64 shrink-0 space-y-1">
                                     <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">選擇編輯頁面</div>
                                     <div id="pages-sidebar" class="space-y-1"></div>
                                     <div class="mt-6 pt-4 border-t border-gray-100">
-                                        <div class="bg-blue-50 p-4 rounded-lg">
-                                            <p class="text-xs text-blue-800 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i> 提示</p>
-                                            <p class="text-xs text-blue-600 leading-relaxed">點擊左側項目切換不同頁面的內容編輯器。</p>
-                                        </div>
+                                        <div class="bg-blue-50 p-4 rounded-lg"><p class="text-xs text-blue-800 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i> 提示</p><p class="text-xs text-blue-600 leading-relaxed">點擊左側項目切換不同頁面的內容編輯器。</p></div>
                                     </div>
                                 </div>
-
-                                <!-- Right Content -->
                                 <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col">
                                     <div class="flex justify-between items-center p-6 border-b border-gray-100">
-                                        <div>
-                                            <h3 id="editor-page-title" class="text-xl font-bold text-thuBlue">載入中...</h3>
-                                            <p id="editor-page-desc" class="text-sm text-gray-500 mt-1">管理本頁面的資料。</p>
+                                        <div><h3 id="editor-page-title" class="text-xl font-bold text-thuBlue">載入中...</h3><p id="editor-page-desc" class="text-sm text-gray-500 mt-1">管理本頁面的資料。</p></div>
+                                        <div class="flex gap-2 items-center">
+                                            <!-- 新增法規排序按鈕 -->
+                                            <button id="reorder-laws-btn" onclick="toggleReorderMode()" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition hidden shadow-sm"><i class="fas fa-sort-numeric-up-alt mr-1"></i> 變更排序</button>
+                                            <button onclick="addPageItem()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2"><i class="fas fa-plus"></i> 新增項目</button>
                                         </div>
-                                        <button onclick="addPageItem()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2">
-                                            <i class="fas fa-plus"></i> 新增項目
-                                        </button>
+                                    </div>
+                                    <div id="reorder-panel" class="bg-gray-100 p-4 border-b border-gray-200 hidden">
+                                        <label class="block text-xs font-bold text-gray-600 mb-2">輸入新的項目順序 (以逗號分隔，例如: 3,1,2,4)</label>
+                                        <input type="text" id="reorder-input" class="w-full p-2 border border-gray-300 rounded-lg text-sm font-mono focus:ring-thuBlue outline-none" placeholder="例如: 3,1,2,4">
+                                        <div id="reorder-preview" class="text-xs text-gray-500 mt-2"></div>
+                                        <div class="mt-3 flex justify-end gap-2">
+                                            <button onclick="applyNewOrder()" class="bg-green-600 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-green-700">套用排序</button>
+                                            <button onclick="toggleReorderMode()" class="bg-gray-500 text-white px-3 py-1.5 rounded-lg text-sm hover:bg-gray-600">取消</button>
+                                        </div>
                                     </div>
                                     <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[800px]"></div>
                                 </div>
@@ -190,10 +185,7 @@
                                 <div><h3 class="text-lg font-bold text-gray-800">基本資訊設定</h3><p class="text-sm text-gray-500 mt-1">此處可以修改網站標題與Logo。版權年份會自動更新。</p></div>
                             </div>
                             <div class="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg shadow-sm">
-                                <div class="flex items-start">
-                                    <div class="flex-shrink-0"><i class="fas fa-shield-alt text-orange-500 text-lg mt-0.5"></i></div>
-                                    <div class="ml-3"><h3 class="text-sm font-bold text-orange-800">資安重要提醒</h3><p class="text-sm text-orange-700 mt-1 leading-relaxed">由於本網站架構為公開靜態網站，資料皆為<strong>公開可讀取</strong>。請<strong>切勿</strong>在此輸入個資、身分證號或內部機密。</p></div>
-                                </div>
+                                <div class="flex items-start"><div class="flex-shrink-0"><i class="fas fa-shield-alt text-orange-500 text-lg mt-0.5"></i></div><div class="ml-3"><h3 class="text-sm font-bold text-orange-800">資安重要提醒</h3><p class="text-sm text-orange-700 mt-1 leading-relaxed">由於本網站架構為公開靜態網站，資料皆為<strong>公開可讀取</strong>。請<strong>切勿</strong>在此輸入個資、身分證號或內部機密。</p></div></div>
                             </div>
                             <div id="settings-form" class="grid grid-cols-1 gap-6 max-w-4xl"></div>
                         </div>
@@ -235,7 +227,7 @@
         };
 
         const defaultPagesData = {
-            "laws": { title: "實習相關法規", items: [{ title: "教育部實習辦法", title_en: "Ministry of Education Regulations", category: "edu", date: "2024-01-01", url: "#" }] },
+            "laws": { title: "實習相關法規", items: [{ title: "教育部實習辦法", title_en: "Ministry of Education Regulations", category: "edu", date: "2024-01-01", issuer: "教育部", url: "#" }] },
             "downloads": { title: "實習表單下載", items: [{ title: "家長同意書範本", category: "表單", url: "#" }] },
             "insurance": { title: "實習保險專區", items: [] },
             "courses": { title: "實習前哨站課程", items: [] },
@@ -264,8 +256,6 @@
             if (input.type === 'password') { input.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); } 
             else { input.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
         }
-
-        // --- Core Data Functions ---
 
         async function loadData() {
             const owner = document.getElementById('gh-owner').value.trim();
@@ -301,7 +291,7 @@
 
                 document.getElementById('current-repo-label').innerText = `${owner}/${repo}`;
                 
-                renderEditors(); // Function called here
+                renderEditors(); 
                 
                 const loginScreen = document.getElementById('login-screen');
                 loginScreen.classList.add('animate-fade-out');
@@ -367,6 +357,7 @@
             for (let i = 0; i < items.length; i++) {
                 const item = items[i];
                 if (!item.title || !item.title.trim()) { alert(`第 ${i + 1} 項法規：請輸入「中文法規名稱」`); return false; }
+                if (!item.issuer || !item.issuer.trim()) { alert(`第 ${i + 1} 項法規：請輸入「發布單位」`); return false; } 
                 if (!item.date || !item.date.trim()) { alert(`第 ${i + 1} 項法規：請輸入「最新修正日期」`); return false; }
                 if (!item.category || item.category === "") { alert(`第 ${i + 1} 項法規：請選擇「法規分類」`); return false; }
                 const hasZh = item.url_zh && item.url_zh.trim() !== "";
@@ -447,13 +438,14 @@
                     };
                     if (activePageId === 'laws') {
                         item.title_en = div.querySelector('.p-title-en').value;
+                        item.issuer = div.querySelector('.p-issuer').value;
                         item.date = div.querySelector('.p-date').value;
                         item.category = div.querySelector('.p-cat-select').value;
                         item.url_zh = div.querySelector('.p-url-zh').value; 
                         item.url_en = div.querySelector('.p-url-en').value; 
                         delete item.url;
                     } else {
-                        item.category = div.querySelector('.p-category').value;
+                        item.category = div.querySelector('.p-category') ? div.querySelector('.p-category').value : '';
                     }
                     items.push(item);
                 });
@@ -461,7 +453,9 @@
             }
         }
 
-        // --- Render Functions ---
+        // ===================================
+        // TOP-LEVEL RENDER FUNCTIONS (RESTORED)
+        // ===================================
 
         function renderEditors() {
             const settingsContainer = document.getElementById('settings-form');
@@ -480,6 +474,7 @@
                 }
                 settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:border-blue-200 transition duration-300"><label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">${config.label}</label>${inputHtml}<p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle"></i> ${config.help}</p></div>`;
             }
+            // Ensure all initial renders are called here
             renderCardsList();
             renderContactsList();
             renderNewsList();
@@ -499,6 +494,7 @@
             
             collectDataFromEditors();
             if(tabId === 'raw') document.getElementById('raw-json').value = JSON.stringify(currentData, null, 4);
+            // Re-render current active tab content to ensure visual sync
             if(tabId === 'cards') renderCardsList(); 
             if(tabId === 'contacts') renderContactsList();
             if(tabId === 'pages') renderPageEditor(); 
@@ -510,11 +506,254 @@
             renderPageEditor();
         }
 
+        function toggleReorderMode() {
+            const panel = document.getElementById('reorder-panel');
+            const isVisible = panel.classList.contains('hidden');
+            if (isVisible) {
+                // Prepare the list
+                const items = currentData.pages[activePageId].items;
+                const currentOrder = items.map((_, index) => index + 1).join(', ');
+                document.getElementById('reorder-input').value = currentOrder;
+                updateReorderPreview(currentOrder);
+                panel.classList.remove('hidden');
+            } else {
+                panel.classList.add('hidden');
+            }
+        }
+
+        function updateReorderPreview(input) {
+            const items = currentData.pages[activePageId].items;
+            const indices = input.split(',').map(s => parseInt(s.trim()));
+            const preview = document.getElementById('reorder-preview');
+            preview.innerHTML = '';
+            
+            if (indices.some(isNaN) || indices.length !== items.length || new Set(indices).size !== items.length || indices.some(i => i < 1 || i > items.length)) {
+                preview.innerHTML = `<span class="text-red-500 font-bold"><i class="fas fa-exclamation-triangle mr-1"></i> 順序無效! 請輸入 ${items.length} 個不重複的數字 (1-${items.length})。</span>`;
+                return;
+            }
+
+            const newTitles = indices.map(i => {
+                const originalIndex = i - 1;
+                return items[originalIndex] ? `<span class="font-bold">${i}.</span> ${items[originalIndex].title}` : '';
+            }).filter(Boolean);
+
+            preview.innerHTML = `<div class="font-medium text-gray-700">預覽新順序:</div><ol class="list-decimal list-inside text-sm mt-1 space-y-0.5">${newTitles.map(t => `<li class="ml-4">${t}</li>`).join('')}</ol>`;
+        }
+
+        function applyNewOrder() {
+            const input = document.getElementById('reorder-input').value;
+            const items = currentData.pages[activePageId].items;
+            const indices = input.split(',').map(s => parseInt(s.trim()));
+
+            if (indices.some(isNaN) || indices.length !== items.length || new Set(indices).size !== items.length || indices.some(i => i < 1 || i > items.length)) {
+                alert("順序無效，請檢查您的輸入是否包含所有項目且沒有重複。");
+                return;
+            }
+
+            const newItems = new Array(items.length);
+            for (let i = 0; i < items.length; i++) {
+                const newIndex = indices[i] - 1;
+                newItems[i] = items[newIndex];
+            }
+
+            currentData.pages[activePageId].items = newItems;
+            renderPageEditor();
+            toggleReorderMode();
+            alert("新順序已套用，請記得儲存並發布！");
+        }
+
+        document.getElementById('reorder-panel').querySelector('#reorder-input').addEventListener('input', (e) => {
+            updateReorderPreview(e.target.value);
+        });
+
+        // Other functions (renderCardsList, renderContactsList, etc.) remain the same.
+        // The structure of the following functions is kept for completeness and dependency resolution.
+
+        function renderCardsList() {
+            const container = document.getElementById('cards-list-editor');
+            container.innerHTML = '';
+            if (!currentData.cards) currentData.cards = [];
+            
+            const colorMap = { 'thu': '預設藍 (THU)', 'gold': '榮耀金 (Gold)', 'blue': '標準藍 (Blue)', 'teal': '青綠色 (Teal)', 'indigo': '靛青色 (Indigo)', 'rose': '玫瑰紅 (Rose)', 'orange': '活力橘 (Orange)', 'purple': '優雅紫 (Purple)' };
+
+            currentData.cards.forEach((card, index) => {
+                let colorOptions = '';
+                for (const [value, label] of Object.entries(colorMap)) {
+                    colorOptions += `<option value="${value}" ${card.Type === value ? 'selected' : ''}>${label}</option>`;
+                }
+                
+                container.innerHTML += `
+                <div class="card-item bg-white rounded-xl shadow-sm border border-gray-200 p-5 relative group hover:shadow-md transition-all duration-300" data-index="${index}">
+                    <div class="drag-handle-card flex justify-between items-start mb-4 border-b border-gray-100 pb-3 cursor-move hover:bg-gray-50 -mx-5 -mt-5 px-5 pt-5 rounded-t-xl transition-colors">
+                        <div class="flex items-center gap-2 text-gray-400"><i class="fas fa-grip-vertical text-lg text-thuBlue/50 hover:text-thuBlue"></i><span class="text-xs font-bold uppercase tracking-wider card-index-label">Card #${index + 1}</span></div>
+                        <button onclick="deleteCard(${index})" class="delete-btn text-gray-300 hover:text-red-500 transition p-1 rounded-md hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">標題 (Title)</label><input type="text" class="card-title w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${card.Title || ''}"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">右上角標籤 (Badge)</label><input type="text" class="card-badge w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none placeholder-gray-200" value="${card.Badge || ''}" placeholder="例如: 推薦工具"></div></div>
+                        <div><label class="block text-xs font-bold text-gray-400 mb-1">描述 (Description)</label><textarea class="card-desc w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none h-20 resize-none">${card.Description || ''}</textarea></div>
+                        <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">圖示 (Icon Class)</label><div class="flex items-center gap-2"><div class="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-500"><i class="fas ${card.Icon || 'fa-question'}"></i></div><input type="text" class="card-icon w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-mono text-gray-600" value="${card.Icon || ''}" placeholder="fa-star"></div></div><div><label class="block text-xs font-bold text-gray-400 mb-1">顏色主題 (Type)</label><select class="card-type w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none bg-white">${colorOptions}</select></div></div>
+                        <div><label class="block text-xs font-bold text-gray-400 mb-1">連結 (Link)</label><div class="relative"><i class="fas fa-link absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300 text-xs"></i><input type="text" class="card-link w-full pl-8 pr-3 py-2 border border-gray-200 rounded p-2 text-sm text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none" value="${card.Link || ''}"></div></div>
+                    </div>
+                </div>`;
+            });
+            if (sortableCards) sortableCards.destroy();
+            sortableCards = new Sortable(container, { animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', handle: '.drag-handle-card', filter: '.delete-btn', onEnd: function (evt) { updateCardIndices(); collectDataFromEditors(); } });
+        }
+        function updateCardIndices() { document.querySelectorAll('.card-index-label').forEach((label, index) => { label.innerText = `Card #${index + 1}`; }); }
+        function addCardItem() { collectDataFromEditors(); currentData.cards.push({ Title: "新功能卡片", Description: "請輸入功能描述...", Link: "#", Icon: "fa-star", Badge: "", Type: "thu" }); renderCardsList(); }
+        function deleteCard(index) { if(!confirm("確定刪除此卡片？")) return; collectDataFromEditors(); currentData.cards.splice(index, 1); renderCardsList(); updateCardIndices(); }
+        
+        function renderOfficeContact() {
+            const office = currentData.contacts.find(c => c.Type === 'office') || { Name: "單位公務信箱", Title: "實習與學生成就中心", Email: "isac@thu.edu.tw", Description: "公務信箱，請勿刪除", Type: "office" };
+            const container = document.getElementById('office-contact-editor');
+            
+            // Filter out the current office contact from the main array temporarily
+            currentData.contacts = currentData.contacts.filter(c => c.Type !== 'office');
+
+            container.innerHTML = `
+            <div class="office-item bg-white p-5 rounded-xl border border-gray-200 shadow-md">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="block text-xs font-bold text-gray-400 mb-1">單位名稱</label><input type="text" class="contact-name w-full border border-gray-200 rounded p-2 text-sm font-bold focus:ring-2 focus:ring-thuBlue outline-none" value="${office.Name || ''}"></div>
+                    <div><label class="block text-xs font-bold text-gray-400 mb-1">職稱/全名</label><input type="text" class="contact-title w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${office.Title || ''}"></div>
+                </div>
+                <div class="mt-4"><label class="block text-xs font-bold text-gray-400 mb-1">公務信箱</label><input type="text" class="contact-email w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none text-blue-600" value="${office.Email || ''}"></div>
+                <div class="mt-4"><label class="block text-xs font-bold text-gray-400 mb-1">備註/說明</label><textarea class="contact-desc w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none h-16 resize-none" placeholder="請勿輸入電話，此欄位僅供備註">${office.Description || ''}</textarea></div>
+            </div>`;
+
+            // Add the office contact back to the array for save function, but ensure it's at index 0 (will be sorted correctly by the next step)
+            currentData.contacts.unshift(office);
+        }
+
+        function renderContactsList() {
+            const container = document.getElementById('staff-contacts-editor');
+            container.innerHTML = '';
+            
+            renderOfficeContact(); 
+
+            const staff = currentData.contacts.filter(c => c.Type !== 'office');
+            
+            if (!staff) return;
+            
+            staff.forEach((contact, index) => {
+                const colorMap = { 'purple': '主管紫', 'orange': '副主管/專案橘', 'blue': '行政/承辦藍', 'default': '一般職員灰' };
+                let colorOptions = '';
+                for (const [value, label] of Object.entries(colorMap)) {
+                    colorOptions += `<option value="${value}" ${contact.Type === value ? 'selected' : ''}>${label}</option>`;
+                }
+
+                container.innerHTML += `
+                <div class="staff-item bg-white rounded-xl shadow-sm border border-gray-200 p-5 relative group hover:shadow-md transition-all duration-300" data-index="${index}">
+                    <div class="drag-handle-contact flex justify-between items-start mb-4 border-b border-gray-100 pb-3 cursor-move hover:bg-gray-50 -mx-5 -mt-5 px-5 pt-5 rounded-t-xl transition-colors">
+                        <div class="flex items-center gap-2 text-gray-400"><i class="fas fa-grip-vertical text-lg text-thuBlue/50 hover:text-thuBlue"></i><span class="text-xs font-bold uppercase tracking-wider contact-index-label">Staff #${index + 1}</span></div>
+                        <button onclick="deleteContact(${index})" class="delete-btn text-gray-300 hover:text-red-500 transition p-1 rounded-md hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    <div class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">姓名 (Name)</label><input type="text" class="contact-name w-full border border-gray-200 rounded p-2 text-sm font-bold focus:ring-2 focus:ring-thuBlue outline-none" value="${contact.Name || ''}"></div>
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">職稱 (Title)</label><input type="text" class="contact-title w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${contact.Title || ''}"></div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">Email</label><input type="text" class="contact-email w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${contact.Email || ''}"></div>
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">電話/分機</label><input type="text" class="contact-phone w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${contact.Phone || ''}"></div>
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-400 mb-1">負責業務 (Description)</label><textarea class="contact-desc w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none h-24 resize-none placeholder-gray-300" placeholder="一行一項業務">${contact.Description || ''}</textarea></div>
+                        <div><label class="block text-xs font-bold text-gray-400 mb-1">人員類型 (Type)</label><select class="contact-type w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none bg-white cursor-pointer">${colorOptions}</select></div>
+                    </div>
+                </div>`;
+            });
+            if (sortableStaff) sortableStaff.destroy();
+            sortableStaff = new Sortable(container, { animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', handle: '.drag-handle-contact', filter: '.delete-btn', onEnd: function (evt) { updateStaffIndices(); collectDataFromEditors(); } });
+        }
+
+        function updateStaffIndices() { 
+            document.querySelectorAll('.contact-index-label').forEach((label, index) => { label.innerText = `Staff #${index + 1}`; }); 
+        }
+
+        function addContactItem() { 
+            collectDataFromEditors(); 
+            currentData.contacts.push({ Name: "新進人員", Title: "承辦人", Email: "@thu.edu.tw", Phone: "#", Description: "", Type: "default" }); 
+            renderContactsList(); 
+        }
+
+        function deleteContact(index) { 
+            if(!confirm("確定刪除此人員？")) return; 
+            collectDataFromEditors(); 
+            const staff = currentData.contacts.filter(c => c.Type !== 'office');
+            staff.splice(index, 1);
+            
+            const office = currentData.contacts.find(c => c.Type === 'office');
+            currentData.contacts = [];
+            if (office) currentData.contacts.push(office);
+            currentData.contacts.push(...staff);
+
+            renderContactsList(); 
+            updateStaffIndices(); 
+        }
+
+        function autoSortContacts() {
+            if(!confirm("確定要依照職級自動排序嗎？\n順序：單位公務信箱 > 主任 > 副主任 > 其他人員")) return;
+            collectDataFromEditors();
+            const rank = { '公務信箱': 0, '主任': 1, '副主任': 2, '承辦人': 3 };
+            
+            const office = currentData.contacts.find(c => c.Type === 'office');
+            let staff = currentData.contacts.filter(c => c.Type !== 'office');
+
+            staff.sort((a, b) => {
+                const rankA = rank[a.Title] !== undefined ? rank[a.Title] : 99;
+                const rankB = rank[b.Title] !== undefined ? rank[b.Title] : 99;
+                return rankA - rankB;
+            });
+            
+            currentData.contacts = [];
+            if (office) currentData.contacts.push(office);
+            currentData.contacts.push(...staff);
+            
+            renderContactsList();
+        }
+
+        function addPageItem() {
+            collectDataFromEditors();
+            const newItem = { title: "", category: "", url: "" }; // Set defaults to empty string for validation
+            if (activePageId === 'laws') {
+                newItem.title_en = "";
+                newItem.issuer = ""; 
+                newItem.date = "";
+                newItem.category = ""; 
+                newItem.url_zh = "";
+                newItem.url_en = "";
+                delete newItem.url;
+            } else {
+                newItem.category = ""; 
+            }
+            currentData.pages[activePageId].items.push(newItem);
+            renderPageEditor();
+        }
+
+        function deletePageItem(pageId, index) {
+            if(!confirm("確定刪除此項目嗎？")) return; 
+            collectDataFromEditors();
+            currentData.pages[pageId].items.splice(index, 1);
+            renderPageEditor(); 
+        }
+        
+        function movePageItem(pageId, index, direction) {
+            collectDataFromEditors();
+            const items = currentData.pages[pageId].items;
+            const newIndex = index + direction;
+            if (newIndex < 0 || newIndex >= items.length) return;
+
+            const [removed] = items.splice(index, 1);
+            items.splice(newIndex, 0, removed);
+            
+            renderPageEditor();
+        }
+
         function renderPageEditor() {
             const sidebar = document.getElementById('pages-sidebar');
             const container = document.getElementById('page-items-editor');
             const editorTitle = document.getElementById('editor-page-title');
             const editorDesc = document.getElementById('editor-page-desc');
+            const reorderBtn = document.getElementById('reorder-laws-btn');
             
             sidebar.innerHTML = '';
             container.innerHTML = '';
@@ -536,23 +775,37 @@
             const currentPageData = currentData.pages[activePageId];
             editorTitle.innerText = currentPageData.title;
             editorDesc.innerText = activePageId === 'laws' ? "管理本頁面的雙語法規與PDF檔案。" : "管理本頁面的資料列表連結。";
+            
+            // Toggle reorder button visibility (Hidden as we use move buttons)
+            reorderBtn.classList.add('hidden');
+            document.getElementById('reorder-panel').classList.add('hidden');
 
             const isLaws = activePageId === 'laws';
+            const totalItems = currentPageData.items.length;
 
             if (currentPageData.items.length === 0) {
                 container.innerHTML = '<div class="text-center py-20 text-gray-400 flex flex-col items-center gap-3"><i class="far fa-folder-open text-4xl opacity-50"></i><span>目前尚無資料，請點擊右上角「新增項目」</span></div>';
             } else {
                 currentPageData.items.forEach((item, index) => {
                     if (isLaws) {
-                        // Optimized Laws Editor (New Design with Red Buttons)
+                        // Laws Page Editor
+                        const isFirst = index === 0;
+                        const isLast = index === totalItems - 1;
+
                         container.innerHTML += `
                         <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4 group hover:border-thuBlue/50 transition-all page-item" data-index="${index}">
-                            <div class="flex justify-between items-start border-b border-gray-100 pb-3">
-                                <div class="flex items-center gap-2 text-gray-400 cursor-move handle-page hover:text-thuBlue">
-                                    <i class="fas fa-grip-vertical"></i>
-                                    <span class="text-xs font-bold tracking-wider">Item #${index + 1}</span>
+                            <div class="flex justify-between items-center border-b border-gray-100 pb-3">
+                                <div class="flex items-center gap-2 text-gray-700">
+                                    <span class="text-xs font-bold tracking-wider text-thuBlue/50">${index + 1}.</span>
+                                    <span class="text-sm font-bold text-gray-800">${item.title}</span>
                                 </div>
-                                <button onclick="deletePageItem('${activePageId}', ${index})" class="text-gray-300 hover:text-red-500 px-2 transition"><i class="fas fa-trash-alt"></i></button>
+                                <div class="flex gap-2 items-center">
+                                    <div class="flex flex-col gap-0.5">
+                                        <button onclick="movePageItem('${activePageId}', ${index}, -1)" ${isFirst ? 'disabled' : ''} class="text-gray-400 hover:text-thuBlue disabled:opacity-30 disabled:cursor-not-allowed p-1"><i class="fas fa-chevron-up text-xs"></i></button>
+                                        <button onclick="movePageItem('${activePageId}', ${index}, 1)" ${isLast ? 'disabled' : ''} class="text-gray-400 hover:text-thuBlue disabled:opacity-30 disabled:cursor-not-allowed p-1"><i class="fas fa-chevron-down text-xs"></i></button>
+                                    </div>
+                                    <button onclick="deletePageItem('${activePageId}', ${index})" class="text-gray-300 hover:text-red-500 px-2 transition"><i class="fas fa-trash-alt"></i></button>
+                                </div>
                             </div>
 
                             <div class="space-y-4">
@@ -562,7 +815,11 @@
                                     <input type="text" class="p-title-en w-full border border-gray-200 border-t-0 rounded-b-lg p-2.5 text-xs text-gray-500 focus:ring-2 focus:ring-thuBlue outline-none bg-gray-50/50 placeholder-gray-300" placeholder="English Title" value="${item.title_en || ''}">
                                 </div>
 
-                                <div class="grid grid-cols-2 gap-4">
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-xs font-bold text-gray-400 mb-1">發布單位 <span class="text-red-500">*</span></label>
+                                        <input type="text" class="p-issuer w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none" placeholder="例如: 教育部" value="${item.issuer || ''}">
+                                    </div>
                                     <div>
                                         <label class="block text-xs font-bold text-gray-400 mb-1">最新修正日期 <span class="text-red-500">*</span></label>
                                         <input type="text" class="p-date w-full border border-gray-200 rounded-lg p-2 text-sm text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none" placeholder="YYYY-MM-DD" value="${item.date || ''}">
@@ -609,7 +866,7 @@
                             </div>
                         </div>`;
                     } else {
-                        // Generic Layout
+                        // Other Pages Editor (Kept drag handle for non-laws pages)
                         container.innerHTML += `
                         <div class="page-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3 group mb-3" data-index="${index}">
                             <div class="flex items-center gap-3">
@@ -636,146 +893,82 @@
                     }
                 });
                 
-                if (sortablePageItems) sortablePageItems.destroy();
-                sortablePageItems = new Sortable(container, { 
-                    animation: 150, 
-                    handle: '.handle-page', 
-                    ghostClass: 'sortable-ghost',
-                    onEnd: function(){ collectDataFromEditors(); } 
-                });
+                if (!isLaws) {
+                    if (sortablePageItems) sortablePageItems.destroy();
+                    sortablePageItems = new Sortable(container, { 
+                        animation: 150, 
+                        handle: '.handle-page', 
+                        ghostClass: 'sortable-ghost',
+                        onEnd: function(){ collectDataFromEditors(); } 
+                    });
+                }
             }
         }
 
-        function renderCardsList() {
-            const container = document.getElementById('cards-list-editor');
-            container.innerHTML = '';
-            if (!currentData.cards) currentData.cards = [];
-            currentData.cards.forEach((card, index) => {
-                const colorOptions = `<option value="thu" ${card.Type==='thu'?'selected':''}>預設藍 (THU)</option><option value="gold" ${card.Type==='gold'?'selected':''}>榮耀金 (Gold)</option><option value="blue" ${card.Type==='blue'?'selected':''}>標準藍 (Blue)</option><option value="teal" ${card.Type==='teal'?'selected':''}>青綠色 (Teal)</option><option value="indigo" ${card.Type==='indigo'?'selected':''}>靛青色 (Indigo)</option><option value="rose" ${card.Type==='rose'?'selected':''}>玫瑰紅 (Rose)</option><option value="orange" ${card.Type==='orange'?'selected':''}>活力橘 (Orange)</option><option value="purple" ${card.Type==='purple'?'selected':''}>優雅紫 (Purple)</option>`;
-                container.innerHTML += `
-                <div class="card-item bg-white rounded-xl shadow-sm border border-gray-200 p-5 relative group hover:shadow-md transition-all duration-300" data-index="${index}">
-                    <div class="drag-handle-card flex justify-between items-start mb-4 border-b border-gray-100 pb-3 cursor-move hover:bg-gray-50 -mx-5 -mt-5 px-5 pt-5 rounded-t-xl transition-colors">
-                        <div class="flex items-center gap-2 text-gray-400"><i class="fas fa-grip-vertical text-lg text-thuBlue/50 hover:text-thuBlue"></i><span class="text-xs font-bold uppercase tracking-wider card-index-label">Card #${index + 1}</span></div>
-                        <button onclick="deleteCard(${index})" class="delete-btn text-gray-300 hover:text-red-500 transition p-1 rounded-md hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
+        function renderNewsList() {
+            const listContainer = document.getElementById('news-list-editor');
+            listContainer.innerHTML = '';
+            currentData.news.forEach((item, index) => {
+                const isNewChecked = (item.IsNew === true || item.IsNew === 'true') ? 'checked' : '';
+                listContainer.innerHTML += `
+                <div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4 relative group transition hover:shadow-md hover:border-thuBlue/30" data-index="${index}">
+                    <div class="absolute top-4 right-4 flex gap-2 opacity-100 md:opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button onclick="deleteNews(${index})" class="text-gray-300 hover:text-red-500 transition p-2 bg-gray-50 rounded-full hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
                     </div>
-                    <div class="space-y-4">
-                        <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">標題 (Title)</label><input type="text" class="card-title w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" value="${card.Title || ''}"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">右上角標籤 (Badge)</label><input type="text" class="card-badge w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none placeholder-gray-200" value="${card.Badge || ''}" placeholder="例如: 推薦工具"></div></div>
-                        <div><label class="block text-xs font-bold text-gray-400 mb-1">描述 (Description)</label><textarea class="card-desc w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none h-20 resize-none">${card.Description || ''}</textarea></div>
-                        <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">圖示 (Icon Class)</label><div class="flex items-center gap-2"><div class="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-500"><i class="fas ${card.Icon || 'fa-question'}"></i></div><input type="text" class="card-icon w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-mono text-gray-600" value="${card.Icon || ''}" placeholder="fa-star"></div></div><div><label class="block text-xs font-bold text-gray-400 mb-1">顏色主題 (Type)</label><select class="card-type w-full border border-gray-200 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none bg-white">${colorOptions}</select></div></div>
-                        <div><label class="block text-xs font-bold text-gray-400 mb-1">連結 (Link)</label><div class="relative"><i class="fas fa-link absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300 text-xs"></i><input type="text" class="card-link w-full pl-8 pr-3 py-2 border border-gray-200 rounded p-2 text-sm text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none" value="${card.Link || ''}"></div></div>
-                    </div>
-                </div>`;
-            });
-            if (sortableCards) sortableCards.destroy();
-            sortableCards = new Sortable(container, { animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', handle: '.drag-handle-card', filter: '.delete-btn', onEnd: function (evt) { updateCardIndices(); collectDataFromEditors(); } });
-        }
-        function updateCardIndices() { document.querySelectorAll('.card-index-label').forEach((label, index) => { label.innerText = `Card #${index + 1}`; }); }
-        function addCardItem() { collectDataFromEditors(); currentData.cards.push({ Title: "新功能卡片", Description: "請輸入功能描述...", Link: "#", Icon: "fa-star", Badge: "", Type: "thu" }); renderCardsList(); }
-        function deleteCard(index) { if(!confirm("確定刪除此卡片？")) return; collectDataFromEditors(); currentData.cards.splice(index, 1); renderCardsList(); updateCardIndices(); }
-
-        function renderContactsList() {
-            const officeContainer = document.getElementById('office-contact-editor');
-            const staffContainer = document.getElementById('staff-contacts-editor');
-            officeContainer.innerHTML = '';
-            staffContainer.innerHTML = '';
-
-            if (!currentData.contacts) currentData.contacts = [];
-            
-            const officeData = currentData.contacts.find(c => c.Type === 'office') || { Name: "單位公務信箱", Title: "實習與學生成就中心", Email: "isac@thu.edu.tw", Description: "", Type: "office" };
-            const staffData = currentData.contacts.filter(c => c.Type !== 'office');
-
-            officeContainer.innerHTML = `
-                <div class="office-item bg-white p-6 rounded-xl border-l-4 border-green-500 shadow-sm flex flex-col md:flex-row gap-6 items-start">
-                    <div class="flex-grow w-full space-y-4">
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-gray-400 mb-1">單位名稱 (Name)</label><input type="text" class="contact-name w-full border border-gray-200 rounded p-2.5 text-sm font-bold text-gray-800 bg-green-50/30 focus:ring-2 focus:ring-green-500 outline-none" value="${officeData.Name}"></div>
-                            <div><label class="block text-xs font-bold text-gray-400 mb-1">隸屬單位 (Title)</label><input type="text" class="contact-title w-full border border-gray-200 rounded p-2.5 text-sm text-gray-600 bg-gray-50 focus:ring-2 focus:ring-green-500 outline-none" value="${officeData.Title}"></div>
+                    <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-bold text-gray-400 mb-1">日期</label>
+                            <input type="date" class="news-date w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-thuBlue outline-none" value="${item.Date}">
                         </div>
-                        <div><label class="block text-xs font-bold text-gray-400 mb-1">公務信箱 (Email)</label><input type="text" class="contact-email w-full border border-gray-200 rounded p-2.5 text-sm font-mono text-green-700 bg-gray-50 focus:ring-2 focus:ring-green-500 outline-none" value="${officeData.Email}"></div>
-                        <div><label class="block text-xs font-bold text-gray-400 mb-1">備註說明 (Description)</label><textarea class="contact-desc w-full border border-gray-200 rounded p-2.5 text-sm text-gray-600 focus:ring-2 focus:ring-green-500 outline-none h-20 resize-none">${officeData.Description}</textarea></div>
-                    </div>
-                    <div class="flex-shrink-0 flex items-center justify-center w-full md:w-32 h-32 bg-green-50 rounded-lg text-green-600 border border-green-100"><div class="text-center"><i class="fas fa-building text-3xl mb-2"></i><p class="text-xs font-bold">單位代表</p></div></div>
-                </div>`;
-
-            staffData.forEach((contact, index) => {
-                const colorOptions = `
-                    <option value="purple" ${contact.Type==='purple'?'selected':''}>主管/主任 (紫)</option>
-                    <option value="orange" ${contact.Type==='orange'?'selected':''}>副主管/專案 (橘)</option>
-                    <option value="blue" ${contact.Type==='blue'?'selected':''}>行政/承辦 (藍)</option>
-                    <option value="default" ${contact.Type==='default'?'selected':''}>一般職員 (灰)</option>
-                `;
-                staffContainer.innerHTML += `
-                <div class="staff-item bg-white rounded-xl shadow-sm border border-gray-200 p-5 relative group hover:shadow-md transition-all duration-300" data-index="${index}">
-                    <div class="drag-handle-staff flex justify-between items-start mb-4 border-b border-gray-100 pb-3 cursor-move hover:bg-gray-50 -mx-5 -mt-5 px-5 pt-5 rounded-t-xl transition-colors">
-                        <div class="flex items-center gap-2 text-gray-400"><i class="fas fa-grip-vertical text-lg text-thuBlue/50 hover:text-thuBlue"></i><span class="text-xs font-bold uppercase tracking-wider staff-index-label">Staff #${index + 1}</span></div>
-                        <button onclick="deleteStaff(${index})" class="delete-btn text-gray-300 hover:text-red-500 transition p-1 rounded-md hover:bg-red-50"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                    <div class="space-y-4">
-                        <div class="flex items-center gap-3">
-                            <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center text-lg font-bold text-gray-500 border border-gray-200 shrink-0">${contact.Name.charAt(0)}</div>
-                            <div class="flex-grow">
-                                <label class="block text-[10px] font-bold text-gray-400 mb-0.5">姓名</label>
-                                <input type="text" class="contact-name w-full border-b border-gray-200 text-sm font-bold focus:border-thuBlue outline-none pb-0.5" value="${contact.Name}">
+                        <div class="md:col-span-3">
+                            <label class="block text-xs font-bold text-gray-400 mb-1">類型</label>
+                            <div class="relative">
+                                <select class="news-type w-full border border-gray-200 rounded-lg p-2.5 text-sm bg-gray-50 focus:bg-white focus:ring-2 focus:ring-thuBlue outline-none appearance-none">
+                                    <option value="一般公告" ${item.Type === '一般公告' ? 'selected' : ''}>一般公告</option>
+                                    <option value="重要公告" ${item.Type === '重要公告' ? 'selected' : ''}>重要公告</option>
+                                    <option value="活動訊息" ${item.Type === '活動訊息' ? 'selected' : ''}>活動訊息</option>
+                                    <option value="計畫申請" ${item.Type === '計畫申請' ? 'selected' : ''}>計畫申請</option>
+                                    <option value="系統公告" ${item.Type === '系統公告' ? 'selected' : ''}>系統公告</option>
+                                </select>
+                                <i class="fas fa-chevron-down absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 text-xs pointer-events-none"></i>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1">職稱</label><input type="text" class="contact-title w-full border border-gray-200 rounded p-1.5 text-xs focus:ring-1 focus:ring-thuBlue outline-none" value="${contact.Title}"></div>
-                            <div><label class="block text-[10px] font-bold text-gray-400 mb-1">分機</label><input type="text" class="contact-phone w-full border border-gray-200 rounded p-1.5 text-xs focus:ring-1 focus:ring-thuBlue outline-none" value="${contact.Phone}"></div>
+                        <div class="md:col-span-6">
+                            <label class="block text-xs font-bold text-gray-400 mb-1">標題</label>
+                            <input type="text" class="news-title w-full border border-gray-200 rounded-lg p-2.5 text-sm font-bold text-gray-700 focus:ring-2 focus:ring-thuBlue outline-none" value="${item.Title.replace(/"/g, '&quot')}">
                         </div>
-                        <div><label class="block text-[10px] font-bold text-gray-400 mb-1">Email</label><input type="text" class="contact-email w-full border border-gray-200 rounded p-1.5 text-xs focus:ring-1 focus:ring-thuBlue outline-none" value="${contact.Email}"></div>
-                        <div><label class="block text-[10px] font-bold text-gray-400 mb-1">負責業務</label><textarea class="contact-desc w-full border border-gray-200 rounded p-2 text-xs focus:ring-1 focus:ring-thuBlue outline-none h-20 resize-none placeholder-gray-300 leading-relaxed" placeholder="業務項目...">${contact.Description}</textarea></div>
-                        <div><label class="block text-[10px] font-bold text-gray-400 mb-1">標籤顏色</label><select class="contact-type w-full border border-gray-200 rounded p-1.5 text-xs focus:ring-1 focus:ring-thuBlue outline-none bg-white">${colorOptions}</select></div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 mb-1">連結 (Link)</label>
+                            <div class="relative">
+                                <i class="fas fa-link absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-300 text-xs"></i>
+                                <input type="text" class="news-link w-full pl-8 pr-3 py-2.5 border border-gray-200 rounded-lg text-sm text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none" value="${item.Link || ''}" placeholder="https://...">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-400 mb-1">內文簡述 (HTML)</label>
+                            <input type="text" class="news-content w-full border border-gray-200 rounded-lg p-2.5 text-sm text-gray-600 focus:ring-2 focus:ring-thuBlue outline-none" value="${(item.Content || '').replace(/"/g, '&quot;')}" placeholder="<p>...</p>">
+                        </div>
+                    </div>
+                    <div class="flex items-center pt-1">
+                        <label class="flex items-center cursor-pointer select-none group/toggle">
+                            <div class="relative">
+                                <input type="checkbox" class="news-isnew sr-only" ${isNewChecked}>
+                                <div class="w-10 h-6 bg-gray-200 rounded-full shadow-inner transition-colors group-has-[:checked]/toggle:bg-red-400"></div>
+                                <div class="dot absolute left-1 top-1 bg-white w-4 h-4 rounded-full shadow transition-transform group-has-[:checked]/toggle:translate-x-4"></div>
+                            </div>
+                            <span class="ml-2 text-sm text-gray-500 font-medium group-has-[:checked]/toggle:text-red-500">標示為最新 (NEW)</span>
+                        </label>
                     </div>
                 </div>`;
             });
-
-            if (sortableStaff) sortableStaff.destroy();
-            sortableStaff = new Sortable(staffContainer, { animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', handle: '.drag-handle-staff', filter: '.delete-btn', onEnd: function (evt) { updateStaffIndices(); collectDataFromEditors(); } });
-        }
-        function updateStaffIndices() { document.querySelectorAll('.staff-index-label').forEach((label, index) => { label.innerText = `Staff #${index + 1}`; }); }
-        function addContactItem() { collectDataFromEditors(); currentData.contacts.push({ Name: "新進人員", Title: "職稱", Email: "@thu.edu.tw", Phone: "#", Description: "", Type: "default" }); renderContactsList(); }
-        function deleteStaff(index) { if(!confirm("確定刪除此人員？")) return; const staffContainer = document.getElementById('staff-contacts-editor'); staffContainer.removeChild(staffContainer.children[index]); collectDataFromEditors(); renderContactsList(); }
-        function autoSortContacts() {
-            if(!confirm("確定要依照職級自動排序嗎？\n順序：主任 > 副主任 > 其他人員")) return;
-            collectDataFromEditors();
-            const office = currentData.contacts.find(c => c.Type === 'office');
-            let staff = currentData.contacts.filter(c => c.Type !== 'office');
-            const rank = { '主任': 1, '副主任': 2 };
-            staff.sort((a, b) => {
-                const rankA = rank[a.Title] !== undefined ? rank[a.Title] : 99;
-                const rankB = rank[b.Title] !== undefined ? rank[b.Title] : 99;
-                return rankA - rankB;
-            });
-            currentData.contacts = office ? [office, ...staff] : staff;
-            renderContactsList();
         }
 
-        function addPageItem() {
-            collectDataFromEditors();
-            if (!currentData.pages[activePageId].items) currentData.pages[activePageId].items = [];
-            
-            if (activePageId === 'laws') {
-                currentData.pages[activePageId].items.push({ 
-                    title: "", 
-                    title_en: "", 
-                    date: "", 
-                    category: "", 
-                    url_zh: "", 
-                    url_en: "" 
-                });
-            } else {
-                currentData.pages[activePageId].items.push({ title: "", category: "", url: "" });
-            }
-            renderPageEditor();
-        }
+        function addNewsItem() { collectDataFromEditors(); const today = new Date().toISOString().split('T')[0]; currentData.news.unshift({ Date: today, Title: "新公告標題", Type: "一般公告", Link: "", Content: "", IsNew: true }); renderNewsList(); }
+        function deleteNews(index) { if(!confirm("確定刪除此則公告？")) return; collectDataFromEditors(); currentData.news.splice(index, 1); renderNewsList(); }
 
-        function deletePageItem(pageId, index) {
-            collectDataFromEditors();
-            currentData.pages[pageId].items.splice(index, 1);
-            renderPageEditor();
-        }
-
-        function uploadFile(input, targetInputId) {
+        async function uploadFile(input, targetInputId) {
             if (!input.files || !input.files[0]) return;
             const file = input.files[0];
             const owner = document.getElementById('gh-owner').value;
