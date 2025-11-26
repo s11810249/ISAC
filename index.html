@@ -44,9 +44,22 @@
         body.modal-active { overflow-y: hidden !important; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+        
+        /* 預覽模式橫幅動畫 */
+        .preview-banner { animation: slideDown 0.5s ease-out forwards; }
+        @keyframes slideDown { from { transform: translateY(-100%); } to { transform: translateY(0); } }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen pb-16">
+
+    <!-- 隱藏功能：測試模式上傳入口 (Hidden Input) -->
+    <input type="file" id="debug-file-input" accept=".xlsx" class="hidden" />
+
+    <!-- 隱藏功能：預覽模式警告橫幅 -->
+    <div id="preview-banner" class="hidden fixed top-0 left-0 w-full bg-red-600 text-white z-[100] px-4 py-2 text-center shadow-md text-sm font-bold preview-banner">
+        <i class="fas fa-wrench mr-2"></i> 目前為「測試預覽模式」 - 顯示內容來自您上傳的檔案，非網站實際內容。
+        <button onclick="location.reload()" class="ml-4 underline hover:text-red-200">關閉預覽 (重新整理)</button>
+    </div>
 
     <!-- Sticky Header (動態載入) -->
     <nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
@@ -165,22 +178,64 @@
     </div>
 
     <script>
-        // 讀取與渲染邏輯
+        // --- 核心邏輯 ---
+        
+        // 1. 隱藏功能：監聽鍵盤事件開啟測試上傳
+        document.addEventListener('keydown', function(e) {
+            // 快捷鍵：Alt + Shift + P (Preview)
+            if (e.altKey && e.shiftKey && (e.key === 'p' || e.key === 'P')) {
+                e.preventDefault();
+                // 觸發隱藏的檔案輸入框
+                document.getElementById('debug-file-input').click();
+            }
+        });
+
+        // 2. 處理檔案上傳與預覽
+        document.getElementById('debug-file-input').addEventListener('change', async function(e) {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            try {
+                const arrayBuffer = await file.arrayBuffer();
+                const workbook = XLSX.read(arrayBuffer, { type: 'array' });
+                
+                // 使用上傳的檔案重新渲染頁面
+                processWorkbook(workbook);
+                
+                // 顯示預覽模式警告
+                document.getElementById('preview-banner').classList.remove('hidden');
+                document.getElementById('sticky-header').classList.add('top-[36px]'); // 調整 header 位置避開 banner
+                
+                alert("✅ 預覽模式已啟動！\n\n您現在看到的內容來自您剛上傳的 Excel 檔。\n請注意：重新整理網頁後將會恢復原狀。");
+
+            } catch (error) {
+                alert("❌ 檔案讀取失敗！請確認您上傳的是正確的 site_data.xlsx 格式。");
+                console.error(error);
+            }
+            // 清空 input 讓同一檔案可以再次觸發 change
+            e.target.value = '';
+        });
+
+        // 3. 正常載入邏輯
         document.addEventListener('DOMContentLoaded', async function() {
             try {
                 const response = await fetch('./site_data.xlsx');
                 if (!response.ok) throw new Error("無法讀取 site_data.xlsx");
                 const arrayBuffer = await response.arrayBuffer();
                 const workbook = XLSX.read(arrayBuffer, { type: 'array' });
-
-                renderSettings(XLSX.utils.sheet_to_json(workbook.Sheets['Settings']));
-                renderCards(XLSX.utils.sheet_to_json(workbook.Sheets['Cards']));
-                renderContacts(XLSX.utils.sheet_to_json(workbook.Sheets['Contacts']));
+                processWorkbook(workbook);
             } catch (error) {
                 console.error("Error:", error);
                 document.getElementById('cards-container').innerHTML = `<div class="col-span-full text-center text-white bg-red-500/50 p-4 rounded">讀取設定檔失敗，請確認 site_data.xlsx 存在。</div>`;
             }
         });
+
+        // 4. 統一資料處理函式
+        function processWorkbook(workbook) {
+            renderSettings(XLSX.utils.sheet_to_json(workbook.Sheets['Settings']));
+            renderCards(XLSX.utils.sheet_to_json(workbook.Sheets['Cards']));
+            renderContacts(XLSX.utils.sheet_to_json(workbook.Sheets['Contacts']));
+        }
 
         function renderSettings(data) {
             const settings = {}; data.forEach(row => { settings[row.Key] = row.Value; });
@@ -281,7 +336,19 @@
             const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active');
         }
         document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)&&document.body.classList.contains('modal-active')) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
-        window.addEventListener('scroll', () => { const h=document.getElementById('sticky-header'); if(window.scrollY>200){h.classList.remove('-translate-y-full','opacity-0');h.classList.add('translate-y-0','opacity-100');}else{h.classList.add('-translate-y-full','opacity-0');h.classList.remove('translate-y-0','opacity-100');} });
+        window.addEventListener('scroll', () => { 
+            const h=document.getElementById('sticky-header'); 
+            const b=document.getElementById('preview-banner');
+            let offset = 0;
+            if (b && !b.classList.contains('hidden')) offset = b.offsetHeight; // 如果有 banner，header 要往下移
+
+            if(window.scrollY>200){
+                h.classList.remove('-translate-y-full','opacity-0'); h.classList.add('translate-y-0','opacity-100');
+                h.style.top = offset + 'px'; // 調整位置
+            } else {
+                h.classList.add('-translate-y-full','opacity-0'); h.classList.remove('translate-y-0','opacity-100');
+            }
+        });
     </script>
 </body>
 </html>
