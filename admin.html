@@ -63,6 +63,17 @@
         }
         .upload-pdf-btn:hover { background-color: #b91c1c; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
         .upload-pdf-btn:active { transform: translateY(0); }
+        
+        .dept-item {
+            background: #f7f7f7;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px dashed #ccc;
+            margin-top: 8px;
+        }
+        
+        .rotate-180 { transform: rotate(180deg); }
+        .transition-transform { transition: transform 0.3s ease; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
@@ -151,9 +162,9 @@
                                     <div class="flex justify-between items-center p-6 border-b border-gray-100">
                                         <div><h3 id="editor-page-title" class="text-xl font-bold text-thuBlue">載入中...</h3><p id="editor-page-desc" class="text-sm text-gray-500 mt-1">管理本頁面的資料。</p></div>
                                         <div class="flex gap-2 items-center">
-                                            <!-- 新增法規排序按鈕 -->
                                             <button id="reorder-laws-btn" onclick="toggleReorderMode()" class="bg-gray-100 text-gray-600 px-3 py-2 rounded-lg text-sm font-medium hover:bg-gray-200 transition hidden shadow-sm"><i class="fas fa-sort-numeric-up-alt mr-1"></i> 變更排序</button>
-                                            <button onclick="addPageItem()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2"><i class="fas fa-plus"></i> 新增項目</button>
+                                            <button id="page-add-item-btn" onclick="addPageItem()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2"><i class="fas fa-plus"></i> 新增項目</button>
+                                            <button id="faculty-add-item-btn" onclick="addFaculty()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2 hidden"><i class="fas fa-plus"></i> 新增學院</button>
                                         </div>
                                     </div>
                                     <div id="reorder-panel" class="bg-gray-100 p-4 border-b border-gray-200 hidden">
@@ -216,6 +227,8 @@
         let sortablePageItems = null; 
         let sessionToken = ''; 
         let activePageId = 'laws'; 
+        let expandedFaculties = new Set(); 
+        let editingFacultyIndices = new Set(); // NEW: Track editing state for faculties
 
         const settingFieldsMap = {
             'SiteTitle': { label: '網站主標題 (中文)', type: 'text', help: '顯示於瀏覽器分頁標籤與導覽列' },
@@ -234,12 +247,55 @@
             "evaluation": { title: "系所評鑑資料", items: [] }
         };
 
+        const defaultDepartmentsData = [
+            { name: "文學院", icon: "fa-book-open", departments: [
+                { name: "中文系", link: "" }, { name: "外文系", link: "" }, { name: "日文系", link: "" }, 
+                { name: "歷史系", link: "" }, { name: "哲學系", link: "" }, { name: "華語文學程", link: "" }
+            ]},
+            { name: "理學院", icon: "fa-flask", departments: [
+                { name: "理學院", link: "" }, { name: "應物系", link: "" }, { name: "化學系", link: "" }, 
+                { name: "生科系", link: "" }, { name: "應數系", link: "" }
+            ]},
+            { name: "工學院", icon: "fa-cogs", departments: [
+                { name: "工學院", link: "" }, { name: "化材系", link: "" }, { name: "環工系", link: "" }, 
+                { name: "資工系", link: "" }, { name: "工工系", link: "" }, { name: "電機系", link: "" }
+            ]},
+            { name: "管理學院", icon: "fa-chart-line", departments: [
+                { name: "管理學院", link: "" }, { name: "企管系", link: "" }, { name: "國貿系", link: "" }, 
+                { name: "會計系", link: "" }, { name: "統計系", link: "" }, { "name": "財金系", "link": "" }, 
+                { "name": "資管系", "link": "" }, { "name": "國企學程", "link": "" }
+            ]},
+            { name: "社會科學學院", icon: "fa-users", departments: [
+                { name: "社科院", link: "" }, { name: "經濟系", link: "" }, { name: "政治系", link: "" }, 
+                { name: "社會系", link: "" }, { "name": "社工系", "link": "" }, { "name": "行政系", "link": "" }
+            ]},
+            { name: "農業暨健康學院", icon: "fa-leaf", departments: [
+                { name: "農學院", link: "" }, { "name": "畜產系", "link": "" }, { "name": "食科系", "link": "" }, 
+                { "name": "餐旅系", "link": "" }, { "name": "高齡學程", "link": "" }, { "name": "精農學程", "link": "" }
+            ]},
+            { name: "創意設計暨藝術學院", icon: "fa-paint-brush", departments: [
+                { name: "創藝學院", link: "" }, { "name": "美術系", "link": "" }, { "name": "景觀系", "link": "" }, 
+                { "name": "工設系", "link": "" }, { "name": "音樂系", "link": "" }, { "name": "建築系", "link": "" }, 
+                { "name": "表藝學程", "link": "" }
+            ]},
+            { name: "法律學院", icon: "fa-gavel", departments: [
+                { name: "法律系", link: "" }
+            ]},
+            { name: "國際學院", icon: "fa-globe-asia", departments: [
+                { name: "國際學院", link: "" }, { "name": "國經學程", "link": "" }, { "name": "永續學程", "link": "" }, 
+                { "name": "不分系", "link": "" }
+            ]},
+            { name: "跨域創新學院", icon: "fa-brain", departments: [
+                { name: "跨域創新學院", link: "" }
+            ]}
+        ];
+
         const pageDefinitions = [
             { id: 'laws', name: '實習相關法規', icon: 'fa-balance-scale' },
             { id: 'downloads', name: '實習表單下載', icon: 'fa-file-download' },
             { id: 'insurance', name: '實習保險專區', icon: 'fa-shield-alt' },
             { id: 'courses', name: '實習前哨站課程', icon: 'fa-graduation-cap' },
-            { id: 'evaluation', name: '系所評鑑資料', icon: 'fa-chart-line' }
+            { id: 'evaluation', name: '系所評鑑資料', icon: 'fa-chart-line', isDepartmentPage: true }
         ];
 
         document.addEventListener('DOMContentLoaded', () => {
@@ -285,6 +341,11 @@
                 currentData = JSON.parse(decodedContent);
                 
                 if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
+                
+                // 修正：如果 departments 為空，則初始化為預設清單
+                if (!currentData.departments || currentData.departments.length === 0) {
+                    currentData.departments = JSON.parse(JSON.stringify(defaultDepartmentsData));
+                }
 
                 localStorage.setItem('gh_owner', owner);
                 localStorage.setItem('gh_repo', repo);
@@ -317,6 +378,9 @@
             
             if (activePageId === 'laws') {
                 if (!validateLawsItems(currentData.pages['laws'].items)) return;
+            }
+            if (activePageId === 'evaluation') {
+                if (!validateDepartments(currentData.departments)) return;
             }
 
             const owner = localStorage.getItem('gh_owner');
@@ -363,6 +427,36 @@
                 const hasZh = item.url_zh && item.url_zh.trim() !== "";
                 const hasEn = item.url_en && item.url_en.trim() !== "";
                 if (!hasZh && !hasEn) { alert(`第 ${i + 1} 項法規：請至少上傳或輸入一個檔案 (中文版或英文版)`); return false; }
+            }
+            return true;
+        }
+        
+        function validateDepartments(faculties) {
+            if (faculties.length === 0) {
+                alert("學院列表不能為空，請至少新增一個學院。");
+                return false;
+            }
+            for (let i = 0; i < faculties.length; i++) {
+                const faculty = faculties[i];
+                if (!faculty.name || !faculty.name.trim()) {
+                    alert(`第 ${i + 1} 個學院：學院名稱不能為空`);
+                    return false;
+                }
+                if (faculty.departments.length === 0) {
+                    alert(`學院「${faculty.name}」至少需要一個學系/學程。`);
+                    return false;
+                }
+                for (let j = 0; j < faculty.departments.length; j++) {
+                    const dept = faculty.departments[j];
+                    if (!dept.name || !dept.name.trim()) {
+                         alert(`學院「${faculty.name}」的第 ${j + 1} 個學系名稱不能為空`);
+                         return false;
+                    }
+                    if (!dept.link || !dept.link.trim()) {
+                         // alert(`學院「${faculty.name}」的學系「${dept.name}」連結不能為空`);
+                         // return false;
+                    }
+                }
             }
             return true;
         }
@@ -429,7 +523,7 @@
             });
             currentData.contacts = contactItems;
 
-            if (currentData.pages && currentData.pages[activePageId]) {
+            if (currentData.pages && currentData.pages[activePageId] && activePageId !== 'evaluation') {
                 const items = [];
                 document.querySelectorAll('.page-item').forEach(div => {
                     const item = {
@@ -451,6 +545,38 @@
                 });
                 currentData.pages[activePageId].items = items;
             }
+            
+            // Collect Department Data
+            if (activePageId === 'evaluation') {
+                // We don't need to scrape DOM for faculty names/icons if we update them in place using saveFacultyEdit
+                // However, for departments, we might still want to scrape them if they were edited inline?
+                // The new design separates faculty editing (via pencil) and department editing (via inputs).
+                // So we should collect everything.
+                // BUT: If faculty name/icon is in "view mode", the input is hidden.
+                // The hidden inputs are: <input type="hidden" class="faculty-name" ...>
+                // So scraping .faculty-name should work for both modes!
+                
+                const faculties = [];
+                document.querySelectorAll('.faculty-card').forEach(facultyDiv => {
+                    const facultyName = facultyDiv.querySelector('.faculty-name').value;
+                    const facultyIcon = facultyDiv.querySelector('.faculty-icon').value;
+                    const departments = [];
+
+                    facultyDiv.querySelectorAll('.dept-row').forEach(deptDiv => {
+                        departments.push({
+                            name: deptDiv.querySelector('.dept-name').value,
+                            link: deptDiv.querySelector('.dept-link').value
+                        });
+                    });
+
+                    faculties.push({
+                        name: facultyName,
+                        icon: facultyIcon,
+                        departments: departments
+                    });
+                });
+                currentData.departments = faculties;
+            }
         }
 
         // ===================================
@@ -470,7 +596,7 @@
                     const charCountId = `count-${key}`;
                     inputHtml = `<div class="relative"><textarea data-key="${key}" ${limitAttrs} oninput="updateCharCount(this, '${charCountId}')" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm leading-relaxed shadow-sm font-mono text-gray-600">${value}</textarea>${key === 'HeroSubtitle' ? `<div id="${charCountId}" class="text-right text-xs text-gray-400 mt-1">目前字數: ${value.length}/100</div>` : ''}</div>`;
                 } else {
-                    inputHtml = `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm shadow-sm font-medium text-gray-700">`;
+                    inputHtml = `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 rounded p-3 text-sm shadow-sm font-medium text-gray-700 focus:ring-2 focus:ring-thuBlue outline-none transition" />`;
                 }
                 settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm hover:border-blue-200 transition duration-300"><label class="block text-sm font-bold text-gray-700 mb-2 flex items-center gap-2">${config.label}</label>${inputHtml}<p class="text-xs text-gray-400 mt-2"><i class="fas fa-info-circle"></i> ${config.help}</p></div>`;
             }
@@ -713,7 +839,7 @@
 
         function addPageItem() {
             collectDataFromEditors();
-            const newItem = { title: "", category: "", url: "" }; // Set defaults to empty string for validation
+            const newItem = { title: "", category: "", url: "" }; 
             if (activePageId === 'laws') {
                 newItem.title_en = "";
                 newItem.issuer = ""; 
@@ -747,12 +873,239 @@
             
             renderPageEditor();
         }
+        
+        // --- Department Management Helper Functions ---
+        function renderDepartmentList(container) {
+            if (!container) container = document.getElementById('page-items-editor');
+            if (!container) return;
+
+            container.innerHTML = '';
+            
+            if (!currentData.departments) currentData.departments = JSON.parse(JSON.stringify(defaultDepartmentsData));
+            
+            currentData.departments.forEach((faculty, fIndex) => {
+                let deptRows = '';
+                
+                // Check if expanded
+                const isExpanded = expandedFaculties.has(fIndex);
+                const contentClass = isExpanded ? '' : 'hidden';
+                const iconClass = isExpanded ? 'rotate-180' : '';
+                const isEditing = editingFacultyIndices.has(fIndex);
+                
+                // Header Logic for Faculty
+                let facultyHeader = '';
+                if (isEditing) {
+                    facultyHeader = `
+                    <div class="flex items-center gap-4 flex-grow">
+                        <div class="flex flex-col items-center gap-2">
+                             <div class="w-12 h-12 rounded-full bg-gray-200 flex items-center justify-center text-xl shadow-sm">
+                                <i class="fas ${faculty.icon || 'fa-building'}"></i>
+                             </div>
+                             <input type="text" id="edit-ficon-${fIndex}" class="text-xs text-center border border-thuBlue rounded p-1 w-24 text-gray-700 focus:outline-none" value="${faculty.icon}" placeholder="fa-icon">
+                        </div>
+                        <div class="flex-grow">
+                            <label class="block text-xs font-bold text-gray-500 mb-1">學院名稱</label>
+                            <input type="text" id="edit-fname-${fIndex}" class="text-lg font-bold text-gray-800 w-full border-b-2 border-thuBlue outline-none py-1 bg-white" value="${faculty.name}">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button onclick="saveFacultyEdit(${fIndex})" class="text-green-600 hover:text-green-800 p-2 rounded hover:bg-green-50 transition" title="儲存"><i class="fas fa-check text-xl"></i></button>
+                        <button onclick="cancelFacultyEdit(${fIndex})" class="text-gray-400 hover:text-gray-600 p-2 rounded hover:bg-gray-100 transition" title="取消"><i class="fas fa-times text-xl"></i></button>
+                    </div>`;
+                } else {
+                    facultyHeader = `
+                    <div class="flex items-center gap-4 flex-grow">
+                        <div class="flex flex-col items-center gap-2">
+                             <div class="w-12 h-12 rounded-full bg-thuBlue text-white flex items-center justify-center text-xl shadow-sm">
+                                <i class="fas ${faculty.icon || 'fa-building'}"></i>
+                             </div>
+                        </div>
+                        <div class="flex-grow">
+                            <div class="flex items-center gap-2">
+                                <h3 class="text-lg font-bold text-gray-800 faculty-name-display">${faculty.name}</h3>
+                                <button onclick="enableFacultyEdit(${fIndex})" class="text-gray-400 hover:text-thuBlue p-1.5 rounded-full hover:bg-blue-50 transition" title="編輯學院名稱與圖示">
+                                    <i class="fas fa-pen text-sm"></i>
+                                </button>
+                                <button onclick="toggleFacultyGroup(${fIndex})" class="text-gray-400 hover:text-thuBlue transition-transform ml-auto ${iconClass} p-2">
+                                    <i class="fas fa-chevron-down"></i>
+                                </button>
+                            </div>
+                            <!-- Hidden inputs for collector -->
+                            <input type="hidden" class="faculty-name" value="${faculty.name}">
+                            <input type="hidden" class="faculty-icon" value="${faculty.icon}">
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-2 mt-2">
+                        <button onclick="deleteFaculty(${fIndex})" class="text-gray-300 hover:text-red-500 px-2 py-2 rounded hover:bg-red-50 transition" title="刪除整座學院">
+                            <i class="fas fa-trash-alt text-lg"></i>
+                        </button>
+                    </div>`;
+                }
+
+                faculty.departments.forEach((dept, dIndex) => {
+                    deptRows += `
+                    <div class="dept-row grid grid-cols-12 gap-4 items-center py-2 border-b border-gray-50 last:border-0">
+                        <div class="col-span-1 flex justify-center gap-1">
+                             <button type="button" onclick="moveDepartment(${fIndex}, ${dIndex}, -1)" ${dIndex === 0 ? 'disabled' : ''} class="text-gray-400 hover:text-thuBlue disabled:opacity-30 disabled:cursor-not-allowed p-1"><i class="fas fa-chevron-up text-xs"></i></button>
+                             <button type="button" onclick="moveDepartment(${fIndex}, ${dIndex}, 1)" ${dIndex === faculty.departments.length - 1 ? 'disabled' : ''} class="text-gray-400 hover:text-thuBlue disabled:opacity-30 disabled:cursor-not-allowed p-1"><i class="fas fa-chevron-down text-xs"></i></button>
+                        </div>
+                        <div class="col-span-4">
+                            <input type="text" class="dept-name w-full border border-gray-200 rounded p-1.5 text-sm font-medium focus:ring-2 focus:ring-thuBlue outline-none" placeholder="系所名稱 (必填)" value="${dept.name}">
+                        </div>
+                        <div class="col-span-6">
+                            <input type="text" class="dept-link w-full border border-gray-200 rounded p-1.5 text-sm text-blue-600 focus:ring-2 focus:ring-thuBlue outline-none" placeholder="雲端連結 (URL, 必填)" value="${dept.link}">
+                        </div>
+                        <div class="col-span-1 text-center">
+                            <button type="button" onclick="deleteDepartment(${fIndex}, ${dIndex})" class="text-gray-300 hover:text-red-500 transition p-1"><i class="fas fa-trash-alt"></i></button>
+                        </div>
+                    </div>
+                    `;
+                });
+                
+                const deptHeader = `
+                    <div class="grid grid-cols-12 gap-4 mb-2 px-2 text-xs font-bold text-gray-500 border-b border-gray-100 pb-2">
+                        <div class="col-span-1 text-center">排序</div>
+                        <div class="col-span-4">院、系(學程)名稱</div>
+                        <div class="col-span-6">系所Tdrive鏈結</div>
+                        <div class="col-span-1 text-center">刪除</div>
+                    </div>
+                `;
+
+                container.innerHTML += `
+                <div class="faculty-card bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6" data-findex="${fIndex}">
+                    <div class="flex flex-wrap items-start justify-between gap-4 mb-2 pb-2 border-b border-gray-100">
+                        ${facultyHeader}
+                    </div>
+
+                    <div class="${contentClass}" id="dept-group-${fIndex}">
+                        <div class="bg-gray-50/50 rounded-lg p-4 border border-gray-100">
+                            ${deptHeader}
+                            <div class="space-y-1" id="dept-list-${fIndex}">
+                                ${deptRows}
+                            </div>
+                            <div class="mt-4 pt-2 border-t border-gray-200 flex justify-center">
+                                 <button onclick="addDepartment(${fIndex})" class="w-full text-gray-400 hover:text-thuBlue text-sm font-bold py-2 rounded border-2 border-dashed border-gray-200 hover:border-thuBlue/30 hover:bg-blue-50 transition flex items-center justify-center gap-2">
+                                    <i class="fas fa-plus"></i> 新增學系/學程
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                `;
+            });
+        }
+        
+        function enableFacultyEdit(index) {
+            // Before switching mode, save current inputs of department rows to memory to avoid losing them
+            collectDataFromEditors();
+            editingFacultyIndices.add(index);
+            // Force expand when editing
+            expandedFaculties.add(index);
+            renderPageEditor(); 
+        }
+
+        function cancelFacultyEdit(index) {
+            editingFacultyIndices.delete(index);
+            renderPageEditor();
+        }
+
+        function saveFacultyEdit(index) {
+            const nameInput = document.getElementById(`edit-fname-${index}`);
+            const iconInput = document.getElementById(`edit-ficon-${index}`);
+            
+            if(nameInput && iconInput) {
+                // Update memory directly
+                currentData.departments[index].name = nameInput.value;
+                currentData.departments[index].icon = iconInput.value;
+            }
+            
+            editingFacultyIndices.delete(index);
+            // Save department rows state as well
+            collectDataFromEditors(); 
+            renderPageEditor();
+        }
+        
+        function toggleFacultyGroup(index) {
+            // Save current state before re-rendering
+            collectDataFromEditors();
+            if (expandedFaculties.has(index)) {
+                expandedFaculties.delete(index);
+            } else {
+                expandedFaculties.add(index);
+            }
+            renderPageEditor(); 
+        }
+
+        function addFaculty() {
+            collectDataFromEditors();
+            currentData.departments.push({
+                name: "新學院名稱",
+                icon: "fa-building",
+                departments: [{ name: "新學系名稱", link: "" }]
+            });
+            // New faculty starts expanded
+            expandedFaculties.add(currentData.departments.length - 1);
+            // Automatically enter edit mode for new faculty
+            editingFacultyIndices.add(currentData.departments.length - 1);
+            renderPageEditor(); 
+        }
+
+        function deleteFaculty(fIndex) {
+            if (confirm(`確定要刪除「${currentData.departments[fIndex].name}」學院及其所有學系嗎？`)) {
+                collectDataFromEditors();
+                currentData.departments.splice(fIndex, 1);
+                // Fix expanded indices
+                const newExpanded = new Set();
+                expandedFaculties.forEach(idx => {
+                    if (idx < fIndex) newExpanded.add(idx);
+                    if (idx > fIndex) newExpanded.add(idx - 1);
+                });
+                expandedFaculties = newExpanded;
+                // Fix editing indices
+                const newEditing = new Set();
+                editingFacultyIndices.forEach(idx => {
+                    if (idx < fIndex) newEditing.add(idx);
+                    if (idx > fIndex) newEditing.add(idx - 1);
+                });
+                editingFacultyIndices = newEditing;
+                
+                renderPageEditor();
+            }
+        }
+
+        function addDepartment(fIndex) {
+            collectDataFromEditors();
+            currentData.departments[fIndex].departments.push({ name: "新學系", link: "" });
+            renderPageEditor();
+        }
+
+        function deleteDepartment(fIndex, dIndex) {
+            if (confirm(`確定要刪除「${currentData.departments[fIndex].departments[dIndex].name}」學系嗎？`)) {
+                collectDataFromEditors();
+                currentData.departments[fIndex].departments.splice(dIndex, 1);
+                renderPageEditor();
+            }
+        }
+        
+        function moveDepartment(fIndex, dIndex, direction) {
+            collectDataFromEditors();
+            const depts = currentData.departments[fIndex].departments;
+            const newIndex = dIndex + direction;
+
+            if (newIndex >= 0 && newIndex < depts.length) {
+                const [removed] = depts.splice(dIndex, 1);
+                depts.splice(newIndex, 0, removed);
+                renderPageEditor();
+            }
+        }
 
         function renderPageEditor() {
             const sidebar = document.getElementById('pages-sidebar');
             const container = document.getElementById('page-items-editor');
             const editorTitle = document.getElementById('editor-page-title');
             const editorDesc = document.getElementById('editor-page-desc');
+            const pageAddItemBtn = document.getElementById('page-add-item-btn');
+            const facultyAddItemBtn = document.getElementById('faculty-add-item-btn');
             const reorderBtn = document.getElementById('reorder-laws-btn');
             
             sidebar.innerHTML = '';
@@ -774,12 +1127,23 @@
 
             const currentPageData = currentData.pages[activePageId];
             editorTitle.innerText = currentPageData.title;
-            editorDesc.innerText = activePageId === 'laws' ? "管理本頁面的雙語法規與PDF檔案。" : "管理本頁面的資料列表連結。";
             
-            // Toggle reorder button visibility (Hidden as we use move buttons)
+            const isDepartmentPage = activePageId === 'evaluation';
+
+            // 控制新增按鈕的顯示/隱藏
             reorderBtn.classList.add('hidden');
             document.getElementById('reorder-panel').classList.add('hidden');
+            pageAddItemBtn.classList.toggle('hidden', isDepartmentPage);
+            facultyAddItemBtn.classList.toggle('hidden', !isDepartmentPage);
 
+            if (isDepartmentPage) {
+                editorDesc.innerText = "管理各學院及其系所的雲端上傳連結。";
+                renderDepartmentList(container);
+                return;
+            }
+            
+            editorDesc.innerText = activePageId === 'laws' ? "管理本頁面的雙語法規與PDF檔案。" : "管理本頁面的資料列表連結。";
+            
             const isLaws = activePageId === 'laws';
             const totalItems = currentPageData.items.length;
 
@@ -788,7 +1152,6 @@
             } else {
                 currentPageData.items.forEach((item, index) => {
                     if (isLaws) {
-                        // Laws Page Editor
                         const isFirst = index === 0;
                         const isLast = index === totalItems - 1;
 
@@ -866,11 +1229,17 @@
                             </div>
                         </div>`;
                     } else {
-                        // Other Pages Editor (Kept drag handle for non-laws pages)
+                        // Other Pages Editor
+                        const isFirst = index === 0;
+                        const isLast = index === totalItems - 1;
+                        
                         container.innerHTML += `
                         <div class="page-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3 group mb-3" data-index="${index}">
                             <div class="flex items-center gap-3">
-                                <div class="cursor-move text-gray-300 hover:text-thuBlue handle-page"><i class="fas fa-grip-lines"></i></div>
+                                <div class="flex flex-col gap-0.5">
+                                    <button onclick="movePageItem('${activePageId}', ${index}, -1)" ${isFirst ? 'disabled' : ''} class="text-gray-400 hover:text-thuBlue disabled:opacity-30 disabled:cursor-not-allowed p-1"><i class="fas fa-chevron-up text-xs"></i></button>
+                                    <button onclick="movePageItem('${activePageId}', ${index}, 1)" ${isLast ? 'disabled' : ''} class="text-gray-400 hover:text-thuBlue disabled:opacity-30 disabled:cursor-not-allowed p-1"><i class="fas fa-chevron-down text-xs"></i></button>
+                                </div>
                                 <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
                                     <div>
                                         <label class="block text-xs font-bold text-gray-400 mb-1">標題</label>
@@ -892,16 +1261,6 @@
                         </div>`;
                     }
                 });
-                
-                if (!isLaws) {
-                    if (sortablePageItems) sortablePageItems.destroy();
-                    sortablePageItems = new Sortable(container, { 
-                        animation: 150, 
-                        handle: '.handle-page', 
-                        ghostClass: 'sortable-ghost',
-                        onEnd: function(){ collectDataFromEditors(); } 
-                    });
-                }
             }
         }
 
