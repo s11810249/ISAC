@@ -31,8 +31,7 @@
             background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
             position: relative;
             overflow: hidden;
-            /* 修正: 改用 min-h-[100svh] 適應手機瀏覽器，並允許內容撐開 */
-            min-height: 100svh; 
+            min-height: 100vh; /* 確保填滿畫面 */
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -191,70 +190,66 @@
         </div>
 
         <!-- Hero Content (Primary Focus) -->
-        <!-- 修正 1: 使用 px-4 確保左右有邊距，防止內容貼邊或溢出 -->
-        <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center pt-16 pb-24">
+        <!-- 修正 3: 縮小 pt/pb 間距，讓最新消息有更多空間進入視圖 -->
+        <div class="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center pt-16 pb-24">
             
             <!-- 1. Logo (獨立一行, 陰影效果, hover發光) -->
-            <!-- 修正 1: 手機版 Logo 縮小為 h-16 -->
-            <div class="title-group group flex flex-col items-center cursor-pointer animate-fade-in-up w-full">
-                <div class="logo-container mb-6 md:mb-8"> <!-- 修正：減少手機版 Logo 下方間距 -->
-                    <img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-16 md:h-24 w-auto mx-auto">
+            <!-- 修正 3: 縮小 Logo 尺寸 -->
+            <div class="title-group group flex flex-col items-center cursor-pointer animate-fade-in-up">
+                <div class="logo-container mb-8">
+                    <img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-24 w-auto">
                 </div>
                 
                 <!-- 2. 標題 (加入 title-group class, 統一控制 logo 與文字的 hover 效果) -->
-                <!-- 修正 1: 手機版字體進一步縮小 text-xl, 允許換行, break-words -->
-                <div class="text-center mb-4 md:mb-6 w-full" style="animation-delay: 0.2s;">
-                    <h1 class="text-xl sm:text-3xl md:text-5xl font-black tracking-widest leading-tight drop-shadow-xl mb-2 break-words">
-                        <span id="hero-title-1" class="block sm:inline">實習業務</span><span class="text-thuGold block sm:inline" id="hero-title-2">協作平台</span>
+                <!-- 修正 3: 縮小標題尺寸 -->
+                <div class="text-center mb-6" style="animation-delay: 0.2s;">
+                    <h1 class="text-3xl md:text-5xl font-black tracking-widest leading-tight drop-shadow-xl mb-2">
+                        <span id="hero-title-1">實習業務</span><span class="text-thuGold" id="hero-title-2">協作平台</span>
                     </h1>
-                    <p id="hero-eng-title" class="text-xs sm:text-sm md:text-base text-blue-200 tracking-wide font-light opacity-90 break-words">Internship Coordination Platform</p>
+                    <p id="hero-eng-title" class="text-base text-blue-200 tracking-wide font-light opacity-90">Internship Coordination Platform</p>
                 </div>
             </div>
             
             <!-- 3. 標語 -->
-            <!-- 修正 1: 手機版文字縮小 text-sm, 間距縮小 -->
-            <p id="hero-subtitle" class="text-sm sm:text-lg text-blue-100/90 font-light mb-8 md:mb-12 max-w-3xl mx-auto leading-relaxed animate-fade-in-up px-2 w-full break-words" style="animation-delay: 0.4s;">載入中...</p>
+            <p id="hero-subtitle" class="text-lg text-blue-100/90 font-light mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in-up" style="animation-delay: 0.4s;">載入中...</p>
             
             <!-- 4. 操作按鈕 -->
-            <!-- 修正 1: 手機版按鈕全寬 w-full，垂直排列 -->
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-3 md:gap-5 animate-fade-in-up w-full sm:w-auto px-4 sm:px-0" style="animation-delay: 0.6s;">
-                <button onclick="toggleModal('origin-modal')" class="group relative w-full sm:w-auto px-6 py-3 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden text-sm md:text-lg">
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-5 animate-fade-in-up w-full sm:w-auto" style="animation-delay: 0.6s;">
+                <button onclick="toggleModal('origin-modal')" class="group relative px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
                     <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
-                    <span class="relative flex items-center justify-center gap-2"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
+                    <span class="relative flex items-center justify-center gap-2 text-lg"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
                 </button>
-                <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="w-full sm:w-auto px-6 py-3 bg-white/5 hover:bg-white/10 text-white border border-white/20 backdrop-blur-sm font-medium rounded-full transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 hover:border-white/40 text-sm md:text-base">
+                <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white border border-white/20 backdrop-blur-sm font-medium rounded-full transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 hover:border-white/40 w-full sm:w-60">
                     <i class="fa-solid fa-link text-blue-300"></i> 實習中心網頁
                 </a>
             </div>
 
             <!-- 5. 最新消息 -->
-            <!-- 修正 1: 手機版 margin-top 減少, w-full -->
-            <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-4 md:p-5 text-left animate-fade-in-up hidden mt-6 md:mt-10 mx-4" style="animation-delay: 0.8s;">
-                <div class="flex items-center justify-between mb-2 md:mb-3 pb-2 border-b border-white/10">
+            <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-5 text-left animate-fade-in-up hidden mt-8" style="animation-delay: 0.8s;">
+                <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
                     <div class="flex items-center gap-2">
                         <i class="fas fa-bullhorn text-thuGold animate-pulse"></i>
-                        <span class="font-bold text-white text-sm md:text-base tracking-wide">最新公告</span>
+                        <span class="font-bold text-white text-base tracking-wide">最新公告</span>
                     </div>
                     <button id="view-more-news-btn" onclick="openAllNewsModal()" class="hidden text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 border border-white/10">
                         查看所有 <i class="fas fa-chevron-right text-[10px]"></i>
                     </button>
                 </div>
-                <ul id="news-list" class="space-y-2 md:space-y-3 text-xs md:text-sm text-blue-50 overflow-hidden">
+                <ul id="news-list" class="space-y-3 text-sm text-blue-50">
                     <li class="text-center py-2 text-gray-300">讀取公告中...</li>
                 </ul>
             </div>
             
             <!-- 6. 滾動箭頭 -->
-            <!-- 修正 4: 改用相對定位，讓它自然流動在內容下方，避免覆蓋 -->
-            <div id="scroll-arrow-target" class="mt-6 md:mt-10 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" onclick="customScrollToMain()">
+            <!-- 修正 4: 移除 onclick，改用 JavaScript 執行自訂滾動 -->
+            <div id="scroll-arrow-target" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;" onclick="customScrollToMain()">
                 <i class="fas fa-chevron-down text-3xl"></i>
             </div>
         </div>
     </div>
 
     <!-- Main Content Area -->
-    <!-- 移除 -mt-10，改用 JS 修正滾動位置 -->
-    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow bg-gray-100">
+    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow">
         <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
              <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
         </div>
@@ -275,7 +270,6 @@
     <div id="action-stack" class="fixed bottom-8 right-8 z-50 flex flex-col items-end gap-2">
         
         <!-- 滑到最上方的按鈕 -->
-        <!-- 修正 2: 確保按鈕在堆棧中正確顯示/隱藏 -->
         <button id="scroll-to-top" onclick="scrollToTop()" class="w-12 h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center z-50">
             <i class="fas fa-chevron-up text-xl"></i>
         </button>
@@ -410,7 +404,7 @@
         let siteContacts = [];
         
         let initialLoadStartTime = Date.now();
-        const minLoadingTime = 3000; // 修正 4: 最小載入時間設為 3 秒
+        const minLoadingTime = 500; // 修正 4: 最小載入時間（減少以避免過度延遲）
         const maxSimulatedProgress = 90; // 修正 4: 最大模擬進度
 
         // 輔助函式
