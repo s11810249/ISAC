@@ -1,1144 +1,808 @@
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>網站後台管理系統 | 東海大學實習中心</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    colors: {
-                        thuBlue: '#002E5D',
-                        thuLightBlue: '#eef6fc',
-                        thuGold: '#C6A87C',
-                        darkBg: '#0f172a',
-                        btnGreen: '#219653',
-                        btnGreenHover: '#1e874b',
-                        pdfRed: '#dc2626',
-                        pdfRedHover: '#b91c1c'
-                    },
-                    fontFamily: {
-                        sans: ['"Noto Sans TC"', 'sans-serif'],
-                    }
-                }
-            }
-        }
-    </script>
-    <style>
-        .login-bg { background: linear-gradient(135deg, #002E5D 0%, #001a35 100%); position: relative; overflow: hidden; }
-        .login-bg::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; z-index: 1; }
-        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
-        .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
-        .animate-fade-out { animation: fadeOut 0.5s ease-out forwards; }
-        @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
-        .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002E5D; }
-        .drag-handle { cursor: grab; }
-        .drag-handle:active { cursor: grabbing; }
-        
-        .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
-        .sidebar-btn:hover { background-color: #f3f4f6; color: #002E5D; }
-        .sidebar-btn.active { background-color: #002E5D; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-        .sidebar-btn.active i { color: #C6A87C; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>東海大學實習業務協作平台</title>
+<!-- 核心函式庫 -->
+<script src="https://cdn.tailwindcss.com"></script>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
 
-        /* 按鈕風格統一 (美化版 - 加上邊框與顏色) */
-        .btn-primary { 
-            @apply bg-white text-thuBlue border-2 border-thuBlue hover:bg-thuBlue hover:text-white font-bold py-1.5 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide; 
-        }
-        .btn-secondary { 
-            @apply bg-white text-gray-500 border border-gray-300 hover:bg-gray-50 hover:text-gray-700 font-bold py-1.5 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 active:bg-gray-100 text-sm tracking-wide; 
-        }
-        .btn-danger { 
-            @apply bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:text-red-600 font-bold py-1.5 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 active:bg-red-100 text-sm; 
-        }
-        .btn-success { 
-            @apply bg-white text-green-600 border-2 border-green-600 hover:bg-green-600 hover:text-white font-bold py-1.5 px-4 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide; 
-        }
-        /* 確認暫存 (藍色實心強調) */
-        .btn-info {
-            @apply bg-blue-600 text-white border border-blue-700 hover:bg-blue-700 font-bold py-1.5 px-4 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide;
-        }
-        
-        /* Accordion Style */
-        .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
-        .accordion-content.open { max-height: 2000px; opacity: 1; }
-        .accordion-arrow { transition: transform 0.3s ease; }
-        .accordion-arrow.rotate { transform: rotate(180deg); }
+<script>
+tailwind.config = {
+theme: {
+extend: {
+colors: {
+thuBlue: '#002E5D',
+thuLightBlue: '#eef6fc',
+thuGold: '#C6A87C',
+},
+fontFamily: {
+sans: ['"Noto Sans TC"', 'sans-serif'],
+}
+}
+}
+}
+</script>
+<style>
+/* 自定義樣式 */
+.hero-bg {
+background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
+position: relative;
+overflow: hidden;
+min-height: 100vh; /* 確保填滿畫面 */
+display: flex;
+flex-direction: column;
+justify-content: center;
+align-items: center;
+}
+.hero-bg::before {
+content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+background-image: 
+linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
+linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+background-size: 30px 30px; z-index: 1;
+}
+.modal { transition: opacity 0.25s ease; }
+body.modal-active { overflow-y: hidden !important; }
+@keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+.animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
 
-        /* Upload Button */
-        .file-upload-label { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.375rem; background-color: #f3f4f6; color: #6b7280; transition: all 0.2s; border: 1px solid #e5e7eb; }
-        .file-upload-label:hover { background-color: #e5e7eb; color: #002E5D; border-color: #d1d5db; }
-    </style>
+::-webkit-scrollbar { width: 8px; }
+::-webkit-scrollbar-track { background: #f1f1f1; }
+::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #aaa; }
+
+/* 載入畫面樣式 */
+#loading-overlay {
+position: fixed;
+top: 0;
+left: 0;
+width: 100%;
+height: 100%;
+background-color: #001a35; /* 深藍色背景 */
+z-index: 9999;
+display: flex;
+align-items: center;
+justify-content: center;
+flex-direction: column;
+transition: opacity 0.5s ease-out;
+}
+
+.spinner {
+width: 80px;
+height: 80px;
+border: 6px solid #eef6fc; /* 輕量化底色 */
+border-top-color: #C6A87C; /* 主色 */
+border-radius: 50%;
+animation: spin 1s linear infinite;
+position: relative;
+}
+
+@keyframes spin {
+to { transform: rotate(360deg); }
+}
+
+#loading-percent {
+position: absolute;
+top: 50%;
+left: 50%;
+transform: translate(-50%, -50%);
+font-size: 1.1rem;
+font-weight: bold;
+color: white;
+font-family: monospace;
+}
+
+/* 滾動箭頭動畫 */
+@keyframes bounce {
+0%, 20%, 50%, 80%, 100% {
+transform: translateY(0);
+}
+40% {
+transform: translateY(-10px);
+}
+60% {
+transform: translateY(-5px);
+}
+}
+.animate-scroll-down {
+animation: bounce 2s infinite;
+}
+
+/* 1. LOGO獨立陰影與發光效果 (平時的陰影) */
+#hero-logo {
+filter: drop-shadow(0 0 15px rgba(0, 0, 0, 1)) drop-shadow(0 0 3px rgba(255, 255, 255, 0.4)); 
+transition: all 0.3s ease-out;
+}
+
+/* 2. 標題與 LOGO hover 發光效果 */
+.title-group:hover #hero-logo {
+/* hover發光 */
+filter: drop-shadow(0 0 20px #C6A87C) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)); 
+transform: scale(1.05);
+}
+.title-group:hover #hero-title-1,
+.title-group:hover #hero-title-2,
+.title-group:hover #hero-eng-title {
+/* 修正: 降低發光強度，確保文字可讀性 */
+text-shadow: 0 0 4px #fff, 0 0 10px #C6A87C;
+transform: scale(1.02);
+transition: text-shadow 0.3s ease-out, transform 0.3s ease-out;
+}
+
+/* 修正 2: 滾動按鈕的隱藏/顯示 */
+#scroll-to-top.hidden {
+opacity: 0;
+visibility: hidden;
+}
+#scroll-to-top.show {
+opacity: 1;
+visibility: visible;
+}
+
+/* 確保按鈕堆棧在 Footer 之上 */
+#action-stack {
+z-index: 100;
+}
+</style>
 </head>
-<body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
+<!-- 修正：加入 overflow-x-hidden 防止橫向滾動 -->
+<body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen overflow-x-hidden">
 
-    <!-- Hidden File Input for Uploads -->
-    <input type="file" id="global-file-input" class="hidden" onchange="handleFileUpload(this)">
+<!-- 載入畫面 -->
+<div id="loading-overlay">
+<div class="relative w-20 h-20 mb-4">
+<div class="spinner"></div>
+<div id="loading-percent">0%</div>
+</div>
+<!-- 載入文字修正為「載入中...」 -->
+<div class="text-white font-medium text-lg">載入中...</div>
+</div>
 
-    <!-- Modal: Category Delete -->
-    <div id="cat-delete-modal" class="fixed inset-0 z-[150] flex items-center justify-center hidden">
-        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
-        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative z-10 mx-4 animate-fade-in-up">
-            <div class="text-center mb-6">
-                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
-                    <i class="fas fa-exclamation-triangle"></i>
-                </div>
-                <h3 class="text-xl font-bold text-gray-800 mb-2">刪除分類警告</h3>
-                <p class="text-gray-600 text-sm leading-relaxed" id="cat-delete-msg"></p>
-            </div>
-            <div class="flex flex-col gap-3">
-                <button onclick="confirmDeleteCategoryAction('delete_items')" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition shadow">刪除這幾筆資料</button>
-                <button onclick="confirmDeleteCategoryAction('keep_items')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-lg transition border border-gray-300">保留資料 (設為未分類)</button>
-                <button onclick="closeCatDeleteModal()" class="w-full text-gray-400 hover:text-gray-600 font-medium py-2 text-sm mt-2">取消</button>
-            </div>
-        </div>
-    </div>
+<!-- Sticky Header (滾動後出現的頂部導覽列) -->
+<nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
+<div class="w-full max-w-7xl mx-auto flex justify-between items-center">
+<div class="flex items-center gap-3">
+<img id="nav-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-6 sm:h-8 w-auto">
+<div class="text-white leading-none flex flex-col justify-center">
+<!-- 修正 3: 矮頁首標題修正為完整名稱 -->
+<span class="font-bold text-base sm:text-lg tracking-widest" id="nav-title">東海大學實習業務協作平台</span>
+</div>
+</div>
+<!-- 修正：手機版頁首連結加入文字說明，避免只有圖示造成誤會 -->
+<a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 text-white hover:text-thuGold transition-colors text-xs sm:text-sm font-medium whitespace-nowrap">
+<i class="fa-solid fa-house"></i> <span>東海首頁</span>
+</a>
+</div>
+</nav>
 
-    <!-- Login Screen -->
-    <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
-        <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-10 animate-fade-in-up">
-            <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-thuBlue text-white rounded-xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg"><i class="fas fa-tools"></i></div>
-                <h1 class="text-2xl font-bold text-thuBlue tracking-wide">後台管理系統</h1>
-                <p class="text-gray-500 text-sm mt-1">實習業務協作平台 | GitHub CMS</p>
-            </div>
-            <div class="space-y-5">
-                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">GitHub Username</label><input type="text" id="gh-owner" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm"></div>
-                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Repository Name</label><input type="text" id="gh-repo" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm"></div>
-                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Access Token</label><div class="relative"><input type="password" id="gh-token" class="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm"><button onclick="toggleTokenVisibility()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"><i class="fas fa-eye" id="token-eye-icon"></i></button></div><p class="text-[10px] text-red-400 mt-1 ml-1"><i class="fas fa-shield-alt"></i> 安全提示：Token 僅存於記憶體，重新整理後需重輸。</p></div>
-                <div class="pt-2"><button onclick="loadData()" id="load-btn" class="w-full bg-thuBlue hover:bg-blue-800 text-white font-bold py-3.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform active:scale-95 flex justify-center items-center gap-2 group"><span>登入並讀取資料</span><i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i></button><div id="login-msg" class="text-center mt-3 h-5 text-sm font-medium text-red-500"></div></div>
-            </div>
-        </div>
-        <div class="absolute bottom-4 text-white/30 text-xs">Powered by GitHub API | Secure Connection</div>
-    </div>
+<!-- Hero Section (填滿畫面, min-h-screen) -->
+<div class="hero-bg text-white relative">
+<div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
+<!-- 修正：手機板強調「東海大學首頁」，使用金底白字，並顯示完整文字 -->
+<a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-thuGold text-white border border-thuGold rounded-full hover:bg-[#b58f2a] transition-all duration-300 font-bold backdrop-blur-sm shadow-md text-sm sm:text-base hover:shadow-lg hover:-translate-y-0.5">
+<i class="fa-solid fa-house"></i> 東海大學首頁
+</a>
+</div>
 
-    <!-- Dashboard -->
-    <div id="dashboard-ui" class="hidden min-h-screen flex flex-col transition-opacity duration-500 opacity-0">
-        <nav class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-                <div class="flex justify-between h-16">
-                    <div class="flex items-center gap-3"><div class="w-8 h-8 bg-thuBlue text-white rounded flex items-center justify-center text-sm"><i class="fas fa-tools"></i></div><span class="font-bold text-gray-800 text-lg tracking-wide">後台管理系統</span><span class="hidden sm:inline-block px-2 py-0.5 rounded text-xs bg-gray-100 text-gray-500 border border-gray-200" id="current-repo-label">載入中...</span></div>
-                    <div class="flex items-center gap-4"><button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-medium transition flex items-center gap-1 border border-red-100 bg-red-50 px-3 py-1.5 rounded-lg hover:bg-red-100"><i class="fas fa-sign-out-alt"></i> 登出</button></div>
-                </div>
-            </div>
-        </nav>
+<div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
+<div class="absolute -top-20 -right-20 w-96 h-96 bg-thuGold opacity-10 rounded-full blur-3xl"></div>
+<div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
+</div>
 
-        <main class="flex-grow bg-gray-50/50">
-            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px] flex flex-col">
-                    <div class="flex border-b border-gray-200 bg-gray-50/80 overflow-x-auto">
-                        <button onclick="switchTab('cards')" class="tab-btn px-6 py-4 text-sm font-bold text-thuBlue border-b-2 border-thuBlue bg-white focus:outline-none whitespace-nowrap transition-colors" data-tab="cards"><i class="fas fa-th-large mr-2"></i>首頁卡片</button>
-                        <button onclick="switchTab('contacts')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="contacts"><i class="fas fa-address-book mr-2"></i>聯絡資訊</button>
-                        <button onclick="switchTab('pages')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="pages"><i class="fas fa-file-alt mr-2"></i>分頁內容</button>
-                        <button onclick="switchTab('news')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="news"><i class="fas fa-bullhorn mr-2"></i>最新公告</button>
-                        <button onclick="switchTab('settings')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="settings"><i class="fas fa-sliders-h mr-2"></i>網站設定</button>
-                        <button onclick="switchTab('raw')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors ml-auto" data-tab="raw"><i class="fas fa-code mr-2"></i>原始碼</button>
-                    </div>
+<!-- Hero Content (Primary Focus) -->
+<!-- 修正: 加入 w-full 確保容器寬度受控，調整 px 以適應手機 -->
+<div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center pt-16 pb-24">
 
-                    <div class="p-6 md:p-8 flex-grow relative pb-24">
-                        <!-- Tab: Cards -->
-                        <div id="tab-cards" class="tab-content block animate-fade-in-up">
-                            <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
-                                <div><h3 class="text-lg font-bold text-gray-800">首頁功能卡片管理</h3><p class="text-sm text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i> 按住卡片上方標題列（握把）即可拖曳。</p></div>
-                                <button onclick="addCardItem()" class="btn-primary"><i class="fas fa-plus"></i> 新增卡片</button>
-                            </div>
-                            <div id="cards-list-editor" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
-                        </div>
+<!-- 1. Logo (獨立一行, 陰影效果, hover發光) -->
+<!-- 修正: 調整 Logo 尺寸 (h-16 手機, md:h-24 電腦) -->
+<div class="title-group group flex flex-col items-center cursor-pointer animate-fade-in-up">
+<div class="logo-container mb-6 sm:mb-8">
+<img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-16 md:h-24 w-auto">
+</div>
 
-                        <!-- Tab: Contacts -->
-                        <div id="tab-contacts" class="tab-content hidden animate-fade-in-up">
-                            <div class="mb-10">
-                                <div class="flex items-center gap-2 mb-4"><div class="w-1 h-6 bg-green-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">單位基本資料 (固定)</h3></div>
-                                <div id="office-contact-editor" class="grid grid-cols-1 lg:grid-cols-1 gap-6"></div>
-                            </div>
-                            <div>
-                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b border-gray-100 pb-2">
-                                    <div class="flex items-center gap-2"><div class="w-1 h-6 bg-blue-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">團隊成員管理</h3></div>
-                                    <div class="flex gap-2">
-                                        <button onclick="autoSortContacts()" class="btn-secondary"><i class="fas fa-sort-amount-down"></i> 職級排序</button>
-                                        <button onclick="addContactItem()" class="btn-primary"><i class="fas fa-user-plus"></i> 新增人員</button>
-                                    </div>
-                                </div>
-                                <div id="staff-contacts-editor" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 min-h-[100px]"></div>
-                            </div>
-                        </div>
+<!-- 2. 標題 (加入 title-group class, 統一控制 logo 與文字的 hover 效果) -->
+<!-- 修正: 調整標題尺寸 (text-2xl 手機, md:text-5xl 電腦)，減少間距 (tracking-wide 手機) -->
+<div class="text-center mb-6 w-full" style="animation-delay: 0.2s;">
+<h1 class="text-2xl sm:text-3xl md:text-5xl font-black tracking-wide md:tracking-widest leading-tight drop-shadow-xl mb-2 px-2">
+<span id="hero-title-1" class="inline-block">實習業務</span><span class="text-thuGold inline-block" id="hero-title-2">協作平台</span>
+</h1>
+<p id="hero-eng-title" class="text-sm md:text-base text-blue-200 tracking-wide font-light opacity-90 px-4">Internship Coordination Platform</p>
+</div>
+</div>
 
-                        <!-- Tab: Pages (Split View) -->
-                        <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
-                            <div class="flex flex-col md:flex-row gap-6 h-full">
-                                <div class="w-full md:w-64 shrink-0 space-y-1">
-                                    <div class="text-xs font-bold text-gray-400 uppercase tracking-wider mb-2 px-2">選擇編輯頁面</div>
-                                    <div id="pages-sidebar" class="space-y-1"></div>
-                                    <div class="mt-6 pt-4 border-t border-gray-100">
-                                        <div class="bg-blue-50 p-4 rounded-lg"><p class="text-xs text-blue-800 font-medium mb-1"><i class="fas fa-info-circle mr-1"></i> 提示</p><p class="text-xs text-blue-600 leading-relaxed">點擊左側項目切換不同頁面的內容編輯器。</p></div>
-                                    </div>
-                                </div>
-                                <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col">
-                                    
-                                    <!-- 可收折的頁面設定面板 -->
-                                    <div class="border-b border-gray-200 bg-gray-50">
-                                        <div class="p-4 px-6 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition" onclick="togglePageSettings()">
-                                            <h3 class="text-lg font-bold text-thuBlue flex items-center gap-2">
-                                                <span id="current-page-title-display">頁面設定</span>
-                                            </h3>
-                                            <button class="text-gray-500 hover:text-thuBlue transition-colors flex items-center gap-2 bg-white border border-gray-300 px-3 py-1.5 rounded shadow-sm text-sm">
-                                                設定 <i class="fas fa-chevron-down transform transition-transform duration-300" id="page-settings-arrow"></i>
-                                            </button>
-                                        </div>
-                                        
-                                        <div id="page-settings-panel" class="hidden border-t border-gray-200 p-6 bg-white animate-fade-in-up">
-                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <!-- 基本資訊 -->
-                                                <div class="space-y-4">
-                                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b pb-1 mb-2">基本資訊</h4>
-                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">主標題 (Main Title)</label><input type="text" id="page-setting-title" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold text-gray-800"></div>
-                                                    
-                                                    <!-- Icon 編輯欄位 -->
-                                                    <div class="flex items-end gap-2">
-                                                        <div class="flex-grow"><label class="block text-xs font-bold text-gray-500 mb-1">選單圖示 (Icon)</label><input type="text" id="page-setting-icon" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-mono" placeholder="fa-balance-scale"></div>
-                                                        <div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-thuBlue border border-gray-200 mb-0.5"><i id="page-icon-preview" class="fas fa-question"></i></div>
-                                                    </div>
+<!-- 3. 標語 -->
+<p id="hero-subtitle" class="text-base sm:text-lg text-blue-100/90 font-light mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in-up px-4" style="animation-delay: 0.4s;">載入中...</p>
 
-                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">標籤 (Tag)</label><input type="text" id="page-setting-tag" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="例如: Evaluation Data"></div>
-                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">副標題/說明 (Subtitle)</label><input type="text" id="page-setting-desc" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="顯示於主標題下方"></div>
-                                                    <div class="flex justify-end gap-2 pt-2">
-                                                        <button onclick="restorePageHeaderSettings()" class="btn-secondary">取消</button>
-                                                        <button onclick="savePageHeaderSettings()" class="btn-primary">儲存</button>
-                                                    </div>
-                                                </div>
+<!-- 4. 操作按鈕 -->
+<!-- 修正: 調整按鈕 padding (px-6 手機) -->
+<div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 animate-fade-in-up w-full sm:w-auto px-4 sm:px-0" style="animation-delay: 0.6s;">
+<button onclick="toggleModal('origin-modal')" class="group relative px-6 sm:px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
+<div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
+<span class="relative flex items-center justify-center gap-2 text-base sm:text-lg"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
+</button>
+<a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="px-6 sm:px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white border border-white/20 backdrop-blur-sm font-medium rounded-full transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 hover:border-white/40 w-full sm:w-60 text-base sm:text-lg">
+<i class="fa-solid fa-link text-blue-300"></i> 實習中心網頁
+</a>
+</div>
 
-                                                <!-- 進階設定 -->
-                                                <div class="space-y-4 border-l pl-6 border-gray-100">
-                                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b pb-1 mb-2">進階設定</h4>
-                                                    
-                                                    <!-- 自訂欄位名稱 -->
-                                                    <div id="custom-labels-config" class="mb-4">
-                                                        <label class="block text-xs font-bold text-gray-500 mb-1">項目標題欄位名稱</label>
-                                                        <div class="flex gap-2 mb-2">
-                                                            <input type="text" id="page-label-title" class="w-1/2 border border-gray-300 rounded p-2 text-sm" placeholder="中文 (預設: 法規名稱)">
-                                                            <input type="text" id="page-label-title-en" class="w-1/2 border border-gray-300 rounded p-2 text-sm" placeholder="英文 (預設: 英文名稱)">
-                                                        </div>
-                                                        <div class="flex justify-end gap-2">
-                                                            <button onclick="restorePageLabelSettings()" class="btn-secondary">取消</button>
-                                                            <button onclick="savePageLabelSettings()" class="btn-success">儲存欄位名稱</button>
-                                                        </div>
-                                                    </div>
+<!-- 5. 最新消息 -->
+<div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-4 sm:p-5 text-left animate-fade-in-up hidden mt-8 mx-4" style="animation-delay: 0.8s;">
+<div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
+<div class="flex items-center gap-2">
+<i class="fas fa-bullhorn text-thuGold animate-pulse"></i>
+<span class="font-bold text-white text-base tracking-wide">最新公告</span>
+</div>
+<button id="view-more-news-btn" onclick="openAllNewsModal()" class="hidden text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 border border-white/10">
+查看所有 <i class="fas fa-chevron-right text-[10px]"></i>
+</button>
+</div>
+<ul id="news-list" class="space-y-3 text-sm text-blue-50">
+<li class="text-center py-2 text-gray-300">讀取公告中...</li>
+</ul>
+</div>
 
-                                                    <!-- 檔案下載欄位設定 -->
-                                                    <div id="file-fields-config" class="mb-4 hidden">
-                                                        <label class="block text-xs font-bold text-gray-500 mb-2">檔案下載欄位設定 (最多5組)</label>
-                                                        <div class="space-y-2 bg-gray-50 p-2 rounded border border-gray-200 text-xs">
-                                                            <div id="file-config-list" class="space-y-2"></div>
-                                                            <div class="flex justify-end pt-1">
-                                                                <button onclick="saveFileConfigSettings()" class="btn-success">更新欄位設定</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+<!-- 6. 滾動箭頭 -->
+<!-- 修正 4: 移除 onclick，改用 JavaScript 執行自訂滾動 -->
+<div id="scroll-arrow-target" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;" onclick="customScrollToMain()">
+<i class="fas fa-chevron-down text-3xl"></i>
+</div>
+</div>
+</div>
 
-                                                    <!-- 分類管理 -->
-                                                    <div id="category-manager" class="hidden">
-                                                        <label class="block text-xs font-bold text-gray-500 mb-2">分類管理 (Category)</label>
-                                                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-3">
-                                                            <div id="cat-list" class="space-y-2 mb-3 max-h-[150px] overflow-y-auto"></div>
-                                                            <div class="flex gap-2 border-t border-gray-200 pt-2">
-                                                                <input type="text" id="new-cat-name" class="flex-grow border border-gray-300 rounded p-1.5 text-sm" placeholder="輸入新分類名稱...">
-                                                                <button onclick="addNewCategory()" class="btn-primary">新增</button>
-                                                            </div>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </div>
+<!-- Main Content Area -->
+<main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow w-full">
+<div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
+<div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
+</div>
+</main>
 
-                                    <div class="flex justify-between items-center p-4 px-6 border-b border-gray-100 bg-white sticky top-0 z-10">
-                                        <div><h3 class="text-base font-bold text-gray-800">內容列表管理</h3></div>
-                                        <div class="flex gap-2 items-center">
-                                            <button id="page-add-item-btn" onclick="addPageItem()" class="btn-primary"><i class="fas fa-plus"></i> 新增項目</button>
-                                            <button id="faculty-add-item-btn" onclick="addFaculty()" class="btn-primary hidden"><i class="fas fa-plus"></i> 新增學院</button>
-                                        </div>
-                                    </div>
-                                    <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[600px]"></div>
-                                </div>
-                            </div>
-                        </div>
+<!-- Fixed Footer (預設隱藏) -->
+<footer id="footer-trigger" class="fixed bottom-0 left-0 w-full z-50 bg-gray-800 text-gray-400 py-3 text-center text-xs border-t-3 border-thuGold hidden">
+<div class="container mx-auto px-4">
+<div class="flex flex-col items-center justify-center gap-1">
+<p id="footer-copyright" class="font-bold text-white tracking-wide text-[10px]"></p>
+<p class="text-[9px] text-gray-500">網頁製作：張博堯 | Assisted by Google Gemini | <a href="admin.html" target="_blank" class="hover:text-white">後台管理</a></p>
+</div>
+</div>
+</footer>
 
-                        <!-- Tab: News -->
-                        <div id="tab-news" class="tab-content hidden animate-fade-in-up">
-                            <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
-                                <div><h3 class="text-lg font-bold text-gray-800">公告管理</h3><p class="text-sm text-gray-500 mt-1">管理首頁與公告列表的內容。</p></div>
-                                <button onclick="addNewsItem()" class="btn-success"><i class="fas fa-plus"></i> 新增公告</button>
-                            </div>
-                            <div id="news-list-editor" class="space-y-4"></div>
-                        </div>
+<!-- Chatbot Button Stack -->
+<!-- 修正 2: 整合 Chatbot Button 和 Scroll-to-Top Button 到一個堆棧容器，並調整位置 -->
+<!-- 修正：將 bottom-8 改為 bottom-20 (手機板) 以避免蓋住 footer -->
+<div id="action-stack" class="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50 flex flex-col items-end gap-2">
 
-                        <!-- Tab: Settings -->
-                        <div id="tab-settings" class="tab-content hidden animate-fade-in-up">
-                            <div class="flex items-end justify-between mb-6 pb-2 border-b border-gray-100">
-                                <div><h3 class="text-lg font-bold text-gray-800">基本資訊設定</h3><p class="text-sm text-gray-500 mt-1">此處可以修改網站標題與Logo。版權年份會自動更新。</p></div>
-                            </div>
-                             <div class="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg shadow-sm">
-                                <div class="flex items-start"><div class="flex-shrink-0"><i class="fas fa-shield-alt text-orange-500 text-lg mt-0.5"></i></div><div class="ml-3"><h3 class="text-sm font-bold text-orange-800">資安重要提醒</h3><p class="text-sm text-orange-700 mt-1 leading-relaxed">由於本網站架構為公開靜態網站，資料皆為<strong>公開可讀取</strong>。請<strong>切勿</strong>在此輸入個資、身分證號或內部機密。</p></div></div>
-                            </div>
-                            <div id="settings-form" class="grid grid-cols-1 gap-6 max-w-4xl"></div>
-                        </div>
+<!-- 滑到最上方的按鈕 -->
+<button id="scroll-to-top" onclick="scrollToTop()" class="w-10 h-10 sm:w-12 sm:h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center z-50">
+<i class="fas fa-chevron-up text-lg sm:text-xl"></i>
+</button>
 
-                        <!-- Tab: Raw -->
-                        <div id="tab-raw" class="tab-content hidden animate-fade-in-up">
-                            <div class="bg-gray-800 text-gray-300 px-4 py-2 rounded-t-lg text-xs font-mono flex justify-between items-center border border-gray-700"><span><i class="far fa-file-code mr-2"></i>data.json</span><span class="bg-gray-700 px-2 py-0.5 rounded text-[10px]">READ ONLY VIEW</span></div>
-                             <div class="bg-red-900/30 border border-red-500/50 text-red-200 p-3 mb-0 text-xs flex gap-2 items-center"><i class="fas fa-exclamation-triangle"></i><span>警告：此檔案內容對全體網路使用者公開，請勿檢查是否包含任何敏感個資。</span></div>
-                            <textarea id="raw-json" class="w-full h-[600px] font-mono text-sm border border-gray-300 border-t-0 p-4 bg-[#1e1e1e] text-[#d4d4d4] rounded-b-lg focus:outline-none shadow-inner" readonly></textarea>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        </main>
+<!-- Chatbot Button (放在堆棧最下面，z-index 確保在 Footer 之上) -->
+<div class="flex flex-col items-end z-50">
+<div class="bg-white text-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-lg border border-gray-100 text-xs sm:text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
+需要協助嗎？
+<div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div>
+</div>
+<button onclick="toggleModal('contact-modal')" class="w-12 h-12 sm:w-14 sm:h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white">
+<i class="fas fa-headset text-xl sm:text-2xl group-hover:animate-pulse"></i>
+</button>
+</div>
+</div>
 
-        <div class="fixed bottom-0 left-0 w-full bg-white border-t border-gray-200 p-4 shadow-[0_-4px_20px_rgba(0,0,0,0.05)] z-50 flex justify-end items-center gap-4">
-            <div id="save-status" class="text-sm font-bold text-gray-600 transition-opacity opacity-0"></div>
-            <button onclick="saveData()" id="save-btn" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2.5 px-6 rounded-lg shadow-md hover:shadow-lg flex items-center gap-2 transform active:scale-95 transition-all"><i class="fas fa-cloud-upload-alt"></i> 儲存並發布 (Push)</button>
-        </div>
-    </div>
 
-    <!-- Scripts -->
-    <script>
-        // Global Variables
-        let currentData = null;
-        let fileSha = null;
-        const DATA_FILE = 'data.json';
-        let sortableCards = null;
-        let sortableStaff = null; 
-        let sortablePageItems = null; 
-        let sessionToken = ''; 
-        let activePageId = 'laws'; 
-        let catToDeleteId = null; 
-        let currentUploadTargetInput = null; 
+<!-- Modal 1: 計畫緣起 -->
+<div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+<div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
+<div class="flex items-center gap-2"><i class="fas fa-feather-alt text-thuGold text-xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue" id="modal-origin-title">計畫緣起</p></div>
+<div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
+</div>
+<div class="px-6 sm:px-8 py-6 text-left"><div id="modal-origin-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 text-sm sm:text-base"></div></div>
+<div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
+<button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉視窗</button>
+</div>
+</div>
+</div>
 
-        // Define render functions FIRST so they are hoisted and available for loadData
-        function renderCardsList() {
-            const container = document.getElementById('cards-list-editor');
-            if(!container) return;
-            container.innerHTML = '';
-            currentData.cards.forEach((card, index) => {
-                container.innerHTML += `
-                <div class="card-item bg-white p-5 rounded-xl shadow-sm border border-gray-200 group relative" data-index="${index}">
-                    <div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-grip-lines text-gray-400"></i></div>
-                    <div class="mt-4 grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 text-sm font-bold text-thuBlue" value="${card.Title}"></div>
-                        <div><label class="block text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-sm text-thuGold" value="${card.Badge||''}"></div>
-                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2 text-sm" value="${card.Description}"></div>
-                        <div><label class="block text-xs font-bold text-gray-400">Icon</label><input type="text" class="card-icon w-full border rounded p-2 text-sm font-mono text-gray-500" value="${card.Icon}"></div>
-                        <div><label class="block text-xs font-bold text-gray-400">類型</label><select class="card-type w-full border rounded p-2 text-sm"><option value="internal" ${card.Type==='internal'?'selected':''}>內部</option><option value="external" ${card.Type==='external'?'selected':''}>外部</option><option value="modal" ${card.Type==='modal'?'selected':''}>彈窗</option></select></div>
-                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${card.Link}"></div>
-                    </div>
-                    <button onclick="deleteCardItem(${index})" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash"></i></button>
-                </div>`;
-            });
-            if (sortableCards) sortableCards.destroy();
-            sortableCards = Sortable.create(container, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
-        }
+<!-- Modal 2: 聯絡資訊 -->
+<div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
+<div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-2xl z-10">
+<div class="flex items-center gap-3"><i class="fas fa-address-book text-thuGold text-xl sm:text-2xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue">聯絡資訊</p></div>
+<div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div>
+</div>
+<div class="flex-grow overflow-y-auto px-4 sm:px-8 py-6 sm:py-8 bg-gray-50">
+<div class="mb-6 text-center bg-blue-50 border border-blue-100 rounded-xl p-4 sm:p-5">
+<p class="text-gray-700 font-medium text-sm sm:text-base"><i class="fas fa-info-circle text-thuBlue mr-2"></i>如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。</p>
+</div>
+<div id="contacts-container" class="flex flex-col gap-6">
+<div class="text-center text-gray-400">載入中...</div>
+</div>
+</div>
+<div class="flex-none flex justify-end py-4 sm:py-5 px-6 sm:px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10">
+<button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">關閉</button>
+</div>
+</div>
+</div>
 
-        function renderContactsList() {
-            const officeContainer = document.getElementById('office-contact-editor');
-            const staffContainer = document.getElementById('staff-contacts-editor');
-            if(!officeContainer || !staffContainer) return;
-            officeContainer.innerHTML = ''; staffContainer.innerHTML = '';
+<!-- Modal 3: 單一公告詳情 -->
+<div id="news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('news-modal')"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
+<div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
+<div class="flex items-center gap-2">
+<i class="fas fa-bullhorn text-thuGold text-xl"></i>
+<p class="text-xl font-bold text-thuBlue">公告詳情</p>
+</div>
+<div class="cursor-pointer z-50" onclick="toggleModal('news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
+</div>
+<div class="px-6 sm:px-8 py-6 text-left">
+<div class="mb-4">
+<span id="modal-news-date" class="text-sm text-gray-500 font-mono"></span>
+<h2 id="modal-news-title" class="text-xl sm:text-2xl font-bold text-gray-800 mt-1"></h2>
+</div>
+<hr class="border-gray-200 mb-4">
+<div id="modal-news-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 leading-relaxed text-sm sm:text-base"></div>
+</div>
+<div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
+<button onclick="toggleModal('news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉</button>
+</div>
+</div>
+</div>
 
-            const office = currentData.contacts.find(c => c.Type === 'office') || { Name: '實習與學生成就中心', Title: 'Office', Email: 'isac@thu.edu.tw', Description: '管理學院二樓 M207' };
-            officeContainer.innerHTML = `
-            <div class="office-item bg-blue-50/50 p-6 rounded-xl border border-blue-100">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label class="text-xs font-bold text-gray-400">單位名稱</label><input type="text" class="contact-name w-full border rounded p-2 font-bold" value="${office.Name}"></div>
-                    <div><label class="text-xs font-bold text-gray-400">Email</label><input type="text" class="contact-email w-full border rounded p-2 font-mono" value="${office.Email}"></div>
-                    <div class="hidden"><input type="text" class="contact-title" value="Office"></div>
-                    <div class="col-span-2"><label class="text-xs font-bold text-gray-400">位置/描述</label><input type="text" class="contact-desc w-full border rounded p-2" value="${office.Description}"></div>
-                </div>
-            </div>`;
+<!-- Modal 4: 所有公告列表 -->
+<div id="all-news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
+<div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('all-news-modal')"></div>
+<div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded-xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
+<!-- Header -->
+<div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-xl z-10">
+<div class="flex items-center gap-3">
+<i class="fas fa-list-ul text-thuGold text-2xl"></i>
+<p class="text-xl sm:text-2xl font-bold text-thuBlue">所有公告</p>
+</div>
+<div class="cursor-pointer z-50" onclick="toggleModal('all-news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div>
+</div>
+<!-- 工具列 -->
+<div class="flex-none px-6 sm:px-8 pt-6 pb-2 bg-gray-50">
+<div class="flex flex-col sm:flex-row gap-3">
+<div class="relative flex-grow">
+<i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
+<input type="text" id="news-search" placeholder="搜尋公告標題..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm transition-all" oninput="renderAllNewsUI(true)">
+</div>
+<select id="news-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm bg-white text-gray-600 min-w-[120px] cursor-pointer" onchange="renderAllNewsUI(true)">
+<option value="all">所有類型</option>
+</select>
+</div>
+</div>
+<!-- 列表 -->
+<div class="flex-grow overflow-y-auto px-6 sm:px-8 py-2 bg-gray-50 min-h-[300px]">
+<ul id="all-news-list" class="space-y-2"></ul>
+<div id="no-news-msg" class="hidden text-center py-10 text-gray-400">
+<i class="fas fa-inbox text-4xl mb-2"></i><p>沒有符合條件的公告</p>
+</div>
+</div>
+<!-- Pagination -->
+<div class="flex-none bg-white border-t border-gray-100 rounded-b-xl z-10">
+<div id="news-pagination" class="flex justify-center items-center gap-2 py-3 border-b border-gray-50"></div>
+<div class="flex justify-end py-4 px-6 sm:px-8">
+<button onclick="toggleModal('all-news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300">關閉</button>
+</div>
+</div>
+</div>
+</div>
 
-            const staff = currentData.contacts.filter(c => c.Type !== 'office');
-            staff.forEach((c, index) => {
-                staffContainer.innerHTML += `
-                <div class="staff-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${index}">
-                    <div class="drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab flex items-center justify-center hover:bg-gray-50 rounded-t-xl"><i class="fas fa-grip-lines text-gray-300"></i></div>
-                    <div class="mt-4 space-y-2">
-                        <div class="flex gap-2"><input type="text" class="contact-name w-2/3 border rounded p-1.5 font-bold text-sm" value="${c.Name}"><input type="text" class="contact-title w-1/3 border rounded p-1.5 text-sm text-gray-500 text-center" value="${c.Title}"></div>
-                        <div><input type="text" class="contact-email w-full border rounded p-1.5 text-xs font-mono text-gray-500" value="${c.Email}"></div>
-                        <div class="flex gap-2"><input type="text" class="contact-phone w-1/2 border rounded p-1.5 text-xs text-gray-500" value="${c.Phone||''}"><input type="hidden" class="contact-desc" value="${c.Description||''}"><select class="contact-type w-1/2 border rounded p-1.5 text-xs"><option value="staff" ${c.Type==='staff'?'selected':''}>職員</option><option value="director" ${c.Type==='director'?'selected':''}>主任</option></select></div>
-                    </div>
-                    <button onclick="deleteContactItem(${index})" class="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times-circle"></i></button>
-                </div>`;
-            });
-            if (sortableStaff) sortableStaff.destroy();
-            sortableStaff = Sortable.create(staffContainer, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
-        }
+<script>
+// ==========================================
+// 1. 程式邏輯 (資料來源改為 Fetch data.json)
+// ==========================================
+const colorMap = { 'thu': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' }, 'gold': { border: 'border-thuGold', icon: 'bg-thuGold', text: 'text-thuGold', hoverText: 'group-hover:text-thuGold', isGradient: true }, 'blue': { border: 'border-blue-500', icon: 'bg-blue-500', text: 'text-blue-600', hoverText: 'group-hover:text-blue-800' }, 'purple': { border: 'border-purple-500', icon: 'bg-purple-500', text: 'text-purple-600', hoverText: 'group-hover:text-purple-800' }, 'orange': { border: 'border-orange-500', icon: 'bg-orange-500', text: 'text-orange-600', hoverText: 'group-hover:text-orange-800' }, 'green': { border: 'border-green-500', icon: 'bg-green-500', text: 'text-green-600', hoverText: 'group-hover:text-green-800' }, 'red': { border: 'border-red-500', icon: 'bg-red-500', text: 'text-red-600', hoverText: 'group-hover:text-red-800' }, 'teal': { border: 'border-teal-500', icon: 'bg-teal-500', text: 'text-teal-600', hoverText: 'group-hover:text-teal-800' }, 'indigo': { border: 'border-indigo-500', icon: 'bg-indigo-500', text: 'text-indigo-600', hoverText: 'group-hover:text-indigo-800' }, 'cyan': { border: 'border-cyan-500', icon: 'bg-cyan-500', text: 'text-cyan-600', hoverText: 'group-hover:text-cyan-800' }, 'rose': { border: 'border-rose-500', icon: 'bg-rose-500', text: 'text-rose-600', hoverText: 'group-hover:text-rose-800' } };
+const contactColorMap = { 'thu': { bg: 'bg-blue-50', text: 'text-thuBlue', badge: 'bg-gray-100 text-gray-600', border: 'hover:border-thuBlue' }, 'gold': { bg: 'bg-yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-yellow-500' }, 'purple': { bg: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800', border: 'hover:border-purple-500' }, 'orange': { bg: 'bg-orange-50', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-orange-500' }, 'blue': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', border: 'hover:border-blue-500' }, 'default': { bg: 'bg-gray-50', text: 'text-gray-600', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-gray-400' }, 'office': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-800', border: 'hover:border-green-500' } };
 
-        function renderNewsList() {
-            const container = document.getElementById('news-list-editor');
-            if(!container) return;
-            container.innerHTML = '';
-            currentData.news.forEach((news, index) => {
-                container.innerHTML += `
-                <div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
-                    <div class="flex gap-3">
-                        <input type="date" class="news-date border rounded p-2 text-sm w-40" value="${news.Date}">
-                        <select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${news.Type==='公告'?'selected':''}>公告</option><option value="活動" ${news.Type==='活動'?'selected':''}>活動</option><option value="緊急" ${news.Type==='緊急'?'selected':''}>緊急</option></select>
-                        <div class="flex items-center gap-2"><input type="checkbox" class="news-isnew w-4 h-4 text-thuBlue" ${news.IsNew?'checked':''}><label class="text-sm">顯示 NEW</label></div>
-                        <button onclick="deleteNewsItem(${index})" class="ml-auto text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
-                    </div>
-                    <div><input type="text" class="news-title w-full border rounded p-2 font-bold text-gray-700" value="${news.Title}" placeholder="公告標題"></div>
-                    <div><input type="text" class="news-link w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${news.Link}" placeholder="連結網址 (選填)"></div>
-                    <div><textarea class="news-content w-full border rounded p-2 text-sm h-20" placeholder="公告內容摘要...">${news.Content}</textarea></div>
-                </div>`;
-            });
-        }
+let currentNewsPage = 1;
+const newsPerPage = 5;
+let siteNews = []; // 全域變數
+let filteredNews = [];
+let siteContacts = [];
 
-        function renderDepartmentList(container) {
-             container.innerHTML = '';
-             currentData.departments.forEach((faculty, fIndex) => {
-                 let deptRows = '';
-                 faculty.departments.forEach((dept, dIndex) => {
-                     deptRows += `<div class="dept-row flex gap-2 mb-2"><input class="dept-name border rounded p-1 w-1/3" value="${dept.name}"><input class="dept-link border rounded p-1 w-2/3 text-blue-600" value="${dept.link}"><button onclick="deleteDepartment(${fIndex},${dIndex})"><i class="fas fa-trash text-red-400"></i></button></div>`;
-                 });
-                 container.innerHTML += `<div class="faculty-card bg-white p-4 rounded border mb-4"><div class="flex gap-2 mb-2"><input class="faculty-name font-bold border rounded p-1" value="${faculty.name}"><input class="faculty-icon border rounded p-1 w-24" value="${faculty.icon}"></div><div class="pl-4 border-l-2">${deptRows}<button onclick="addDepartment(${fIndex})" class="text-sm text-blue-500">+ Add Dept</button></div><button onclick="deleteFaculty(${fIndex})" class="text-xs text-red-500 mt-2">Delete Faculty</button></div>`;
-             });
-        }
+let initialLoadStartTime = Date.now();
+const minLoadingTime = 500; // 修正 4: 最小載入時間（減少以避免過度延遲）
+const maxSimulatedProgress = 90; // 修正 4: 最大模擬進度
 
-        // --- Render Generic List (Updated) ---
-        function renderGenericList(container, items, isLaws) {
-            if (!items || items.length === 0) { container.innerHTML = '<div class="text-center py-20 text-gray-400">尚無資料</div>'; return; }
+// 輔助函式
+const setText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
+const setHTML = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerHTML = val || ''; };
+const toggleModal = (id) => {
+const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active');
+};
+
+// 模擬進度條更新
+function updateProgress(progress) {
+const percentElement = document.getElementById('loading-percent');
+if (percentElement) {
+percentElement.innerText = `${Math.min(100, progress)}%`;
+}
+}
+
+// 隱藏載入畫面
+function hideLoadingOverlay() {
+// 修正 4: 確保至少跑 3 秒的邏輯
+const totalElapsedTime = Date.now() - initialLoadStartTime;
+const requiredDelay = Math.max(0, 3000 - totalElapsedTime); 
+
+updateProgress(100);
+
+setTimeout(() => {
+const overlay = document.getElementById('loading-overlay');
+if (overlay) {
+overlay.style.opacity = '0';
+setTimeout(() => {
+overlay.style.display = 'none';
+}, 500); // 等待淡出動畫完成
+}
+}, requiredDelay);
+}
+
+// 滾動到頂部功能
+window.scrollToTop = function() {
+window.scrollTo({
+top: 0,
+behavior: 'smooth'
+});
+};
+
+// 修正 4: 自訂滾動邏輯，避開 Sticky Header
+window.customScrollToMain = function() {
+const mainContent = document.getElementById('main-content');
+const stickyHeader = document.getElementById('sticky-header');
+
+if (mainContent && stickyHeader) {
+const headerHeight = stickyHeader.offsetHeight || 64; // 預設 64px
+const targetPosition = mainContent.offsetTop - headerHeight;
+
+window.scrollTo({
+top: targetPosition,
+behavior: 'smooth'
+});
+}
+};
+
+
+// 控制滾動按鈕顯示/隱藏
+document.addEventListener('scroll', function() {
+const button = document.getElementById('scroll-to-top');
+if (window.scrollY > 300) {
+if (button) button.classList.add('show');
+} else {
+if (button) button.classList.remove('show');
+}
+});
+
+
+// 頁面載入初始化
+document.addEventListener('DOMContentLoaded', async function() {
+
+// 步驟 1: 模擬開始載入
+let progress = 0;
+const interval = setInterval(() => {
+if (progress < maxSimulatedProgress) {
+progress += 5; // 模擬較快的開始進度
+}
+updateProgress(progress);
+}, 100);
+
+
+try {
+// 步驟 2: 讀取 JSON 資料
+const response = await fetch(`data.json?t=${new Date().getTime()}`);
+if (!response.ok) throw new Error("無法讀取資料庫");
+const data = await response.json();
+
+// 停止模擬進度
+clearInterval(interval);
+updateProgress(maxSimulatedProgress);
+
+// 步驟 3: 處理資料
+const settings = data.settings;
+const cards = data.cards;
+siteContacts = data.contacts;
+siteNews = data.news || [];
+
+// 排序新聞 (降序)
+siteNews.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+
+// 步驟 4: 渲染內容
+renderSettings(settings);
+renderCards(cards);
+renderContacts(siteContacts);
+renderNewsWidget(siteNews);
+
+// 步驟 5: 完成載入
+hideLoadingOverlay();
+
+
+} catch (error) {
+console.error("Error loading data:", error);
+clearInterval(interval);
+updateProgress(100);
+hideLoadingOverlay();
+
+document.getElementById('cards-container').innerHTML = `<div class="col-span-full text-center text-red-500 p-10 bg-white rounded-xl shadow-lg">資料載入失敗，請確認 data.json 是否存在。</div>`;
+document.getElementById('news-container').classList.add('hidden');
+}
+});
+
+function renderSettings(settings) {
+if (!settings) return;
+document.title = settings.SiteTitle;
+// 修正 3: 矮頁首標題修正為完整名稱
+document.getElementById('sticky-header').querySelector('#nav-title').innerText = settings.SiteTitle; 
+setText('hero-eng-title', settings.SiteEngTitle);
+setHTML('hero-subtitle', settings.HeroSubtitle);
+setText('footer-copyright', settings.Copyright);
+setText('modal-origin-title', settings.OriginTitle);
+setHTML('modal-origin-content', settings.OriginContent);
+
+const fullTitle = settings.SiteTitle || "";
+            if (fullTitle.includes("協作平台")) {
+                setText('hero-title-1', fullTitle.split("協作平台")[0]);
+                setText('hero-title-2', "協作平台");
+            } else { setText('hero-title-1', fullTitle); }
+            const keyword = "協作平台";
             
-            const labels = currentData.pages[activePageId].labels || {};
-            const titleLabel = labels.title || (isLaws ? '法規名稱' : '標題');
-            const titleEnLabel = labels.title_en || '英文名稱';
-
-            let catOptions = '<option value="">未分類</option>';
-            if (isLaws) {
-                const categories = currentData.pages['laws'].categories || [];
-                categories.forEach(c => { catOptions += `<option value="${c.id}">${c.name}</option>`; });
-            }
-
-            container.innerHTML = '';
-            items.forEach((item, index) => {
-                const isVisible = item.visible !== false; // Default true
-                const checked = isVisible ? 'checked' : '';
+            // 修正：更聰明的標題切割邏輯
+            if (fullTitle.includes(keyword)) {
+                const parts = fullTitle.split(keyword);
+                // parts[0] 是關鍵字前面的文字 (如 "實習業務")
+                // parts[1] 是關鍵字後面的文字 (如 "AA")
                 
-                let contentHtml = '';
+                setText('hero-title-1', parts[0]);
                 
-                if (isLaws) {
-                    const selectedCat = item.category || '';
-                    const currentOptions = catOptions.replace(`value="${selectedCat}"`, `value="${selectedCat}" selected`);
-                    
-                    let fileInputsHtml = '';
-                    const fileFields = currentData.pages['laws'].fileFields || defaultFileFields;
-                    
-                    fileFields.forEach(field => {
-                        const key = field.key; 
-                        const val = item[key] || '';
-                        
-                        // Removed individual checkbox for file visibility
-                        fileInputsHtml += `
-                        <div class="flex gap-2 items-center mb-2">
-                            <div class="w-24 flex-shrink-0 text-xs font-bold text-gray-500 flex items-center gap-1">
-                                <i class="fas ${field.icon}"></i> ${field.label || '檔案'}
-                            </div>
-                            <div class="flex-grow flex gap-1">
-                                <input type="text" id="input-${index}-${key}" class="p-${key} flex-grow border rounded p-1.5 text-sm text-blue-600 font-mono" value="${val}" placeholder="PDF 連結或網址">
-                                <button onclick="openFileSelector(${index}, '${key}')" class="file-upload-label" title="上傳檔案"><i class="fas fa-cloud-upload-alt"></i></button>
-                            </div>
-                        </div>`;
-                    });
-
-                    contentHtml = `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div><label class="block text-xs font-bold text-gray-400 mb-1">${titleLabel}</label><input type="text" class="p-title w-full border rounded p-2 text-sm" value="${item.title}"></div>
-                            <div><label class="block text-xs font-bold text-gray-400 mb-1">${titleEnLabel}</label><input type="text" class="p-title-en w-full border rounded p-2 text-sm" value="${item.title_en||''}"></div>
-                        </div>
-                        <div class="grid grid-cols-3 gap-4 mb-4">
-                             <div><label class="block text-xs font-bold text-gray-400 mb-1">發布單位</label><input type="text" class="p-issuer w-full border rounded p-2 text-sm" value="${item.issuer||''}"></div>
-                             <div><label class="block text-xs font-bold text-gray-400 mb-1">日期</label><input type="date" class="p-date w-full border rounded p-2 text-sm" value="${item.date||''}"></div>
-                             <div><label class="block text-xs font-bold text-gray-400 mb-1">分類</label>
-                                <select class="p-cat-select w-full border rounded p-2 text-sm">${currentOptions}</select>
-                             </div>
-                        </div>
-                        <div class="bg-gray-50 p-4 rounded border border-gray-200">
-                            <label class="block text-xs font-bold text-gray-400 mb-2">檔案下載 (空白則前台不顯示)</label>
-                            ${fileInputsHtml}
-                        </div>
-                    `;
-                } else {
-                    contentHtml = `
-                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
-                            <div><label class="block text-xs font-bold text-gray-400 mb-1">${titleLabel}</label><input type="text" class="p-title w-full border rounded p-2 text-sm font-bold" value="${item.title}"></div>
-                            <div><label class="block text-xs font-bold text-gray-400 mb-1">連結</label><input type="text" class="p-url w-full border rounded p-2 text-sm text-blue-600" value="${item.url}"></div>
-                        </div>
-                        <div><label class="block text-xs font-bold text-gray-400 mb-1">分類</label><input type="text" class="p-category w-full border rounded p-2 text-sm" value="${item.category||''}"></div>
-                    `;
-                }
-
-                container.innerHTML += `
-                <div class="page-item bg-white rounded-xl border border-gray-200 shadow-sm mb-3 overflow-hidden" data-index="${index}">
-                    <!-- Header / Drag Handle -->
-                    <div class="drag-handle bg-gray-50 p-3 px-4 flex justify-between items-center cursor-move hover:bg-gray-100 transition-colors">
-                        <div class="flex items-center gap-3 overflow-hidden" onclick="toggleAccordion(${index})">
-                            <div class="cursor-pointer text-gray-400 hover:text-thuBlue w-6 text-center"><i class="fas fa-grip-vertical"></i></div>
-                            <span class="font-bold text-gray-700 truncate select-none">#${index+1} ${item.title || '(無標題)'}</span>
-                        </div>
-                        <div class="flex items-center gap-3">
-                            <!-- Visibility Toggle -->
-                            <label class="flex items-center gap-1.5 cursor-pointer select-none">
-                                <div class="relative">
-                                    <input type="checkbox" class="sr-only peer p-visible" ${checked} onchange="toggleItemVisibility(this)">
-                                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-blue-300 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
-                                </div>
-                            </label>
-                            
-                            <div class="h-4 w-px bg-gray-300 mx-1"></div>
-
-                            <button onclick="deletePageItem('${activePageId}', ${index})" class="text-gray-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash-alt"></i></button>
-                            <button onclick="toggleAccordion(${index})" class="text-gray-400 hover:text-thuBlue p-2 transition"><i id="accordion-arrow-${index}" class="fas fa-chevron-down accordion-arrow"></i></button>
-                        </div>
-                    </div>
-                    
-                    <!-- Content -->
-                    <div id="accordion-content-${index}" class="accordion-content bg-white">
-                        <div class="p-5">
-                            ${contentHtml}
-                            <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
-                                <button onclick="cancelSingleItem(${index})" class="btn-secondary">取消變更</button>
-                                <button onclick="saveSingleItem(${index})" class="btn-info">確認暫存</button>
-                            </div>
-                        </div>
-                    </div>
-                </div>`;
-            });
-
-            if (sortablePageItems) sortablePageItems.destroy();
-            sortablePageItems = new Sortable(container, { 
-                handle: '.drag-handle', 
-                animation: 150,
-                ghostClass: 'sortable-ghost',
-                onEnd: () => {
-                    collectDataFromEditors();
-                    renderPageEditor();
-                }
-            });
-        }
-
-        // --- Render Editors (Main Orchestrator) ---
-        function renderEditors() {
-            const settingsContainer = document.getElementById('settings-form');
-            settingsContainer.innerHTML = '';
-            for (const [key, config] of Object.entries(settingFieldsMap)) {
-                let value = currentData.settings[key] || '';
-                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n');
-                let inputHtml = config.type === 'textarea' 
-                    ? `<textarea data-key="${key}" rows="3" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm font-mono">${value}</textarea>`
-                    : `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 rounded p-3 text-sm focus:ring-2 focus:ring-thuBlue outline-none" />`;
-                settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm"><label class="block text-sm font-bold text-gray-700 mb-2">${config.label}</label>${inputHtml}</div>`;
-            }
-            renderCardsList();
-            renderContactsList();
-            renderNewsList();
-            renderPageEditor();
-        }
-
-        const settingFieldsMap = {
-            'SiteTitle': { label: '網站主標題 (中文)', type: 'text', help: '顯示於瀏覽器分頁標籤與導覽列' },
-            'SiteEngTitle': { label: '網站副標題 (英文)', type: 'text', help: '顯示於主標題下方' },
-            'HeroSubtitle': { label: '首頁歡迎詞', type: 'textarea', help: '請直接換行即可 (Enter)。建議不超過 3 行，每行不超過 30 字。' },
-            'LogoUrl': { label: 'Logo 圖片連結', type: 'text', help: '請輸入圖片網址 (URL)' },
-            'OriginTitle': { label: '計畫緣起 - 標題', type: 'text', help: '彈跳視窗的標題' },
-            'OriginContent': { label: '計畫緣起 - 內容 (支援 HTML)', type: 'textarea', help: '彈跳視窗的詳細內容' }
-        };
-
-        const defaultCategories = [
-            { id: 'edu', name: '教育部法規' },
-            { id: 'admin', name: '行政函釋' },
-            { id: 'school', name: '校內法規' }
-        ];
-
-        const defaultFileFields = [
-            { key: 'url_1', label: '中文版', icon: 'fa-file-pdf' },
-            { key: 'url_2', label: '英文版', icon: 'fa-file-pdf' },
-            { key: 'url_3', label: '附件一', icon: 'fa-paperclip' },
-            { key: 'url_4', label: '附件二', icon: 'fa-paperclip' },
-            { key: 'url_5', label: '相關連結', icon: 'fa-link' }
-        ];
-
-        const defaultPagesData = {
-            "laws": { title: "實習相關法規", tag: "Regulations", description: "Laws and Regulations", icon: "fa-balance-scale", items: [], categories: JSON.parse(JSON.stringify(defaultCategories)), fileFields: JSON.parse(JSON.stringify(defaultFileFields)) },
-            "downloads": { title: "實習表單下載", tag: "Forms", description: "Download Internship Forms", icon: "fa-file-download", items: [] },
-            "insurance": { title: "實習保險專區", tag: "Insurance", description: "Group Insurance Info", icon: "fa-shield-alt", items: [] },
-            "courses": { title: "實習前哨站課程", tag: "Courses", description: "Online Courses", icon: "fa-graduation-cap", items: [] },
-            "evaluation": { title: "系所評鑑資料上傳", tag: "Evaluation", description: "請點擊對應系所名稱，進入雲端連結上傳資料。", icon: "fa-chart-line", items: [] }
-        };
-
-        const pageDefinitions = [
-            { id: 'laws', name: '實習相關法規', icon: 'fa-balance-scale' },
-            { id: 'downloads', name: '實習表單下載', icon: 'fa-file-download' },
-            { id: 'insurance', name: '實習保險專區', icon: 'fa-shield-alt' },
-            { id: 'courses', name: '實習前哨站課程', icon: 'fa-graduation-cap' },
-            { id: 'evaluation', name: '系所評鑑資料', icon: 'fa-chart-line', isDepartmentPage: true }
-        ];
-
-        document.addEventListener('DOMContentLoaded', () => {
-            const savedOwner = localStorage.getItem('gh_owner');
-            const savedRepo = localStorage.getItem('gh_repo');
-            if(savedOwner) document.getElementById('gh-owner').value = savedOwner;
-            if(savedRepo) document.getElementById('gh-repo').value = savedRepo;
-        });
-
-        function toggleTokenVisibility() {
-            const input = document.getElementById('gh-token');
-            const icon = document.getElementById('token-eye-icon');
-            if (input.type === 'password') { input.type = 'text'; icon.classList.remove('fa-eye'); icon.classList.add('fa-eye-slash'); } 
-            else { input.type = 'password'; icon.classList.remove('fa-eye-slash'); icon.classList.add('fa-eye'); }
-        }
-
-        async function loadData() {
-            const owner = document.getElementById('gh-owner').value.trim();
-            const repo = document.getElementById('gh-repo').value.trim();
-            const tokenInput = document.getElementById('gh-token').value.trim();
-            const msg = document.getElementById('login-msg');
-            const btn = document.getElementById('load-btn');
-
-            if (!owner || !repo || !tokenInput) { msg.innerText = "請填寫完整的連線資訊 (包含 Token)"; return; }
-
-            sessionToken = tokenInput; 
-            msg.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> 連線中...';
-            msg.className = "text-center mt-3 h-5 text-sm font-medium text-thuBlue";
-            btn.disabled = true; btn.classList.add('opacity-75', 'cursor-wait');
-
-            try {
-                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${DATA_FILE}`;
-                const response = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
-
-                if (!response.ok) throw new Error(response.status === 404 ? "找不到 data.json" : "連線失敗");
-
-                const result = await response.json();
-                fileSha = result.sha; 
-                const cleanContent = result.content.replace(/\n/g, '');
-                const decodedContent = decodeURIComponent(escape(window.atob(cleanContent)));
-                currentData = JSON.parse(decodedContent);
-                
-                if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
-                
-                // Ensure defaults for laws page
-                if (currentData.pages['laws']) {
-                    if (!currentData.pages['laws'].categories) currentData.pages['laws'].categories = JSON.parse(JSON.stringify(defaultCategories));
-                    if (!currentData.pages['laws'].fileFields) currentData.pages['laws'].fileFields = JSON.parse(JSON.stringify(defaultFileFields));
-                }
-
-                if (!currentData.departments) currentData.departments = [];
-
-                localStorage.setItem('gh_owner', owner);
-                localStorage.setItem('gh_repo', repo);
-
-                document.getElementById('current-repo-label').innerText = `${owner}/${repo}`;
-                
-                // Render Editors NOW that data is loaded
-                renderEditors(); 
-                
-                document.getElementById('login-screen').classList.add('animate-fade-out');
-                const dashboard = document.getElementById('dashboard-ui');
-                dashboard.classList.remove('hidden');
-                setTimeout(() => { dashboard.classList.remove('opacity-0'); document.getElementById('login-screen').classList.add('hidden'); }, 400);
-
-            } catch (error) {
-                console.error(error);
-                msg.innerHTML = `<i class="fas fa-exclamation-circle mr-1"></i> ${error.message}`;
-                msg.className = "text-center mt-3 h-5 text-sm font-medium text-red-500";
-                btn.disabled = false; btn.classList.remove('opacity-75', 'cursor-wait');
-            }
-        }
-
-        function logout() { if(confirm("確定要登出嗎？資料將不會保留。")) location.reload(); }
-
-        // --- Data Collection (Main) ---
-        function collectDataFromEditors() {
-            if (!currentData) return;
-            
-            // 1. Settings
-            document.querySelectorAll('.setting-input').forEach(input => {
-                const key = input.getAttribute('data-key');
-                let val = input.value;
-                if (key === 'HeroSubtitle') { val = val.replace(/\n/g, '<br>'); }
-                if(key) currentData.settings[key] = val;
-            });
-            const currentYear = new Date().getFullYear();
-            currentData.settings['Copyright'] = `Copyright © ${currentYear} 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.`;
-
-            // 2. News
-            const newsItems = [];
-            document.querySelectorAll('.news-item').forEach(div => {
-                newsItems.push({
-                    Date: div.querySelector('.news-date').value,
-                    Type: div.querySelector('.news-type').value,
-                    Title: div.querySelector('.news-title').value,
-                    Link: div.querySelector('.news-link').value,
-                    Content: div.querySelector('.news-content').value,
-                    IsNew: div.querySelector('.news-isnew').checked
-                });
-            });
-            currentData.news = newsItems;
-
-            // 3. Cards
-            const cardItems = [];
-            document.querySelectorAll('.card-item').forEach(div => {
-                cardItems.push({
-                    Title: div.querySelector('.card-title').value,
-                    Badge: div.querySelector('.card-badge').value,
-                    Description: div.querySelector('.card-desc').value,
-                    Icon: div.querySelector('.card-icon').value,
-                    Type: div.querySelector('.card-type').value,
-                    Link: div.querySelector('.card-link').value
-                });
-            });
-            currentData.cards = cardItems;
-
-            // 4. Contacts
-            const contactItems = [];
-            const officeDiv = document.querySelector('.office-item');
-            if(officeDiv) {
-                contactItems.push({
-                    Name: officeDiv.querySelector('.contact-name').value,
-                    Title: officeDiv.querySelector('.contact-title').value,
-                    Email: officeDiv.querySelector('.contact-email').value,
-                    Phone: "",
-                    Description: officeDiv.querySelector('.contact-desc').value,
-                    Type: "office"
-                });
-            }
-            document.querySelectorAll('.staff-item').forEach(div => {
-                contactItems.push({
-                    Name: div.querySelector('.contact-name').value,
-                    Title: div.querySelector('.contact-title').value,
-                    Email: div.querySelector('.contact-email').value,
-                    Phone: div.querySelector('.contact-phone').value,
-                    Description: div.querySelector('.contact-desc').value,
-                    Type: div.querySelector('.contact-type').value
-                });
-            });
-            currentData.contacts = contactItems;
-
-            // 5. Pages Items 
-            if (currentData.pages && currentData.pages[activePageId]) {
-                if (activePageId === 'evaluation') {
-                    const faculties = [];
-                    document.querySelectorAll('.faculty-card').forEach(facultyDiv => {
-                        const facultyName = facultyDiv.querySelector('.faculty-name').value; 
-                        const facultyIcon = facultyDiv.querySelector('.faculty-icon').value;
-                        const departments = [];
-                        facultyDiv.querySelectorAll('.dept-row').forEach(deptDiv => {
-                            departments.push({
-                                name: deptDiv.querySelector('.dept-name').value,
-                                link: deptDiv.querySelector('.dept-link').value
-                            });
-                        });
-                        faculties.push({ name: facultyName, icon: facultyIcon, departments: departments });
-                    });
-                    currentData.departments = faculties;
-                } else {
-                    const items = [];
-                    const container = document.getElementById('page-items-editor');
-                    if(container) {
-                        const itemDivs = container.querySelectorAll('.page-item');
-                        itemDivs.forEach(div => {
-                            const item = {
-                                title: div.querySelector('.p-title').value,
-                                visible: div.querySelector('.p-visible') ? div.querySelector('.p-visible').checked : true
-                            };
-                            
-                            if (activePageId === 'laws') {
-                                item.title_en = div.querySelector('.p-title-en').value;
-                                item.issuer = div.querySelector('.p-issuer').value;
-                                item.date = div.querySelector('.p-date').value;
-                                item.category = div.querySelector('.p-cat-select').value;
-                                
-                                const fileFields = currentData.pages['laws'].fileFields || defaultFileFields;
-                                fileFields.forEach((field) => {
-                                    const key = field.key;
-                                    item[key] = div.querySelector(`.p-${key}`).value;
-                                });
-                            } else {
-                                item.url = div.querySelector('.p-url').value;
-                                item.category = div.querySelector('.p-category').value;
-                            }
-                            items.push(item);
-                        });
-                        currentData.pages[activePageId].items = items;
-                    }
-                }
-            }
-        }
-
-        // --- Toggle Logic ---
-        function togglePageSettings() {
-            const panel = document.getElementById('page-settings-panel');
-            const arrow = document.getElementById('page-settings-arrow');
-            panel.classList.toggle('hidden');
-            if(panel.classList.contains('hidden')) { arrow.classList.remove('rotate-180'); } else { arrow.classList.add('rotate-180'); }
-        }
-
-        // --- Page Settings Save/Restore ---
-        function savePageHeaderSettings() {
-            if (!currentData || !activePageId) return;
-            const page = currentData.pages[activePageId];
-            page.title = document.getElementById('page-setting-title').value;
-            page.tag = document.getElementById('page-setting-tag').value;
-            page.description = document.getElementById('page-setting-desc').value;
-            page.icon = document.getElementById('page-setting-icon').value;
-            
-            document.getElementById('current-page-title-display').innerText = `${page.title} - 設定`;
-            
-            renderPageEditor(); // Rebuild sidebar
-            alert("標題設定已暫存");
-        }
-
-        function restorePageHeaderSettings() {
-            if (!currentData || !activePageId) return;
-            const page = currentData.pages[activePageId];
-            document.getElementById('page-setting-title').value = page.title || '';
-            document.getElementById('page-setting-tag').value = page.tag || '';
-            document.getElementById('page-setting-desc').value = page.description || '';
-            document.getElementById('page-setting-icon').value = page.icon || '';
-            document.getElementById('page-icon-preview').className = `fas ${page.icon || 'fa-question'}`;
-        }
-
-        function savePageLabelSettings() {
-            if (!currentData || !activePageId) return;
-            const page = currentData.pages[activePageId];
-            if (!page.labels) page.labels = {};
-            page.labels.title = document.getElementById('page-label-title').value;
-            page.labels.title_en = document.getElementById('page-label-title-en').value;
-            
-            renderPageEditor(); 
-            alert("欄位名稱已更新");
-        }
-
-        function restorePageLabelSettings() {
-            if (!currentData || !activePageId) return;
-            const labels = currentData.pages[activePageId].labels || {};
-            document.getElementById('page-label-title').value = labels.title || '';
-            document.getElementById('page-label-title-en').value = labels.title_en || '';
-        }
-
-        function saveFileConfigSettings() {
-            if (!currentData || activePageId !== 'laws') return;
-            const newConfig = [];
-            for(let i=1; i<=5; i++) {
-                const label = document.getElementById(`file-conf-label-${i}`).value;
-                const icon = document.getElementById(`file-conf-icon-${i}`).value;
-                newConfig.push({ key: `url_${i}`, label: label, icon: icon });
-            }
-            currentData.pages['laws'].fileFields = newConfig;
-            renderPageEditor();
-            alert("檔案欄位設定已更新");
-        }
-
-        // --- Page Editor & Category Logic ---
-        function renderPageEditor() {
-            const sidebar = document.getElementById('pages-sidebar');
-            const container = document.getElementById('page-items-editor');
-            
-            sidebar.innerHTML = '';
-            pageDefinitions.forEach(def => {
-                const isActive = def.id === activePageId;
-                let storedTitle = def.name;
-                let storedIcon = def.icon;
-                
-                if (currentData.pages && currentData.pages[def.id]) {
-                    storedTitle = currentData.pages[def.id].title || def.name;
-                    storedIcon = currentData.pages[def.id].icon || def.icon;
-                }
-
-                sidebar.innerHTML += `<div onclick="switchPageEditor('${def.id}')" class="sidebar-btn ${isActive ? 'active' : ''}"><i class="fas ${storedIcon} w-5 text-center"></i><span>${storedTitle}</span></div>`;
-            });
-
-            if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
-            if (!currentData.pages[activePageId]) currentData.pages[activePageId] = { title: "新頁面", tag:"", description:"", items: [] };
-
-            const currentPageData = currentData.pages[activePageId];
-
-            document.getElementById('page-setting-title').value = currentPageData.title || '';
-            document.getElementById('page-setting-tag').value = currentPageData.tag || '';
-            document.getElementById('page-setting-desc').value = currentPageData.description || '';
-            
-            const currentIcon = currentPageData.icon || pageDefinitions.find(p=>p.id===activePageId)?.icon || 'fa-file';
-            document.getElementById('page-setting-icon').value = currentIcon;
-            document.getElementById('page-icon-preview').className = `fas ${currentIcon}`;
-            
-            document.getElementById('page-setting-icon').oninput = function() {
-                document.getElementById('page-icon-preview').className = `fas ${this.value}`;
-            };
-
-            document.getElementById('current-page-title-display').innerText = `${currentPageData.title} - 設定`;
-
-            const labels = currentPageData.labels || {};
-            document.getElementById('page-label-title').value = labels.title || (activePageId === 'laws' ? '法規名稱' : '標題');
-            document.getElementById('page-label-title-en').value = labels.title_en || '英文名稱';
-
-            const catManager = document.getElementById('category-manager');
-            const fileConfig = document.getElementById('file-fields-config');
-            const isLaws = activePageId === 'laws';
-            
-            if(isLaws) {
-                catManager.classList.remove('hidden');
-                fileConfig.classList.remove('hidden');
-                renderCategoryList();
-                renderFileConfigList();
-            } else {
-                catManager.classList.add('hidden');
-                fileConfig.classList.add('hidden');
+                // 將後面的文字接在關鍵字後面，一起變成金色
+                // 這樣 "協作平台" + "AA" 都會顯示在第二個 span 內
+                setText('hero-title-2', keyword + (parts[1] || "")); 
+            } else { 
+                // 若完全不包含關鍵字，則全部顯示在第一個 span (白色)
+                setText('hero-title-1', fullTitle); 
+                setText('hero-title-2', ""); // 清空第二個 span
             }
 
-            const isDepartmentPage = activePageId === 'evaluation';
-            document.getElementById('page-add-item-btn').classList.toggle('hidden', isDepartmentPage);
-            document.getElementById('faculty-add-item-btn').classList.toggle('hidden', !isDepartmentPage);
+if (settings.LogoUrl) {
+document.querySelectorAll('img[alt="Logo"]').forEach(img => { img.src = settings.LogoUrl; img.classList.remove('hidden'); });
+}
+}
 
-            container.innerHTML = '';
-            if (isDepartmentPage) {
-                renderDepartmentList(container);
-            } else {
-                renderGenericList(container, currentPageData.items, isLaws);
-            }
-        }
+function renderCards(data) {
+const container = document.getElementById('cards-container'); container.innerHTML = ''; 
+if (!data) return;
 
-        function renderFileConfigList() {
-            const container = document.getElementById('file-config-list');
-            const fields = currentData.pages['laws'].fileFields || defaultFileFields;
-            container.innerHTML = '';
-            fields.forEach((f, i) => {
-                const idx = i + 1;
-                container.innerHTML += `
-                <div class="flex gap-2 items-center">
-                    <span class="w-4 text-center font-bold text-gray-400">${idx}</span>
-                    <input type="text" id="file-conf-label-${idx}" value="${f.label}" class="w-1/2 border rounded p-1" placeholder="按鈕文字">
-                    <input type="text" id="file-conf-icon-${idx}" value="${f.icon}" class="w-1/3 border rounded p-1 font-mono text-gray-500" placeholder="Icon class">
-                    <i class="fas ${f.icon} text-gray-400"></i>
-                </div>`;
-            });
-        }
+data.forEach(item => {
+const colorKey = (item.Type || 'thu').toLowerCase();
+const theme = colorMap[colorKey] || colorMap['thu'];
+const bgClass = theme.isGradient ? 'bg-gradient-to-br from-white to-blue-50' : 'bg-white';
+const badgeHtml = item.Badge ? `<div class="absolute top-0 right-0 ${theme.icon} text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">${item.Badge}</div>` : '';
 
-        function renderCategoryList() {
-            const listDiv = document.getElementById('cat-list');
-            const categories = currentData.pages['laws'].categories || [];
-            listDiv.innerHTML = '';
-            if (categories.length === 0) { listDiv.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">無分類</div>'; return; }
-            categories.forEach(cat => {
-                listDiv.innerHTML += `
-                <div class="flex justify-between items-center bg-white border border-gray-200 p-2 rounded text-sm">
-                    <span class="font-bold text-thuBlue">${cat.name}</span>
-                    <button onclick="deleteCategory('${cat.id}')" class="text-red-400 hover:text-red-600 px-2"><i class="fas fa-trash"></i></button>
-                </div>`;
-            });
-        }
+const externalLink = item.Link.startsWith('http') || item.Link.startsWith('tools/');
+const target = externalLink ? 'target="_blank"' : '';
 
-        function addNewCategory() {
-            const input = document.getElementById('new-cat-name');
-            const name = input.value.trim();
-            if(!name) return;
-            const categories = currentData.pages['laws'].categories;
-            if (categories.some(c => c.name === name)) { alert("分類名稱重複！"); return; }
-            const newId = 'cat_' + Date.now();
-            categories.push({ id: newId, name: name });
-            input.value = '';
-            collectDataFromEditors(); renderCategoryList(); renderPageEditor();
-        }
+container.innerHTML += `
+               <a href="${item.Link}" ${target} class="group flex flex-col h-full ${bgClass} rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 ${theme.border} relative">
+                   ${badgeHtml}
+                   <div class="p-8 flex-grow">
+                       <div class="w-16 h-16 ${theme.icon} text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300"><i class="fas ${item.Icon}"></i></div>
+                       <h3 class="text-2xl font-bold text-gray-800 mb-3 ${theme.hoverText} transition-colors">${item.Title}</h3>
+                       <p class="text-gray-500 leading-relaxed">${item.Description}</p>
+                   </div>
+                   <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
+                       <span class="text-sm font-medium ${theme.text}">${theme.isGradient ? '立即使用' : '查看詳情'}</span>
+                       <i class="fas fa-arrow-right ${theme.text} opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
+                   </div>
+               </a>`;
+});
+}
 
-        function deleteCategory(id) {
-            const items = currentData.pages['laws'].items;
-            const count = items.filter(i => i.category === id).length;
-            catToDeleteId = id;
-            if (count > 0) {
-                document.getElementById('cat-delete-msg').innerText = `目前有 ${count} 筆資料屬於此分類。請問您希望如何處理？`;
-                document.getElementById('cat-delete-modal').classList.remove('hidden');
-            } else { performCategoryDeletion(id); }
-        }
+function renderContacts(data) {
+const container = document.getElementById('contacts-container'); container.innerHTML = '';
+if (!data) return;
 
-        function confirmDeleteCategoryAction(action) {
-            const id = catToDeleteId;
-            const items = currentData.pages['laws'].items;
-            if (action === 'delete_items') {
-                for (let i = items.length - 1; i >= 0; i--) { if (items[i].category === id) items.splice(i, 1); }
-            } else if (action === 'keep_items') {
-                items.forEach(item => { if (item.category === id) item.category = ''; });
-            }
-            performCategoryDeletion(id); closeCatDeleteModal();
-        }
+const office = data.find(d => d.Type === 'office');
+const staff = data.filter(d => d.Type !== 'office');
+if (office) {
+const c = contactColorMap['office'] || contactColorMap['default'];
+container.innerHTML += `
+               <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition-colors flex flex-col md:flex-row items-center justify-between gap-5 mb-6">
+                   <div class="flex items-center gap-4">
+                       <div class="w-14 h-14 rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold text-2xl shrink-0"><i class="fas fa-building"></i></div>
+                       <div class="text-center md:text-left"><h4 class="text-xl font-bold text-gray-800">${office.Name}</h4><span class="text-sm ${c.badge} px-2.5 py-1 rounded-md mt-1 inline-block">${office.Title}</span></div>
+                   </div>
+                   <div class="flex flex-col md:items-end text-center md:text-right">
+                       <div class="flex items-center gap-2 mb-1 justify-center md:justify-end"><i class="fas fa-envelope text-gray-400 text-lg"></i><a href="mailto:${office.Email}" class="text-thuBlue font-bold text-xl hover:underline">${office.Email}</a></div>
+                       <p class="text-sm text-gray-500">${office.Description || ''}</p>
+                   </div>
+               </div>`;
+}
+let staffHtml = '<div class="grid grid-cols-1 md:grid-cols-3 gap-5">';
+staff.forEach(p => {
+const colorKey = (p.Type || 'blue').toLowerCase();
+const c = contactColorMap[colorKey] || contactColorMap['default'];
+staffHtml += `
+               <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${c.border} transition-colors flex flex-col h-full">
+                   <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
+                       <div class="w-12 h-12 rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold text-xl shrink-0">${p.Name.charAt(0)}</div>
+                       <div class="min-w-0"><h4 class="text-lg font-bold text-gray-800 truncate">${p.Name}</h4><span class="text-sm ${c.badge} px-2 py-0.5 rounded mt-1 inline-block">${p.Title}</span></div>
+                   </div>
+                   <div class="space-y-2 text-sm text-gray-600 flex-grow">
+                       <div class="flex items-start gap-2"><i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
+                           <div><p class="font-medium text-gray-700 mb-0.5">負責業務：</p><ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">${p.Description ? p.Description.split('\n').map(i => `<li>${i}</li>`).join('') : ''}</ul></div>
+                       </div>
+                   </div>
+                   <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
+                       <div class="flex items-center gap-2"><i class="fas fa-phone-alt text-gray-400 w-3"></i><a href="tel:${p.Phone}" class="text-thuBlue font-medium hover:underline">${p.Phone}</a></div>
+                       <div class="flex items-center gap-2"><i class="fas fa-envelope text-gray-400 w-3"></i><a href="mailto:${p.Email}" class="text-thuBlue font-medium hover:underline truncate">${p.Email}</a></div>
+                   </div>
+               </div>`;
+});
+staffHtml += '</div>'; container.innerHTML += staffHtml;
+}
 
-        function performCategoryDeletion(id) {
-            const categories = currentData.pages['laws'].categories;
-            const idx = categories.findIndex(c => c.id === id);
-            if (idx > -1) { categories.splice(idx, 1); collectDataFromEditors(); renderCategoryList(); renderPageEditor(); }
-        }
+// === NEWS LOGIC ===
 
-        function closeCatDeleteModal() { document.getElementById('cat-delete-modal').classList.add('hidden'); catToDeleteId = null; }
+function renderNewsWidget(data) {
+const heroList = document.getElementById('news-list');
+const wrapper = document.getElementById('news-container');
+const moreBtn = document.getElementById('view-more-news-btn');
+heroList.innerHTML = '';
 
-        // --- Toggle Item Visibility ---
-        function toggleItemVisibility(checkbox) {
-            // This just updates UI state visually if needed, data is collected on save/action
-        }
+if (!data || data.length === 0) {
+wrapper.classList.add('hidden');
+return;
+}
+wrapper.classList.remove('hidden');
+wrapper.classList.add('animate-fade-in-up'); // Ensure animation works after load
 
-        // --- Accordion Logic ---
-        function toggleAccordion(index) {
-            const content = document.getElementById(`accordion-content-${index}`);
-            const arrow = document.getElementById(`accordion-arrow-${index}`);
-            
-            if (content.classList.contains('open')) {
-                content.classList.remove('open');
-                arrow.classList.remove('rotate');
-            } else {
-                content.classList.add('open');
-                arrow.classList.add('rotate');
-            }
-        }
+if (data.length > 3) moreBtn.classList.remove('hidden');
+else moreBtn.classList.add('hidden');
 
-        // --- Single Item Save/Cancel ---
-        function saveSingleItem(index) {
-            collectDataFromEditors(); // Update memory
-            renderPageEditor(); // Re-render sorted/updated list
-            alert("項目已暫存 (記得最後按「儲存並發布」)");
-        }
+data.slice(0, 3).forEach((item, index) => {
+const isNew = item.IsNew === true || item.IsNew === 'TRUE' || item.IsNew === 'true';
+const newBadge = isNew ? '<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 align-middle">NEW</span>' : '';
+const typeBadge = item.Type ? `<span class="text-xs text-blue-300 border border-blue-300/30 px-1.5 py-0.5 rounded mr-2">${item.Type}</span>` : '';
 
-        function cancelSingleItem(index) {
-            renderPageEditor(); // Revert to memory state
-        }
+const hasLink = item.Link && item.Link.trim() !== '' && item.Link.trim() !== '#';
+const href = hasLink ? item.Link : 'javascript:void(0)';
+const target = hasLink ? 'target="_blank"' : '';
+const onClick = hasLink ? '' : `onclick="openNewsModal(${index})"`;
 
-        // --- File Upload Logic ---
-        function openFileSelector(index, key) {
-            currentUploadTargetInput = document.getElementById(`input-${index}-${key}`);
-            document.getElementById('global-file-input').click();
-        }
+heroList.innerHTML += `
+               <li class="flex items-start gap-3 hover:bg-white/5 p-1 rounded transition-colors">
+                   <div class="flex-shrink-0 mt-0.5 text-thuGold font-mono whitespace-nowrap">${item.Date}</div>
+                   <div class="flex-grow min-w-0">
+                       ${typeBadge}
+                       <a href="${href}" ${target} ${onClick} class="hover:text-white hover:underline transition-colors leading-relaxed cursor-pointer truncate block">
+                           ${item.Title} ${newBadge}
+                       </a>
+                   </div>
+               </li>`;
+});
 
-        async function handleFileUpload(input) {
-            if (!input.files || input.files.length === 0) return;
-            const file = input.files[0];
-            
-            currentUploadTargetInput.value = "上傳中...";
-            currentUploadTargetInput.disabled = true;
+initNewsFilters();
+}
 
-            try {
-                const reader = new FileReader();
-                reader.readAsDataURL(file);
-                reader.onload = async function () {
-                    const base64Content = reader.result.split(',')[1];
-                    const path = `${activePageId}/${file.name}`; // e.g. laws/doc.pdf
-                    
-                    const owner = localStorage.getItem('gh_owner');
-                    const repo = localStorage.getItem('gh_repo');
-                    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
-                    
-                    let sha = null;
-                    try {
-                        const checkRes = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}` } });
-                        if (checkRes.ok) {
-                            const checkData = await checkRes.json();
-                            sha = checkData.sha;
-                        }
-                    } catch(e) {}
+function initNewsFilters() {
+const types = [...new Set(siteNews.map(n => n.Type || '一般公告'))];
+const select = document.getElementById('news-filter');
+select.innerHTML = '<option value="all">所有類型</option>';
+types.forEach(t => { select.innerHTML += `<option value="${t}">${t}</option>`; });
+}
 
-                    const body = {
-                        message: `Upload ${file.name} via Admin CMS`,
-                        content: base64Content,
-                        branch: 'main'
-                    };
-                    if (sha) body.sha = sha;
+function renderAllNewsUI(resetPage = false) {
+const search = document.getElementById('news-search').value.toLowerCase();
+const type = document.getElementById('news-filter').value;
 
-                    const putRes = await fetch(url, {
-                        method: 'PUT',
-                        headers: {
-                            'Authorization': `token ${sessionToken}`,
-                            'Content-Type': 'application/json'
-                        },
-                        body: JSON.stringify(body)
-                    });
+// 1. Filtering
+filteredNews = siteNews.filter(item => {
+const matchSearch = item.Title.toLowerCase().includes(search);
+const matchType = type === 'all' || (item.Type || '一般公告') === type;
+return matchSearch && matchType;
+});
 
-                    if (!putRes.ok) throw new Error("Upload failed");
-                    
-                    currentUploadTargetInput.value = path;
-                    currentUploadTargetInput.disabled = false;
-                    alert("上傳成功！");
-                };
-            } catch (e) {
-                alert("上傳失敗: " + e.message);
-                currentUploadTargetInput.value = "";
-                currentUploadTargetInput.disabled = false;
-            }
-            input.value = ''; 
-        }
+// 2. Pagination State
+if (resetPage) currentNewsPage = 1;
 
-        // --- Helper Functions (Add/Delete Items) ---
-        function addCardItem() { collectDataFromEditors(); currentData.cards.push({Title:"新卡片", Badge:"", Description:"", Icon:"fa-star", Type:"thu", Link:"#"}); renderCardsList(); }
-        function deleteCardItem(idx) { if(confirm("確定刪除此卡片？")) { collectDataFromEditors(); currentData.cards.splice(idx,1); renderCardsList(); } }
-        function addContactItem() { collectDataFromEditors(); currentData.contacts.push({Name:"新成員", Title:"職稱", Email:"", Phone:"", Type:"staff"}); renderContactsList(); }
-        function deleteContactItem(idx) { const realIdx = currentData.contacts.filter(c => c.Type === 'office').length > 0 ? idx + 1 : idx; if(confirm("確定刪除？")) { collectDataFromEditors(); currentData.contacts.splice(realIdx, 1); renderContactsList(); } }
-        function autoSortContacts() { collectDataFromEditors(); alert("此功能尚未實作自動排序邏輯"); } 
-        function addNewsItem() { collectDataFromEditors(); currentData.news.unshift({Date: new Date().toISOString().split('T')[0], Type:"公告", Title:"", Link:"", Content:"", IsNew:true}); renderNewsList(); }
-        function deleteNewsItem(idx) { if(confirm("確定刪除此公告？")) { collectDataFromEditors(); currentData.news.splice(idx,1); renderNewsList(); } }
-        function addPageItem() { 
-            collectDataFromEditors(); 
-            const newItem = {title:"", url:"", visible: true};
-            currentData.pages[activePageId].items.push(newItem); 
-            renderPageEditor(); 
-        }
-        function deletePageItem(id, idx) { collectDataFromEditors(); currentData.pages[id].items.splice(idx,1); renderPageEditor(); }
-        function addFaculty() { collectDataFromEditors(); currentData.departments.push({name:"新學院", icon:"fa-building", departments:[]}); renderPageEditor(); }
-        function addDepartment(fIdx) { collectDataFromEditors(); currentData.departments[fIdx].departments.push({name:"新系所", link:""}); renderPageEditor(); }
-        function deleteFaculty(fIdx) { if(confirm("確定刪除學院？")) { collectDataFromEditors(); currentData.departments.splice(fIdx,1); renderPageEditor(); } }
-        function deleteDepartment(fIdx, dIdx) { collectDataFromEditors(); currentData.departments[fIdx].departments.splice(dIdx,1); renderPageEditor(); }
+const totalPages = Math.ceil(filteredNews.length / newsPerPage);
+if (currentNewsPage > totalPages) currentNewsPage = totalPages > 0 ? totalPages : 1;
+if (currentNewsPage < 1) currentNewsPage = 1;
 
-        async function saveData() {
-            collectDataFromEditors();
-            if (!sessionToken) { alert("請先登入"); return; }
-            if (!confirm("確定要發布更新嗎？")) return;
-            
-            const btn = document.getElementById('save-btn');
-            const status = document.getElementById('save-status');
-            btn.disabled = true; 
-            status.innerHTML = '上傳中...'; status.className = 'text-sm font-bold text-thuBlue opacity-100';
+const start = (currentNewsPage - 1) * newsPerPage;
+const end = start + newsPerPage;
+const pageItems = filteredNews.slice(start, end);
 
-            try {
-                const jsonString = JSON.stringify(currentData, null, 4);
-                const encodedContent = window.btoa(unescape(encodeURIComponent(jsonString)));
-                const body = { message: `Update via Admin`, content: encodedContent, sha: fileSha };
-                const url = `https://api.github.com/repos/${localStorage.getItem('gh_owner')}/${localStorage.getItem('gh_repo')}/contents/${DATA_FILE}`;
-                
-                const response = await fetch(url, { method: 'PUT', headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-                if (!response.ok) throw new Error("Upload failed");
-                const res = await response.json();
-                fileSha = res.content.sha;
-                status.innerHTML = '更新成功！'; status.className = 'text-sm font-bold text-green-600 opacity-100';
-                setTimeout(()=>status.classList.add('opacity-0'), 3000);
-            } catch(e) {
-                alert(e.message);
-                status.innerHTML = '失敗'; status.className = 'text-sm font-bold text-red-600 opacity-100';
-            } finally {
-                btn.disabled = false;
-            }
-        }
-        
-        function switchTab(tabId) {
-            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(el => { el.classList.remove('border-thuBlue', 'text-thuBlue', 'bg-white', 'font-bold'); el.classList.add('border-transparent', 'text-gray-500', 'font-medium'); });
-            
-            document.getElementById(`tab-${tabId}`).classList.remove('hidden');
-            const activeBtn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-            if(activeBtn) { activeBtn.classList.add('border-thuBlue', 'text-thuBlue', 'bg-white', 'font-bold'); activeBtn.classList.remove('border-transparent', 'text-gray-500', 'font-medium'); }
-            
-            if(tabId === 'raw') document.getElementById('raw-json').value = JSON.stringify(currentData, null, 4);
-            
-            // Re-render only when switching to ensure DOM exists
-            if(tabId === 'cards') renderCardsList();
-            if(tabId === 'contacts') renderContactsList();
-            if(tabId === 'news') renderNewsList();
-            if(tabId === 'pages') renderPageEditor();
-        }
-    </script>
+// 3. Render List
+const list = document.getElementById('all-news-list');
+const noMsg = document.getElementById('no-news-msg');
+list.innerHTML = '';
+
+if (pageItems.length === 0) {
+noMsg.classList.remove('hidden');
+} else {
+noMsg.classList.add('hidden');
+pageItems.forEach(item => {
+const originalIndex = siteNews.indexOf(item); 
+let dateStr = item.Date;
+
+const hasLink = item.Link && item.Link.trim() !== '' && item.Link.trim() !== '#';
+const href = hasLink ? item.Link : 'javascript:void(0)';
+const target = hasLink ? 'target="_blank"' : '';
+const onClick = hasLink ? '' : `onclick="openNewsModal(${originalIndex});"`; 
+const typeTag = item.Type ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full mr-2">${item.Type}</span>` : '';
+
+list.innerHTML += `
+                   <li class="border-b border-gray-100 pb-3 last:border-0">
+                       <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
+                           <div class="flex items-center gap-2 shrink-0">
+                               <span class="text-gray-400 font-mono text-sm">${dateStr}</span>
+                               ${typeTag}
+                           </div>
+                           <a href="${href}" ${target} ${onClick} class="text-gray-700 hover:text-thuBlue hover:underline font-medium cursor-pointer block truncate">
+                               ${item.Title}
+                           </a>
+                       </div>
+                   </li>`;
+});
+}
+
+// 4. Render Pagination
+const pag = document.getElementById('news-pagination');
+pag.innerHTML = '';
+if (totalPages > 1) {
+pag.innerHTML += `<button onclick="changePage(${currentNewsPage - 1})" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50" ${currentNewsPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left text-gray-500"></i></button>`;
+for (let i = 1; i <= totalPages; i++) {
+const activeClass = i === currentNewsPage ? 'bg-thuBlue text-white' : 'bg-white text-gray-600 hover:bg-gray-100';
+pag.innerHTML += `<button onclick="changePage(${i})" class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${activeClass}">${i}</button>`;
+}
+pag.innerHTML += `<button onclick="changePage(${currentNewsPage + 1})" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50" ${currentNewsPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right text-gray-500"></i></button>`;
+}
+}
+
+window.changePage = function(p) { currentNewsPage = p; renderAllNewsUI(false); };
+window.openAllNewsModal = function() { renderAllNewsUI(true); toggleModal('all-news-modal'); };
+window.openNewsModal = function(index) {
+const item = siteNews[index];
+if(!item) return;
+document.getElementById('modal-news-date').innerText = item.Date;
+document.getElementById('modal-news-title').innerText = item.Title;
+const typeBadge = item.Type ? `<span class=\"inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-2\">${item.Type}</span><br>` : '';
+document.getElementById('modal-news-content').innerHTML = typeBadge + (item.Content || "無詳細內容");
+toggleModal('news-modal');
+};
+
+document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
+
+// --- Custom Scroll Logic for Footer ---
+const heroHeightThreshold = 600; // 滾動超過這個高度才顯示 footer
+window.addEventListener('scroll', () => { 
+const stickyHeader = document.getElementById('sticky-header'); 
+const footerTrigger = document.getElementById('footer-trigger'); 
+
+if(window.scrollY > 200){ 
+stickyHeader.classList.remove('-translate-y-full','opacity-0'); 
+stickyHeader.classList.add('translate-y-0','opacity-100'); 
+} else { 
+stickyHeader.classList.add('-translate-y-full','opacity-0'); 
+stickyHeader.classList.remove('translate-y-0','opacity-100'); 
+}
+
+// 控制版權頁顯示
+// 修正邏輯：滾動距離大於 Hero區塊高度的 90% 時顯示 footer
+if (window.scrollY >= window.innerHeight * 0.9) {
+footerTrigger.classList.remove('hidden');
+} else {
+footerTrigger.classList.add('hidden');
+}
+});
+</script>
 </body>
 </html>
