@@ -10,144 +10,56 @@
     <script>
         tailwind.config = {
             theme: {
-                extend: {
-                    colors: {
-                        thuBlue: '#002E5D',
-                        thuLightBlue: '#eef6fc',
-                        thuGold: '#C6A87C',
-                        pdfRed: '#dc2626',
-                        pdfRedHover: '#b91c1c'
-                    },
-                    fontFamily: {
-                        sans: ['"Noto Sans TC"', 'sans-serif'],
-                    }
-                }
+                extend: { colors: { thuBlue: '#002E5D', thuLightBlue: '#eef6fc', thuGold: '#C6A87C', pdfRed: '#dc2626' }, fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] } }
             }
         }
     </script>
     <style>
-        .page-header {
-            background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
-            position: relative;
-            overflow: hidden;
-        }
-        .page-header::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px; opacity: 0.3;
-        }
-        
-        .download-btn {
-            background-color: #dc2626;
-            color: white;
-            padding: 6px 12px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 500;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: all 0.2s;
-            white-space: nowrap;
-        }
-        .download-btn:hover {
-            background-color: #b91c1c;
-            transform: translateY(-1px);
-            box-shadow: 0 2px 4px rgba(0,0,0,0.15);
-        }
-
-        /* 修正篩選按鈕樣式，確保 active 狀態優先於 hover */
-        .filter-btn {
-            /* 基本樣式 */
-            transition: all 0.2s;
-        }
-        .filter-btn:hover:not(.active) {
-            /* 非 active 狀態下的 hover 效果 */
-            border-color: #002E5D; /* thuBlue */
-            color: #002E5D; /* thuBlue */
-        }
-        .filter-btn.active, .filter-btn.active:hover {
-            /* 鎖定 active 狀態的樣式，覆蓋 hover */
-            background-color: #002E5D; /* thuBlue */
-            color: white; 
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            border-color: transparent;
-        }
-        .filter-btn:active {
-            /* 點擊時強制維持 active 樣式 */
-            background-color: #002E5D !important;
-            color: white !important;
-        }
-        /* 新增發布單位樣式 */
-        .issuer-tag {
-            background-color: #eef6fc; /* thuLightBlue */
-            color: #002E5D; /* thuBlue */
-            border: 1px solid #d1e5f3;
-            padding: 4px 8px;
-            border-radius: 4px;
-            font-size: 0.8rem;
-            font-weight: 600;
-            white-space: nowrap;
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
+        .page-header { background: linear-gradient(135deg, #002E5D 0%, #001a35 100%); position: relative; overflow: hidden; }
+        .page-header::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; opacity: 0.3; }
+        .download-btn { background-color: #dc2626; color: white; padding: 6px 12px; border-radius: 4px; font-size: 0.8rem; font-weight: 500; display: inline-flex; align-items: center; gap: 6px; transition: all 0.2s; white-space: nowrap; }
+        .download-btn:hover { background-color: #b91c1c; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.15); }
+        .filter-btn { transition: all 0.2s; }
+        .filter-btn:hover:not(.active) { border-color: #002E5D; color: #002E5D; }
+        .filter-btn.active { background-color: #002E5D; color: white; border-color: transparent; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); }
+        .issuer-tag { background-color: #eef6fc; color: #002E5D; border: 1px solid #d1e5f3; padding: 4px 8px; border-radius: 4px; font-size: 0.8rem; font-weight: 600; display: inline-flex; align-items: center; gap: 4px; }
+        #scroll-to-top { position: fixed; bottom: 24px; right: 24px; width: 48px; height: 48px; background-color: #002E5D; color: white; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.25rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2); opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s, transform 0.3s; cursor: pointer; z-index: 1000; }
+        #scroll-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        #scroll-to-top:hover { background-color: #001a35; transform: translateY(-2px); }
     </style>
 </head>
 <body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen pb-24">
 
-    <!-- Header -->
     <nav class="bg-thuBlue text-white shadow-lg sticky top-0 z-50">
         <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
             <a href="index.html" class="flex items-center gap-3 hover:opacity-90 transition">
                 <img src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-8 w-auto">
-                <span class="font-bold tracking-wide hidden sm:inline">實習業務協作平台</span>
+                <span id="nav-site-title" class="font-bold tracking-wide hidden sm:inline">實習業務協作平台</span>
             </a>
-            <a href="index.html" class="text-sm bg-white/10 hover:bg-white/20 px-4 py-1.5 rounded-full transition flex items-center gap-2">
-                <i class="fas fa-arrow-left"></i> 回首頁
-            </a>
+            <a href="index.html" class="text-sm bg-white/10 hover:bg-white/20 px-4 py-1.5 rounded-full transition flex items-center gap-2"><i class="fas fa-arrow-left"></i> 回首頁</a>
         </div>
     </nav>
 
-    <!-- Page Title -->
     <header class="page-header text-white py-12">
         <div class="max-w-5xl mx-auto px-4 text-center relative z-10">
-            <div class="inline-block bg-white/10 backdrop-blur-sm px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20">Regulations & Policies</div>
-            <h1 class="text-3xl md:text-4xl font-bold mb-2 tracking-widest">實習相關法規</h1>
-            <p class="text-gray-400 text-sm">Laws and Regulations for Internship</p>
+            <div id="header-tag" class="inline-block bg-white/10 backdrop-blur-sm px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20">Loading...</div>
+            <h1 id="header-title" class="text-3xl md:text-4xl font-bold mb-2 tracking-widest">Loading...</h1>
+            <p id="header-desc" class="text-gray-400 text-sm">Loading...</p>
         </div>
     </header>
 
-    <!-- Content -->
     <main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full">
-        
-        <!-- Filter Buttons -->
         <div class="flex flex-wrap justify-center gap-2 mb-10 animate-fade-in-up">
-            <button onclick="filterLaws('all')" class="filter-btn active px-5 py-2 rounded-full text-sm font-bold transition-all border border-transparent bg-thuBlue text-white shadow-md ring-2 ring-offset-2 ring-thuBlue" id="btn-all">
-                全部顯示
-            </button>
-            <button onclick="filterLaws('edu')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium transition-all border border-gray-300 bg-white text-gray-600 hover:border-thuBlue hover:text-thuBlue" id="btn-edu">
-                教育部法規
-            </button>
-            <button onclick="filterLaws('admin')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium transition-all border border-gray-300 bg-white text-gray-600 hover:border-thuBlue hover:text-thuBlue" id="btn-admin">
-                行政函釋
-            </button>
-            <button onclick="filterLaws('school')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium transition-all border border-gray-300 bg-white text-gray-600 hover:border-thuBlue hover:text-thuBlue" id="btn-school">
-                校內法規
-            </button>
+            <button onclick="filterLaws('all')" class="filter-btn active px-5 py-2 rounded-full text-sm font-bold border border-transparent bg-thuBlue text-white" id="btn-all">全部顯示</button>
+            <button onclick="filterLaws('edu')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600" id="btn-edu">教育部法規</button>
+            <button onclick="filterLaws('admin')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600" id="btn-admin">行政函釋</button>
+            <button onclick="filterLaws('school')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600" id="btn-school">校內法規</button>
         </div>
-
-        <!-- Laws List -->
         <div id="laws-container" class="space-y-4 min-h-[300px]">
-            <div class="text-center py-12 text-gray-400">
-                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
-                <p>讀取資料中...</p>
-            </div>
+            <div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p>讀取資料中...</p></div>
         </div>
-
     </main>
 
-    <!-- Fixed Footer (與首頁完全一致) -->
     <footer id="footer-trigger" style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
         <div class="container mx-auto px-4">
             <div class="flex flex-col items-center justify-center gap-1">
@@ -156,131 +68,68 @@
             </div>
         </div>
     </footer>
+    <button id="scroll-to-top" onclick="window.scrollTo({top:0, behavior:'smooth'})"><i class="fas fa-chevron-up"></i></button>
 
     <script>
         let allLaws = [];
+        document.addEventListener('scroll', () => { const btn = document.getElementById('scroll-to-top'); if(window.scrollY>300) btn.classList.add('show'); else btn.classList.remove('show'); });
 
         document.addEventListener('DOMContentLoaded', async function() {
             try {
-                // Fetch Data
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
-                if (!response.ok) throw new Error("無法讀取資料庫");
+                if (!response.ok) throw new Error("Load failed");
                 const data = await response.json();
 
-                // 1. 設定頁尾版權 (與首頁一致)
-                if (data.settings && data.settings.Copyright) {
+                if (data.settings) {
+                    document.getElementById('nav-site-title').innerText = data.settings.SiteTitle || '實習業務協作平台';
                     document.getElementById('footer-copyright').innerText = data.settings.Copyright;
                 }
 
-                // 2. Load Laws Data
-                if (data.pages && data.pages['laws'] && data.pages['laws'].items) {
-                    allLaws = data.pages['laws'].items;
+                // Dynamic Header from 'laws' page settings
+                const pageInfo = data.pages['laws'];
+                if(pageInfo) {
+                    document.title = `${pageInfo.title} | ${data.settings.SiteTitle}`;
+                    document.getElementById('header-tag').innerText = pageInfo.tag || 'Regulations';
+                    document.getElementById('header-title').innerText = pageInfo.title;
+                    document.getElementById('header-desc').innerText = pageInfo.description || '';
+                    allLaws = pageInfo.items;
                     renderLaws(allLaws);
-                } else {
-                    document.getElementById('laws-container').innerHTML = `
-                        <div class="bg-white p-10 rounded-xl shadow-sm text-center border border-gray-200">
-                            <i class="fas fa-folder-open text-gray-300 text-5xl mb-4"></i>
-                            <h2 class="text-xl font-bold text-gray-700 mb-2">目前暫無資料</h2>
-                            <p class="text-gray-500">請至後台新增法規資料。</p>
-                        </div>`;
                 }
-
             } catch (error) {
-                console.error(error);
-                document.getElementById('laws-container').innerHTML = `<div class="text-center text-red-500 py-10">讀取資料錯誤</div>`;
+                document.getElementById('laws-container').innerHTML = `<div class="text-center text-red-500 py-10">資料讀取錯誤</div>`;
             }
         });
 
         function filterLaws(category) {
-            // 由於 requestAnimationFrame 是非同步的，將 DOM 操作放在裡面可以讓切換感覺更流暢
-            requestAnimationFrame(() => {
-                document.querySelectorAll('.filter-btn').forEach(btn => {
-                    // 移除 active 狀態
-                    btn.classList.remove('active', 'bg-thuBlue', 'text-white', 'shadow-md', 'ring-2', 'ring-offset-2', 'ring-thuBlue', 'font-bold');
-                    // 添加非 active 狀態的基礎樣式
-                    btn.classList.add('bg-white', 'text-gray-600', 'border-gray-300', 'font-medium');
-                });
-                
-                const activeBtn = document.getElementById(`btn-${category}`);
-                // 設定 active 狀態
-                activeBtn.classList.add('active', 'bg-thuBlue', 'text-white', 'shadow-md', 'ring-2', 'ring-offset-2', 'ring-thuBlue', 'font-bold');
-                
-                let filtered;
-                if (category === 'all') {
-                    filtered = allLaws;
-                } else {
-                    // Filter based on the category stored in JSON
-                    filtered = allLaws.filter(item => item.category === category);
-                }
-                
-                renderLaws(filtered);
-            });
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active', 'bg-thuBlue', 'text-white'));
+            document.getElementById(`btn-${category}`).classList.add('active', 'bg-thuBlue', 'text-white');
+            const filtered = category === 'all' ? allLaws : allLaws.filter(item => item.category === category);
+            renderLaws(filtered);
         }
 
         function renderLaws(items) {
             const container = document.getElementById('laws-container');
             container.innerHTML = '';
-
-            if (!items || items.length === 0) {
-                container.innerHTML = '<div class="text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">沒有符合條件的法規</div>';
-                return;
-            }
+            if (!items || items.length === 0) { container.innerHTML = '<div class="text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">沒有符合條件的法規</div>'; return; }
 
             items.forEach(item => {
-                const titleEn = item.title_en || '';
-                const date = item.date || '';
-                const issuer = item.issuer || '東海大學'; // Use issuer field
-                
-                // Determine buttons based on available URLs
-                let buttonsHtml = '';
-                
-                if (item.url_zh) {
-                    buttonsHtml += `
-                    <a href="${item.url_zh}" target="_blank" class="download-btn">
-                        <i class="fas fa-file-pdf"></i> 中文版下載
-                    </a>`;
-                }
-                
-                if (item.url_en) {
-                    buttonsHtml += `
-                    <a href="${item.url_en}" target="_blank" class="download-btn">
-                        <i class="fas fa-file-pdf"></i> 英文版下載
-                    </a>`;
-                }
-                
-                // Fallback for old/generic URL
-                if (!item.url_zh && !item.url_en && item.url) {
-                    buttonsHtml += `
-                    <a href="${item.url}" target="_blank" class="download-btn">
-                        <i class="fas fa-file-pdf"></i> 下載檔案
-                    </a>`;
-                }
+                let btns = '';
+                if (item.url_zh) btns += `<a href="${item.url_zh}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 中文版</a>`;
+                if (item.url_en) btns += `<a href="${item.url_en}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 英文版</a>`;
+                if (!item.url_zh && !item.url_en && item.url) btns += `<a href="${item.url}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 下載</a>`;
 
-                // 移除 hover 效果與圖示，簡化樣式
                 container.innerHTML += `
                 <div class="group block bg-white border border-gray-200 rounded-lg p-5 transition cursor-default mb-3">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
-                        
-                        <!-- Content -->
                         <div class="flex-grow min-w-0">
                             <div class="flex flex-wrap items-center gap-2 mb-2">
-                                <!-- 1. 發布單位 (淺藍底框) -->
-                                <span class="issuer-tag">發布單位: ${issuer}</span>
-                                
-                                <!-- 2. 最新修正日期 -->
-                                ${date ? `<span class="text-xs text-gray-500 flex items-center gap-1"><i class="far fa-clock"></i> 最新修正日期: ${date}</span>` : ''}
+                                <span class="issuer-tag">發布單位: ${item.issuer||'東海大學'}</span>
+                                ${item.date ? `<span class="text-xs text-gray-500 flex items-center gap-1"><i class="far fa-clock"></i> ${item.date}</span>` : ''}
                             </div>
-                            
-                            <h3 class="text-lg font-bold text-gray-800 transition truncate leading-tight mb-0.5">
-                                ${item.title}
-                            </h3>
-                            ${titleEn ? `<p class="text-xs text-gray-400 font-medium truncate">${titleEn}</p>` : ''}
+                            <h3 class="text-lg font-bold text-gray-800 transition truncate leading-tight mb-0.5">${item.title}</h3>
+                            ${item.title_en ? `<p class="text-xs text-gray-400 font-medium truncate">${item.title_en}</p>` : ''}
                         </div>
-
-                        <!-- Action Buttons -->
-                        <div class="flex flex-wrap gap-2 sm:justify-end mt-2 sm:mt-0 flex-shrink-0">
-                            ${buttonsHtml}
-                        </div>
+                        <div class="flex flex-wrap gap-2 sm:justify-end mt-2 sm:mt-0 flex-shrink-0">${btns}</div>
                     </div>
                 </div>`;
             });
