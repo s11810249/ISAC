@@ -38,7 +38,6 @@
         .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002147; }
         .drag-handle { cursor: grab; }
         .drag-handle:active { cursor: grabbing; }
-        
         .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
         .sidebar-btn:hover { background-color: #f3f4f6; color: #002147; }
         .sidebar-btn.active { background-color: #002147; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
@@ -317,7 +316,7 @@
         let currentUploadTargetInput = null;
         let confirmCallback = null; 
 
-        // --- Templates Configuration (Refactored to fetch from files) ---
+        // --- Templates Configuration ---
         const PAGE_TEMPLATES = {
             'documents_list': {
                 name: '通用文件列表 (Universal Document List)',
@@ -338,6 +337,47 @@
         ];
         
         const settingFieldsMap = { 'SiteTitle': { label: '網站主標題 (中文)', type: 'text' }, 'SiteEngTitle': { label: '網站副標題 (英文)', type: 'text' }, 'HeroSubtitle': { label: '首頁歡迎詞', type: 'textarea' }, 'LogoUrl': { label: 'Logo 圖片連結', type: 'text' }, 'OriginTitle': { label: '計畫緣起 - 標題', type: 'text' }, 'OriginContent': { label: '計畫緣起 - 內容 (HTML)', type: 'textarea' } };
+
+        // --- Message Modal Logic ---
+        function showMsg(title, body, type = 'info', onConfirm = null) {
+            const modal = document.getElementById('msg-modal');
+            const panel = document.getElementById('msg-panel');
+            const iconDiv = document.getElementById('msg-icon');
+            const titleEl = document.getElementById('msg-title');
+            const bodyEl = document.getElementById('msg-body');
+            const actions = document.getElementById('msg-actions');
+
+            titleEl.innerText = title;
+            bodyEl.innerText = body;
+            actions.innerHTML = '';
+
+            modal.classList.remove('hidden'); // Ensure it is visible
+            setTimeout(() => { modal.classList.remove('opacity-0'); panel.classList.remove('scale-95'); panel.classList.add('scale-100'); }, 10);
+
+            if (type === 'success') {
+                iconDiv.className = 'w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-check"></i>';
+                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-btnGreen text-white font-bold py-2.5 rounded-lg hover:opacity-90 transition">確定</button>`;
+            } else if (type === 'error') {
+                iconDiv.className = 'w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-exclamation"></i>';
+                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-red-500 text-white font-bold py-2.5 rounded-lg hover:bg-red-600 transition">關閉</button>`;
+            } else if (type === 'confirm') {
+                confirmCallback = onConfirm;
+                iconDiv.className = 'w-14 h-14 bg-blue-100 text-thuBlue rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-question"></i>';
+                actions.innerHTML = `<button onclick="executeConfirm()" class="w-full bg-thuBlue text-white font-bold py-2.5 rounded-lg hover:bg-blue-800 transition shadow-md">確定</button><button onclick="closeMsg()" class="w-full bg-white text-gray-500 border border-gray-300 font-bold py-2.5 rounded-lg hover:bg-gray-50 transition">取消</button>`;
+            } else {
+                iconDiv.className = 'w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-info"></i>';
+                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">知道了</button>`;
+            }
+        }
+
+        function closeMsg() {
+            const modal = document.getElementById('msg-modal');
+            const panel = document.getElementById('msg-panel');
+            modal.classList.add('opacity-0'); panel.classList.remove('scale-100'); panel.classList.add('scale-95');
+            setTimeout(() => { modal.classList.add('hidden'); confirmCallback = null; }, 300);
+        }
+
+        function executeConfirm() { if (confirmCallback) confirmCallback(); closeMsg(); }
 
         // --- Core Functions ---
         async function loadData() {
@@ -392,7 +432,7 @@
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
             
             const res = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
-            if(!res.ok) throw new Error(`無法讀取 ${path}`);
+            if(!res.ok) throw new Error(`找不到模板檔案：${path}，請確認該檔案已存在於您的儲存庫中。`);
             
             const data = await res.json();
             return JSON.parse(decodeURIComponent(escape(window.atob(data.content.replace(/\n/g, '')))));
@@ -475,7 +515,7 @@
                 newPageData = await fetchRepoJSON(tplConfig.path);
                 newPageData.title = title; // Override title
             } catch(e) {
-                showMsg("錯誤", "讀取模板檔案失敗: " + e.message, "error");
+                showMsg("錯誤", e.message, "error");
                 return;
             }
 
@@ -520,6 +560,7 @@
     </main>
     <footer class="bg-gray-800 text-gray-400 py-6 text-center text-xs border-t-4 border-thuGold"><p>${currentData.settings.Copyright}</p></footer>
     <script>
+        const pageData = ${JSON.stringify(newPageData)};
         document.addEventListener('DOMContentLoaded', async function() {
             try {
                 // Fetch the specific data for this page
@@ -528,14 +569,15 @@
                     fetch('pages/data_${id}.json?t='+Date.now())
                 ]);
                 const globalData = await globalRes.json();
-                const pageData = await pageRes.json();
+                // We use fetched pageData to render fresh content
+                const fetchedPageData = await pageRes.json();
                 
-                document.title = \`\${pageData.title} | \${globalData.settings.SiteTitle}\`;
-                document.getElementById('header-tag').innerText = pageData.tag || 'Page';
-                document.getElementById('header-title').innerText = pageData.title;
-                document.getElementById('header-desc').innerText = pageData.description || '';
+                document.title = \`\${fetchedPageData.title} | \${globalData.settings.SiteTitle}\`;
+                document.getElementById('header-tag').innerText = fetchedPageData.tag || 'Page';
+                document.getElementById('header-title').innerText = fetchedPageData.title;
+                document.getElementById('header-desc').innerText = fetchedPageData.description || '';
                 
-                renderContent(pageData);
+                renderContent(fetchedPageData);
             } catch(e) { document.getElementById('items-container').innerHTML = '<div class="text-center text-red-500">資料讀取錯誤</div>'; console.error(e); }
         });
 
@@ -559,8 +601,8 @@
 
         window.filterItems = function(catId) {
             document.querySelectorAll('.filter-btn').forEach(b=>{b.classList.remove('bg-thuBlue','text-white');b.classList.add('bg-white','text-gray-600')});
-            document.getElementById('btn-'+catId).classList.add('bg-thuBlue','text-white');
-            document.getElementById('btn-'+catId).classList.remove('bg-white','text-gray-600');
+            const btn = document.getElementById('btn-'+catId);
+            if(btn) { btn.classList.add('bg-thuBlue','text-white'); btn.classList.remove('bg-white','text-gray-600'); }
             
             const items = catId === 'all' ? window.allItems : window.allItems.filter(i => i.category === catId);
             const container = document.getElementById('items-container');
@@ -572,7 +614,7 @@
                 if(item.visible === false) return;
                 let btns = '';
                 // Dynamic File Fields
-                const fields = ${JSON.stringify(newPageData.fileFields || [])};
+                const fields = pageData.fileFields || [];
                 if(fields.length > 0) {
                     fields.forEach(f => {
                         if(item[f.key]) btns += \`<a href="\${item[f.key]}" target="_blank" class="bg-red-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1 hover:bg-red-700"><i class="fas \${f.icon}"></i> \${f.label}</a>\`;
@@ -662,9 +704,6 @@
                     const content = await fetchRepoJSON(pageConfig.source);
                     Object.assign(pageConfig, content);
                     pageConfig.loaded = true;
-                    // Note: We don't store SHA here for pages because we might need to fetch it freshly on save to avoid conflicts, or just let uploadFileToGitHub handle sha check.
-                    // Actually, let's just fetch SHA during save if needed, or rely on uploadFileToGitHub helper.
-                    
                     document.getElementById('external-badge').classList.remove('hidden');
                 } catch(e) {
                     showMsg("錯誤", "無法讀取頁面資料: " + e.message, "error");
