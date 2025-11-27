@@ -3,120 +3,148 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>載入中...</title>
+    <title>載入中... | 實習業務協作平台</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
             theme: {
-                extend: { colors: { thuBlue: '#002E5D', thuGold: '#C6A87C' } }
+                extend: {
+                    colors: {
+                        thuBlue: '#002E5D',
+                        thuLightBlue: '#eef6fc',
+                        thuGold: '#C6A87C',
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                    }
+                }
             }
         }
     </script>
+    <style>
+        .page-header {
+            background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        .page-header::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
+            background-size: 30px 30px; opacity: 0.3;
+        }
+        #scroll-to-top {
+            position: fixed; bottom: 24px; right: 24px; width: 48px; height: 48px;
+            background-color: #002E5D; color: white; border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+            font-size: 1.25rem; box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            opacity: 0; visibility: hidden; transition: opacity 0.3s, visibility 0.3s, transform 0.3s;
+            cursor: pointer; z-index: 1000;
+        }
+        #scroll-to-top.show { opacity: 1; visibility: visible; transform: translateY(0); }
+        #scroll-to-top:hover { background-color: #001a35; transform: translateY(-2px); }
+    </style>
 </head>
-<body class="bg-gray-50 font-sans flex flex-col min-h-screen">
+<body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen pb-20">
 
-    <!-- Navbar -->
-    <nav class="bg-thuBlue text-white p-4 shadow-md sticky top-0 z-50">
-        <div class="max-w-5xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3 cursor-pointer" onclick="window.location.href='index.html'">
-                <i class="fas fa-chevron-left text-thuGold"></i>
-                <span class="font-bold tracking-wide">返回首頁</span>
-            </div>
-            <div class="text-sm opacity-80 hidden sm:block">實習業務協作平台</div>
+    <nav class="bg-thuBlue text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3 hover:opacity-90 transition">
+                <img id="nav-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-8 w-auto">
+                <span id="nav-site-title" class="font-bold tracking-wide hidden sm:inline">實習業務協作平台</span>
+            </a>
+            <a href="index.html" class="text-sm bg-white/10 hover:bg-white/20 px-4 py-1.5 rounded-full transition flex items-center gap-2">
+                <i class="fas fa-arrow-left"></i> 回首頁
+            </a>
         </div>
     </nav>
 
-    <!-- Main Content -->
-    <main class="flex-grow max-w-5xl mx-auto w-full p-6">
-        
-        <!-- Header Section -->
-        <header class="mb-10 text-center animate-fade-in-up">
-            <h1 id="page-title" class="text-3xl md:text-4xl font-bold text-thuBlue mb-3">...</h1>
-            <p id="page-subtitle" class="text-gray-500 text-lg">...</p>
-            <div class="h-1 w-20 bg-thuGold mx-auto mt-6 rounded-full"></div>
-        </header>
+    <header class="page-header text-white py-12">
+        <div class="max-w-5xl mx-auto px-4 text-center relative z-10">
+            <div id="header-tag" class="inline-block bg-white/10 backdrop-blur-sm px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20">Loading...</div>
+            <h1 id="header-title" class="text-3xl md:text-4xl font-bold mb-2 tracking-widest">Loading...</h1>
+            <p id="header-desc" class="text-gray-400 text-sm">Loading...</p>
+        </div>
+    </header>
 
-        <!-- List Content -->
+    <main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full">
         <div id="list-container" class="grid gap-4">
-            <!-- JS will populate this -->
-            <div class="text-center py-20 text-gray-400">
-                <i class="fas fa-circle-notch fa-spin text-3xl"></i>
-                <p class="mt-2">資料讀取中...</p>
+            <div class="text-center py-12 text-gray-400">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>資料讀取中...</p>
             </div>
         </div>
-
     </main>
 
-    <!-- Footer -->
-    <footer class="bg-gray-800 text-gray-400 text-center p-4 text-xs mt-auto">
-        <span id="footer-text">© 2025 Tunghai University</span>
+    <footer id="footer-trigger" style="position: fixed; bottom: 0; left: 0; width: 100%; z-index: 50; background-color: #1f2937; color: #9ca3af; text-align: center; padding: 1rem 0; font-size: 0.75rem; border-top: 3px solid #C6A87C;">
+        <div class="container mx-auto px-4">
+            <div class="flex flex-col items-center justify-center gap-1">
+                <p id="footer-copyright" class="font-bold text-white tracking-wide text-[10px]"></p>
+                <p class="text-[9px] text-gray-500">網頁製作：張博堯 | Assisted by Google Gemini | <a href="admin.html" target="_blank" class="hover:text-white">後台管理</a></p>
+            </div>
+        </div>
     </footer>
 
+    <button id="scroll-to-top" onclick="window.scrollTo({top:0, behavior:'smooth'})"><i class="fas fa-chevron-up"></i></button>
+
     <script>
-        document.addEventListener('DOMContentLoaded', async () => {
-            // 1. Get ID from URL (e.g., page.html?id=laws)
-            const params = new URLSearchParams(window.location.search);
-            const pageId = params.get('id');
-
-            if (!pageId) {
-                alert("無效的頁面參數");
-                window.location.href = 'index.html';
-                return;
-            }
-
-            // 2. Fetch Data
-            try {
-                const res = await fetch('site_data.json?t=' + new Date().getTime());
-                const data = await res.json();
-                
-                const pageData = data.pages[pageId];
-                if (!pageData) throw new Error("找不到此頁面資料");
-
-                // 3. Render Page
-                document.title = pageData.title + " - 東海大學";
-                document.getElementById('page-title').innerText = pageData.title;
-                document.getElementById('page-subtitle').innerText = pageData.subtitle || "";
-                if(data.settings && data.settings.footerText) {
-                    document.getElementById('footer-text').innerText = data.settings.footerText;
-                }
-
-                renderList(pageData.items);
-
-            } catch (error) {
-                console.error(error);
-                document.getElementById('list-container').innerHTML = `
-                    <div class="text-center py-10 text-red-500 bg-red-50 rounded-xl border border-red-100">
-                        <i class="fas fa-exclamation-triangle text-4xl mb-2"></i>
-                        <p>無法載入頁面資料 (${pageId})</p>
-                        <p class="text-sm text-red-400 mt-1">請確認 site_data.json 設定是否正確</p>
-                    </div>`;
-            }
+        document.addEventListener('scroll', () => {
+            const btn = document.getElementById('scroll-to-top');
+            if(window.scrollY > 300) btn.classList.add('show'); else btn.classList.remove('show');
         });
 
-        function renderList(items) {
+        document.addEventListener('DOMContentLoaded', async () => {
+            const params = new URLSearchParams(window.location.search);
+            const pageId = params.get('id');
             const container = document.getElementById('list-container');
-            container.innerHTML = '';
 
-            if (!items || items.length === 0) {
-                container.innerHTML = '<div class="text-center text-gray-400 py-10">暫無資料</div>';
-                return;
+            try {
+                const res = await fetch(`data.json?t=${new Date().getTime()}`);
+                if(!res.ok) throw new Error("Load failed");
+                const data = await res.json();
+
+                // 1. Global Settings
+                if(data.settings) {
+                    document.getElementById('nav-site-title').innerText = data.settings.SiteTitle || '實習業務協作平台';
+                    document.getElementById('footer-copyright').innerText = data.settings.Copyright || '';
+                }
+
+                // 2. Page Specifics
+                const pageData = data.pages ? data.pages[pageId] : null;
+                if (!pageData) {
+                    container.innerHTML = '<div class="text-center py-10">找不到此頁面資料</div>';
+                    return;
+                }
+
+                document.title = `${pageData.title} | ${data.settings.SiteTitle}`;
+                document.getElementById('header-tag').innerText = pageData.tag || 'Information';
+                document.getElementById('header-title').innerText = pageData.title;
+                document.getElementById('header-desc').innerText = pageData.description || '';
+
+                // 3. Render Items
+                container.innerHTML = '';
+                if(pageData.items && pageData.items.length > 0) {
+                    pageData.items.forEach(item => {
+                        const catHtml = item.category ? `<span class="bg-blue-100 text-thuBlue text-xs px-2 py-1 rounded mr-3 font-bold">${item.category}</span>` : '';
+                        container.innerHTML += `
+                        <a href="${item.url}" target="_blank" class="block bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-thuGold hover:shadow-md transition-all group flex items-center justify-between">
+                            <div class="flex items-center overflow-hidden">
+                                ${catHtml}
+                                <span class="text-gray-700 font-medium group-hover:text-thuBlue truncate text-lg">${item.title}</span>
+                            </div>
+                            <i class="fas fa-external-link-alt text-gray-300 group-hover:text-thuGold ml-4"></i>
+                        </a>`;
+                    });
+                } else {
+                    container.innerHTML = '<div class="text-center py-10 text-gray-400">暫無項目</div>';
+                }
+
+            } catch (e) {
+                console.error(e);
+                container.innerHTML = '<div class="text-center py-10 text-red-500">資料載入錯誤</div>';
             }
-
-            items.forEach(item => {
-                const tagHtml = item.tag ? `<span class="bg-blue-100 text-thuBlue text-xs px-2 py-1 rounded mr-3 whitespace-nowrap font-bold">${item.tag}</span>` : '';
-                
-                const html = `
-                <a href="${item.url}" target="_blank" class="block bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-thuGold hover:shadow-md transition-all group flex items-center justify-between">
-                    <div class="flex items-center overflow-hidden">
-                        ${tagHtml}
-                        <span class="text-gray-700 font-medium group-hover:text-thuBlue truncate text-lg">${item.title}</span>
-                    </div>
-                    <i class="fas fa-external-link-alt text-gray-300 group-hover:text-thuGold ml-4"></i>
-                </a>`;
-                container.innerHTML += html;
-            });
-        }
+        });
     </script>
 </body>
 </html>
