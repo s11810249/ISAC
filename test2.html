@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>載入中...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>
+        // 核心設定：由後台自動替換此 ID
+        const PAGE_ID = 'test2';
+        
+        tailwind.config = {
+            theme: {
+                extend: { colors: { thuBlue: '#002E5D', thuGold: '#C6A87C' }, fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] } }
+            }
+        }
+    </script>
+    <style>.page-header{background:linear-gradient(135deg,#002E5D 0%,#001a35 100%)}</style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen">
+    <nav class="bg-thuBlue text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3"><img id="nav-logo" src="" class="h-8 w-auto hidden"><span id="nav-title" class="font-bold hidden sm:inline"></span></a>
+            <a href="index.html" class="text-sm bg-white/10 px-4 py-1.5 rounded-full hover:bg-white/20 transition"><i class="fas fa-arrow-left"></i> 回首頁</a>
+        </div>
+    </nav>
+
+    <header class="page-header text-white py-12 text-center">
+        <div id="header-tag" class="inline-block bg-white/10 px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20 hidden">Page</div>
+        <h1 id="header-title" class="text-3xl font-bold mb-2 tracking-widest">Loading...</h1>
+        <p id="header-desc" class="text-gray-400 text-sm max-w-2xl mx-auto px-4"></p>
+    </header>
+
+    <main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full">
+        <div id="filter-container" class="flex flex-wrap justify-center gap-2 mb-10"></div>
+        
+        <div id="items-container" class="space-y-4 min-h-[300px]">
+            <div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-xs border-t-4 border-thuGold">
+        <p id="footer-copyright"></p>
+    </footer>
+
+    <script>
+        let allItems = [];
+        let fileFields = [];
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // 平行讀取全域設定與頁面資料
+                const [globalRes, pageRes] = await Promise.all([
+                    fetch('data.json?t='+Date.now()),
+                    fetch(`pages/data_${PAGE_ID}.json?t=`+Date.now())
+                ]);
+
+                if(!globalRes.ok || !pageRes.ok) throw new Error("資料讀取失敗");
+
+                const globalData = await globalRes.json();
+                const pageData = await pageRes.json();
+
+                // 1. 設定全域資訊 (Nav, Footer, Title)
+                document.title = `${pageData.title} | ${globalData.settings.SiteTitle}`;
+                document.getElementById('nav-title').innerText = globalData.settings.SiteTitle;
+                document.getElementById('footer-copyright').innerText = globalData.settings.Copyright;
+                if(globalData.settings.LogoUrl) {
+                    const logo = document.getElementById('nav-logo');
+                    logo.src = globalData.settings.LogoUrl;
+                    logo.classList.remove('hidden');
+                }
+
+                // 2. 設定頁面 Header
+                document.getElementById('header-title').innerText = pageData.title;
+                document.getElementById('header-desc').innerText = pageData.description || '';
+                if(pageData.tag) {
+                    const tagEl = document.getElementById('header-tag');
+                    tagEl.innerText = pageData.tag;
+                    tagEl.classList.remove('hidden');
+                }
+
+                // 3. 準備內容資料
+                allItems = pageData.items || [];
+                fileFields = pageData.fileFields || []; // 這是 documents_list 的關鍵設定
+
+                // 4. 渲染分類按鈕
+                const filterContainer = document.getElementById('filter-container');
+                if(pageData.categories && pageData.categories.length > 0) {
+                    filterContainer.innerHTML = '<button onclick="filterItems(\'all\')" class="filter-btn active px-4 py-1.5 rounded-full text-sm bg-thuBlue text-white transition-colors" id="btn-all">全部</button>';
+                    pageData.categories.forEach(cat => {
+                        filterContainer.innerHTML += `<button onclick="filterItems('${cat.id}')" class="filter-btn px-4 py-1.5 rounded-full text-sm bg-white border border-gray-300 text-gray-600 hover:bg-gray-50 transition-colors" id="btn-${cat.id}">${cat.name}</button>`;
+                    });
+                }
+
+                // 5. 初始渲染列表
+                filterItems('all');
+
+            } catch(e) {
+                console.error(e);
+                document.getElementById('items-container').innerHTML = `<div class="text-center text-red-500 py-10 bg-red-50 rounded-lg">無法讀取頁面資料 (${e.message})</div>`;
+            }
+        });
+
+        // 篩選功能
+        window.filterItems = function(catId) {
+            // 更新按鈕樣式
+            document.querySelectorAll('.filter-btn').forEach(b => {
+                b.classList.remove('bg-thuBlue','text-white');
+                b.classList.add('bg-white','text-gray-600');
+            });
+            const activeBtn = document.getElementById('btn-'+catId);
+            if(activeBtn) {
+                activeBtn.classList.remove('bg-white','text-gray-600');
+                activeBtn.classList.add('bg-thuBlue','text-white');
+            }
+
+            // 篩選資料
+            const items = catId === 'all' ? allItems : allItems.filter(i => i.category === catId);
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+
+            if(items.length === 0) {
+                container.innerHTML = '<div class="text-center py-12 text-gray-400 border-2 border-dashed border-gray-200 rounded-xl">此分類尚無資料</div>';
+                return;
+            }
+
+            // 渲染項目 (Documents List 專屬邏輯：多按鈕)
+            items.forEach((item, index) => {
+                if(item.visible === false) return;
+
+                // 產生下載按鈕群組
+                let btnsHtml = '';
+                fileFields.forEach(field => {
+                    const url = item[field.key];
+                    if(url) {
+                        btnsHtml += `
+                        <a href="${url}" target="_blank" class="inline-flex items-center gap-1.5 bg-red-600 text-white px-3 py-1.5 rounded text-xs font-medium hover:bg-red-700 transition-colors shadow-sm">
+                            <i class="fas ${field.icon}"></i> ${field.label}
+                        </a>`;
+                    }
+                });
+
+                // 如果沒有設定按鈕但有 url (兼容舊資料)
+                if(btnsHtml === '' && item.url) {
+                    btnsHtml = `<a href="${item.url}" target="_blank" class="text-blue-600 hover:underline text-sm font-medium"><i class="fas fa-link mr-1"></i> 連結</a>`;
+                }
+
+                container.innerHTML += `
+                <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-shadow flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between group animate-fade-in-up" style="animation-delay: ${index * 50}ms">
+                    <div class="flex-grow">
+                        <div class="flex items-center gap-2 mb-1.5 flex-wrap">
+                             ${item.issuer ? `<span class="text-[10px] bg-gray-100 text-gray-600 px-2 py-0.5 rounded border border-gray-200">${item.issuer}</span>` : ''}
+                             ${item.date ? `<span class="text-[10px] text-gray-400 font-mono"><i class="far fa-clock mr-1"></i>${item.date}</span>` : ''}
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800 leading-tight group-hover:text-thuBlue transition-colors">${item.title}</h3>
+                        ${item.title_en ? `<p class="text-xs text-gray-500 mt-0.5">${item.title_en}</p>` : ''}
+                    </div>
+                    <div class="flex flex-wrap gap-2 shrink-0 sm:justify-end w-full sm:w-auto mt-2 sm:mt-0">
+                        ${btnsHtml}
+                    </div>
+                </div>`;
+            });
+        }
+    </script>
+</body>
+</html>
