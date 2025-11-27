@@ -52,12 +52,9 @@
 
     <!-- Content -->
     <main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full">
-        <div class="flex flex-wrap justify-center gap-2 mb-10 animate-fade-in-up">
-            <button onclick="filterLaws('all')" class="filter-btn active px-5 py-2 rounded-full text-sm font-bold border border-transparent bg-thuBlue text-white" id="btn-all">全部顯示</button>
-            <button onclick="filterLaws('edu')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600" id="btn-edu">教育部法規</button>
-            <button onclick="filterLaws('admin')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600" id="btn-admin">行政函釋</button>
-            <button onclick="filterLaws('school')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600" id="btn-school">校內法規</button>
-        </div>
+        <!-- 動態產生按鈕 -->
+        <div id="filter-container" class="flex flex-wrap justify-center gap-2 mb-10 animate-fade-in-up"></div>
+        
         <div id="laws-container" class="space-y-4 min-h-[300px]">
             <div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl mb-2"></i><p>讀取資料中...</p></div>
         </div>
@@ -76,6 +73,8 @@
 
     <script>
         let allLaws = [];
+        let categories = [];
+        
         document.addEventListener('scroll', () => { const btn = document.getElementById('scroll-to-top'); if(window.scrollY>300) btn.classList.add('show'); else btn.classList.remove('show'); });
 
         document.addEventListener('DOMContentLoaded', async function() {
@@ -89,24 +88,48 @@
                     document.getElementById('footer-copyright').innerText = data.settings.Copyright;
                 }
 
-                // Dynamic Header from 'laws' page settings
                 const pageInfo = data.pages['laws'];
                 if(pageInfo) {
                     document.title = `${pageInfo.title} | ${data.settings.SiteTitle}`;
                     document.getElementById('header-tag').innerText = pageInfo.tag || 'Regulations';
                     document.getElementById('header-title').innerText = pageInfo.title;
                     document.getElementById('header-desc').innerText = pageInfo.description || '';
+                    
+                    // Get Categories (Default fallback)
+                    categories = pageInfo.categories || [
+                        { id: 'edu', name: '教育部法規' },
+                        { id: 'admin', name: '行政函釋' },
+                        { id: 'school', name: '校內法規' }
+                    ];
+
                     allLaws = pageInfo.items;
+                    
+                    renderFilterButtons();
                     renderLaws(allLaws);
                 }
             } catch (error) {
+                console.error(error);
                 document.getElementById('laws-container').innerHTML = `<div class="text-center text-red-500 py-10">資料讀取錯誤</div>`;
             }
         });
 
+        function renderFilterButtons() {
+            const container = document.getElementById('filter-container');
+            container.innerHTML = `<button onclick="filterLaws('all')" class="filter-btn active px-5 py-2 rounded-full text-sm font-bold border border-transparent bg-thuBlue text-white" id="btn-all">全部顯示</button>`;
+            
+            categories.forEach(cat => {
+                container.innerHTML += `<button onclick="filterLaws('${cat.id}')" class="filter-btn px-5 py-2 rounded-full text-sm font-medium border border-gray-300 bg-white text-gray-600" id="btn-${cat.id}">${cat.name}</button>`;
+            });
+        }
+
         function filterLaws(category) {
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active', 'bg-thuBlue', 'text-white'));
-            document.getElementById(`btn-${category}`).classList.add('active', 'bg-thuBlue', 'text-white');
+            document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.add('bg-white', 'text-gray-600', 'border-gray-300'));
+            
+            const activeBtn = document.getElementById(`btn-${category}`);
+            activeBtn.classList.remove('bg-white', 'text-gray-600', 'border-gray-300');
+            activeBtn.classList.add('active', 'bg-thuBlue', 'text-white', 'border-transparent');
+            
             const filtered = category === 'all' ? allLaws : allLaws.filter(item => item.category === category);
             renderLaws(filtered);
         }
@@ -122,16 +145,20 @@
                 if (item.url_en) btns += `<a href="${item.url_en}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 英文版</a>`;
                 if (!item.url_zh && !item.url_en && item.url) btns += `<a href="${item.url}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 下載</a>`;
 
+                const formattedDate = item.date ? item.date.replace(/-/g, '/') : '';
+                const issuerText = item.issuer || '東海大學';
+
+                // 移除 truncate 以支援換行
                 container.innerHTML += `
                 <div class="group block bg-white border border-gray-200 rounded-lg p-5 transition cursor-default mb-3">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                         <div class="flex-grow min-w-0">
                             <div class="flex flex-wrap items-center gap-2 mb-2">
-                                <span class="issuer-tag">發布單位: ${item.issuer||'東海大學'}</span>
-                                ${item.date ? `<span class="text-xs text-gray-500 flex items-center gap-1"><i class="far fa-clock"></i> ${item.date}</span>` : ''}
+                                <span class="issuer-tag">${issuerText}</span>
+                                ${formattedDate ? `<span class="text-xs text-gray-500 flex items-center gap-1"><i class="far fa-clock"></i> ${formattedDate}</span>` : ''}
                             </div>
-                            <h3 class="text-lg font-bold text-gray-800 transition truncate leading-tight mb-0.5">${item.title}</h3>
-                            ${item.title_en ? `<p class="text-xs text-gray-400 font-medium truncate">${item.title_en}</p>` : ''}
+                            <h3 class="text-lg font-bold text-gray-800 transition leading-tight mb-0.5">${item.title}</h3>
+                            ${item.title_en ? `<p class="text-xs text-gray-400 font-medium">${item.title_en}</p>` : ''}
                         </div>
                         <div class="flex flex-wrap gap-2 sm:justify-end mt-2 sm:mt-0 flex-shrink-0">${btns}</div>
                     </div>
