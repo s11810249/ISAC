@@ -119,7 +119,69 @@
 
     <div id="basic-settings-modal" class="fixed inset-0 z-[160] flex items-center justify-center hidden"><div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="closeBasicSettingsModal()"></div><div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative z-10 mx-4 animate-fade-in-up"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-cog mr-2 text-thuBlue"></i>基本設定</h3><button onclick="closeBasicSettingsModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><div class="space-y-4"><div><label class="text-xs text-gray-500 font-bold block mb-1">頁面標題</label><input type="text" id="page-setting-title" class="input-stylish"></div><div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-gray-500 font-bold block mb-1">圖示 (Icon)</label><div class="flex gap-1 relative"><div class="w-9 h-9 bg-gray-100 rounded flex items-center justify-center text-gray-600"><i id="page-icon-preview" class="fas fa-file"></i></div><input type="text" id="page-setting-icon" class="input-stylish font-mono" oninput="document.getElementById('page-icon-preview').className='fas '+(this.value||'fa-question')"></div></div><div><label class="text-xs text-gray-500 font-bold block mb-1">標籤 (Tag)</label><input type="text" id="page-setting-tag" class="input-stylish"></div></div><div><label class="text-xs text-gray-500 font-bold block mb-1">副標題/描述</label><textarea id="page-setting-desc" rows="3" class="input-stylish"></textarea></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeBasicSettingsModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition">取消</button><button onclick="savePageHeaderSettings()" class="btn-confirm-lg bg-thuBlue hover:bg-blue-800"><i class="fas fa-save"></i> 儲存變更</button></div></div></div>
     
-    <div id="advanced-settings-modal" class="fixed inset-0 z-[160] flex items-center justify-center hidden"><div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="closeAdvancedSettingsModal()"></div><div class="bg-white rounded-xl shadow-2xl p-6 max-w-lg w-full relative z-10 mx-4 animate-fade-in-up max-h-[85vh] overflow-y-auto custom-scrollbar"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-sliders-h mr-2 text-thuBlue"></i>進階設定</h3><button onclick="closeAdvancedSettingsModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><div class="space-y-6"><div class="bg-gray-50 p-4 rounded-lg border border-gray-100"><label class="text-xs text-gray-500 font-bold block mb-2 uppercase tracking-wide">列表欄位顯示名稱</label><div class="flex gap-2 mb-2"><div class="w-1/2"><span class="text-[10px] text-gray-400 block mb-1">主標題欄位</span><input type="text" id="page-label-title" class="input-stylish" placeholder="例如：文件名稱"></div><div class="w-1/2"><span class="text-[10px] text-gray-400 block mb-1">副標題欄位</span><input type="text" id="page-label-title-en" class="input-stylish" placeholder="例如：備註"></div></div><button onclick="savePageLabelSettings()" class="btn-confirm-lg w-full justify-center bg-white text-gray-600 border border-gray-300 hover:bg-gray-50 shadow-sm text-xs py-2"><i class="fas fa-sync-alt"></i> 更新欄位名稱</button></div><div id="modal-category-manager" class="hidden"><div class="flex justify-between items-center mb-2"><label class="text-xs text-gray-500 font-bold uppercase tracking-wide">分類管理</label></div><div class="border border-gray-200 rounded-lg overflow-hidden"><div class="bg-gray-50 p-2 max-h-40 overflow-y-auto space-y-1" id="cat-list"></div><div class="p-2 bg-white border-t border-gray-100 flex gap-2"><input type="text" id="new-cat-name" class="flex-grow border rounded p-1.5 text-sm" placeholder="新分類名稱..."><button onclick="addNewCategory()" class="bg-btnGreen text-white px-3 rounded-lg text-xs font-bold hover:bg-btnGreenHover">新增</button></div></div></div><div id="modal-file-fields-config" class="hidden"><label class="text-xs text-gray-500 font-bold block mb-2 uppercase tracking-wide">下載按鈕設定</label><div class="border border-gray-200 rounded-lg p-2 bg-white space-y-2" id="file-config-list"></div><button onclick="saveFileConfigSettings()" class="btn-confirm-lg w-full justify-center mt-2 bg-thuBlue hover:bg-blue-800"><i class="fas fa-save"></i> 儲存按鈕設定</button></div></div><div class="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-2"><button onclick="closeAdvancedSettingsModal()" class="px-4 py-2 bg-thuBlue hover:bg-blue-800 text-white rounded-lg text-sm font-bold transition shadow">完成</button></div></div></div>
+    <div id="advanced-settings-modal" class="fixed inset-0 z-[160] flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="closeAdvancedSettingsModal()"></div>
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative z-10 mx-4 animate-fade-in-up max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6 border-b pb-4 shrink-0">
+                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-sliders-h mr-2 text-thuBlue"></i>頁面進階設定</h3>
+                <button onclick="closeAdvancedSettingsModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="overflow-y-auto custom-scrollbar flex-grow pr-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-6">
+                        <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
+                            <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">列表欄位顯示名稱</label>
+                            <div class="space-y-3">
+                                <div>
+                                    <span class="text-[11px] text-gray-400 block mb-1">主標題欄位 (例如：文件名稱)</span>
+                                    <input type="text" id="page-label-title" class="input-stylish bg-white" placeholder="預設：標題">
+                                </div>
+                                <div>
+                                    <span class="text-[11px] text-gray-400 block mb-1">副標題欄位 (例如：備註/英文名)</span>
+                                    <input type="text" id="page-label-title-en" class="input-stylish bg-white" placeholder="預設：備註">
+                                </div>
+                            </div>
+                            <button onclick="savePageLabelSettings()" class="mt-4 w-full py-2 bg-white border border-gray-300 text-gray-600 rounded-lg text-xs font-bold hover:bg-gray-50 hover:text-thuBlue transition shadow-sm">
+                                <i class="fas fa-sync-alt mr-1"></i> 更新欄位名稱
+                            </button>
+                        </div>
+
+                        <div id="modal-file-fields-config" class="hidden">
+                            <div class="border-t border-gray-100 pt-4">
+                                <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">下載按鈕設定</label>
+                                <div class="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2 max-h-60 overflow-y-auto custom-scrollbar" id="file-config-list"></div>
+                                <button onclick="saveFileConfigSettings()" class="btn-confirm-lg w-full justify-center mt-3 bg-thuBlue hover:bg-blue-800 text-xs">
+                                    <i class="fas fa-save mr-1"></i> 儲存按鈕設定
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-l border-gray-100 md:pl-8">
+                        <div id="modal-category-manager" class="hidden h-full flex flex-col">
+                            <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">分類標籤管理</label>
+                            <div class="flex-grow border border-gray-200 rounded-xl overflow-hidden flex flex-col bg-white shadow-sm h-64 md:h-auto">
+                                <div class="bg-gray-50/50 p-3 flex-grow overflow-y-auto space-y-1 custom-scrollbar" id="cat-list">
+                                    </div>
+                                <div class="p-3 bg-white border-t border-gray-100">
+                                    <div class="flex gap-2">
+                                        <input type="text" id="new-cat-name" class="flex-grow border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-1 focus:ring-thuBlue" placeholder="輸入新分類名稱...">
+                                        <button onclick="addNewCategory()" class="bg-btnGreen text-white px-4 rounded-lg text-sm font-bold hover:bg-btnGreenHover shadow-sm whitespace-nowrap">新增</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-2"><i class="fas fa-info-circle"></i> 設定分類後，前台頁面將自動產生篩選按鈕。</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3 shrink-0">
+                <button onclick="closeAdvancedSettingsModal()" class="px-6 py-2.5 rounded-lg text-gray-600 font-bold hover:bg-gray-200 transition-colors text-sm">關閉</button>
+            </div>
+        </div>
+    </div>
 
     <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-10 animate-fade-in-up">
@@ -212,12 +274,12 @@
                                 <div><h3 class="text-lg font-bold text-gray-800">網站主題顏色管理</h3><p class="text-sm text-gray-500 mt-1">「東海藍」與「榮耀金」為系統鎖定顏色，無法修改或刪除。</p></div>
                                 <button onclick="addColorItem()" class="bg-btnGreen text-white hover:bg-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 text-sm"><i class="fas fa-plus"></i> 新增顏色</button>
                             </div>
-                            <div id="colors-list-header" class="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-100 rounded-t-lg text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            <div id="colors-list-header" class="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-100 rounded-t-lg text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 <div class="col-span-1 text-center">預覽</div>
                                 <div class="col-span-3">顯示名稱</div>
                                 <div class="col-span-3">識別碼 (ID)</div>
-                                <div class="col-span-3">Hex 色碼</div>
-                                <div class="col-span-2 text-right">操作</div>
+                                <div class="col-span-4">Hex 色碼</div>
+                                <div class="col-span-1 text-right">操作</div>
                             </div>
                             <div id="colors-list-editor" class="space-y-2"></div>
                         </div>
@@ -1054,10 +1116,10 @@
             
             if (mode === 'page') {
                 if (sortablePageItems) sortablePageItems.destroy(); 
-                sortablePageItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
+                sortablePageItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
             } else {
                 if (sortableTemplateItems) sortableTemplateItems.destroy();
-                sortableTemplateItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
+                sortableTemplateItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
             }
         }
 
@@ -1105,7 +1167,7 @@
             
             if(sortableCards) sortableCards.destroy(); 
             // 重要：Grid 佈局下，ghostClass 有時會跑版，但基本拖曳功能正常
-            sortableCards = Sortable.create(c, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onEnd:()=> { collectDataFromEditors(); markUnsaved(); }}); 
+            sortableCards = Sortable.create(c, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd:()=> { collectDataFromEditors(); markUnsaved(); }}); 
         }
 
         function renderContactsList() { 
@@ -1131,7 +1193,7 @@
                 </div>`;
             });
             if(sortableStaff) sortableStaff.destroy(); 
-            sortableStaff = Sortable.create(sc, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onEnd:()=> { collectDataFromEditors(); markUnsaved(); }});
+            sortableStaff = Sortable.create(sc, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd:()=> { collectDataFromEditors(); markUnsaved(); }});
         }
         function renderNewsList() { const c=document.getElementById('news-list-editor'); c.innerHTML=''; currentData.news.forEach((n,i)=>{ c.innerHTML+=`<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${n.Date}" onchange="markUnsaved()"><select class="news-type border rounded p-2 text-sm w-32" onchange="markUnsaved()"><option value="公告" ${n.Type==='公告'?'selected':''}>公告</option><option value="活動" ${n.Type==='活動'?'selected':''}>活動</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew" ${n.IsNew?'checked':''} onchange="markUnsaved()"><label class="text-sm">NEW</label></div><button onclick="deleteNewsItem(${i})" class="ml-auto text-red-400"><i class="fas fa-trash"></i></button></div><input class="news-title w-full border rounded p-2 font-bold" value="${n.Title}" onchange="markUnsaved()"><input class="news-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${n.Link}" onchange="markUnsaved()"><textarea class="news-content w-full border rounded p-2 text-sm h-20" onchange="markUnsaved()">${n.Content}</textarea></div>`; }); }
         
@@ -1165,7 +1227,7 @@
         function toggleTokenVisibility() { const t=document.getElementById('gh-token'); const i=document.getElementById('token-eye-icon'); if(t.type==='password'){t.type='text';i.className='fas fa-eye-slash'}else{t.type='password';i.className='fas fa-eye'} }
         function logout() { showMsg("登出確認", "確定要登出嗎？資料將不會保留。", "confirm", () => location.reload()); }
 
-        // --- Render Color Manager (Fixed Lock Logic) ---
+        // --- Render Color Manager (Fixed Lock Logic & Color Picker) ---
         function renderColorManager() {
             const container = document.getElementById('colors-list-editor');
             container.innerHTML = '';
@@ -1175,19 +1237,32 @@
             if (!hasGold) currentData.colors.push({name: "榮耀金", id: "glorygold", hex: "#c6a87c"});
 
             currentData.colors.forEach((c, i) => {
-                // 強制鎖定名單
-                const isLocked = ['thu', 'glorygold', 'thubluenew'].includes(c.id);
+                // 修正 1: 加入 'thublue' 到鎖定清單，確保正確鎖定
+                const isLocked = ['thu', 'glorygold', 'thubluenew', 'thublue'].includes(c.id);
                 
+                // 修正 2: 調整 grid col-span 分配，縮小 Hex 與刪除鍵的距離
                 container.innerHTML += `
-                <div class="color-item grid grid-cols-12 gap-4 items-center p-3 bg-white border border-gray-100 rounded-lg hover:shadow-sm transition" data-index="${i}">
-                    <div class="col-span-1 text-center flex justify-center"><div class="color-preview-circle" style="background-color: ${c.hex};"></div></div>
-                    <div class="col-span-3"><input type="text" class="c-name w-full border rounded p-2 text-sm" value="${c.name}" onchange="markUnsaved()"></div>
-                    <div class="col-span-3"><input type="text" class="c-id w-full border rounded p-2 text-sm font-mono text-gray-500" value="${c.id}" ${isLocked ?'readonly title="系統預設顏色無法修改 ID"':''} onchange="markUnsaved()"></div>
-                    <div class="col-span-3"><input type="text" class="c-hex w-full border rounded p-2 text-sm font-mono" value="${c.hex}" ${isLocked ?'readonly title="系統預設顏色無法修改 Hex"':''} oninput="this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor=this.value" onchange="markUnsaved()"></div>
-                    <div class="col-span-2 text-right">
+                <div class="color-item grid grid-cols-12 gap-3 items-center p-3 bg-white border border-gray-100 rounded-lg hover:shadow-sm transition" data-index="${i}">
+                    <div class="col-span-1 text-center flex justify-center">
+                        <div class="color-preview-circle" style="background-color: ${c.hex};"></div>
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-name w-full border rounded p-2 text-sm" value="${c.name}" onchange="markUnsaved()" placeholder="顏色名稱">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-id w-full border rounded p-2 text-sm font-mono text-gray-500" value="${c.id}" ${isLocked ?'readonly title="系統預設顏色無法修改 ID"':''} onchange="markUnsaved()">
+                    </div>
+                    <div class="col-span-4 flex gap-2">
+                        <div class="relative flex-grow">
+                            <input type="text" class="c-hex w-full border rounded p-2 pl-8 text-sm font-mono uppercase" value="${c.hex}" ${isLocked ?'readonly title="系統預設顏色無法修改 Hex"':''} onchange="this.closest('.color-item').querySelector('input[type=color]').value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor=this.value; markUnsaved()">
+                            <span class="absolute left-2 top-2 text-gray-400 text-sm">#</span>
+                        </div>
+                        ${!isLocked ? `<input type="color" class="h-9 w-9 p-0.5 border border-gray-200 rounded cursor-pointer bg-white" value="${c.hex}" oninput="this.closest('.color-item').querySelector('.c-hex').value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor=this.value; markUnsaved()">` : ''}
+                    </div>
+                    <div class="col-span-1 text-right">
                         ${isLocked 
-                            ? '<span class="text-xs text-gray-400 bg-gray-100 px-2 py-1 rounded"><i class="fas fa-lock"></i> 鎖定</span>' 
-                            : `<button onclick="deleteColorItem(${i})" class="text-gray-400 hover:text-red-500 p-2"><i class="fas fa-trash-alt"></i></button>`
+                            ? '<span class="text-xs text-gray-400"><i class="fas fa-lock"></i></span>' 
+                            : `<button onclick="deleteColorItem(${i})" class="text-gray-400 hover:text-red-500 p-2 transition"><i class="fas fa-trash-alt"></i></button>`
                         }
                     </div>
                 </div>`;
