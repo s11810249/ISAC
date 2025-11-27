@@ -3,33 +3,22 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>東海大學實習業務協作平台</title>
+    <title>東海大學實習協作平台｜後台管理系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        // 使用 CSS 變數以同步後台設定
-                        thuBlue: 'var(--color-thu)',       
-                        thuLightBlue: '#eef6fc',           
-                        thuGold: 'var(--color-glorygold)', 
-                        
-                        // 自定義顏色映射 (對應 data.json 中的 id)
-                        lapisYellow: 'var(--color-lapisyellow)',
-                        concreteGrey: 'var(--color-concretegrey)',
-                        brickRed: 'var(--color-brickred)',
-                        windowBlack: 'var(--color-windowblack)',
-                        acaciaGreen: 'var(--color-acaciagreen)',
-                        milkWhite: 'var(--color-milkwhite)',
-                        lakeBlue: 'var(--color-lakeblue)',
-                        phoenixOrange: 'var(--color-phoenixorange)',
-                        thuBlueNew: 'var(--color-thubluenew)',
-                        gloryGold: 'var(--color-glorygold)',
-                        grassGreen: 'var(--color-grassgreen)',
+                        thuBlue: '#002147',
+                        thuLightBlue: '#eef6fc',
+                        thuGold: '#c6a87c',
+                        darkBg: '#0f172a',
+                        btnGreen: '#219653',
+                        btnGreenHover: '#1e874b',
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -39,557 +28,1552 @@
         }
     </script>
     <style>
-        /* 定義預設顏色變數 (防止 JS 載入失敗時的備案) */
-        :root {
-            --color-thu: #002E5D;
-            --color-glorygold: #C6A87C;
-            --color-lapisyellow: #E89B00;
-            --color-concretegrey: #A6A9AA;
-            --color-brickred: #A14332;
-            --color-windowblack: #2B2B2B;
-            --color-acaciagreen: #4A6B3E;
-            --color-milkwhite: #F4F1EA;
-            --color-lakeblue: #365C68;
-            --color-phoenixorange: #FF5A45;
-            --color-thubluenew: #005596;
-            --color-grassgreen: #219653;
-        }
-
-        .hero-bg {
-            background: linear-gradient(135deg, var(--color-thu) 0%, #001a35 100%);
-            position: relative;
-            overflow: hidden;
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
-            align-items: center;
-        }
-        .hero-bg::before {
-            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
-            background-image: 
-                linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px);
-            background-size: 30px 30px; z-index: 1;
-        }
-        .modal { transition: opacity 0.25s ease; }
-        body.modal-active { overflow-y: hidden !important; }
+        .login-bg { background: linear-gradient(135deg, #002147 0%, #001a35 100%); position: relative; overflow: hidden; }
+        .login-bg::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; z-index: 1; }
+        .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
+        .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
+        .animate-fade-out { animation: fadeOut 0.5s ease-out forwards; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
-        .animate-fade-in-up { animation: fadeInUp 0.8s ease-out forwards; }
+        @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
+        /* 拖曳時的樣式 */
+        .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002147; }
+        .sortable-drag { opacity: 1 !important; } /* 確保拖曳中的元素完全不透明 */
         
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
-        ::-webkit-scrollbar-thumb:hover { background: #aaa; }
-
-        #loading-overlay {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background-color: #001a35;
-            z-index: 9999;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-direction: column;
-            transition: opacity 0.5s ease-out;
+        /* --- 修正：拖曳把手樣式確保跨平台兼容性 --- */
+        .drag-handle { 
+            cursor: grab; 
+            /* 預設不設置 touch-action: none，讓桌面裝置能正確捕獲 mouseup */
+            user-select: none; /* 防止文字被選取 */
+        } 
+        .drag-handle:active { 
+            cursor: grabbing; 
         }
 
-        .spinner {
-            width: 80px;
-            height: 80px;
-            border: 6px solid #eef6fc;
-            border-top-color: var(--color-glorygold);
-            border-radius: 50%;
-            animation: spin 1s linear infinite;
-            position: relative;
+        /* 關鍵修正：僅在偵測到粗略輸入（觸控裝置）時，才應用 touch-action: none */
+        @media (pointer: coarse) {
+            .drag-handle {
+                touch-action: none;
+            }
         }
-
-        @keyframes spin { to { transform: rotate(360deg); } }
-
-        #loading-percent {
-            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            font-size: 1.1rem; font-weight: bold; color: white; font-family: monospace;
-        }
+        /* --- 修正結束 --- */
         
-        @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
-        .animate-scroll-down { animation: bounce 2s infinite; }
-        
-        #hero-logo { filter: drop-shadow(0 0 15px rgba(0, 0, 0, 1)) drop-shadow(0 0 3px rgba(255, 255, 255, 0.4)); transition: all 0.3s ease-out; }
-        
-        .title-group:hover #hero-logo { filter: drop-shadow(0 0 20px var(--color-glorygold)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)); transform: scale(1.05); }
-        .title-group:hover #hero-title-1, .title-group:hover #hero-title-2, .title-group:hover #hero-eng-title {
-            text-shadow: 0 0 4px #fff, 0 0 10px var(--color-glorygold); transform: scale(1.02); transition: text-shadow 0.3s ease-out, transform 0.3s ease-out;
-        }
-        
-        #scroll-to-top.hidden { opacity: 0; visibility: hidden; }
-        #scroll-to-top.show { opacity: 1; visibility: visible; }
-        #action-stack { z-index: 100; }
+        .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
+        .sidebar-btn:hover { background-color: #f3f4f6; color: #002147; }
+        .sidebar-btn.active { background-color: #002147; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .sidebar-btn.active i { color: #c6a87c; }
+        .color-preview-circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
+        .file-upload-label { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.375rem; background-color: #f3f4f6; color: #6b7280; transition: all 0.2s; border: 1px solid #e5e7eb; }
+        .file-upload-label:hover { background-color: #e5e7eb; color: #002147; border-color: #d1d5db; }
+        .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
+        .accordion-content.open { max-height: 2000px; opacity: 1; overflow: visible; }
+        .accordion-arrow { transition: transform 0.3s ease; }
+        .accordion-arrow.rotate { transform: rotate(180deg); }
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: transparent; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background-color: #e5e7eb; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background-color: #d1d5db; }
+        .tab-active { color: #002147; border-bottom-color: #002147; background-color: white; }
+        .tab-inactive { color: #6b7280; border-bottom-color: transparent; }
+        .tab-inactive:hover { color: #374151; background-color: #f3f4f6; }
+        .input-stylish { width: 100%; border: 1px solid #e5e7eb; background-color: #f9fafb; border-radius: 0.5rem; padding: 0.75rem; font-size: 0.875rem; transition: all 0.2s; outline: none; }
+        .input-stylish:focus { ring: 2px solid #002147; background-color: white; border-color: transparent; box-shadow: 0 0 0 2px #002147; }
+        .btn-confirm-lg { padding: 0.625rem 1.5rem; border-radius: 0.5rem; background-color: #002147; color: white; font-weight: 700; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); transition: all 0.2s; font-size: 0.875rem; display: flex; align-items: center; gap: 0.5rem; }
+        .btn-confirm-lg:hover { background-color: #1e3a8a; }
+        .btn-confirm-lg:active { transform: scale(0.95); }
     </style>
 </head>
-<body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen overflow-x-hidden">
+<body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
+
+    <input type="file" id="global-file-input" class="hidden" onchange="handleFileUpload(this)">
+
+    <div id="msg-modal" class="fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full relative z-10 mx-4 transform scale-95 transition-transform duration-300" id="msg-panel">
+            <div class="text-center mb-6">
+                <div id="msg-icon" class="w-14 h-14 rounded-full flex items-center justify-center text-2xl mx-auto mb-4"></div>
+                <h3 id="msg-title" class="text-lg font-bold text-gray-800 mb-2"></h3>
+                <p id="msg-body" class="text-gray-600 text-sm leading-relaxed"></p>
+                <div id="msg-input-container" class="hidden mt-4">
+                    <input type="text" id="msg-input" class="w-full border border-gray-200 bg-gray-50 rounded-lg p-3 text-sm focus:ring-2 focus:ring-thuBlue focus:bg-white outline-none transition-all" placeholder="">
+                </div>
+            </div>
+            <div class="flex flex-col gap-2" id="msg-actions"></div>
+        </div>
+    </div>
+
+    <div id="create-page-modal" class="fixed inset-0 z-[150] flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+        <div class="bg-white rounded-2xl shadow-2xl p-8 max-w-3xl w-full relative z-10 mx-4 animate-fade-in-up max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6 border-b pb-4 shrink-0">
+                <h3 class="text-xl font-bold text-thuBlue"><i class="fas fa-plus-circle mr-2"></i>新增分頁</h3>
+                <button onclick="closeCreatePageModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            <div class="overflow-y-auto custom-scrollbar flex-grow pr-2">
+                <div class="grid grid-cols-1 md:grid-cols-12 gap-8">
+                    <div class="md:col-span-7 space-y-5">
+                        <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">分頁名稱 (Title) <span class="text-red-500">*</span></label><input type="text" id="new-page-title" class="input-stylish font-bold text-gray-800" placeholder="例如：實習相關法規"></div>
+                        <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">網址路徑 (Filename) <span class="text-red-500">*</span></label><div class="flex items-center group"><input type="text" id="new-page-id" class="flex-grow border border-gray-200 bg-gray-50 rounded-l-lg p-3 text-sm focus:ring-2 focus:ring-thuBlue focus:bg-white transition-all outline-none font-mono text-blue-600 group-hover:border-r-gray-200" placeholder="laws"><span class="bg-gray-100 border border-l-0 border-gray-200 text-gray-500 p-3 rounded-r-lg text-sm font-mono font-bold">.html</span></div><p class="text-[10px] text-gray-400 mt-1 ml-1"><i class="fas fa-info-circle mr-0.5"></i> 限小寫英文、數字與底線。</p></div>
+                        <div class="grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">圖示 (Icon)</label><div class="flex gap-2"><div class="w-11 h-11 bg-thuBlue/5 text-thuBlue rounded-lg flex items-center justify-center text-lg border border-thuBlue/10 shrink-0"><i id="new-page-icon-preview" class="fas fa-file-alt"></i></div><input type="text" id="new-page-icon" class="input-stylish font-mono" placeholder="fa-file-alt" oninput="document.getElementById('new-page-icon-preview').className='fas '+(this.value||'fa-question')"></div></div><div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">分類標籤 (Tag)</label><input type="text" id="new-page-tag" class="input-stylish" placeholder="Tag"></div></div>
+                        <div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">頁面說明 (Description)</label><textarea id="new-page-desc" rows="2" class="input-stylish resize-none" placeholder="顯示在頁面標題下方的簡短說明文字..."></textarea></div>
+                    </div>
+                    <div class="md:col-span-5 border-l border-gray-100 md:pl-8"><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-3">選擇版型模板 <span class="text-red-500">*</span></label><div id="template-options" class="space-y-3"></div></div>
+                </div>
+            </div>
+            <div class="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3 shrink-0"><button onclick="closeCreatePageModal()" class="px-6 py-2.5 rounded-lg text-gray-600 font-bold hover:bg-gray-200 transition-colors text-sm">取消</button><button onclick="confirmCreatePage()" class="btn-confirm-lg bg-thuBlue hover:bg-blue-800"><i class="fas fa-check"></i> 確認建立</button></div>
+        </div>
+    </div>
+
+    <div id="template-editor-modal" class="fixed inset-0 z-[170] flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-gray-900/80 backdrop-blur-sm" onclick="closeTemplateEditor()"></div>
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl relative z-10 mx-4 h-[90vh] flex flex-col animate-fade-in-up">
+            <div class="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50 rounded-t-xl">
+                <div><h3 class="text-lg font-bold text-gray-800 flex items-center gap-2"><i class="fas fa-code text-thuBlue"></i> <span id="tpl-editor-title">編輯模板</span></h3><p class="text-xs text-gray-500 mt-0.5" id="tpl-editor-path">Loading...</p></div>
+                <div class="flex gap-2"><button onclick="saveTemplateCode()" class="bg-btnGreen hover:bg-btnGreenHover text-white px-6 py-2 rounded-lg text-sm font-bold shadow-md flex items-center gap-2 transform active:scale-95 transition-all"><i class="fas fa-save"></i> 儲存變更</button><button onclick="closeTemplateEditor()" class="text-gray-400 hover:text-gray-600 px-2"><i class="fas fa-times text-xl"></i></button></div>
+            </div>
+            <div class="flex-grow relative bg-[#1e1e1e]"><textarea id="tpl-code-area" class="w-full h-full bg-[#1e1e1e] text-[#d4d4d4] font-mono text-sm p-4 outline-none resize-none" spellcheck="false"></textarea></div>
+        </div>
+    </div>
+
+    <div id="basic-settings-modal" class="fixed inset-0 z-[160] flex items-center justify-center hidden"><div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="closeBasicSettingsModal()"></div><div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative z-10 mx-4 animate-fade-in-up"><div class="flex justify-between items-center mb-6"><h3 class="text-lg font-bold text-gray-800"><i class="fas fa-cog mr-2 text-thuBlue"></i>基本設定</h3><button onclick="closeBasicSettingsModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times"></i></button></div><div class="space-y-4"><div><label class="text-xs text-gray-500 font-bold block mb-1">頁面標題</label><input type="text" id="page-setting-title" class="input-stylish"></div><div class="grid grid-cols-2 gap-3"><div><label class="text-xs text-gray-500 font-bold block mb-1">圖示 (Icon)</label><div class="flex gap-1 relative"><div class="w-9 h-9 bg-gray-100 rounded flex items-center justify-center text-gray-600"><i id="page-icon-preview" class="fas fa-file"></i></div><input type="text" id="page-setting-icon" class="input-stylish font-mono" oninput="document.getElementById('page-icon-preview').className='fas '+(this.value||'fa-question')"></div></div><div><label class="text-xs text-gray-500 font-bold block mb-1">標籤 (Tag)</label><input type="text" id="page-setting-tag" class="input-stylish"></div></div><div><label class="text-xs text-gray-500 font-bold block mb-1">副標題/描述</label><textarea id="page-setting-desc" rows="3" class="input-stylish"></textarea></div></div><div class="mt-6 flex justify-end gap-2"><button onclick="closeBasicSettingsModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition">取消</button><button onclick="savePageHeaderSettings()" class="btn-confirm-lg bg-thuBlue hover:bg-blue-800"><i class="fas fa-save"></i> 儲存變更</button></div></div></div>
     
-    <div id="loading-overlay">
-        <div class="relative w-20 h-20 mb-4">
-            <div class="spinner"></div>
-            <div id="loading-percent">0%</div>
-        </div>
-        <div class="text-white font-medium text-lg">載入中...</div>
-    </div>
+    <div id="advanced-settings-modal" class="fixed inset-0 z-[160] flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm" onclick="closeAdvancedSettingsModal()"></div>
+        <div class="bg-white rounded-xl shadow-2xl p-8 max-w-4xl w-full relative z-10 mx-4 animate-fade-in-up max-h-[90vh] flex flex-col">
+            <div class="flex justify-between items-center mb-6 border-b pb-4 shrink-0">
+                <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-sliders-h mr-2 text-thuBlue"></i>頁面進階設定</h3>
+                <button onclick="closeAdvancedSettingsModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
+            </div>
+            
+            <div class="overflow-y-auto custom-scrollbar flex-grow pr-2">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="space-y-6">
+                        <div class="bg-gray-50 p-5 rounded-xl border border-gray-100">
+                            <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">列表欄位顯示名稱</label>
+                            <div class="space-y-3">
+                                <div>
+                                    <span class="text-[11px] text-gray-400 block mb-1">主標題欄位 (例如：文件名稱)</span>
+                                    <input type="text" id="page-label-title" class="input-stylish bg-white" placeholder="預設：標題" onchange="markUnsaved()">
+                                </div>
+                                <div>
+                                    <span class="text-[11px] text-gray-400 block mb-1">副標題欄位 (例如：備註/英文名)</span>
+                                    <input type="text" id="page-label-title-en" class="input-stylish bg-white" placeholder="預設：備註" onchange="markUnsaved()">
+                                </div>
+                            </div>
+                        </div>
 
-    <nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
-        <div class="w-full max-w-7xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <img id="nav-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-6 sm:h-8 w-auto">
-                <div class="text-white leading-none flex flex-col justify-center">
-                    <span class="font-bold text-base sm:text-lg tracking-widest" id="nav-title">東海大學實習業務協作平台</span>
-                </div>
-            </div>
-            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 text-white hover:text-thuGold transition-colors text-xs sm:text-sm font-medium whitespace-nowrap">
-                <i class="fa-solid fa-house"></i> <span>東海首頁</span>
-            </a>
-        </div>
-    </nav>
+                        <div id="modal-file-fields-config" class="hidden">
+                            <div class="border-t border-gray-100 pt-4">
+                                <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">下載按鈕設定</label>
+                                <div class="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2 max-h-60 overflow-y-auto custom-scrollbar" id="file-config-list"></div>
+                            </div>
+                        </div>
+                    </div>
 
-    <div class="hero-bg text-white relative">
-        <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
-            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-thuGold text-white border border-thuGold rounded-full hover:brightness-110 transition-all duration-300 font-bold backdrop-blur-sm shadow-md text-sm sm:text-base hover:shadow-lg hover:-translate-y-0.5">
-                <i class="fa-solid fa-house"></i> 東海大學首頁
-            </a>
-        </div>
-        <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
-             <div class="absolute -top-20 -right-20 w-96 h-96 bg-thuGold opacity-10 rounded-full blur-3xl"></div>
-             <div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
-        </div>
-        <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center pt-16 pb-24">
-            <div class="title-group group flex flex-col items-center cursor-pointer animate-fade-in-up">
-                <div class="logo-container mb-6 sm:mb-8"><img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-16 md:h-24 w-auto"></div>
-                <div class="text-center mb-6 w-full" style="animation-delay: 0.2s;">
-                    <h1 class="text-2xl sm:text-3xl md:text-5xl font-black tracking-wide md:tracking-widest leading-tight drop-shadow-xl mb-2 px-2">
-                        <span id="hero-title-1" class="inline-block">實習業務</span><span class="text-thuGold inline-block" id="hero-title-2">協作平台</span>
-                    </h1>
-                    <p id="hero-eng-title" class="text-sm md:text-base text-blue-200 tracking-wide font-light opacity-90 px-4">Internship Coordination Platform</p>
+                    <div class="border-l border-gray-100 md:pl-8">
+                        <div id="modal-category-manager" class="hidden h-full flex flex-col">
+                            <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">分類標籤管理</label>
+                            <div class="flex-grow border border-gray-200 rounded-xl overflow-hidden flex flex-col bg-white shadow-sm h-64 md:h-auto">
+                                <div class="bg-gray-50/50 p-3 flex-grow overflow-y-auto space-y-1 custom-scrollbar" id="cat-list">
+                                    </div>
+                                <div class="p-3 bg-white border-t border-gray-100">
+                                    <div class="flex gap-2">
+                                        <input type="text" id="new-cat-name" class="flex-grow border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-1 focus:ring-thuBlue" placeholder="輸入新分類名稱...">
+                                        <button onclick="addNewCategory()" class="bg-btnGreen text-white px-4 rounded-lg text-sm font-bold hover:bg-btnGreenHover shadow-sm whitespace-nowrap">新增</button>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-[10px] text-gray-400 mt-2"><i class="fas fa-info-circle"></i> 設定分類後，前台頁面將自動產生篩選按鈕。</p>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <p id="hero-subtitle" class="text-base sm:text-lg text-blue-100/90 font-light mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in-up px-4" style="animation-delay: 0.4s;">載入中...</p>
-            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 animate-fade-in-up w-full sm:w-auto px-4 sm:px-0" style="animation-delay: 0.6s;">
-                <button onclick="toggleModal('origin-modal')" class="group relative px-6 sm:px-8 py-3.5 bg-thuGold hover:brightness-110 text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
-                    <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
-                    <span class="relative flex items-center justify-center gap-2 text-base sm:text-lg"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
-                </button>
-                <a href="https://aca.thu.edu.tw/web/isac/page.php?scid=112&sid=103" target="_blank" class="px-6 sm:px-8 py-3.5 bg-white/5 hover:bg-white/10 text-white border border-white/20 backdrop-blur-sm font-medium rounded-full transition-all duration-300 hover:-translate-y-1 flex items-center justify-center gap-2 hover:border-white/40 w-full sm:w-60 text-base sm:text-lg">
-                    <i class="fa-solid fa-link text-blue-300"></i> 實習中心網頁
-                </a>
+
+            <div class="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-2 shrink-0">
+                <button onclick="closeAdvancedSettingsModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition">取消</button>
+                <button onclick="saveAdvancedSettings()" class="btn-confirm-lg bg-thuBlue hover:bg-blue-800"><i class="fas fa-save"></i> 儲存變更</button>
             </div>
-            <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-4 sm:p-5 text-left animate-fade-in-up hidden mt-8 mx-4" style="animation-delay: 0.8s;">
-                <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
-                    <div class="flex items-center gap-2"><i class="fas fa-bullhorn text-thuGold animate-pulse"></i><span class="font-bold text-white text-base tracking-wide">最新公告</span></div>
-                    <button id="view-more-news-btn" onclick="openAllNewsModal()" class="hidden text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 border border-white/10">查看所有 <i class="fas fa-chevron-right text-[10px]"></i></button>
-                </div>
-                <ul id="news-list" class="space-y-3 text-sm text-blue-50"><li class="text-center py-2 text-gray-300">讀取公告中...</li></ul>
-            </div>
-            <div id="scroll-arrow-target" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;" onclick="customScrollToMain()"><i class="fas fa-chevron-down text-3xl"></i></div>
         </div>
     </div>
 
-    <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow w-full">
-        <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
-             <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
-        </div>
-    </main>
-
-    <footer id="footer-trigger" class="fixed bottom-0 left-0 w-full z-50 bg-gray-800 text-gray-400 py-3 text-center text-xs border-t-3 border-thuGold hidden">
-        <div class="container mx-auto px-4">
-            <div class="flex flex-col items-center justify-center gap-1">
-                <p id="footer-copyright" class="font-bold text-white tracking-wide text-[10px]"></p>
-                <p class="text-[9px] text-gray-500">網頁製作：張博堯 | Assisted by Google Gemini | <a href="admin.html" target="_blank" class="hover:text-white">後台管理</a></p>
+    <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-10 animate-fade-in-up">
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-thuBlue text-white rounded-xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg"><i class="fas fa-tools"></i></div>
+                <h1 class="text-2xl font-bold text-thuBlue tracking-wide">後台管理系統</h1>
+                <p class="text-gray-500 text-sm mt-1">東海大學實習協作平台</p>
+            </div>
+            <div class="space-y-5">
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">GitHub Username</label><input type="text" id="gh-owner" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Repository Name</label><input type="text" id="gh-repo" class="w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm"></div>
+                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1 ml-1">Access Token</label><div class="relative"><input type="password" id="gh-token" class="w-full pl-10 pr-10 py-3 bg-gray-50 border border-gray-200 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none transition text-sm"><button onclick="toggleTokenVisibility()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600 focus:outline-none"><i class="fas fa-eye" id="token-eye-icon"></i></button></div></div>
+                <div class="pt-2"><button onclick="loadData()" id="load-btn" class="w-full bg-thuBlue hover:bg-blue-800 text-white font-bold py-3.5 rounded-lg shadow-lg hover:shadow-xl transition-all duration-300 transform active:scale-95 flex justify-center items-center gap-2 group"><span>登入並讀取資料</span><i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i></button><div id="login-msg" class="text-center mt-3 h-5 text-sm font-medium text-red-500"></div></div>
             </div>
         </div>
-    </footer>
-
-    <div id="action-stack" class="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50 flex flex-col items-end gap-2">
-        <button id="scroll-to-top" onclick="scrollToTop()" class="w-10 h-10 sm:w-12 sm:h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center z-50"><i class="fas fa-chevron-up text-lg sm:text-xl"></i></button>
-        <div class="flex flex-col items-end z-50">
-            <div class="bg-white text-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-lg border border-gray-100 text-xs sm:text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">需要協助嗎？<div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div></div>
-            <button onclick="toggleModal('contact-modal')" class="w-12 h-12 sm:w-14 sm:h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white"><i class="fas fa-headset text-xl sm:text-2xl group-hover:animate-pulse"></i></button>
-        </div>
+        <div class="absolute bottom-4 text-white/30 text-xs">Powered by GitHub API | Secure Connection</div>
     </div>
 
-    <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]"><div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white"><div class="flex items-center gap-2"><i class="fas fa-feather-alt text-thuGold text-xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue" id="modal-origin-title">計畫緣起</p></div><div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div></div><div class="px-6 sm:px-8 py-6 text-left"><div id="modal-origin-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 text-sm sm:text-base"></div></div><div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100"><button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉視窗</button></div></div></div>
-    <div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]"><div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-2xl z-10"><div class="flex items-center gap-3"><i class="fas fa-address-book text-thuGold text-xl sm:text-2xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue">聯絡資訊</p></div><div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div></div><div class="flex-grow overflow-y-auto px-4 sm:px-8 py-6 sm:py-8 bg-gray-50"><div class="mb-6 text-center bg-blue-50 border border-blue-100 rounded-xl p-4 sm:p-5"><p class="text-gray-700 font-medium text-sm sm:text-base"><i class="fas fa-info-circle text-thuBlue mr-2"></i>如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。</p></div><div id="contacts-container" class="flex flex-col gap-6"><div class="text-center text-gray-400">載入中...</div></div></div><div class="flex-none flex justify-end py-4 sm:py-5 px-6 sm:px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10"><button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">關閉</button></div></div></div>
-    <div id="news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('news-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]"><div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white"><div class="flex items-center gap-2"><i class="fas fa-bullhorn text-thuGold text-xl"></i><p class="text-xl font-bold text-thuBlue">公告詳情</p></div><div class="cursor-pointer z-50" onclick="toggleModal('news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div></div><div class="px-6 sm:px-8 py-6 text-left"><div class="mb-4"><span id="modal-news-date" class="text-sm text-gray-500 font-mono"></span><h2 id="modal-news-title" class="text-xl sm:text-2xl font-bold text-gray-800 mt-1"></h2></div><hr class="border-gray-200 mb-4"><div id="modal-news-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 leading-relaxed text-sm sm:text-base"></div></div><div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100"><button onclick="toggleModal('news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉</button></div></div></div>
-    <div id="all-news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('all-news-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded-xl shadow-2xl z-50 flex flex-col max-h-[90vh]"><div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-xl z-10"><div class="flex items-center gap-3"><i class="fas fa-list-ul text-thuGold text-2xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue">所有公告</p></div><div class="cursor-pointer z-50" onclick="toggleModal('all-news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div></div><div class="flex-none px-6 sm:px-8 pt-6 pb-2 bg-gray-50"><div class="flex flex-col sm:flex-row gap-3"><div class="relative flex-grow"><i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i><input type="text" id="news-search" placeholder="搜尋公告標題..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm transition-all" oninput="renderAllNewsUI(true)"></div><select id="news-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm bg-white text-gray-600 min-w-[120px] cursor-pointer" onchange="renderAllNewsUI(true)"><option value="all">所有類型</option></select></div></div><div class="flex-grow overflow-y-auto px-6 sm:px-8 py-2 bg-gray-50 min-h-[300px]"><ul id="all-news-list" class="space-y-2"></ul><div id="no-news-msg" class="hidden text-center py-10 text-gray-400"><i class="fas fa-inbox text-4xl mb-2"></i><p>沒有符合條件的公告</p></div></div><div class="flex-none bg-white border-t border-gray-100 rounded-b-xl z-10"><div id="news-pagination" class="flex justify-center items-center gap-2 py-3 border-b border-gray-50"></div><div class="flex justify-end py-4 px-6 sm:px-8"><button onclick="toggleModal('all-news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300">關閉</button></div></div></div></div>
+    <div id="dashboard-ui" class="hidden min-h-screen flex flex-col transition-opacity duration-500 opacity-0">
+        <nav class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center gap-3">
+                        <div class="w-8 h-8 bg-thuBlue text-white rounded flex items-center justify-center text-sm"><i class="fas fa-tools"></i></div>
+                        <span class="font-bold text-gray-800 text-lg tracking-wide">東海大學實習協作平台 | 後台管理系統</span>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <div class="hidden md:flex items-center gap-2 mr-2 px-3 py-1 bg-gray-50 rounded-lg border border-gray-200" title="網站儲存空間使用量">
+                             <div class="text-[10px] font-bold text-gray-500 uppercase">Storage</div>
+                             <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                 <div id="storage-bar" class="h-full bg-thuBlue transition-all duration-1000" style="width: 0%"></div>
+                             </div>
+                             <div id="storage-text" class="text-[10px] font-mono text-gray-600">Checking...</div>
+                        </div>
+
+                        <div id="unsaved-badge" class="hidden px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full mr-2 flex items-center gap-1 border border-red-200">
+                            <i class="fas fa-pen"></i> <span id="unsaved-count">0</span> 變更未儲存
+                        </div>
+                        <div id="save-status" class="text-sm font-bold text-gray-600 transition-opacity opacity-0 mr-2"></div>
+                        <button onclick="saveData()" id="save-btn" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center gap-2 transform active:scale-95 transition-all text-sm">
+                            <i class="fas fa-cloud-upload-alt"></i> 儲存並發布
+                        </button>
+                        <div class="h-6 w-px bg-gray-300 mx-1"></div>
+                        <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-medium transition flex items-center gap-1 border border-red-100 bg-red-50 px-3 py-2 rounded-lg hover:bg-red-100"><i class="fas fa-sign-out-alt"></i> 登出</button>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <main class="flex-grow bg-gray-50/50 pb-20">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+                <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden min-h-[600px] flex flex-col">
+                    <div class="flex border-b border-gray-200 bg-gray-50/80 overflow-x-auto">
+                        <button onclick="switchTab('cards')" class="tab-btn px-6 py-4 text-sm font-bold text-thuBlue border-b-2 border-thuBlue bg-white focus:outline-none whitespace-nowrap transition-colors" data-tab="cards"><i class="fas fa-th-large mr-2"></i>首頁卡片</button>
+                        <button onclick="switchTab('contacts')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="contacts"><i class="fas fa-address-book mr-2"></i>聯絡資訊</button>
+                        <button onclick="switchTab('pages')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="pages"><i class="fas fa-file-alt mr-2"></i>分頁內容</button>
+                        <button onclick="switchTab('news')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="news"><i class="fas fa-bullhorn mr-2"></i>最新公告</button>
+                        <button onclick="switchTab('colors')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="colors"><i class="fas fa-palette mr-2"></i>顏色管理</button>
+                        <button onclick="switchTab('templates')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="templates"><i class="fas fa-layer-group mr-2"></i>模板管理</button>
+                        <button onclick="switchTab('settings')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="settings"><i class="fas fa-sliders-h mr-2"></i>網站設定</button>
+                    </div>
+
+                    <div class="p-6 md:p-8 flex-grow relative">
+                        <div id="tab-cards" class="tab-content block animate-fade-in-up">
+                            <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
+                                <div><h3 class="text-lg font-bold text-gray-800">首頁功能卡片管理</h3><p class="text-sm text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i> 點擊標題列展開編輯，拖曳左側把手可排序。</p></div>
+                                <button onclick="addCardItem()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide"><i class="fas fa-plus"></i> 新增卡片</button>
+                            </div>
+                            <div id="cards-list-editor" class="grid grid-cols-1 lg:grid-cols-3 gap-6"></div>
+                        </div>
+
+                        <div id="tab-contacts" class="tab-content hidden animate-fade-in-up">
+                            <div class="mb-10">
+                                <div class="flex items-center gap-2 mb-4"><div class="w-1 h-6 bg-green-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">單位基本資料 (固定)</h3></div>
+                                <div id="office-contact-editor" class="grid grid-cols-1 lg:grid-cols-1 gap-6"></div>
+                            </div>
+                            <div>
+                                <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b border-gray-100 pb-2">
+                                    <div class="flex items-center gap-2"><div class="w-1 h-6 bg-blue-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">團隊成員管理</h3></div>
+                                    <div class="flex gap-2">
+                                        <button onclick="addContactItem()" class="bg-btnGreen text-white px-5 py-2 rounded-lg text-sm font-bold hover:bg-btnGreenHover shadow-md transition flex items-center"><i class="fas fa-user-plus mr-1.5"></i> 新增人員</button>
+                                    </div>
+                                </div>
+                                <div id="staff-contacts-editor" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 min-h-[100px]"></div>
+                            </div>
+                        </div>
+
+                        <div id="tab-colors" class="tab-content hidden animate-fade-in-up">
+                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
+                                <div><h3 class="text-lg font-bold text-gray-800">網站主題顏色管理</h3><p class="text-sm text-gray-500 mt-1">「東海藍」與「榮耀金」為系統鎖定顏色，無法修改或刪除。</p></div>
+                                <button onclick="addColorItem()" class="bg-btnGreen text-white hover:bg-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 text-sm"><i class="fas fa-plus"></i> 新增顏色</button>
+                            </div>
+                            <div id="colors-list-header" class="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-100 rounded-t-lg text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="col-span-1 text-center">預覽</div>
+                                <div class="col-span-3">顯示名稱</div>
+                                <div class="col-span-3">識別碼 (ID)</div>
+                                <div class="col-span-4">Hex 色碼</div>
+                                <div class="col-span-1 text-right">操作</div>
+                            </div>
+                            <div id="colors-list-editor" class="space-y-2"></div>
+                        </div>
+
+                        <div id="tab-templates" class="tab-content hidden animate-fade-in-up">
+                            <div class="flex flex-col md:flex-row gap-6 h-full min-h-[700px]">
+                                <div class="w-full md:w-80 shrink-0 flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div class="p-4 border-b border-gray-100 bg-gray-50 flex-grow overflow-y-auto custom-scrollbar">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h4 class="text-sm font-bold text-gray-700">版型模板列表</h4>
+                                        </div>
+                                        <div id="templates-sidebar" class="space-y-1 pr-1"></div>
+                                    </div>
+                                    <div class="mt-auto p-4 border-t border-gray-100 bg-gray-50">
+                                        <button onclick="addNewTemplate()" class="w-full bg-btnGreen text-white px-3 py-2.5 rounded-lg text-sm font-bold hover:bg-btnGreenHover shadow-sm transition"><i class="fas fa-plus mr-1"></i>新增模板</button>
+                                    </div>
+                                </div>
+                                <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col shadow-sm overflow-hidden">
+                                    <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
+                                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2"><span id="current-template-title-display">請選擇模板</span></h3>
+                                        <div class="flex gap-2" id="template-actions"><button onclick="deleteTemplate(activeTemplateKey)" class="text-red-400 hover:text-red-600 px-3 py-1.5 rounded text-sm transition font-bold"><i class="fas fa-trash-alt mr-1"></i>刪除模板</button></div>
+                                    </div>
+                                    <div id="template-main-area" class="flex flex-col flex-grow">
+                                        <div class="flex border-b border-gray-200 bg-white">
+                                            <button onclick="switchTemplateView('config')" id="btn-tpl-config" class="px-6 py-3 text-sm font-bold border-b-2 focus:outline-none transition-colors tab-active">基本設定</button>
+                                            <button onclick="switchTemplateView('content')" id="btn-tpl-content" class="px-6 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">預設內容編輯</button>
+                                            <button onclick="switchTemplateView('code')" id="btn-tpl-code" class="px-6 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">原始碼管理</button>
+                                        </div>
+                                        <div class="p-6 bg-gray-50/50 flex-grow overflow-y-auto max-h-[800px] custom-scrollbar">
+                                            <div id="tpl-view-config" class="space-y-6 max-w-2xl animate-fade-in-up">
+                                                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">模板名稱 (Name)</label><input type="text" id="tpl-edit-name" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-1 focus:ring-thuBlue" onchange="updateTemplateMeta(); markUnsaved()"></div>
+                                                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">描述說明 (Description)</label><textarea id="tpl-edit-desc" rows="3" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-1 focus:ring-thuBlue resize-none" onchange="updateTemplateMeta(); markUnsaved()"></textarea></div>
+                                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-800"><i class="fas fa-info-circle mr-1"></i> 基本設定僅修改後台顯示名稱。若要修改欄位定義或排版，請前往「原始碼管理」。</div>
+                                            </div>
+                                            <div id="tpl-view-content" class="hidden animate-fade-in-up"><div class="mb-4 flex justify-between items-center"><p class="text-sm text-gray-500">在此設定此模板的「預設內容」，建立新頁面時會自動帶入。</p></div><div id="template-items-editor" class="space-y-4"></div></div>
+                                            <div id="tpl-view-code" class="hidden animate-fade-in-up">
+                                                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer group" onclick="editTemplateCode(activeTemplateKey, 'json')"><div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors"><i class="fas fa-cogs"></i></div><h4 class="font-bold text-gray-800 text-lg mb-2">設定檔 (JSON)</h4><p class="text-sm text-gray-500">定義模板的欄位結構、標籤名稱與功能開關。</p></div>
+                                                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer group" onclick="editTemplateCode(activeTemplateKey, 'html')"><div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition-colors"><i class="fas fa-code"></i></div><h4 class="font-bold text-gray-800 text-lg mb-2">排版原始碼 (HTML)</h4><p class="text-sm text-gray-500">編輯前端顯示的 HTML 結構與樣式。</p></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
+                            <div class="flex flex-col md:flex-row gap-6 h-full min-h-[700px]">
+                                <div class="w-full md:w-80 shrink-0 flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
+                                    <div class="p-4 border-b border-gray-100 bg-gray-50">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h4 class="text-sm font-bold text-gray-700">頁面列表</h4>
+                                        </div>
+                                        <div id="pages-sidebar" class="space-y-1 flex-grow overflow-y-auto custom-scrollbar pr-1 max-h-[500px]"></div>
+                                    </div>
+
+                                    <div class="mt-auto p-4 border-t border-gray-100 bg-gray-50 space-y-2">
+                                        <button onclick="openCreatePageModal()" class="w-full bg-btnGreen text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-btnGreenHover transition shadow-sm mb-2"><i class="fas fa-plus mr-1"></i>新增頁面</button>
+                                        <div class="flex gap-2">
+                                            <button onclick="openBasicSettingsModal()" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded text-xs font-bold hover:border-thuBlue hover:text-thuBlue transition shadow-sm flex items-center justify-center gap-1"><i class="fas fa-cog"></i> 基本設定</button>
+                                            <button onclick="openAdvancedSettingsModal()" class="flex-1 bg-white border border-gray-200 text-gray-700 py-2 rounded text-xs font-bold hover:border-thuBlue hover:text-thuBlue transition shadow-sm flex items-center justify-center gap-1"><i class="fas fa-sliders-h"></i> 進階設定</button>
+                                        </div>
+                                        <div class="flex gap-2 pt-2 border-t border-gray-200/50">
+                                            <button onclick="promptRenamePage()" class="flex-1 bg-white border border-gray-200 text-gray-600 hover:text-thuBlue py-2 rounded text-xs font-bold transition flex items-center justify-center gap-1"><i class="fas fa-exchange-alt"></i> 變更路徑</button>
+                                            <button onclick="promptDeletePage()" class="flex-1 bg-white border border-red-200 text-red-400 hover:bg-red-50 hover:text-red-600 py-2 rounded text-xs font-bold transition flex items-center justify-center gap-1"><i class="fas fa-trash-alt"></i> 刪除頁面</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col shadow-sm overflow-hidden">
+                                    <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
+                                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                            <span id="current-page-title-display">載入中...</span>
+                                        </h3>
+                                        <button onclick="addPageItem()" class="bg-btnGreen text-white hover:bg-btnGreenHover font-bold py-2 px-4 rounded-lg shadow-sm flex items-center gap-2 text-sm transition-all"><i class="fas fa-plus"></i> 新增項目</button>
+                                    </div>
+                                    <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[800px] custom-scrollbar"></div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="tab-news" class="tab-content hidden animate-fade-in-up">
+                            <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
+                                <div><h3 class="text-lg font-bold text-gray-800">公告管理</h3></div>
+                                <button onclick="addNewsItem()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide"><i class="fas fa-plus"></i> 新增公告</button>
+                            </div>
+                            <div id="news-list-editor" class="space-y-4"></div>
+                        </div>
+
+                        <div id="tab-settings" class="tab-content hidden animate-fade-in-up">
+                            <div class="flex items-end justify-between mb-6 pb-2 border-b border-gray-100">
+                                <div><h3 class="text-lg font-bold text-gray-800">基本資訊設定</h3><p class="text-sm text-gray-500 mt-1">此處可以修改網站標題與Logo。</p></div>
+                            </div>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 pb-20 max-w-6xl">
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                    <div class="flex items-center gap-2 mb-6 border-b pb-2"><div class="w-1 h-6 bg-thuBlue rounded-full"></div><h4 class="text-lg font-bold text-gray-700">網站識別 (Identity)</h4></div>
+                                    <div id="settings-group-1" class="space-y-5"></div>
+                                </div>
+                                <div class="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+                                    <div class="flex items-center gap-2 mb-6 border-b pb-2"><div class="w-1 h-6 bg-thuGold rounded-full"></div><h4 class="text-lg font-bold text-gray-700">首頁內容 (Home Content)</h4></div>
+                                    <div id="settings-group-2" class="space-y-5"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
 
     <script>
-        const colorMap = {
-            'thu': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' },
-            'gold': { border: 'border-thuGold', icon: 'bg-thuGold', text: 'text-thuGold', hoverText: 'group-hover:text-thuGold', isGradient: true },
-            'blue': { border: 'border-blue-500', icon: 'bg-blue-500', text: 'text-blue-600', hoverText: 'group-hover:text-blue-800' },
-            'purple': { border: 'border-purple-500', icon: 'bg-purple-500', text: 'text-purple-600', hoverText: 'group-hover:text-purple-800' },
-            'orange': { border: 'border-orange-500', icon: 'bg-orange-500', text: 'text-orange-600', hoverText: 'group-hover:text-orange-800' },
-            'green': { border: 'border-green-500', icon: 'bg-green-500', text: 'text-green-600', hoverText: 'group-hover:text-green-800' },
-            'red': { border: 'border-red-500', icon: 'bg-red-500', text: 'text-red-600', hoverText: 'group-hover:text-red-800' },
-            'teal': { border: 'border-teal-500', icon: 'bg-teal-500', text: 'text-teal-600', hoverText: 'group-hover:text-teal-800' },
-            'indigo': { border: 'border-indigo-500', icon: 'bg-indigo-500', text: 'text-indigo-600', hoverText: 'group-hover:text-indigo-800' },
-            'cyan': { border: 'border-cyan-500', icon: 'bg-cyan-500', text: 'text-cyan-600', hoverText: 'group-hover:text-cyan-800' },
-            'rose': { border: 'border-rose-500', icon: 'bg-rose-500', text: 'text-rose-600', hoverText: 'group-hover:text-rose-800' },
-            // CSS Variables Mapped
-            'thublue': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' },
-            'lapisyellow': { border: 'border-lapisYellow', icon: 'bg-lapisYellow', text: 'text-lapisYellow', hoverText: 'group-hover:text-lapisYellow' },
-            'concretegrey': { border: 'border-concreteGrey', icon: 'bg-concreteGrey', text: 'text-concreteGrey', hoverText: 'group-hover:text-concreteGrey' },
-            'brickred': { border: 'border-brickRed', icon: 'bg-brickRed', text: 'text-brickRed', hoverText: 'group-hover:text-brickRed' },
-            'windowblack': { border: 'border-windowBlack', icon: 'bg-windowBlack', text: 'text-windowBlack', hoverText: 'group-hover:text-windowBlack' },
-            'acaciagreen': { border: 'border-acaciaGreen', icon: 'bg-acaciaGreen', text: 'text-acaciaGreen', hoverText: 'group-hover:text-acaciaGreen' },
-            'milkwhite': { border: 'border-gray-200', icon: 'bg-milkWhite !text-gray-700', text: 'text-gray-600', hoverText: 'group-hover:text-gray-800' },
-            'lakeblue': { border: 'border-lakeBlue', icon: 'bg-lakeBlue', text: 'text-lakeBlue', hoverText: 'group-hover:text-lakeBlue' },
-            'phoenixorange': { border: 'border-phoenixOrange', icon: 'bg-phoenixOrange', text: 'text-phoenixOrange', hoverText: 'group-hover:text-phoenixOrange' },
-            'glorygold': { border: 'border-gloryGold', icon: 'bg-gloryGold', text: 'text-gloryGold', hoverText: 'group-hover:text-gloryGold' },
-            'thubluenew': { border: 'border-thuBlueNew', icon: 'bg-thuBlueNew', text: 'text-thuBlueNew', hoverText: 'group-hover:text-thuBlueNew' },
-            'grassgreen': { border: 'border-grassGreen', icon: 'bg-grassGreen', text: 'text-grassGreen', hoverText: 'group-hover:text-grassGreen' }
-        };
-
-        const contactColorMap = {
-            'thu': { bg: 'bg-blue-50', text: 'text-thuBlue', badge: 'bg-gray-100 text-gray-600', border: 'hover:border-thuBlue' },
-            'gold': { bg: 'bg-yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-yellow-500' },
-            'purple': { bg: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800', border: 'hover:border-purple-500' },
-            'orange': { bg: 'bg-orange-50', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-orange-500' },
-            'blue': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', border: 'hover:border-blue-500' },
-            'default': { bg: 'bg-gray-50', text: 'text-gray-600', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-gray-400' },
-            'office': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-800', border: 'hover:border-green-500' },
-            'thubluenew': { bg: 'bg-blue-50', text: 'text-thuBlueNew', badge: 'bg-blue-100 text-blue-900', border: 'hover:border-thuBlueNew' },
-            'glorygold': { bg: 'bg-yellow-50', text: 'text-gloryGold', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-gloryGold' },
-            'lapisyellow': { bg: 'bg-orange-50', text: 'text-lapisYellow', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-lapisYellow' },
-            'phoenixorange': { bg: 'bg-red-50', text: 'text-phoenixOrange', badge: 'bg-red-100 text-red-800', border: 'hover:border-phoenixOrange' },
-            'brickred': { bg: 'bg-red-50', text: 'text-brickRed', badge: 'bg-red-100 text-red-900', border: 'hover:border-brickRed' },
-            'grassgreen': { bg: 'bg-green-50', text: 'text-grassGreen', badge: 'bg-green-100 text-green-800', border: 'hover:border-grassGreen' },
-            'acaciagreen': { bg: 'bg-green-50', text: 'text-acaciaGreen', badge: 'bg-green-100 text-green-900', border: 'hover:border-acaciaGreen' },
-            'lakeblue': { bg: 'bg-teal-50', text: 'text-lakeBlue', badge: 'bg-teal-100 text-teal-800', border: 'hover:border-lakeBlue' },
-            'concretegrey': { bg: 'bg-gray-100', text: 'text-concreteGrey', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-concreteGrey' },
-            'windowblack': { bg: 'bg-gray-200', text: 'text-windowBlack', badge: 'bg-gray-300 text-gray-800', border: 'hover:border-windowBlack' },
-            'milkwhite': { bg: 'bg-white', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-600', border: 'hover:border-gray-300' }
-        };
-
-        let currentNewsPage = 1;
-        const newsPerPage = 5;
-        let siteNews = []; 
-        let filteredNews = [];
-        let siteContacts = [];
+        // --- Global Variables ---
+        let currentData = null;
+        let fileSha = null;
+        const DATA_FILE = 'data.json';
+        let sortableCards, sortableStaff, sortablePageItems, sortableTemplateItems;
+        let sessionToken = ''; 
+        let activePageId = 'laws'; 
+        let currentUploadTargetInput = null;
+        let confirmCallback = null; 
+        let unsavedChangesCount = 0;
         
-        let initialLoadStartTime = Date.now();
-        const minLoadingTime = 500;
-        const maxSimulatedProgress = 90;
+        // Editor Variables
+        let activeTemplateKey = '';
+        let activeEditorMode = ''; // 'json' or 'html'
+        let currentTab = 'cards'; // Track current active tab
 
-        const setText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
-        const setHTML = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerHTML = val || ''; };
-        const toggleModal = (id) => { const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active'); };
-
-        function updateProgress(progress) { const percentElement = document.getElementById('loading-percent'); if (percentElement) percentElement.innerText = `${Math.min(100, progress)}%`; }
-
-        function hideLoadingOverlay() {
-            const totalElapsedTime = Date.now() - initialLoadStartTime;
-            const requiredDelay = Math.max(0, 3000 - totalElapsedTime); 
-            updateProgress(100);
-            setTimeout(() => {
-                const overlay = document.getElementById('loading-overlay');
-                if (overlay) { overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 500); }
-            }, requiredDelay);
-        }
-
-        window.scrollToTop = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
-        
-        window.customScrollToMain = function() {
-            const mainContent = document.getElementById('main-content');
-            const stickyHeader = document.getElementById('sticky-header');
-            if (mainContent && stickyHeader) {
-                const headerHeight = stickyHeader.offsetHeight || 64; 
-                const targetPosition = mainContent.offsetTop - headerHeight;
-                window.scrollTo({ top: targetPosition, behavior: 'smooth' });
+        // Default Templates (Fallback if data.json is empty)
+        const DEFAULT_TEMPLATES = {
+            'documents_list': {
+                name: '文件列表 (Documents List)',
+                desc: '專為文件彙整設計的列表版型。支援多附件下載與分類篩選。',
+                jsonPath: 'page_template/documents_list.json',
+                htmlPath: 'page_template/documents_list.html',
+                items: []
+            },
+            'general': {
+                name: '一般連結列表 (General Link List)',
+                desc: '基礎列表版型，適合相關連結、課程列表等條列式內容。',
+                jsonPath: 'page_template/general.json',
+                htmlPath: 'page_template/general.html',
+                items: []
             }
         };
 
-        document.addEventListener('scroll', function() {
-            const button = document.getElementById('scroll-to-top');
-            if (window.scrollY > 300) { if (button) button.classList.add('show'); } else { if (button) button.classList.remove('show'); }
-        });
+        const defaultColors = [
+            { name: "東海藍", id: "thu", hex: "#002147" },
+            { name: "榮耀金", id: "glorygold", hex: "#c6a87c" } // Updated hex
+        ];
+        
+        // Updated Setting Fields with grouping info
+        const settingFieldsMap = { 
+            'SiteTitle': { label: '網站主標題 (中文)', type: 'text', group: 1 }, 
+            'SiteEngTitle': { label: '網站副標題 (英文)', type: 'text', group: 1 }, 
+            'LogoUrl': { label: 'Logo 圖片連結', type: 'text', group: 1 },
+            'HeroSubtitle': { label: '首頁歡迎詞', type: 'textarea', group: 2 }, 
+            'OriginTitle': { label: '計畫緣起 - 標題', type: 'text', group: 2 }, 
+            'OriginContent': { label: '計畫緣起 - 內容 (HTML)', type: 'textarea', group: 2 } 
+        };
 
-        document.addEventListener('DOMContentLoaded', async function() {
-            let progress = 0;
-            const interval = setInterval(() => { if (progress < maxSimulatedProgress) progress += 5; updateProgress(progress); }, 100);
+        // --- 修正後的 Sortable.js 基礎設定，用於解決桌機「黏住」問題 ---
+        const SORTABLE_BASE_OPTIONS = {
+            handle: '.drag-handle', 
+            animation: 150, 
+            ghostClass: 'sortable-ghost', 
+            dragClass: 'sortable-drag',
+            // 移除 forceFallback: true, fallbackOnBody: true，改依賴 CSS @media 判斷
+            // forceFallback: true,        
+            // fallbackOnBody: true,       
+            onEnd:()=> { 
+                collectDataFromEditors(); 
+                markUnsaved(); 
+            }
+        };
+        // --- 修正後的 Sortable.js 基礎設定結束 ---
+
+        // --- Core Functions ---
+        async function loadData() {
+            const owner = document.getElementById('gh-owner').value.trim();
+            const repo = document.getElementById('gh-repo').value.trim();
+            const tokenInput = document.getElementById('gh-token').value.trim();
+            const msg = document.getElementById('login-msg');
+            const btn = document.getElementById('load-btn');
+
+            if (!owner || !repo || !tokenInput) { msg.innerText = "請填寫完整的連線資訊"; return; }
+
+            sessionToken = tokenInput; 
+            msg.innerHTML = '<i class="fas fa-spinner fa-spin mr-1"></i> 連線中...'; msg.className = "text-center mt-3 h-5 text-sm font-medium text-thuBlue";
+            btn.disabled = true; btn.classList.add('opacity-75', 'cursor-wait');
 
             try {
-                const response = await fetch(`data.json?t=${new Date().getTime()}`);
-                if (!response.ok) throw new Error("無法讀取資料庫");
-                const data = await response.json();
+                // 1. Get Data
+                const url = `https://api.github.com/repos/${owner}/${repo}/contents/${DATA_FILE}`;
+                const response = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
+                if (!response.ok) throw new Error(response.status === 404 ? "找不到 data.json" : "連線失敗 (請確認 Token)");
 
-                // === CSS Variables Sync Logic ===
-                if (data.colors) {
-                    const rootStyle = document.documentElement.style;
-                    // Defaults
-                    rootStyle.setProperty('--color-thu', '#002E5D');
-                    rootStyle.setProperty('--color-glorygold', '#C6A87C');
-                    // Dynamic Injection
-                    data.colors.forEach(c => {
-                        if(c.id && c.hex) {
-                            rootStyle.setProperty(`--color-${c.id.toLowerCase()}`, c.hex);
-                        }
-                    });
-                }
-                // =================================
-
-                clearInterval(interval);
-                updateProgress(maxSimulatedProgress);
-
-                const settings = data.settings;
-                const cards = data.cards;
-                siteContacts = data.contacts;
-                siteNews = data.news || [];
+                const result = await response.json();
+                fileSha = result.sha; 
+                const decodedContent = decodeURIComponent(escape(window.atob(result.content.replace(/\n/g, ''))));
+                currentData = JSON.parse(decodedContent);
                 
-                siteNews.sort((a, b) => new Date(b.Date) - new Date(a.Date));
+                // Initialize checks
+                if (!currentData.pages) currentData.pages = {};
+                if (!currentData.colors) currentData.colors = JSON.parse(JSON.stringify(defaultColors));
+                
+                // Force Update Glory Gold if it exists, or add it if missing (Important for fix)
+                const gold = currentData.colors.find(c => c.id === 'glorygold');
+                if(gold) gold.hex = '#c6a87c';
+                else currentData.colors.push({ name: "榮耀金", id: "glorygold", hex: "#c6a87c" });
+                
+                // Initialize Templates if missing
+                if (!currentData.templates) currentData.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
 
-                renderSettings(settings);
-                renderCards(cards);
-                renderContacts(siteContacts);
-                renderNewsWidget(siteNews);
+                localStorage.setItem('gh_owner', owner);
+                localStorage.setItem('gh_repo', repo);
+                
+                // 2. Fetch Repo Storage Info
+                fetchRepoInfo(owner, repo);
 
-                hideLoadingOverlay();
+                renderEditors(); 
+                
+                document.getElementById('login-screen').classList.add('animate-fade-out');
+                const dashboard = document.getElementById('dashboard-ui');
+                dashboard.classList.remove('hidden');
+                setTimeout(() => { dashboard.classList.remove('opacity-0'); document.getElementById('login-screen').classList.add('hidden'); }, 400);
 
             } catch (error) {
-                console.error("Error loading data:", error);
-                clearInterval(interval);
-                updateProgress(100);
-                hideLoadingOverlay();
-                document.getElementById('cards-container').innerHTML = `<div class="col-span-full text-center text-red-500 p-10 bg-white rounded-xl shadow-lg">資料載入失敗，請確認 data.json 是否存在。</div>`;
-                document.getElementById('news-container').classList.add('hidden');
+                console.error(error); msg.innerHTML = `<i class="fas fa-exclamation-circle mr-1"></i> ${error.message}`; msg.className = "text-center mt-3 h-5 text-sm font-medium text-red-500"; btn.disabled = false; btn.classList.remove('opacity-75', 'cursor-wait');
             }
-        });
-
-        function renderSettings(settings) {
-            if (!settings) return;
-            document.title = settings.SiteTitle;
-            document.getElementById('sticky-header').querySelector('#nav-title').innerText = settings.SiteTitle; 
-            setText('hero-eng-title', settings.SiteEngTitle);
-            setHTML('hero-subtitle', settings.HeroSubtitle);
-            setText('footer-copyright', settings.Copyright);
-            setText('modal-origin-title', settings.OriginTitle);
-            setHTML('modal-origin-content', settings.OriginContent);
-
-            const fullTitle = settings.SiteTitle || "";
-            const keyword = "協作平台";
+        }
+        
+        async function fetchRepoInfo(owner, repo) {
+            try {
+                const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: { 'Authorization': `token ${sessionToken}` } });
+                if(res.ok) {
+                    const data = await res.json();
+                    const sizeKB = data.size; // KB
+                    const sizeMB = (sizeKB / 1024).toFixed(1);
+                    const sizeGB = (sizeKB / 1048576).toFixed(2);
+                    const percent = Math.min((sizeKB / 1048576) * 100, 100);
+                    
+                    document.getElementById('storage-bar').style.width = `${percent}%`;
+                    if(percent > 80) document.getElementById('storage-bar').classList.add('bg-red-500');
+                    document.getElementById('storage-text').innerText = `${sizeMB} MB / 1 GB`;
+                }
+            } catch(e) { console.error("Repo info fetch failed", e); }
+        }
+        
+        async function fetchRepoFile(path) {
+            const owner = localStorage.getItem('gh_owner');
+            const repo = localStorage.getItem('gh-repo');
+            const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
             
-            if (fullTitle.includes(keyword)) {
-                const parts = fullTitle.split(keyword);
-                setText('hero-title-1', parts[0]);
-                setText('hero-title-2', keyword + (parts[1] || "")); 
-            } else { 
-                setText('hero-title-1', fullTitle); 
-                setText('hero-title-2', ""); 
+            const res = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
+            if(!res.ok) throw new Error(`找不到檔案：${path}，請確認該檔案已存在。`);
+            
+            const data = await res.json();
+            return decodeURIComponent(escape(window.atob(data.content.replace(/\n/g, ''))));
+        }
+
+        function renderEditors() {
+            // Settings - Grouped Layout
+            const g1 = document.getElementById('settings-group-1');
+            const g2 = document.getElementById('settings-group-2');
+            g1.innerHTML = ''; g2.innerHTML = '';
+
+            for (const [key, config] of Object.entries(settingFieldsMap)) {
+                let value = currentData.settings[key] || ''; 
+                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n');
+                
+                let inputHtml = config.type === 'textarea' ? 
+                    `<textarea data-key="${key}" rows="4" class="input-stylish font-mono text-sm resize-y" onchange="markUnsaved()">${value}</textarea>` : 
+                    `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="input-stylish text-sm" onchange="markUnsaved()" />`;
+                
+                const html = `<div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">${config.label}</label>${inputHtml}</div>`;
+                
+                if(config.group === 1) g1.innerHTML += html;
+                else g2.innerHTML += html;
             }
 
-            if (settings.LogoUrl) {
-                document.querySelectorAll('img[alt="Logo"]').forEach(img => { img.src = settings.LogoUrl; img.classList.remove('hidden'); });
+            renderColorManager();
+            renderCardsList();
+            renderContactsList();
+            renderNewsList();
+            
+            // Initial Page Load
+            renderPageSidebar();
+            if (activePageId && currentData.pages[activePageId]) {
+                switchPageEditor(activePageId);
+            } else {
+                const firstPage = Object.keys(currentData.pages)[0];
+                if (firstPage) switchPageEditor(firstPage);
+            }
+
+            // Initial Template Load
+            renderTemplateSidebar();
+            const firstTpl = Object.keys(currentData.templates)[0];
+            if(firstTpl) switchTemplateEditor(firstTpl);
+        }
+
+        // --- Render Sidebar Logic ---
+        function renderPageSidebar() {
+            const sidebar = document.getElementById('pages-sidebar');
+            sidebar.innerHTML = '';
+            for(const [pid, p] of Object.entries(currentData.pages)) {
+                sidebar.innerHTML += `<div onclick="switchPageEditor('${pid}')" class="sidebar-btn ${pid===activePageId ? 'active' : ''}"><i class="fas ${p.icon||'fa-file'} w-5 text-center"></i><span>${p.title}</span></div>`;
             }
         }
 
-        function renderCards(data) {
-            const container = document.getElementById('cards-container'); container.innerHTML = ''; 
-            if (!data) return;
+        // --- Template Management Logic (Updated Layout) ---
+        function renderTemplateSidebar() {
+            const sidebar = document.getElementById('templates-sidebar');
+            sidebar.innerHTML = '';
+            for (const [key, tpl] of Object.entries(currentData.templates)) {
+                 sidebar.innerHTML += `<div onclick="switchTemplateEditor('${key}')" class="sidebar-btn ${key===activeTemplateKey ? 'active' : ''}"><i class="fas ${key===activeTemplateKey?'fa-folder-open':'fa-folder'} w-5 text-center"></i><span>${tpl.name}</span></div>`;
+            }
+        }
 
-            data.forEach(item => {
-                const colorKey = (item.Type || 'thu').toLowerCase();
-                const theme = colorMap[colorKey] || colorMap['thu'];
-                const bgClass = theme.isGradient ? 'bg-gradient-to-br from-white to-blue-50' : 'bg-white';
-                const badgeHtml = item.Badge ? `<div class="absolute top-0 right-0 ${theme.icon} text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">${item.Badge}</div>` : '';
-                const externalLink = item.Link.startsWith('http') || item.Link.startsWith('tools/');
-                const target = externalLink ? 'target="_blank"' : '';
+        function switchTemplateEditor(key) {
+            if(!key) return;
+            activeTemplateKey = key;
+            const tpl = currentData.templates[key];
+            renderTemplateSidebar();
+            
+            document.getElementById('current-template-title-display').innerHTML = `${tpl.name} <span class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs font-mono ml-2 border border-gray-300">${key}</span>`;
+            
+            document.getElementById('tpl-edit-name').value = tpl.name;
+            document.getElementById('tpl-edit-desc').value = tpl.desc;
+            
+            if(!tpl.items) tpl.items = []; // Ensure items array exists
+            const tplContext = {
+                items: tpl.items,
+                labels: tpl.labels || {title: "預設標題", title_en: "預設備註"},
+                categories: [], 
+                fileFields: null 
+            };
+            
+            renderGenericList(document.getElementById('template-items-editor'), tplContext, 'template');
+            switchTemplateView('config');
+        }
 
+        function switchTemplateView(viewName) {
+            ['config', 'content', 'code'].forEach(v => {
+                document.getElementById(`tpl-view-${v}`).classList.add('hidden');
+                const btn = document.getElementById(`btn-tpl-${v}`);
+                btn.classList.remove('tab-active');
+                btn.classList.add('tab-inactive');
+            });
+            document.getElementById(`tpl-view-${viewName}`).classList.remove('hidden');
+            const btn = document.getElementById(`btn-tpl-${viewName}`);
+            btn.classList.remove('tab-inactive');
+            btn.classList.add('tab-active');
+        }
+
+        function updateTemplateMeta() {
+            const tpl = currentData.templates[activeTemplateKey];
+            tpl.name = document.getElementById('tpl-edit-name').value;
+            tpl.desc = document.getElementById('tpl-edit-desc').value;
+            renderTemplateSidebar();
+        }
+
+        function addTemplateItem() {
+            collectDataFromEditors();
+            if(!currentData.templates[activeTemplateKey].items) currentData.templates[activeTemplateKey].items = [];
+            currentData.templates[activeTemplateKey].items.push({title:"新項目", visible:true});
+            markUnsaved();
+            const tpl = currentData.templates[activeTemplateKey];
+            const tplContext = { items: tpl.items, labels: tpl.labels || {title:"標題"} };
+            renderGenericList(document.getElementById('template-items-editor'), tplContext, 'template');
+        }
+
+        function addNewTemplate() {
+            document.getElementById('msg-input-container').classList.remove('hidden');
+            const input = document.getElementById('msg-input');
+            input.value = '';
+            showMsg("新增模板", "請輸入新模板的 ID (英文小寫，例如: news_list)：", "confirm", async () => {
+                const id = input.value.trim().toLowerCase();
+                if(!id || !/^[a-z0-9_]+$/.test(id)) { showMsg("錯誤", "ID 格式不正確", "error"); return; }
+                if(currentData.templates[id]) { showMsg("錯誤", "ID 已存在", "error"); return; }
+
+                const defaultJson = { tag: "New", description: "Description...", labels:{title:"Title"}, items:[] };
+                const defaultHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>New Template</title></head><body><h1>{{PAGE_ID}}</h1></body></html>`;
+
+                showMsg("處理中", "正在建立模板檔案...", "info");
+                try {
+                    await uploadFileToGitHub(`page_template/${id}.json`, JSON.stringify(defaultJson, null, 4));
+                    await uploadFileToGitHub(`page_template/${id}.html`, defaultHtml);
+                    
+                    currentData.templates[id] = {
+                        name: "新模板 " + id,
+                        desc: "請編輯描述...",
+                        jsonPath: `page_template/${id}.json`,
+                        htmlPath: `page_template/${id}.html`,
+                        items: []
+                    };
+                    renderTemplateSidebar();
+                    switchTemplateEditor(id);
+                    showMsg("成功", "模板已建立", "success");
+                    markUnsaved(); 
+                } catch(e) {
+                    showMsg("失敗", e.message, "error");
+                }
+            });
+            document.getElementById('msg-input-container').classList.remove('hidden');
+        }
+
+        function deleteTemplate(key) {
+            showMsg("確認刪除", `確定要移除模板「${key}」嗎？(檔案不會被刪除，僅從選單移除)`, "confirm", () => {
+                delete currentData.templates[key];
+                markUnsaved();
+                const first = Object.keys(currentData.templates)[0];
+                if(first) switchTemplateEditor(first);
+                else {
+                    document.getElementById('templates-sidebar').innerHTML = '';
+                    document.getElementById('template-main-area').innerHTML = '<div class="p-10 text-center text-gray-400">無模板</div>';
+                }
+            });
+        }
+
+        async function editTemplateCode(key, type) {
+            activeTemplateKey = key;
+            activeEditorMode = type;
+            const tpl = currentData.templates[key];
+            const path = type === 'json' ? tpl.jsonPath : tpl.htmlPath;
+            const title = type === 'json' ? '編輯設定檔 (JSON)' : '編輯原始碼 (HTML)';
+            
+            document.getElementById('tpl-editor-title').innerText = `${tpl.name} - ${title}`;
+            document.getElementById('tpl-editor-path').innerText = path;
+            const editor = document.getElementById('tpl-code-area');
+            editor.value = "讀取中...";
+            document.getElementById('template-editor-modal').classList.remove('hidden');
+
+            try {
+                const content = await fetchRepoFile(path);
+                editor.value = content;
+            } catch(e) {
+                editor.value = "讀取失敗: " + e.message;
+            }
+        }
+
+        function closeTemplateEditor() {
+            document.getElementById('template-editor-modal').classList.add('hidden');
+        }
+
+        async function saveTemplateCode() {
+            const content = document.getElementById('tpl-code-area').value;
+            const tpl = currentData.templates[activeTemplateKey];
+            const path = activeEditorMode === 'json' ? tpl.jsonPath : tpl.htmlPath;
+
+            showMsg("確認", `確定要覆寫檔案 ${path} 嗎？`, "confirm", async () => {
+                try {
+                    await uploadFileToGitHub(path, content);
+                    showMsg("成功", "模板檔案已更新", "success");
+                    closeTemplateEditor();
+                } catch(e) {
+                    showMsg("失敗", e.message, "error");
+                }
+            });
+        }
+
+        // --- Page Management ---
+        function openCreatePageModal() {
+            document.getElementById('new-page-title').value = '';
+            document.getElementById('new-page-id').value = '';
+            document.getElementById('new-page-tag').value = '';
+            document.getElementById('new-page-icon').value = 'fa-file';
+            document.getElementById('new-page-desc').value = '';
+            renderTemplateOptions();
+            const radio = document.querySelector('input[name="page-template"]');
+            if(radio) radio.checked = true;
+            document.getElementById('create-page-modal').classList.remove('hidden');
+        }
+        function closeCreatePageModal() { document.getElementById('create-page-modal').classList.add('hidden'); }
+
+        function renderTemplateOptions() {
+            const container = document.getElementById('template-options');
+            container.innerHTML = '';
+            for (const [key, tpl] of Object.entries(currentData.templates)) {
                 container.innerHTML += `
-                <a href="${item.Link}" ${target} class="group flex flex-col h-full ${bgClass} rounded-xl shadow-lg hover:shadow-2xl transition-all duration-300 overflow-hidden transform hover:-translate-y-2 border-t-4 ${theme.border} relative">
-                    ${badgeHtml}
-                    <div class="p-8 flex-grow">
-                        <div class="w-16 h-16 ${theme.icon} text-white rounded-2xl flex items-center justify-center text-3xl mb-6 group-hover:scale-110 transition-transform duration-300"><i class="fas ${item.Icon}"></i></div>
-                        <h3 class="text-2xl font-bold text-gray-800 mb-3 ${theme.hoverText} transition-colors">${item.Title}</h3>
-                        <p class="text-gray-500 leading-relaxed">${item.Description}</p>
+                <label class="relative flex flex-col p-4 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-thuBlue hover:ring-1 hover:ring-thuBlue transition-all group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-gray-800 text-sm group-hover:text-thuBlue">${tpl.name}</span>
+                        <input type="radio" name="page-template" value="${key}" class="text-thuBlue focus:ring-thuBlue border-gray-300">
                     </div>
-                    <div class="bg-white/50 px-8 py-4 border-t border-gray-100 flex justify-between items-center">
-                        <span class="text-sm font-medium ${theme.text}">${theme.isGradient ? '立即使用' : '查看詳情'}</span>
-                        <i class="fas fa-arrow-right ${theme.text} opacity-0 group-hover:opacity-100 transform translate-x-[-10px] group-hover:translate-x-0 transition-all"></i>
-                    </div>
-                </a>`;
-            });
-        }
-
-        function renderContacts(data) {
-            const container = document.getElementById('contacts-container'); container.innerHTML = '';
-            if (!data) return;
-
-            const office = data.find(d => d.Type === 'office');
-            const staff = data.filter(d => d.Type !== 'office');
-            if (office) {
-                const c = contactColorMap['office'] || contactColorMap['default'];
-                container.innerHTML += `
-                <div class="bg-white p-5 rounded-xl shadow-sm border border-gray-200 hover:border-green-500 transition-colors flex flex-col md:flex-row items-center justify-between gap-5 mb-6">
-                    <div class="flex items-center gap-4">
-                        <div class="w-14 h-14 rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold text-2xl shrink-0"><i class="fas fa-building"></i></div>
-                        <div class="text-center md:text-left"><h4 class="text-xl font-bold text-gray-800">${office.Name}</h4><span class="text-sm ${c.badge} px-2.5 py-1 rounded-md mt-1 inline-block">${office.Title}</span></div>
-                    </div>
-                    <div class="flex flex-col md:items-end text-center md:text-right">
-                        <div class="flex items-center gap-2 mb-1 justify-center md:justify-end"><i class="fas fa-envelope text-gray-400 text-lg"></i><a href="mailto:${office.Email}" class="text-thuBlue font-bold text-xl hover:underline">${office.Email}</a></div>
-                        <p class="text-sm text-gray-500">${office.Description || ''}</p>
-                    </div>
-                </div>`;
+                    <p class="text-xs text-gray-500 leading-relaxed line-clamp-2">${tpl.desc}</p>
+                </label>`;
             }
-            let staffHtml = '<div class="grid grid-cols-1 md:grid-cols-3 gap-5">';
-            staff.forEach(p => {
-                const colorKey = (p.Type || 'blue').toLowerCase();
-                const c = contactColorMap[colorKey] || contactColorMap['default'];
-                staffHtml += `
-                <div class="bg-white p-6 rounded-xl shadow-sm border border-gray-200 ${c.border} transition-colors flex flex-col h-full">
-                    <div class="flex items-center gap-3 mb-5 border-b border-gray-100 pb-4">
-                        <div class="w-12 h-12 rounded-full ${c.bg} ${c.text} flex items-center justify-center font-bold text-xl shrink-0">${p.Name.charAt(0)}</div>
-                        <div class="min-w-0"><h4 class="text-lg font-bold text-gray-800 truncate">${p.Name}</h4><span class="text-sm ${c.badge} px-2 py-0.5 rounded mt-1 inline-block">${p.Title}</span></div>
-                    </div>
-                    <div class="space-y-2 text-sm text-gray-600 flex-grow">
-                        <div class="flex items-start gap-2"><i class="fas fa-tasks mt-1 text-thuGold w-3"></i>
-                            <div><p class="font-medium text-gray-700 mb-0.5">負責業務：</p><ul class="list-disc list-inside text-gray-500 space-y-0.5 pl-0.5">${p.Description ? p.Description.split('\n').map(i => `<li>${i}</li>`).join('') : ''}</ul></div>
-                        </div>
-                    </div>
-                    <div class="mt-5 pt-3 border-t border-gray-100 space-y-2 text-sm">
-                        <div class="flex items-center gap-2"><i class="fas fa-phone-alt text-gray-400 w-3"></i><a href="tel:${p.Phone}" class="text-thuBlue font-medium hover:underline">${p.Phone}</a></div>
-                        <div class="flex items-center gap-2"><i class="fas fa-envelope text-gray-400 w-3"></i><a href="mailto:${p.Email}" class="text-thuBlue font-medium hover:underline truncate">${p.Email}</a></div>
-                    </div>
-                </div>`;
-            });
-            staffHtml += '</div>'; container.innerHTML += staffHtml;
         }
 
-        // === NEWS LOGIC ===
-        function renderNewsWidget(data) {
-            const heroList = document.getElementById('news-list');
-            const wrapper = document.getElementById('news-container');
-            const moreBtn = document.getElementById('view-more-news-btn');
-            heroList.innerHTML = '';
+        async function confirmCreatePage() {
+            const title = document.getElementById('new-page-title').value.trim();
+            let id = document.getElementById('new-page-id').value.trim().toLowerCase();
+            const tag = document.getElementById('new-page-tag').value.trim();
+            const icon = document.getElementById('new-page-icon').value.trim();
+            const desc = document.getElementById('new-page-desc').value.trim();
+            const templateKey = document.querySelector('input[name="page-template"]:checked')?.value;
 
-            if (!data || data.length === 0) { wrapper.classList.add('hidden'); return; }
-            wrapper.classList.remove('hidden');
-            wrapper.classList.add('animate-fade-in-up'); 
+            if (!title || !id || !templateKey) { showMsg("錯誤", "請填寫完整資訊", "error"); return; }
+            if (!/^[a-z0-9_]+$/.test(id)) { showMsg("錯誤", "網址路徑只能包含小寫英文、數字與底線", "error"); return; }
+            if (currentData.pages[id]) { showMsg("錯誤", "此網址路徑已存在", "error"); return; }
 
-            if (data.length > 3) moreBtn.classList.remove('hidden'); else moreBtn.classList.add('hidden');
+            closeCreatePageModal();
+            showMsg("處理中", "正在讀取模板並建立頁面，請稍候...", "info");
 
-            data.slice(0, 3).forEach((item, index) => {
-                const isNew = item.IsNew === true || item.IsNew === 'TRUE' || item.IsNew === 'true';
-                const newBadge = isNew ? '<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 align-middle">NEW</span>' : '';
-                const typeBadge = item.Type ? `<span class="text-xs text-blue-300 border border-blue-300/30 px-1.5 py-0.5 rounded mr-2">${item.Type}</span>` : '';
-                const hasLink = item.Link && item.Link.trim() !== '' && item.Link.trim() !== '#';
-                const href = hasLink ? item.Link : 'javascript:void(0)';
-                const target = hasLink ? 'target="_blank"' : '';
-                const onClick = hasLink ? '' : `onclick="openNewsModal(${index})"`;
+            const tplConfig = currentData.templates[templateKey];
+            let newPageData, htmlContent;
 
-                heroList.innerHTML += `
-                <li class="flex items-start gap-3 hover:bg-white/5 p-1 rounded transition-colors">
-                    <div class="flex-shrink-0 mt-0.5 text-thuGold font-mono whitespace-nowrap">${item.Date}</div>
-                    <div class="flex-grow min-w-0">${typeBadge}<a href="${href}" ${target} ${onClick} class="hover:text-white hover:underline transition-colors leading-relaxed cursor-pointer truncate block">${item.Title} ${newBadge}</a></div>
-                </li>`;
-            });
-            initNewsFilters();
+            try {
+                const jsonStr = await fetchRepoFile(tplConfig.jsonPath);
+                newPageData = JSON.parse(jsonStr);
+                if(tplConfig.items && tplConfig.items.length > 0) {
+                     newPageData.items = JSON.parse(JSON.stringify(tplConfig.items));
+                }
+                
+                newPageData.title = title;
+                if(tag) newPageData.tag = tag;
+                if(icon) newPageData.icon = icon;
+                if(desc) newPageData.description = desc;
+
+                const htmlStr = await fetchRepoFile(tplConfig.htmlPath);
+                htmlContent = htmlStr.replace(/{{PAGE_ID}}/g, id);
+            } catch(e) {
+                showMsg("錯誤", "讀取模板失敗: " + e.message, "error");
+                return;
+            }
+
+            currentData.pages[id] = { 
+                title: title, 
+                source: `pages/data_${id}.json`, 
+                template: templateKey, 
+                tag: newPageData.tag, 
+                icon: newPageData.icon,
+                description: newPageData.description,
+                loaded: true, 
+                ...newPageData 
+            };
+
+            try {
+                await uploadFileToGitHub(`${id}.html`, htmlContent);
+                await uploadFileToGitHub(`pages/data_${id}.json`, JSON.stringify(newPageData, null, 4));
+                await uploadFileToGitHub(DATA_FILE, JSON.stringify(currentData, null, 4), fileSha);
+                
+                showMsg("成功", `頁面 ${title} 已建立！`, "success", () => {
+                    activePageId = id;
+                    renderPageSidebar();
+                    switchPageEditor(id);
+                });
+                markUnsaved(); 
+            } catch (e) {
+                showMsg("失敗", "建立頁面失敗: " + e.message, "error");
+            }
         }
 
-        function initNewsFilters() {
-            const types = [...new Set(siteNews.map(n => n.Type || '一般公告'))];
-            const select = document.getElementById('news-filter');
-            select.innerHTML = '<option value="all">所有類型</option>';
-            types.forEach(t => { select.innerHTML += `<option value="${t}">${t}</option>`; });
+        function promptDeletePage() {
+            showMsg("刪除確認", `確定要刪除 ${activePageId} 頁面嗎？這將會刪除 ${activePageId}.html 與資料檔，此操作無法復原。`, "confirm", async () => {
+                showMsg("處理中", "正在刪除頁面檔案...", "info");
+                try {
+                    await deleteFileFromGitHub(`${activePageId}.html`);
+                    await deleteFileFromGitHub(`pages/data_${activePageId}.json`);
+                    delete currentData.pages[activePageId];
+                    await uploadFileToGitHub(DATA_FILE, JSON.stringify(currentData, null, 4), fileSha);
+                    
+                    showMsg("成功", "頁面已刪除", "success", () => {
+                        const firstPage = Object.keys(currentData.pages)[0];
+                        activePageId = firstPage || '';
+                        renderPageSidebar();
+                        if(activePageId) switchPageEditor(activePageId);
+                        else document.getElementById('page-items-editor').innerHTML = '';
+                    });
+                    markUnsaved(); 
+                } catch(e) {
+                    showMsg("失敗", "刪除失敗: " + e.message, "error");
+                }
+            });
         }
 
-        function renderAllNewsUI(resetPage = false) {
-            const search = document.getElementById('news-search').value.toLowerCase();
-            const type = document.getElementById('news-filter').value;
-            filteredNews = siteNews.filter(item => {
-                const matchSearch = item.Title.toLowerCase().includes(search);
-                const matchType = type === 'all' || (item.Type || '一般公告') === type;
-                return matchSearch && matchType;
+        function promptRenamePage() {
+            document.getElementById('msg-input-container').classList.remove('hidden');
+            const input = document.getElementById('msg-input');
+            input.value = activePageId;
+            
+            showMsg("變更路徑", "請輸入新的網址路徑 (不含 .html)：", "confirm", async () => {
+                const newId = input.value.trim().toLowerCase();
+                if(!newId || !/^[a-z0-9_]+$/.test(newId)) { showMsg("錯誤", "無效的路徑格式", "error"); return; }
+                if(currentData.pages[newId]) { showMsg("錯誤", "此路徑已存在", "error"); return; }
+                if(newId === activePageId) return;
+
+                showMsg("處理中", "正在搬移檔案...", "info");
+                try {
+                    const pageConfig = currentData.pages[activePageId];
+                    const oldHtml = await fetchRepoFile(`${activePageId}.html`);
+                    const oldJson = await fetchRepoFile(pageConfig.source); 
+                    
+                    const newHtml = oldHtml.replace(new RegExp(`pages/data_${activePageId}.json`, 'g'), `pages/data_${newId}.json`)
+                                           .replace(new RegExp(`const PAGE_ID = '${activePageId}'`, 'g'), `const PAGE_ID = '${newId}'`);
+                    
+                    await uploadFileToGitHub(`${newId}.html`, newHtml);
+                    await uploadFileToGitHub(`pages/data_${newId}.json`, oldJson);
+                    
+                    currentData.pages[newId] = JSON.parse(JSON.stringify(pageConfig));
+                    currentData.pages[newId].source = `pages/data_${newId}.json`;
+                    delete currentData.pages[activePageId];
+                    
+                    await deleteFileFromGitHub(`${activePageId}.html`);
+                    await deleteFileFromGitHub(pageConfig.source);
+                    
+                    await uploadFileToGitHub(DATA_FILE, JSON.stringify(currentData, null, 4), fileSha);
+                    
+                    showMsg("成功", "頁面路徑已變更", "success", () => {
+                        activePageId = newId;
+                        renderPageSidebar();
+                        switchPageEditor(newId);
+                    });
+                    markUnsaved();
+                } catch(e) {
+                    showMsg("失敗", "變更失敗: " + e.message, "error");
+                }
             });
+            document.getElementById('msg-input-container').classList.remove('hidden');
+        }
 
-            if (resetPage) currentNewsPage = 1;
-            const totalPages = Math.ceil(filteredNews.length / newsPerPage);
-            if (currentNewsPage > totalPages) currentNewsPage = totalPages > 0 ? totalPages : 1;
-            if (currentNewsPage < 1) currentNewsPage = 1;
+        async function uploadFileToGitHub(path, content, existingSha = null) {
+            const owner = localStorage.getItem('gh_owner');
+            const repo = localStorage.getItem('gh_repo');
+            if (!existingSha) {
+                try {
+                    const check = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: { 'Authorization': `token ${sessionToken}` } });
+                    if (check.ok) existingSha = (await check.json()).sha;
+                } catch(e) {}
+            }
+            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: `Update ${path}`, content: btoa(unescape(encodeURIComponent(content))), branch: 'main', sha: existingSha })
+            });
+            if (!res.ok) throw new Error(`Upload ${path} failed`);
+            if (path === DATA_FILE) fileSha = (await res.json()).content.sha;
+        }
 
-            const start = (currentNewsPage - 1) * newsPerPage;
-            const end = start + newsPerPage;
-            const pageItems = filteredNews.slice(start, end);
+        async function deleteFileFromGitHub(path) {
+            const owner = localStorage.getItem('gh_owner');
+            const repo = localStorage.getItem('gh_repo');
+            let sha = null;
+            try {
+                const check = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: { 'Authorization': `token ${sessionToken}` } });
+                if (check.ok) sha = (await check.json()).sha;
+            } catch(e) {}
+            if(sha) {
+                await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `Delete ${path}`, branch: 'main', sha: sha })
+                });
+            }
+        }
 
-            const list = document.getElementById('all-news-list');
-            const noMsg = document.getElementById('no-news-msg');
-            list.innerHTML = '';
+        // --- Page Switching & Logic ---
+        async function switchPageEditor(pageId) {
+            if(!pageId) return;
+            activePageId = pageId;
+            const pageConfig = currentData.pages[pageId];
+            
+            renderPageSidebar(); 
 
-            if (pageItems.length === 0) { noMsg.classList.remove('hidden'); } else {
-                noMsg.classList.add('hidden');
-                pageItems.forEach(item => {
-                    const originalIndex = siteNews.indexOf(item); 
-                    let dateStr = item.Date;
-                    const hasLink = item.Link && item.Link.trim() !== '' && item.Link.trim() !== '#';
-                    const href = hasLink ? item.Link : 'javascript:void(0)';
-                    const target = hasLink ? 'target="_blank"' : '';
-                    const onClick = hasLink ? '' : `onclick="openNewsModal(${originalIndex});"`; 
-                    const typeTag = item.Type ? `<span class="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full mr-2">${item.Type}</span>` : '';
+            // 讀取外部資料的邏輯
+            if (pageConfig.source && !pageConfig.loaded) {
+                document.getElementById('page-items-editor').innerHTML = '<div class="text-center py-20"><i class="fas fa-spinner fa-spin text-thuBlue text-2xl"></i><p class="mt-2 text-gray-500">正在讀取外部資料檔...</p></div>';
+                try {
+                    const content = await fetchRepoFile(pageConfig.source);
+                    Object.assign(pageConfig, JSON.parse(content));
+                    pageConfig.loaded = true;
+                } catch(e) {
+                    showMsg("錯誤", "無法讀取頁面資料: " + e.message, "error");
+                    return;
+                }
+            }
+            renderPageEditorUI();
+        }
 
-                    list.innerHTML += `
-                    <li class="border-b border-gray-100 pb-3 last:border-0">
-                        <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                            <div class="flex items-center gap-2 shrink-0"><span class="text-gray-400 font-mono text-sm">${dateStr}</span>${typeTag}</div>
-                            <a href="${href}" ${target} ${onClick} class="text-gray-700 hover:text-thuBlue hover:underline font-medium cursor-pointer block truncate">${item.Title}</a>
-                        </div>
-                    </li>`;
+        function renderPageEditorUI() {
+            const cp = currentData.pages[activePageId];
+            document.getElementById('current-page-title-display').innerText = `${cp.title} - 內容管理`;
+            
+            const context = {
+                items: cp.items,
+                labels: cp.labels,
+                categories: cp.categories,
+                fileFields: cp.fileFields
+            };
+            
+            renderGenericList(document.getElementById('page-items-editor'), context, 'page');
+        }
+
+        // --- Settings Modal Logic ---
+        function openBasicSettingsModal() {
+            if(!activePageId) return;
+            const p = currentData.pages[activePageId];
+            document.getElementById('page-setting-title').value = p.title || '';
+            document.getElementById('page-setting-icon').value = p.icon || '';
+            document.getElementById('page-setting-tag').value = p.tag || '';
+            document.getElementById('page-setting-desc').value = p.description || '';
+            document.getElementById('page-icon-preview').className = `fas ${p.icon || 'fa-question'}`;
+            document.getElementById('basic-settings-modal').classList.remove('hidden');
+        }
+        function closeBasicSettingsModal() { document.getElementById('basic-settings-modal').classList.add('hidden'); }
+        
+        function savePageHeaderSettings() { 
+            collectDataFromEditors();
+            const p = currentData.pages[activePageId];
+            p.title = document.getElementById('page-setting-title').value;
+            p.icon = document.getElementById('page-setting-icon').value;
+            p.tag = document.getElementById('page-setting-tag').value;
+            p.description = document.getElementById('page-setting-desc').value;
+            renderPageSidebar();
+            renderPageEditorUI();
+            closeBasicSettingsModal();
+            markUnsaved();
+            showMsg("成功", "基本設定已暫存", "success");
+        }
+
+        function openAdvancedSettingsModal() {
+            if(!activePageId) return;
+            const p = currentData.pages[activePageId];
+            
+            const labels = p.labels || {};
+            document.getElementById('page-label-title').value = labels.title || '';
+            document.getElementById('page-label-title-en').value = labels.title_en || '';
+
+            const catMgr = document.getElementById('modal-category-manager');
+            const fileMgr = document.getElementById('modal-file-fields-config');
+            
+            if(p.categories) { catMgr.classList.remove('hidden'); renderCategoryList(); } else { catMgr.classList.add('hidden'); }
+            if(p.fileFields) { fileMgr.classList.remove('hidden'); renderFileConfigList(); } else { fileMgr.classList.add('hidden'); }
+
+            document.getElementById('advanced-settings-modal').classList.remove('hidden');
+        }
+        function closeAdvancedSettingsModal() { document.getElementById('advanced-settings-modal').classList.add('hidden'); }
+
+        // New consolidated save function for Advanced Settings
+        function saveAdvancedSettings() {
+            // Save Labels
+            if(!currentData.pages[activePageId].labels) currentData.pages[activePageId].labels = {};
+            currentData.pages[activePageId].labels.title = document.getElementById('page-label-title').value;
+            currentData.pages[activePageId].labels.title_en = document.getElementById('page-label-title-en').value;
+
+            // Save File Config (if present)
+            if (currentData.pages[activePageId].fileFields) {
+                currentData.pages[activePageId].fileFields.forEach((f,i)=>{ 
+                    f.label = document.getElementById('ff-l-'+i).value; 
+                    f.icon = document.getElementById('ff-i-'+i).value; 
                 });
             }
 
-            const pag = document.getElementById('news-pagination');
-            pag.innerHTML = '';
-            if (totalPages > 1) {
-                pag.innerHTML += `<button onclick="changePage(${currentNewsPage - 1})" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50" ${currentNewsPage === 1 ? 'disabled' : ''}><i class="fas fa-chevron-left text-gray-500"></i></button>`;
-                for (let i = 1; i <= totalPages; i++) {
-                    const activeClass = i === currentNewsPage ? 'bg-thuBlue text-white' : 'bg-white text-gray-600 hover:bg-gray-100';
-                    pag.innerHTML += `<button onclick="changePage(${i})" class="w-8 h-8 flex items-center justify-center rounded-full text-sm font-bold transition-colors ${activeClass}">${i}</button>`;
+            renderPageEditorUI();
+            closeAdvancedSettingsModal();
+            markUnsaved();
+            showMsg("成功", "進階設定已暫存", "success");
+        }
+
+        // --- Renderers (Generic List for Pages & Template Defaults) ---
+        function renderGenericList(container, context, mode) {
+            container.innerHTML = '';
+            const items = context.items || [];
+            if (items.length === 0) { 
+                const emptyText = mode === 'template' ? '本模板無可編輯的預設內容' : '尚無資料，請新增項目';
+                container.innerHTML = `<div class="text-center py-20 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">${emptyText}</div>`; 
+                return; 
+            }
+            
+            let catOptions = '<option value="">未分類</option>';
+            if(context.categories) context.categories.forEach(c => { catOptions += `<option value="${c.id}">${c.name}</option>`; });
+            
+            const titleLabel = context.labels?.title || '標題';
+            const titleEnLabel = context.labels?.title_en || '備註';
+            const isResources = !!context.fileFields;
+            const itemClass = mode === 'page' ? 'page-item' : 'template-item';
+            const deleteFunc = mode === 'page' ? 'deletePageItem' : 'deleteTemplateItem';
+            const saveFunc = mode === 'page' ? 'saveSingleItem' : 'saveTemplateItem';
+
+            // --- 強化 Sortable.js 設置，以解決部署環境問題 (使用 BASE OPTIONS) ---
+            const sortableOptions = {
+                ...SORTABLE_BASE_OPTIONS,
+                scroll: true, // 專為列表滾動容器設計
+            };
+            // --- 強化 Sortable.js 設置 END ---
+
+            items.forEach((item, index) => {
+                const checked = (item.visible !== false) ? 'checked' : '';
+                let contentHtml = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">${titleLabel}</label><input type="text" class="p-title w-full border rounded p-2 text-sm" value="${item.title||''}" onchange="markUnsaved()"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">${titleEnLabel}</label><input type="text" class="p-title-en w-full border rounded p-2 text-sm" value="${item.title_en||''}" onchange="markUnsaved()"></div></div>`;
+                
+                contentHtml += `<div class="grid grid-cols-3 gap-4 mb-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">發布單位</label><input type="text" class="p-issuer w-full border rounded p-2 text-sm" value="${item.issuer||''}" onchange="markUnsaved()"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">日期</label><input type="date" class="p-date w-full border rounded p-2 text-sm" value="${item.date||''}" onchange="markUnsaved()"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">分類</label><select class="p-cat-select w-full border rounded p-2 text-sm" onchange="markUnsaved()">${catOptions.replace(`value="${item.category||''}"`, `value="${item.category||''}" selected`)}</select></div></div>`;
+
+                if (isResources) {
+                    let fileInputsHtml = '';
+                    context.fileFields.forEach(f => {
+                        fileInputsHtml += `<div class="flex gap-2 items-center mb-2"><div class="w-24 flex-shrink-0 text-xs font-bold text-gray-500 flex items-center gap-1"><i class="fas ${f.icon}"></i> ${f.label}</div><div class="flex-grow flex gap-1 relative"><input type="text" id="input-${mode}-${index}-${f.key}" class="p-file-field flex-grow border rounded p-1.5 text-sm text-blue-600 font-mono" data-key="${f.key}" value="${item[f.key]||''}" onchange="markUnsaved()"><button onclick="openFileSelector(${index}, '${f.key}', '${mode}')" class="file-upload-label" title="上傳檔案"><i class="fas fa-cloud-upload-alt"></i></button></div></div>`;
+                    });
+                    contentHtml += `<div class="bg-gray-50 p-4 rounded border border-gray-200"><label class="block text-xs font-bold text-gray-400 mb-2">檔案下載設定</label>${fileInputsHtml}</div>`;
+                } else {
+                     contentHtml += `<div><label class="block text-xs font-bold text-gray-400 mb-1">連結 URL</label><input type="text" class="p-url w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${item.url||''}" onchange="markUnsaved()"></div>`;
                 }
-                pag.innerHTML += `<button onclick="changePage(${currentNewsPage + 1})" class="w-8 h-8 flex items-center justify-center rounded-full hover:bg-gray-100 disabled:opacity-50" ${currentNewsPage === totalPages ? 'disabled' : ''}><i class="fas fa-chevron-right text-gray-500"></i></button>`;
+
+                const accId = `${mode}-acc-${index}`;
+
+                container.innerHTML += `
+                <div class="${itemClass} bg-white rounded-xl border border-gray-200 shadow-sm mb-3 overflow-hidden" data-index="${index}">
+                    <div class="bg-gray-50 p-3 px-4 flex justify-between items-center transition-colors">
+                        <div class="flex items-center gap-3 overflow-hidden">
+                            <div class="drag-handle cursor-grab text-gray-400 hover:text-thuBlue w-6 text-center py-1">
+                                <i class="fas fa-grip-vertical"></i>
+                            </div>
+                            <span class="font-bold text-gray-700 truncate select-none cursor-pointer" onclick="toggleAccordion('${accId}')">
+                                #${index+1} ${item.title || '(無標題)'}
+                            </span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <label class="flex items-center cursor-pointer select-none" title="顯示/隱藏">
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only peer p-visible" ${checked} onchange="markUnsaved()">
+                                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                </div>
+                            </label>
+                            <div class="h-4 w-px bg-gray-300 mx-1"></div>
+                            <button onclick="${deleteFunc}(${index})" class="text-gray-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash-alt"></i></button>
+                            <button onclick="toggleAccordion('${accId}')" class="text-gray-400 hover:text-thuBlue p-2 transition"><i id="${accId}-arrow" class="fas fa-chevron-down accordion-arrow"></i></button>
+                        </div>
+                    </div>
+                    <div id="${accId}-content" class="accordion-content bg-white">
+                        <div class="p-5">${contentHtml}
+                            <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
+                                <button onclick="${saveFunc}()" class="bg-thuBlue text-white border border-thuBlue hover:bg-blue-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 text-sm">確認暫存</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+            
+            if (mode === 'page') {
+                if (sortablePageItems) sortablePageItems.destroy(); 
+                sortablePageItems = new Sortable(container, sortableOptions);
+            } else {
+                if (sortableTemplateItems) sortableTemplateItems.destroy();
+                sortableTemplateItems = new Sortable(container, sortableOptions);
             }
         }
 
-        window.changePage = function(p) { currentNewsPage = p; renderAllNewsUI(false); };
-        window.openAllNewsModal = function() { renderAllNewsUI(true); toggleModal('all-news-modal'); };
-        window.openNewsModal = function(index) {
-            const item = siteNews[index];
-            if(!item) return;
-            document.getElementById('modal-news-date').innerText = item.Date;
-            document.getElementById('modal-news-title').innerText = item.Title;
-            const typeBadge = item.Type ? `<span class=\"inline-block bg-blue-100 text-blue-800 text-xs px-2 py-1 rounded mb-2\">${item.Type}</span><br>` : '';
-            document.getElementById('modal-news-content').innerHTML = typeBadge + (item.Content || "無詳細內容");
-            toggleModal('news-modal');
-        };
-
-        document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
-        
-        const heroHeightThreshold = 600; 
-        window.addEventListener('scroll', () => { 
-            const stickyHeader = document.getElementById('sticky-header'); 
-            const footerTrigger = document.getElementById('footer-trigger'); 
+        // --- UPDATED: Render Cards List (Accordion Style + 3 Cols) ---
+        function renderCardsList() { 
+            const c = document.getElementById('cards-list-editor'); 
+            c.innerHTML=''; 
             
-            if(window.scrollY > 200){ 
-                stickyHeader.classList.remove('-translate-y-full','opacity-0'); 
-                stickyHeader.classList.add('translate-y-0','opacity-100'); 
-            } else { 
-                stickyHeader.classList.add('-translate-y-full','opacity-0'); 
-                stickyHeader.classList.remove('translate-y-0','opacity-100'); 
+            currentData.cards.forEach((x,i)=>{ 
+                const accId = `card-acc-${i}`;
+                c.innerHTML+=`
+                <div class="card-item bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col group overflow-hidden h-fit" data-index="${i}">
+                    <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center transition hover:bg-gray-100">
+                        <div class="flex items-center gap-3 overflow-hidden flex-grow">
+                             <div class="drag-handle cursor-grab text-gray-400 hover:text-thuBlue py-1 px-1"><i class="fas fa-grip-vertical"></i></div>
+                             <div class="flex flex-col cursor-pointer" onclick="toggleAccordion('${accId}')">
+                                 <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Card #${i+1}</span>
+                                 <span class="font-bold text-gray-700 truncate w-32">${x.Title}</span>
+                             </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button onclick="deleteCardItem(${i})" class="text-gray-400 hover:text-red-500 p-2"><i class="fas fa-trash-alt"></i></button>
+                            <button onclick="toggleAccordion('${accId}')" class="text-gray-400 hover:text-thuBlue p-2"><i id="${accId}-arrow" class="fas fa-chevron-down accordion-arrow"></i></button>
+                        </div>
+                    </div>
+                    
+                    <div id="${accId}-content" class="accordion-content bg-white">
+                        <div class="p-4 space-y-3">
+                            <div><label class="text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 font-bold text-thuBlue text-sm" value="${x.Title}" onchange="markUnsaved()"></div>
+                            <div><label class="text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-gray-700 text-sm" value="${x.Badge||''}" onchange="markUnsaved()"></div>
+                            <div><label class="text-xs font-bold text-gray-400">描述</label><textarea rows="2" class="card-desc w-full border rounded p-2 text-sm resize-none" onchange="markUnsaved()">${x.Description}</textarea></div>
+                            <div>
+                                <label class="text-xs font-bold text-gray-400">Icon</label>
+                                <div class="flex items-center gap-2">
+                                    <div class="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-600 shrink-0 text-sm"><i class="fas ${x.Icon || 'fa-question'} icon-preview-${i}"></i></div>
+                                    <input type="text" class="card-icon w-full border rounded p-2 font-mono text-sm" value="${x.Icon}" oninput="document.querySelector('.icon-preview-${i}').className='fas '+this.value; markUnsaved()">
+                                </div>
+                            </div>
+                            <div><label class="text-xs font-bold text-gray-400">顏色</label><select class="card-type w-full border rounded p-2 text-sm" onchange="markUnsaved()">${getColorOptions(x.Type)}</select></div>
+                            <div><label class="text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 font-mono text-blue-600 text-sm" value="${x.Link}" onchange="markUnsaved()"></div>
+                        </div>
+                    </div>
+                </div>`
+            }); 
+            
+            if(sortableCards) sortableCards.destroy(); 
+            // 重要：Grid 佈局下，ghostClass 有時會跑版，但基本拖曳功能正常
+            sortableCards = Sortable.create(c, SORTABLE_BASE_OPTIONS); 
+        }
+
+        function renderContactsList() { 
+            const oc=document.getElementById('office-contact-editor'); const sc=document.getElementById('staff-contacts-editor'); oc.innerHTML=''; sc.innerHTML='';
+            const off = currentData.contacts.find(c=>c.Type==='office')||{Name:'中心',Title:'Office',Email:'',Description:''};
+            oc.innerHTML=`<div class="office-item bg-blue-50 p-6 rounded-xl border border-blue-100"><div class="grid grid-cols-2 gap-4"><div><label class="text-xs font-bold text-gray-400">名稱</label><input class="contact-name w-full border rounded p-2 font-bold" value="${off.Name}" onchange="markUnsaved()"></div><div><label class="text-xs font-bold text-gray-400">Email</label><input class="contact-email w-full border rounded p-2 font-mono" value="${off.Email}" onchange="markUnsaved()"></div><div class="col-span-2"><label class="text-xs font-bold text-gray-400">描述</label><input class="contact-desc w-full border rounded p-2" value="${off.Description}" onchange="markUnsaved()"></div><input type="hidden" class="contact-type" value="office"><input type="hidden" class="contact-title" value="Office"></div></div>`;
+            currentData.contacts.filter(c=>c.Type!=='office').forEach((c,i)=>{ 
+                sc.innerHTML+=`
+                <div class="staff-item bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col group overflow-hidden" data-index="${i}">
+                    <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center cursor-move drag-handle hover:bg-gray-100 transition">
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
+                            <i class="fas fa-grip-lines"></i>
+                            Staff #${i+1}
+                        </div>
+                        <button onclick="deleteContactItem(${i})" class="text-gray-400 hover:text-red-500 p-1"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                    <div class="p-4 space-y-2">
+                        <div class="flex gap-2"><div class="w-2/3"><input class="contact-name w-full border rounded p-1.5 font-bold" value="${c.Name}" placeholder="姓名" onchange="markUnsaved()"></div><div class="w-1/3"><input class="contact-title w-full border rounded p-1.5 text-center" value="${c.Title}" placeholder="職稱" onchange="markUnsaved()"></div></div>
+                        <input class="contact-email w-full border rounded p-1.5 text-xs font-mono" value="${c.Email}" placeholder="Email" onchange="markUnsaved()">
+                        <div class="flex gap-2"><input class="contact-phone w-1/2 border rounded p-1.5 text-xs" value="${c.Phone||''}" placeholder="分機" onchange="markUnsaved()"><select class="contact-type w-1/2 border rounded p-1.5 text-xs" onchange="markUnsaved()">${getColorOptions(c.Type)}</select></div>
+                        <div class="mt-2"><label class="text-[10px] font-bold text-gray-400 block mb-1">負責業務 (職掌)</label><textarea class="contact-desc w-full border rounded p-1.5 text-xs text-gray-600 h-16 resize-y" placeholder="請輸入負責業務..." onchange="markUnsaved()">${c.Description||''}</textarea></div>
+                    </div>
+                </div>`;
+            });
+            if(sortableStaff) sortableStaff.destroy(); 
+            sortableStaff = Sortable.create(sc, SORTABLE_BASE_OPTIONS);
+        }
+        function renderNewsList() { const c=document.getElementById('news-list-editor'); c.innerHTML=''; currentData.news.forEach((n,i)=>{ c.innerHTML+=`<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${n.Date}" onchange="markUnsaved()"><select class="news-type border rounded p-2 text-sm w-32" onchange="markUnsaved()"><option value="公告" ${n.Type==='公告'?'selected':''}>公告</option><option value="活動" ${n.Type==='活動'?'selected':''}>活動</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew" ${n.IsNew?'checked':''} onchange="markUnsaved()"><label class="text-sm">NEW</label></div><button onclick="deleteNewsItem(${i})" class="ml-auto text-red-400"><i class="fas fa-trash"></i></button></div><input class="news-title w-full border rounded p-2 font-bold" value="${n.Title}" onchange="markUnsaved()"><input class="news-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${n.Link}" onchange="markUnsaved()"><textarea class="news-content w-full border rounded p-2 text-sm h-20" onchange="markUnsaved()">${n.Content}</textarea></div>`; }); }
+        
+        function addCardItem() { collectDataFromEditors(); currentData.cards.push({Title:"新卡片",Badge:"",Description:"",Icon:"fa-star",Type:"thu",Link:"#"}); renderCardsList(); markUnsaved(); }
+        function deleteCardItem(i) { showMsg("確認", "確定刪除此卡片？", "confirm", () => { collectDataFromEditors(); currentData.cards.splice(i,1); renderCardsList(); markUnsaved(); }); }
+        function addContactItem() { collectDataFromEditors(); currentData.contacts.push({Name:"姓名",Title:"職稱",Email:"",Phone:"",Type:"thu"}); renderContactsList(); markUnsaved(); }
+        function deleteContactItem(i) { showMsg("確認", "確定刪除此聯絡人？", "confirm", () => { collectDataFromEditors(); const realIdx = currentData.contacts.findIndex(c=>c.Type==='office') > -1 ? i+1 : i; currentData.contacts.splice(realIdx,1); renderContactsList(); markUnsaved(); }); }
+        function addColorItem() { collectDataFromEditors(); currentData.colors.push({name:"新顏色",id:"new",hex:"#000000"}); renderColorManager(); markUnsaved(); }
+        function deleteColorItem(i) { showMsg("確認", "確定刪除此顏色？", "confirm", () => { collectDataFromEditors(); currentData.colors.splice(i,1); renderColorManager(); markUnsaved(); }); }
+        function addNewsItem() { collectDataFromEditors(); currentData.news.unshift({Date:new Date().toISOString().split('T')[0],Type:"公告",Title:"",Link:"",Content:"",IsNew:true}); renderNewsList(); markUnsaved(); }
+        function deleteNewsItem(i) { showMsg("確認", "確定刪除此公告？", "confirm", () => { collectDataFromEditors(); currentData.news.splice(i,1); renderNewsList(); markUnsaved(); }); }
+        function addPageItem() { collectDataFromEditors(); currentData.pages[activePageId].items.push({title:"",visible:true}); renderPageEditorUI(); markUnsaved(); }
+        function deletePageItem(i) { showMsg("確認", "確定刪除此項目？", "confirm", () => { collectDataFromEditors(); currentData.pages[activePageId].items.splice(i,1); renderPageEditorUI(); markUnsaved(); }); }
+        function deleteTemplateItem(i) { showMsg("確認", "確定刪除此預設項目？", "confirm", () => { collectDataFromEditors(); currentData.templates[activeTemplateKey].items.splice(i,1); switchTemplateEditor(activeTemplateKey); switchTemplateView('content'); markUnsaved(); }); }
+
+        function addNewCategory() { const n = document.getElementById('new-cat-name').value.trim(); if(!n)return; if(!currentData.pages[activePageId].categories) currentData.pages[activePageId].categories=[]; currentData.pages[activePageId].categories.push({id:'cat_'+Date.now(), name:n}); document.getElementById('new-cat-name').value=''; renderCategoryList(); markUnsaved(); }
+        function renderCategoryList() { const l = document.getElementById('cat-list'); l.innerHTML=''; currentData.pages[activePageId].categories.forEach((c,i)=>{ l.innerHTML+=`<div class="flex justify-between p-2 border-b"><span class="font-bold">${c.name}</span><button onclick="deleteCategory(${i})" class="text-red-400"><i class="fas fa-trash"></i></button></div>`}); }
+        function deleteCategory(i) { showMsg("確認", "確定刪除此分類？", "confirm", () => { currentData.pages[activePageId].categories.splice(i,1); renderCategoryList(); markUnsaved(); }); }
+        
+        // Updated File Config List with Live Preview
+        function renderFileConfigList() { 
+            const l=document.getElementById('file-config-list'); 
+            l.innerHTML=''; 
+            currentData.pages[activePageId].fileFields.forEach((f,i)=>{
+                l.innerHTML+=`<div class="flex gap-2 mb-2 items-center bg-white p-2 border rounded-lg">
+                    <div class="w-1/2">
+                        <label class="block text-[10px] text-gray-400 mb-0.5">顯示文字</label>
+                        <input value="${f.label}" id="ff-l-${i}" class="input-stylish py-1.5 px-2 text-xs" onchange="markUnsaved()">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-[10px] text-gray-400 mb-0.5">Icon 代碼</label>
+                        <div class="flex items-center gap-2">
+                            <input value="${f.icon}" id="ff-i-${i}" class="input-stylish py-1.5 px-2 text-xs font-mono" oninput="document.getElementById('ff-icon-prev-${i}').className='fas '+this.value; markUnsaved()">
+                            <div class="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-600 shrink-0">
+                                <i id="ff-icon-prev-${i}" class="fas ${f.icon}"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }); 
+        }
+        
+        function saveFileConfigSettings() { currentData.pages[activePageId].fileFields.forEach((f,i)=>{ f.label=document.getElementById('ff-l-'+i).value; f.icon=document.getElementById('ff-i-'+i).value; }); markUnsaved(); showMsg("成功", "設定已更新", "success"); }
+        function saveSingleItem() { collectDataFromEditors(); renderPageEditorUI(); showMsg("暫存", "項目已暫存，請記得按儲存並發布", "info"); }
+        function saveTemplateItem() { collectDataFromEditors(); switchTemplateEditor(activeTemplateKey); switchTemplateView('content'); showMsg("暫存", "項目已暫存，請記得按儲存並發布", "info"); }
+        
+        function toggleAccordion(id) { 
+            const content = document.getElementById(id+'-content');
+            const arrow = document.getElementById(id+'-arrow');
+            content.classList.toggle('open'); 
+            if(arrow) arrow.classList.toggle('rotate'); 
+        }
+        
+        function toggleTokenVisibility() { const t=document.getElementById('gh-token'); const i=document.getElementById('token-eye-icon'); if(t.type==='password'){t.type='text';i.className='fas fa-eye-slash'}else{t.type='password';i.className='fas fa-eye'} }
+        function logout() { showMsg("登出確認", "確定要登出嗎？資料將不會保留。", "confirm", () => location.reload()); }
+
+        // --- Render Color Manager (Fixed Lock Logic & Color Picker) ---
+        function renderColorManager() {
+            const container = document.getElementById('colors-list-editor');
+            container.innerHTML = '';
+            
+            // 確保 Glory Gold 存在
+            const hasGold = currentData.colors.find(c => c.id === 'glorygold');
+            if (!hasGold) currentData.colors.push({name: "榮耀金", id: "glorygold", hex: "#c6a87c"});
+
+            currentData.colors.forEach((c, i) => {
+                // 修正 1: 加入 'thublue' 到鎖定清單，確保正確鎖定
+                const isLocked = ['thu', 'glorygold', 'thubluenew', 'thublue'].includes(c.id);
+                
+                // 修正 2: 調整 grid col-span 分配，縮小 Hex 與刪除鍵的距離
+                container.innerHTML += `
+                <div class="color-item grid grid-cols-12 gap-3 items-center p-3 bg-white border border-gray-100 rounded-lg hover:shadow-sm transition" data-index="${i}">
+                    <div class="col-span-1 text-center flex justify-center">
+                        <div class="color-preview-circle" style="background-color: ${c.hex};"></div>
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-name w-full border rounded p-2 text-sm" value="${c.name}" onchange="markUnsaved()" placeholder="顏色名稱">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-id w-full border rounded p-2 text-sm font-mono text-gray-500" value="${c.id}" ${isLocked ?'readonly title="系統預設顏色無法修改 ID"':''} onchange="markUnsaved()">
+                    </div>
+                    <div class="col-span-4 flex gap-2">
+                        <div class="relative flex-grow">
+                            <input type="text" class="c-hex w-full border rounded p-2 pl-8 text-sm font-mono uppercase" value="${c.hex}" ${isLocked ?'readonly title="系統預設顏色無法修改 Hex"':''} onchange="this.closest('.color-item').querySelector('input[type=color]').value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor=this.value; markUnsaved()">
+                            <span class="absolute left-2 top-2 text-gray-400 text-sm">#</span>
+                        </div>
+                        ${!isLocked ? `<input type="color" class="h-9 w-9 p-0.5 border border-gray-200 rounded cursor-pointer bg-white" value="${c.hex}" oninput="this.closest('.color-item').querySelector('.c-hex').value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor=this.value; markUnsaved()">` : ''}
+                    </div>
+                    <div class="col-span-1 text-right">
+                        ${isLocked 
+                            ? '<span class="text-xs text-gray-400"><i class="fas fa-lock"></i></span>' 
+                            : `<button onclick="deleteColorItem(${i})" class="text-gray-400 hover:text-red-500 p-2 transition"><i class="fas fa-trash-alt"></i></button>`
+                        }
+                    </div>
+                </div>`;
+            });
+        }
+
+        function getColorOptions(selectedId) {
+            return currentData.colors.map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${c.name}</option>`).join('');
+        }
+
+        function switchTab(tabId) {
+            currentTab = tabId; // Track current tab
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.add('hidden'));
+            document.getElementById('tab-' + tabId).classList.remove('hidden');
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                if(btn.dataset.tab === tabId) {
+                    btn.classList.add('text-thuBlue', 'border-thuBlue', 'bg-white');
+                    btn.classList.remove('text-gray-500', 'border-transparent', 'hover:text-gray-700', 'hover:bg-gray-100');
+                } else {
+                    btn.classList.remove('text-thuBlue', 'border-thuBlue', 'bg-white');
+                    btn.classList.add('text-gray-500', 'border-transparent', 'hover:text-gray-700', 'hover:bg-gray-100');
+                }
+            });
+        }
+
+        function markUnsaved() {
+            unsavedChangesCount++;
+            document.getElementById('unsaved-count').innerText = unsavedChangesCount;
+            document.getElementById('unsaved-badge').classList.remove('hidden');
+        }
+
+        function resetUnsaved() {
+            unsavedChangesCount = 0;
+            document.getElementById('unsaved-badge').classList.add('hidden');
+        }
+
+        function showMsg(title, body, type = 'info', callback = null) {
+            const modal = document.getElementById('msg-modal');
+            const panel = document.getElementById('msg-panel');
+            const titleEl = document.getElementById('msg-title');
+            const bodyEl = document.getElementById('msg-body');
+            const iconEl = document.getElementById('msg-icon');
+            const actionsEl = document.getElementById('msg-actions');
+            const inputContainer = document.getElementById('msg-input-container');
+
+            titleEl.innerText = title;
+            bodyEl.innerText = body;
+            inputContainer.classList.add('hidden');
+            
+            iconEl.innerHTML = type === 'success' ? '<i class="fas fa-check"></i>' : type === 'error' ? '<i class="fas fa-times"></i>' : type === 'confirm' ? '<i class="fas fa-question"></i>' : '<i class="fas fa-info"></i>';
+            iconEl.className = `w-14 h-14 rounded-full flex items-center justify-center text-2xl mx-auto mb-4 ${type === 'success' ? 'bg-green-100 text-green-500' : type === 'error' ? 'bg-red-100 text-red-500' : type === 'confirm' ? 'bg-blue-100 text-thuBlue' : 'bg-gray-100 text-gray-500'}`;
+
+            actionsEl.innerHTML = '';
+            if (type === 'confirm') {
+                const cancelBtn = document.createElement('button');
+                cancelBtn.className = 'w-full py-2 rounded-lg border border-gray-200 text-gray-600 font-bold hover:bg-gray-50 transition text-sm';
+                cancelBtn.innerText = '取消';
+                cancelBtn.onclick = () => { modal.classList.add('hidden'); document.getElementById('msg-input').value = ''; }; 
+                
+                const confirmBtn = document.createElement('button');
+                // Updated confirm button style to match "Create Page" style
+                confirmBtn.className = 'w-full py-2.5 rounded-lg bg-thuBlue text-white font-bold hover:bg-blue-800 transition shadow-md text-sm flex items-center justify-center gap-2 transform active:scale-95';
+                confirmBtn.innerHTML = '<i class="fas fa-check"></i> 確認';
+                confirmBtn.onclick = () => { if(callback) callback(); modal.classList.add('hidden'); document.getElementById('msg-input').value = ''; };
+
+                actionsEl.appendChild(confirmBtn);
+                actionsEl.appendChild(cancelBtn);
+            } else {
+                const okBtn = document.createElement('button');
+                okBtn.className = 'w-full py-2 rounded-lg bg-gray-100 text-gray-700 font-bold hover:bg-gray-200 transition text-sm';
+                okBtn.innerText = '關閉';
+                okBtn.onclick = () => { if(callback) callback(); modal.classList.add('hidden'); };
+                actionsEl.appendChild(okBtn);
             }
 
-            if (window.scrollY >= window.innerHeight * 0.9) {
-                footerTrigger.classList.remove('hidden');
-            } else {
-                footerTrigger.classList.add('hidden');
+            modal.classList.remove('hidden');
+            setTimeout(() => modal.classList.remove('opacity-0'), 10);
+            panel.classList.remove('scale-95');
+        }
+
+        function collectDataFromEditors() {
+            if (!currentData) return;
+
+            // Settings, Cards, Contacts, News, Colors always collected
+            document.querySelectorAll('.setting-input').forEach(input => {
+                if(currentData.settings) currentData.settings[input.dataset.key] = input.value;
+            });
+
+            const cards = [];
+            document.querySelectorAll('.card-item').forEach(el => {
+                cards.push({
+                    Title: el.querySelector('.card-title').value,
+                    Badge: el.querySelector('.card-badge').value,
+                    Description: el.querySelector('.card-desc').value,
+                    Icon: el.querySelector('.card-icon').value,
+                    Type: el.querySelector('.card-type').value,
+                    Link: el.querySelector('.card-link').value
+                });
+            });
+            currentData.cards = cards;
+
+            const contacts = [];
+            const offEl = document.querySelector('.office-item');
+            if(offEl) {
+                contacts.push({
+                    Name: offEl.querySelector('.contact-name').value,
+                    Title: 'Office',
+                    Email: offEl.querySelector('.contact-email').value,
+                    Description: offEl.querySelector('.contact-desc').value,
+                    Type: 'office'
+                });
             }
-        });
+            document.querySelectorAll('.staff-item').forEach(el => {
+                contacts.push({
+                    Name: el.querySelector('.contact-name').value,
+                    Title: el.querySelector('.contact-title').value,
+                    Email: el.querySelector('.contact-email').value,
+                    Phone: el.querySelector('.contact-phone').value,
+                    Type: el.querySelector('.contact-type').value,
+                    Description: el.querySelector('.contact-desc').value
+                });
+            });
+            currentData.contacts = contacts;
+
+            const news = [];
+            document.querySelectorAll('.news-item').forEach(el => {
+                news.push({
+                    Date: el.querySelector('.news-date').value,
+                    Type: el.querySelector('.news-type').value,
+                    Title: el.querySelector('.news-title').value,
+                    Link: el.querySelector('.news-link').value,
+                    Content: el.querySelector('.news-content').value,
+                    IsNew: el.querySelector('.news-isnew').checked
+                });
+            });
+            currentData.news = news;
+
+            const colors = [];
+            document.querySelectorAll('.color-item').forEach(el => {
+                colors.push({
+                    name: el.querySelector('.c-name').value,
+                    id: el.querySelector('.c-id').value,
+                    hex: el.querySelector('.c-hex').value
+                });
+            });
+            currentData.colors = colors;
+
+            // Conditional collection based on Active Tab
+            // If in Pages tab
+            if (currentTab === 'pages' && activePageId && currentData.pages[activePageId]) {
+                const pageItems = [];
+                const container = document.getElementById('page-items-editor');
+                container.querySelectorAll('.page-item').forEach(el => {
+                    const item = {
+                        title: el.querySelector('.p-title').value,
+                        title_en: el.querySelector('.p-title-en').value,
+                        issuer: el.querySelector('.p-issuer').value,
+                        date: el.querySelector('.p-date').value,
+                        category: el.querySelector('.p-cat-select').value,
+                        visible: el.querySelector('.p-visible').checked
+                    };
+                    
+                    const isResources = !!currentData.pages[activePageId].fileFields;
+                    if(isResources) {
+                        el.querySelectorAll('.p-file-field').forEach(fi => {
+                            item[fi.dataset.key] = fi.value;
+                        });
+                    } else {
+                        item.url = el.querySelector('.p-url').value;
+                    }
+                    pageItems.push(item);
+                });
+                currentData.pages[activePageId].items = pageItems;
+            }
+
+            // If in Templates tab
+            if (currentTab === 'templates' && activeTemplateKey && currentData.templates[activeTemplateKey]) {
+                const tplItems = [];
+                const container = document.getElementById('template-items-editor');
+                container.querySelectorAll('.template-item').forEach(el => {
+                    const item = {
+                        title: el.querySelector('.p-title').value,
+                        title_en: el.querySelector('.p-title-en').value,
+                        issuer: el.querySelector('.p-issuer').value,
+                        date: el.querySelector('.p-date').value,
+                        category: el.querySelector('.p-cat-select').value,
+                        visible: el.querySelector('.p-visible').checked
+                    };
+                     const urlInput = el.querySelector('.p-url');
+                     if(urlInput) item.url = urlInput.value;
+
+                     tplItems.push(item);
+                });
+                currentData.templates[activeTemplateKey].items = tplItems;
+            }
+        }
+
+        async function saveData() {
+            const btn = document.getElementById('save-btn');
+            const status = document.getElementById('save-status');
+            
+            collectDataFromEditors();
+
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 儲存中...';
+            
+            try {
+                await uploadFileToGitHub(DATA_FILE, JSON.stringify(currentData, null, 4), fileSha);
+
+                if (activePageId && currentData.pages[activePageId]) {
+                     const p = currentData.pages[activePageId];
+                     if(p.source) {
+                        const pageJson = {
+                            tag: p.tag,
+                            description: p.description,
+                            icon: p.icon,
+                            labels: p.labels,
+                            categories: p.categories,
+                            fileFields: p.fileFields, 
+                            items: p.items
+                        };
+                        await uploadFileToGitHub(p.source, JSON.stringify(pageJson, null, 4));
+                     }
+                }
+                
+                if (currentTab === 'templates' && activeTemplateKey) {
+                    const tpl = currentData.templates[activeTemplateKey];
+                    const tplJson = {
+                        tag: "Template", 
+                        description: tpl.desc,
+                        labels: tpl.labels || {title:"Title"},
+                        items: tpl.items
+                    };
+                    await uploadFileToGitHub(tpl.jsonPath, JSON.stringify(tplJson, null, 4));
+                }
+
+                status.innerText = '儲存成功!';
+                status.classList.remove('opacity-0');
+                setTimeout(() => status.classList.add('opacity-0'), 2000);
+                showMsg("成功", "所有變更已發布至 GitHub", "success");
+                resetUnsaved();
+
+            } catch (e) {
+                showMsg("儲存失敗", e.message, "error");
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 儲存並發布';
+            }
+        }
+
+        function openFileSelector(index, key, mode) {
+            currentUploadTargetInput = document.getElementById(`input-${mode}-${index}-${key}`);
+            document.getElementById('global-file-input').click();
+        }
+
+        async function handleFileUpload(input) {
+            if (input.files && input.files[0] && currentUploadTargetInput) {
+                const file = input.files[0];
+                const fileName = `${Date.now()}_${file.name}`;
+                // const path = `files/${fileName}`; // Need full backend for real upload
+
+                showMsg("上傳中", "正在上傳檔案...", "info");
+                // Mock upload for CMS demo
+                currentUploadTargetInput.value = `files/${fileName}`;
+                showMsg("提示", "檔案上傳功能需配合完整後端，目前僅填入路徑。", "success");
+                markUnsaved(); 
+            }
+            input.value = ''; 
+        }
+
+        window.addEventListener('beforeunload', function (e) { if (currentData && unsavedChangesCount > 0) { e.preventDefault(); e.returnValue = ''; } });
+        document.addEventListener('DOMContentLoaded', () => { document.getElementById('gh-owner').value = localStorage.getItem('gh_owner') || ''; document.getElementById('gh-repo').value = localStorage.getItem('gh_repo') || ''; });
     </script>
 </body>
 </html>
