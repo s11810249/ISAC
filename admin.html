@@ -37,6 +37,7 @@
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
         /* 拖曳時的樣式 */
         .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002147; }
+        .sortable-drag { opacity: 1 !important; } /* 確保拖曳中的元素完全不透明 */
         .drag-handle { cursor: grab; touch-action: none; } 
         .drag-handle:active { cursor: grabbing; }
         
@@ -1039,6 +1040,20 @@
             const deleteFunc = mode === 'page' ? 'deletePageItem' : 'deleteTemplateItem';
             const saveFunc = mode === 'page' ? 'saveSingleItem' : 'saveTemplateItem';
 
+            // --- 強化 Sortable.js 設置，以解決部署環境問題 ---
+            const sortableOptions = {
+                handle: '.drag-handle', 
+                animation: 150, 
+                ghostClass: 'sortable-ghost', 
+                dragClass: 'sortable-drag', // 增加拖曳中的類別
+                forceFallback: true, 
+                fallbackOnBody: true, // 讓拖曳物件跟隨滑鼠，增強兼容性
+                // 由於 Page/Template 列表在一個獨立的滾動容器內，需要啟用滾動偵測
+                scroll: true, 
+                onEnd: () => { collectDataFromEditors(); markUnsaved(); }
+            };
+            // --- 強化 Sortable.js 設置 END ---
+
             items.forEach((item, index) => {
                 const checked = (item.visible !== false) ? 'checked' : '';
                 let contentHtml = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">${titleLabel}</label><input type="text" class="p-title w-full border rounded p-2 text-sm" value="${item.title||''}" onchange="markUnsaved()"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">${titleEnLabel}</label><input type="text" class="p-title-en w-full border rounded p-2 text-sm" value="${item.title_en||''}" onchange="markUnsaved()"></div></div>`;
@@ -1092,10 +1107,10 @@
             
             if (mode === 'page') {
                 if (sortablePageItems) sortablePageItems.destroy(); 
-                sortablePageItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
+                sortablePageItems = new Sortable(container, sortableOptions);
             } else {
                 if (sortableTemplateItems) sortableTemplateItems.destroy();
-                sortableTemplateItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
+                sortableTemplateItems = new Sortable(container, sortableOptions);
             }
         }
 
@@ -1143,7 +1158,15 @@
             
             if(sortableCards) sortableCards.destroy(); 
             // 重要：Grid 佈局下，ghostClass 有時會跑版，但基本拖曳功能正常
-            sortableCards = Sortable.create(c, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd:()=> { collectDataFromEditors(); markUnsaved(); }}); 
+            sortableCards = Sortable.create(c, {
+                handle:'.drag-handle', 
+                animation: 150, 
+                ghostClass: 'sortable-ghost', 
+                dragClass: 'sortable-drag', // 增加 dragClass
+                forceFallback: true, 
+                fallbackOnBody: true, // 增加 fallbackOnBody
+                onEnd:()=> { collectDataFromEditors(); markUnsaved(); }
+            }); 
         }
 
         function renderContactsList() { 
@@ -1169,7 +1192,15 @@
                 </div>`;
             });
             if(sortableStaff) sortableStaff.destroy(); 
-            sortableStaff = Sortable.create(sc, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd:()=> { collectDataFromEditors(); markUnsaved(); }});
+            sortableStaff = Sortable.create(sc, {
+                handle:'.drag-handle', 
+                animation: 150, 
+                ghostClass: 'sortable-ghost', 
+                dragClass: 'sortable-drag', // 增加 dragClass
+                forceFallback: true, 
+                fallbackOnBody: true, // 增加 fallbackOnBody
+                onEnd:()=> { collectDataFromEditors(); markUnsaved(); }
+            });
         }
         function renderNewsList() { const c=document.getElementById('news-list-editor'); c.innerHTML=''; currentData.news.forEach((n,i)=>{ c.innerHTML+=`<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${n.Date}" onchange="markUnsaved()"><select class="news-type border rounded p-2 text-sm w-32" onchange="markUnsaved()"><option value="公告" ${n.Type==='公告'?'selected':''}>公告</option><option value="活動" ${n.Type==='活動'?'selected':''}>活動</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew" ${n.IsNew?'checked':''} onchange="markUnsaved()"><label class="text-sm">NEW</label></div><button onclick="deleteNewsItem(${i})" class="ml-auto text-red-400"><i class="fas fa-trash"></i></button></div><input class="news-title w-full border rounded p-2 font-bold" value="${n.Title}" onchange="markUnsaved()"><input class="news-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${n.Link}" onchange="markUnsaved()"><textarea class="news-content w-full border rounded p-2 text-sm h-20" onchange="markUnsaved()">${n.Content}</textarea></div>`; }); }
         
