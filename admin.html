@@ -42,11 +42,18 @@
         /* --- 修正：拖曳把手樣式確保跨平台兼容性 --- */
         .drag-handle { 
             cursor: grab; 
-            touch-action: none; /* 必須保留，用於防止行動裝置上的瀏覽器預設捲動行為 */
+            /* 預設不設置 touch-action: none，讓桌面裝置能正確捕獲 mouseup */
             user-select: none; /* 防止文字被選取 */
         } 
         .drag-handle:active { 
             cursor: grabbing; 
+        }
+
+        /* 關鍵修正：僅在偵測到粗略輸入（觸控裝置）時，才應用 touch-action: none */
+        @media (pointer: coarse) {
+            .drag-handle {
+                touch-action: none;
+            }
         }
         /* --- 修正結束 --- */
         
@@ -452,8 +459,9 @@
             animation: 150, 
             ghostClass: 'sortable-ghost', 
             dragClass: 'sortable-drag',
-            forceFallback: true,        // 強制使用 Fallback 模式
-            fallbackOnBody: true,       // 關鍵：將拖曳元素附加到 body，確保 mouseup 事件被正確捕獲
+            // 移除 forceFallback: true, fallbackOnBody: true，改依賴 CSS @media 判斷
+            // forceFallback: true,        
+            // fallbackOnBody: true,       
             onEnd:()=> { 
                 collectDataFromEditors(); 
                 markUnsaved(); 
