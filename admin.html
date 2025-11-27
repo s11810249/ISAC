@@ -46,16 +46,60 @@
         .sidebar-btn.active { background-color: #002E5D; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
         .sidebar-btn.active i { color: #C6A87C; }
 
-        .upload-pdf-btn {
-            background-color: #dc2626; color: white; padding: 6px 12px; border-radius: 6px; display: inline-flex; align-items: center; gap: 6px; font-size: 0.85rem; font-weight: bold; cursor: pointer; transition: all 0.2s; border: 1px solid #b91c1c; box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        /* 按鈕風格統一 (加強版) */
+        .btn-primary { 
+            @apply bg-thuBlue text-white border-2 border-thuBlue hover:bg-blue-800 hover:border-blue-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide; 
         }
-        .upload-pdf-btn:hover { background-color: #b91c1c; transform: translateY(-1px); box-shadow: 0 4px 6px rgba(0,0,0,0.15); }
-        .upload-pdf-btn:active { transform: translateY(0); }
+        /* 修正：將次要按鈕改為灰色背景，增加對比度 */
+        .btn-secondary { 
+            @apply bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200 hover:text-gray-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:bg-gray-300 text-sm tracking-wide; 
+        }
+        .btn-danger { 
+            @apply bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:text-red-600 font-bold py-1.5 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 active:bg-red-100 text-sm; 
+        }
+        /* 修正：將成功按鈕改為綠色實心背景 */
+        .btn-success { 
+            @apply bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide; 
+        }
+        /* 確認暫存 (藍色實心強調) */
+        .btn-info {
+            @apply bg-blue-600 text-white border border-blue-700 hover:bg-blue-700 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide;
+        }
         
-        .dept-item { background: #f7f7f7; padding: 12px; border-radius: 8px; border: 1px dashed #ccc; margin-top: 8px; }
+        /* Accordion Style */
+        .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
+        .accordion-content.open { max-height: 2000px; opacity: 1; }
+        .accordion-arrow { transition: transform 0.3s ease; }
+        .accordion-arrow.rotate { transform: rotate(180deg); }
+
+        /* Upload Button */
+        .file-upload-label { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.375rem; background-color: #f3f4f6; color: #6b7280; transition: all 0.2s; border: 1px solid #e5e7eb; }
+        .file-upload-label:hover { background-color: #e5e7eb; color: #002E5D; border-color: #d1d5db; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
+
+    <!-- Hidden File Input for Uploads -->
+    <input type="file" id="global-file-input" class="hidden" onchange="handleFileUpload(this)">
+
+    <!-- Modal: Category Delete -->
+    <div id="cat-delete-modal" class="fixed inset-0 z-[150] flex items-center justify-center hidden">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative z-10 mx-4 animate-fade-in-up">
+            <div class="text-center mb-6">
+                <div class="w-16 h-16 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-3xl mx-auto mb-4">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800 mb-2">刪除分類警告</h3>
+                <p class="text-gray-600 text-sm leading-relaxed" id="cat-delete-msg"></p>
+            </div>
+            <div class="flex flex-col gap-3">
+                <button onclick="confirmDeleteCategoryAction('delete_items')" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3 rounded-lg transition shadow">刪除這幾筆資料</button>
+                <button onclick="confirmDeleteCategoryAction('keep_items')" class="w-full bg-gray-100 hover:bg-gray-200 text-gray-700 font-bold py-3 rounded-lg transition border border-gray-300">保留資料 (設為未分類)</button>
+                <button onclick="closeCatDeleteModal()" class="w-full text-gray-400 hover:text-gray-600 font-medium py-2 text-sm mt-2">取消</button>
+            </div>
+        </div>
+    </div>
 
     <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
@@ -103,7 +147,7 @@
                         <div id="tab-cards" class="tab-content block animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">首頁功能卡片管理</h3><p class="text-sm text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i> 按住卡片上方標題列（握把）即可拖曳。</p></div>
-                                <button onclick="addCardItem()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md hover:shadow-lg transition flex items-center transform active:scale-95"><i class="fas fa-plus mr-1.5"></i> 新增卡片</button>
+                                <button onclick="addCardItem()" class="btn-success"><i class="fas fa-plus"></i> 新增卡片</button>
                             </div>
                             <div id="cards-list-editor" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
                         </div>
@@ -118,8 +162,8 @@
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b border-gray-100 pb-2">
                                     <div class="flex items-center gap-2"><div class="w-1 h-6 bg-blue-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">團隊成員管理</h3></div>
                                     <div class="flex gap-2">
-                                        <button onclick="autoSortContacts()" class="bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 hover:text-thuBlue shadow-sm transition"><i class="fas fa-sort-amount-down mr-1.5"></i> 職級排序</button>
-                                        <button onclick="addContactItem()" class="bg-thuBlue text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-800 shadow-md transition flex items-center"><i class="fas fa-user-plus mr-1.5"></i> 新增人員</button>
+                                        <button onclick="autoSortContacts()" class="btn-secondary"><i class="fas fa-sort-amount-down"></i> 職級排序</button>
+                                        <button onclick="addContactItem()" class="btn-success"><i class="fas fa-user-plus"></i> 新增人員</button>
                                     </div>
                                 </div>
                                 <div id="staff-contacts-editor" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 min-h-[100px]"></div>
@@ -137,19 +181,88 @@
                                     </div>
                                 </div>
                                 <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col">
-                                    <div class="p-6 border-b border-gray-200 bg-gray-50">
-                                        <h3 class="text-lg font-bold text-thuBlue mb-4 flex items-center gap-2"><i class="fas fa-heading"></i> 頁面標頭設定 (Header)</h3>
-                                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                            <div><label class="block text-xs font-bold text-gray-500 mb-1">主標題 (Main Title)</label><input type="text" id="page-setting-title" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold text-gray-800" oninput="collectDataFromEditors()"></div>
-                                            <div><label class="block text-xs font-bold text-gray-500 mb-1">標籤 (Tag)</label><input type="text" id="page-setting-tag" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="例如: Evaluation Data" oninput="collectDataFromEditors()"></div>
-                                            <div class="md:col-span-2"><label class="block text-xs font-bold text-gray-500 mb-1">副標題/說明 (Subtitle)</label><input type="text" id="page-setting-desc" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="顯示於主標題下方" oninput="collectDataFromEditors()"></div>
+                                    
+                                    <!-- 可收折的頁面設定面板 -->
+                                    <div class="border-b border-gray-200 bg-gray-50">
+                                        <div class="p-4 px-6 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition" onclick="togglePageSettings()">
+                                            <h3 class="text-lg font-bold text-thuBlue flex items-center gap-2">
+                                                <span id="current-page-title-display">頁面設定</span>
+                                            </h3>
+                                            <button class="text-gray-500 hover:text-thuBlue transition-colors flex items-center gap-2 bg-white border border-gray-300 px-3 py-1.5 rounded shadow-sm text-sm">
+                                                設定 <i class="fas fa-chevron-down transform transition-transform duration-300" id="page-settings-arrow"></i>
+                                            </button>
+                                        </div>
+                                        
+                                        <div id="page-settings-panel" class="hidden border-t border-gray-200 p-6 bg-white animate-fade-in-up">
+                                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                                <!-- 基本資訊 -->
+                                                <div class="space-y-4">
+                                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b pb-1 mb-2">基本資訊</h4>
+                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">主標題 (Main Title)</label><input type="text" id="page-setting-title" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold text-gray-800"></div>
+                                                    
+                                                    <!-- Icon 編輯欄位 -->
+                                                    <div class="flex items-end gap-2">
+                                                        <div class="flex-grow"><label class="block text-xs font-bold text-gray-500 mb-1">選單圖示 (Icon)</label><input type="text" id="page-setting-icon" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-mono" placeholder="fa-balance-scale"></div>
+                                                        <div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-thuBlue border border-gray-200 mb-0.5"><i id="page-icon-preview" class="fas fa-question"></i></div>
+                                                    </div>
+
+                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">標籤 (Tag)</label><input type="text" id="page-setting-tag" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="例如: Evaluation Data"></div>
+                                                    <div><label class="block text-xs font-bold text-gray-500 mb-1">副標題/說明 (Subtitle)</label><input type="text" id="page-setting-desc" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="顯示於主標題下方"></div>
+                                                    <div class="flex justify-end gap-2 pt-2">
+                                                        <button onclick="restorePageHeaderSettings()" class="btn-secondary">取消</button>
+                                                        <button onclick="savePageHeaderSettings()" class="btn-primary">儲存</button>
+                                                    </div>
+                                                </div>
+
+                                                <!-- 進階設定 -->
+                                                <div class="space-y-4 border-l pl-6 border-gray-100">
+                                                    <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b pb-1 mb-2">進階設定</h4>
+                                                    
+                                                    <!-- 自訂欄位名稱 -->
+                                                    <div id="custom-labels-config" class="mb-4">
+                                                        <label class="block text-xs font-bold text-gray-500 mb-1">項目標題欄位名稱</label>
+                                                        <div class="flex gap-2 mb-2">
+                                                            <input type="text" id="page-label-title" class="w-1/2 border border-gray-300 rounded p-2 text-sm" placeholder="中文 (預設: 法規名稱)">
+                                                            <input type="text" id="page-label-title-en" class="w-1/2 border border-gray-300 rounded p-2 text-sm" placeholder="英文 (預設: 英文名稱)">
+                                                        </div>
+                                                        <div class="flex justify-end gap-2">
+                                                            <button onclick="restorePageLabelSettings()" class="btn-secondary">取消</button>
+                                                            <button onclick="savePageLabelSettings()" class="btn-success">儲存欄位名稱</button>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- 檔案下載欄位設定 -->
+                                                    <div id="file-fields-config" class="mb-4 hidden">
+                                                        <label class="block text-xs font-bold text-gray-500 mb-2">檔案下載欄位設定 (最多5組)</label>
+                                                        <div class="space-y-2 bg-gray-50 p-2 rounded border border-gray-200 text-xs">
+                                                            <div id="file-config-list" class="space-y-2"></div>
+                                                            <div class="flex justify-end pt-1">
+                                                                <button onclick="saveFileConfigSettings()" class="btn-success">更新欄位設定</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+
+                                                    <!-- 分類管理 -->
+                                                    <div id="category-manager" class="hidden">
+                                                        <label class="block text-xs font-bold text-gray-500 mb-2">分類管理 (Category)</label>
+                                                        <div class="bg-gray-50 rounded-lg border border-gray-200 p-3">
+                                                            <div id="cat-list" class="space-y-2 mb-3 max-h-[150px] overflow-y-auto"></div>
+                                                            <div class="flex gap-2 border-t border-gray-200 pt-2">
+                                                                <input type="text" id="new-cat-name" class="flex-grow border border-gray-300 rounded p-1.5 text-sm" placeholder="輸入新分類名稱...">
+                                                                <button onclick="addNewCategory()" class="btn-success">新增</button>
+                                                            </div>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
                                         </div>
                                     </div>
+
                                     <div class="flex justify-between items-center p-4 px-6 border-b border-gray-100 bg-white sticky top-0 z-10">
                                         <div><h3 class="text-base font-bold text-gray-800">內容列表管理</h3></div>
                                         <div class="flex gap-2 items-center">
-                                            <button id="page-add-item-btn" onclick="addPageItem()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2"><i class="fas fa-plus"></i> 新增項目</button>
-                                            <button id="faculty-add-item-btn" onclick="addFaculty()" class="bg-thuBlue text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-blue-800 shadow-md transition flex items-center gap-2 hidden"><i class="fas fa-plus"></i> 新增學院</button>
+                                            <button id="page-add-item-btn" onclick="addPageItem()" class="btn-success"><i class="fas fa-plus"></i> 新增項目</button>
+                                            <button id="faculty-add-item-btn" onclick="addFaculty()" class="btn-success hidden"><i class="fas fa-plus"></i> 新增學院</button>
                                         </div>
                                     </div>
                                     <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[600px]"></div>
@@ -161,7 +274,7 @@
                         <div id="tab-news" class="tab-content hidden animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">公告管理</h3><p class="text-sm text-gray-500 mt-1">管理首頁與公告列表的內容。</p></div>
-                                <button onclick="addNewsItem()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-green-700 shadow-md hover:shadow-lg transition flex items-center transform active:scale-95"><i class="fas fa-plus mr-1.5"></i> 新增公告</button>
+                                <button onclick="addNewsItem()" class="btn-success"><i class="fas fa-plus"></i> 新增公告</button>
                             </div>
                             <div id="news-list-editor" class="space-y-4"></div>
                         </div>
@@ -196,13 +309,271 @@
 
     <!-- Scripts -->
     <script>
+        // Global Variables
         let currentData = null;
         let fileSha = null;
         const DATA_FILE = 'data.json';
         let sortableCards = null;
         let sortableStaff = null; 
+        let sortablePageItems = null; 
         let sessionToken = ''; 
         let activePageId = 'laws'; 
+        let catToDeleteId = null; 
+        let currentUploadTargetInput = null; 
+
+        // Define render functions FIRST so they are hoisted and available for loadData
+        function renderCardsList() {
+            const container = document.getElementById('cards-list-editor');
+            if(!container) return;
+            container.innerHTML = '';
+            currentData.cards.forEach((card, index) => {
+                container.innerHTML += `
+                <div class="card-item bg-white p-5 rounded-xl shadow-sm border border-gray-200 group relative" data-index="${index}">
+                    <div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-grip-lines text-gray-400"></i></div>
+                    <div class="mt-4 grid grid-cols-2 gap-4">
+                        <div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 text-sm font-bold text-thuBlue" value="${card.Title}"></div>
+                        <div><label class="block text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-sm text-thuGold" value="${card.Badge||''}"></div>
+                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2 text-sm" value="${card.Description}"></div>
+                        <div><label class="block text-xs font-bold text-gray-400">Icon</label><input type="text" class="card-icon w-full border rounded p-2 text-sm font-mono text-gray-500" value="${card.Icon}"></div>
+                        <div><label class="block text-xs font-bold text-gray-400">類型 (顏色)</label>
+                            <select class="card-type w-full border rounded p-2 text-sm">
+                                <option value="thu" ${(!card.Type || card.Type==='thu')?'selected':''}>預設藍 (Internal)</option>
+                                <option value="gold" ${card.Type==='gold'?'selected':''}>金色 (Gold)</option>
+                                <option value="blue" ${card.Type==='blue'?'selected':''}>天藍 (Blue)</option>
+                                <option value="green" ${card.Type==='green'?'selected':''}>綠色 (Green)</option>
+                                <option value="orange" ${card.Type==='orange'?'selected':''}>橘色 (Orange)</option>
+                                <option value="purple" ${card.Type==='purple'?'selected':''}>紫色 (Purple)</option>
+                                <option value="red" ${card.Type==='red'?'selected':''}>紅色 (Red)</option>
+                            </select>
+                        </div>
+                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${card.Link}"></div>
+                    </div>
+                    <button onclick="deleteCardItem(${index})" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash"></i></button>
+                </div>`;
+            });
+            if (sortableCards) sortableCards.destroy();
+            sortableCards = Sortable.create(container, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
+        }
+
+        function renderContactsList() {
+            const officeContainer = document.getElementById('office-contact-editor');
+            const staffContainer = document.getElementById('staff-contacts-editor');
+            if(!officeContainer || !staffContainer) return;
+            officeContainer.innerHTML = ''; staffContainer.innerHTML = '';
+
+            // Office Section
+            const office = currentData.contacts.find(c => c.Type === 'office') || { Name: '實習與學生成就中心', Title: 'Office', Email: 'isac@thu.edu.tw', Description: '管理學院二樓 M207' };
+            officeContainer.innerHTML = `
+            <div class="office-item bg-blue-50/50 p-6 rounded-xl border border-blue-100">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div><label class="text-xs font-bold text-gray-400">單位名稱</label><input type="text" class="contact-name w-full border rounded p-2 font-bold" value="${office.Name}"></div>
+                    <div><label class="text-xs font-bold text-gray-400">Email</label><input type="text" class="contact-email w-full border rounded p-2 font-mono" value="${office.Email}"></div>
+                    <div class="hidden"><input type="text" class="contact-title" value="Office"></div>
+                    <div class="col-span-2"><label class="text-xs font-bold text-gray-400">位置/描述</label><input type="text" class="contact-desc w-full border rounded p-2" value="${office.Description}"></div>
+                </div>
+            </div>`;
+
+            // Staff Section
+            const staff = currentData.contacts.filter(c => c.Type !== 'office');
+            staff.forEach((c, index) => {
+                staffContainer.innerHTML += `
+                <div class="staff-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${index}">
+                    <div class="drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab flex items-center justify-center hover:bg-gray-50 rounded-t-xl"><i class="fas fa-grip-lines text-gray-300"></i></div>
+                    <div class="mt-4 space-y-2">
+                        <div class="flex gap-2">
+                            <div class="w-2/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">姓名</label><input type="text" class="contact-name w-full border rounded p-1.5 font-bold text-sm" value="${c.Name}"></div>
+                            <div class="w-1/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">職稱</label><input type="text" class="contact-title w-full border rounded p-1.5 text-sm text-gray-500 text-center" value="${c.Title}"></div>
+                        </div>
+                        <div><label class="text-[10px] font-bold text-gray-400 block mb-1">Email</label><input type="text" class="contact-email w-full border rounded p-1.5 text-xs font-mono text-gray-500" value="${c.Email}"></div>
+                        <div class="flex gap-2">
+                            <div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">分機</label><input type="text" class="contact-phone w-full border rounded p-1.5 text-xs text-gray-500" value="${c.Phone||''}"></div>
+                            <div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">顏色主題</label>
+                                <select class="contact-type w-full border rounded p-1.5 text-xs">
+                                    <option value="blue" ${(!c.Type || c.Type==='blue')?'selected':''}>藍色 (預設)</option>
+                                    <option value="gold" ${c.Type==='gold'?'selected':''}>金色</option>
+                                    <option value="green" ${c.Type==='green'?'selected':''}>綠色</option>
+                                    <option value="purple" ${c.Type==='purple'?'selected':''}>紫色</option>
+                                    <option value="orange" ${c.Type==='orange'?'selected':''}>橘色</option>
+                                </select>
+                            </div>
+                            <input type="hidden" class="contact-desc" value="${c.Description||''}">
+                        </div>
+                    </div>
+                    <button onclick="deleteContactItem(${index})" class="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times-circle"></i></button>
+                </div>`;
+            });
+            if (sortableStaff) sortableStaff.destroy();
+            sortableStaff = Sortable.create(staffContainer, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
+        }
+
+        function renderNewsList() {
+            const container = document.getElementById('news-list-editor');
+            if(!container) return;
+            container.innerHTML = '';
+            currentData.news.forEach((news, index) => {
+                container.innerHTML += `
+                <div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
+                    <div class="flex gap-3">
+                        <input type="date" class="news-date border rounded p-2 text-sm w-40" value="${news.Date}">
+                        <select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${news.Type==='公告'?'selected':''}>公告</option><option value="活動" ${news.Type==='活動'?'selected':''}>活動</option><option value="緊急" ${news.Type==='緊急'?'selected':''}>緊急</option></select>
+                        <div class="flex items-center gap-2"><input type="checkbox" class="news-isnew w-4 h-4 text-thuBlue" ${news.IsNew?'checked':''}><label class="text-sm">顯示 NEW</label></div>
+                        <button onclick="deleteNewsItem(${index})" class="ml-auto text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
+                    </div>
+                    <div><input type="text" class="news-title w-full border rounded p-2 font-bold text-gray-700" value="${news.Title}" placeholder="公告標題"></div>
+                    <div><input type="text" class="news-link w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${news.Link}" placeholder="連結網址 (選填)"></div>
+                    <div><textarea class="news-content w-full border rounded p-2 text-sm h-20" placeholder="公告內容摘要...">${news.Content}</textarea></div>
+                </div>`;
+            });
+        }
+
+        function renderDepartmentList(container) {
+             container.innerHTML = '';
+             currentData.departments.forEach((faculty, fIndex) => {
+                 let deptRows = '';
+                 faculty.departments.forEach((dept, dIndex) => {
+                     deptRows += `<div class="dept-row flex gap-2 mb-2"><input class="dept-name border rounded p-1 w-1/3" value="${dept.name}"><input class="dept-link border rounded p-1 w-2/3 text-blue-600" value="${dept.link}"><button onclick="deleteDepartment(${fIndex},${dIndex})"><i class="fas fa-trash text-red-400"></i></button></div>`;
+                 });
+                 container.innerHTML += `<div class="faculty-card bg-white p-4 rounded border mb-4"><div class="flex gap-2 mb-2"><input class="faculty-name font-bold border rounded p-1" value="${faculty.name}"><input class="faculty-icon border rounded p-1 w-24" value="${faculty.icon}"></div><div class="pl-4 border-l-2">${deptRows}<button onclick="addDepartment(${fIndex})" class="text-sm text-blue-500">+ Add Dept</button></div><button onclick="deleteFaculty(${fIndex})" class="text-xs text-red-500 mt-2">Delete Faculty</button></div>`;
+             });
+        }
+
+        // --- Render Generic List (Updated) ---
+        function renderGenericList(container, items, isLaws) {
+            if (!items || items.length === 0) { container.innerHTML = '<div class="text-center py-20 text-gray-400">尚無資料</div>'; return; }
+            
+            const labels = currentData.pages[activePageId].labels || {};
+            const titleLabel = labels.title || (isLaws ? '法規名稱' : '標題');
+            const titleEnLabel = labels.title_en || '英文名稱';
+
+            let catOptions = '<option value="">未分類</option>';
+            if (isLaws) {
+                const categories = currentData.pages['laws'].categories || [];
+                categories.forEach(c => { catOptions += `<option value="${c.id}">${c.name}</option>`; });
+            }
+
+            container.innerHTML = '';
+            items.forEach((item, index) => {
+                const isVisible = item.visible !== false; // Default true
+                const checked = isVisible ? 'checked' : '';
+                
+                let contentHtml = '';
+                
+                if (isLaws) {
+                    const selectedCat = item.category || '';
+                    const currentOptions = catOptions.replace(`value="${selectedCat}"`, `value="${selectedCat}" selected`);
+                    
+                    let fileInputsHtml = '';
+                    const fileFields = currentData.pages['laws'].fileFields || defaultFileFields;
+                    
+                    fileFields.forEach(field => {
+                        const key = field.key; 
+                        const val = item[key] || '';
+                        
+                        fileInputsHtml += `
+                        <div class="flex gap-2 items-center mb-2">
+                            <div class="w-24 flex-shrink-0 text-xs font-bold text-gray-500 flex items-center gap-1">
+                                <i class="fas ${field.icon}"></i> ${field.label || '檔案'}
+                            </div>
+                            <div class="flex-grow flex gap-1">
+                                <input type="text" id="input-${index}-${key}" class="p-${key} flex-grow border rounded p-1.5 text-sm text-blue-600 font-mono" value="${val}" placeholder="PDF 連結或網址">
+                                <button onclick="openFileSelector(${index}, '${key}')" class="file-upload-label" title="上傳檔案"><i class="fas fa-cloud-upload-alt"></i></button>
+                            </div>
+                        </div>`;
+                    });
+
+                    contentHtml = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">${titleLabel}</label><input type="text" class="p-title w-full border rounded p-2 text-sm" value="${item.title}"></div>
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">${titleEnLabel}</label><input type="text" class="p-title-en w-full border rounded p-2 text-sm" value="${item.title_en||''}"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                             <div><label class="block text-xs font-bold text-gray-400 mb-1">發布單位</label><input type="text" class="p-issuer w-full border rounded p-2 text-sm" value="${item.issuer||''}"></div>
+                             <div><label class="block text-xs font-bold text-gray-400 mb-1">日期</label><input type="date" class="p-date w-full border rounded p-2 text-sm" value="${item.date||''}"></div>
+                             <div><label class="block text-xs font-bold text-gray-400 mb-1">分類</label>
+                                <select class="p-cat-select w-full border rounded p-2 text-sm">${currentOptions}</select>
+                             </div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                            <label class="block text-xs font-bold text-gray-400 mb-2">檔案下載 (空白則前台不顯示)</label>
+                            ${fileInputsHtml}
+                        </div>
+                    `;
+                } else {
+                    contentHtml = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">${titleLabel}</label><input type="text" class="p-title w-full border rounded p-2 text-sm font-bold" value="${item.title}"></div>
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">連結</label><input type="text" class="p-url w-full border rounded p-2 text-sm text-blue-600" value="${item.url}"></div>
+                        </div>
+                        <div><label class="block text-xs font-bold text-gray-400 mb-1">分類</label><input type="text" class="p-category w-full border rounded p-2 text-sm" value="${item.category||''}"></div>
+                    `;
+                }
+
+                container.innerHTML += `
+                <div class="page-item bg-white rounded-xl border border-gray-200 shadow-sm mb-3 overflow-hidden" data-index="${index}">
+                    <!-- Header / Drag Handle -->
+                    <div class="drag-handle bg-gray-50 p-3 px-4 flex justify-between items-center cursor-move hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center gap-3 overflow-hidden" onclick="toggleAccordion(${index})">
+                            <div class="cursor-pointer text-gray-400 hover:text-thuBlue w-6 text-center"><i class="fas fa-grip-vertical"></i></div>
+                            <span class="font-bold text-gray-700 truncate select-none">#${index+1} ${item.title || '(無標題)'}</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <!-- Visibility Toggle (No Text) -->
+                            <label class="flex items-center cursor-pointer select-none" title="前台顯示/隱藏">
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only peer p-visible" ${checked} onchange="toggleItemVisibility(this)">
+                                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                </div>
+                            </label>
+                            
+                            <div class="h-4 w-px bg-gray-300 mx-1"></div>
+
+                            <button onclick="deletePageItem('${activePageId}', ${index})" class="text-gray-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash-alt"></i></button>
+                            <button onclick="toggleAccordion(${index})" class="text-gray-400 hover:text-thuBlue p-2 transition"><i id="accordion-arrow-${index}" class="fas fa-chevron-down accordion-arrow"></i></button>
+                        </div>
+                    </div>
+                    
+                    <!-- Content -->
+                    <div id="accordion-content-${index}" class="accordion-content bg-white">
+                        <div class="p-5">
+                            ${contentHtml}
+                            <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
+                                <button onclick="cancelSingleItem(${index})" class="btn-secondary">取消變更</button>
+                                <button onclick="saveSingleItem(${index})" class="btn-info">確認暫存</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            if (sortablePageItems) sortablePageItems.destroy();
+            sortablePageItems = new Sortable(container, { 
+                handle: '.drag-handle', 
+                animation: 150,
+                ghostClass: 'sortable-ghost',
+                onEnd: () => {
+                    collectDataFromEditors();
+                    renderPageEditor();
+                }
+            });
+        }
+
+        // --- Render Editors (Main Orchestrator) ---
+        function renderEditors() {
+            const settingsContainer = document.getElementById('settings-form');
+            settingsContainer.innerHTML = '';
+            for (const [key, config] of Object.entries(settingFieldsMap)) {
+                let value = currentData.settings[key] || '';
+                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n');
+                let inputHtml = config.type === 'textarea' 
+                    ? `<textarea data-key="${key}" rows="3" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm font-mono">${value}</textarea>`
+                    : `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 rounded p-3 text-sm focus:ring-2 focus:ring-thuBlue outline-none" />`;
+                settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm"><label class="block text-sm font-bold text-gray-700 mb-2">${config.label}</label>${inputHtml}</div>`;
+            }
+            renderCardsList();
+            renderContactsList();
+            renderNewsList();
+            renderPageEditor();
+        }
 
         const settingFieldsMap = {
             'SiteTitle': { label: '網站主標題 (中文)', type: 'text', help: '顯示於瀏覽器分頁標籤與導覽列' },
@@ -213,12 +584,26 @@
             'OriginContent': { label: '計畫緣起 - 內容 (支援 HTML)', type: 'textarea', help: '彈跳視窗的詳細內容' }
         };
 
+        const defaultCategories = [
+            { id: 'edu', name: '教育部法規' },
+            { id: 'admin', name: '行政函釋' },
+            { id: 'school', name: '校內法規' }
+        ];
+
+        const defaultFileFields = [
+            { key: 'url_1', label: '中文版', icon: 'fa-file-pdf' },
+            { key: 'url_2', label: '英文版', icon: 'fa-file-pdf' },
+            { key: 'url_3', label: '附件一', icon: 'fa-paperclip' },
+            { key: 'url_4', label: '附件二', icon: 'fa-paperclip' },
+            { key: 'url_5', label: '相關連結', icon: 'fa-link' }
+        ];
+
         const defaultPagesData = {
-            "laws": { title: "實習相關法規", tag: "Regulations", description: "Laws and Regulations", items: [] },
-            "downloads": { title: "實習表單下載", tag: "Forms", description: "Download Internship Forms", items: [] },
-            "insurance": { title: "實習保險專區", tag: "Insurance", description: "Group Insurance Info", items: [] },
-            "courses": { title: "實習前哨站課程", tag: "Courses", description: "Online Courses", items: [] },
-            "evaluation": { title: "系所評鑑資料上傳", tag: "Evaluation", description: "請點擊對應系所名稱，進入雲端連結上傳資料。", items: [] }
+            "laws": { title: "實習相關法規", tag: "Regulations", description: "Laws and Regulations", icon: "fa-balance-scale", items: [], categories: JSON.parse(JSON.stringify(defaultCategories)), fileFields: JSON.parse(JSON.stringify(defaultFileFields)) },
+            "downloads": { title: "實習表單下載", tag: "Forms", description: "Download Internship Forms", icon: "fa-file-download", items: [] },
+            "insurance": { title: "實習保險專區", tag: "Insurance", description: "Group Insurance Info", icon: "fa-shield-alt", items: [] },
+            "courses": { title: "實習前哨站課程", tag: "Courses", description: "Online Courses", icon: "fa-graduation-cap", items: [] },
+            "evaluation": { title: "系所評鑑資料上傳", tag: "Evaluation", description: "請點擊對應系所名稱，進入雲端連結上傳資料。", icon: "fa-chart-line", items: [] }
         };
 
         const pageDefinitions = [
@@ -270,12 +655,21 @@
                 currentData = JSON.parse(decodedContent);
                 
                 if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
+                
+                // Ensure defaults for laws page
+                if (currentData.pages['laws']) {
+                    if (!currentData.pages['laws'].categories) currentData.pages['laws'].categories = JSON.parse(JSON.stringify(defaultCategories));
+                    if (!currentData.pages['laws'].fileFields) currentData.pages['laws'].fileFields = JSON.parse(JSON.stringify(defaultFileFields));
+                }
+
                 if (!currentData.departments) currentData.departments = [];
 
                 localStorage.setItem('gh_owner', owner);
                 localStorage.setItem('gh_repo', repo);
 
                 document.getElementById('current-repo-label').innerText = `${owner}/${repo}`;
+                
+                // Render Editors NOW that data is loaded
                 renderEditors(); 
                 
                 document.getElementById('login-screen').classList.add('animate-fade-out');
@@ -293,8 +687,10 @@
 
         function logout() { if(confirm("確定要登出嗎？資料將不會保留。")) location.reload(); }
 
+        // --- Data Collection (Main) ---
         function collectDataFromEditors() {
             if (!currentData) return;
+            
             // 1. Settings
             document.querySelectorAll('.setting-input').forEach(input => {
                 const key = input.getAttribute('data-key');
@@ -358,12 +754,8 @@
             });
             currentData.contacts = contactItems;
 
-            // 5. Pages
+            // 5. Pages Items 
             if (currentData.pages && currentData.pages[activePageId]) {
-                currentData.pages[activePageId].title = document.getElementById('page-setting-title').value;
-                currentData.pages[activePageId].tag = document.getElementById('page-setting-tag').value;
-                currentData.pages[activePageId].description = document.getElementById('page-setting-desc').value;
-
                 if (activePageId === 'evaluation') {
                     const faculties = [];
                     document.querySelectorAll('.faculty-card').forEach(facultyDiv => {
@@ -381,228 +773,349 @@
                     currentData.departments = faculties;
                 } else {
                     const items = [];
-                    document.querySelectorAll('.page-item').forEach(div => {
-                        const item = {
-                            title: div.querySelector('.p-title').value,
-                            url: div.querySelector('.p-url') ? div.querySelector('.p-url').value : ''
-                        };
-                        if (activePageId === 'laws') {
-                            item.title_en = div.querySelector('.p-title-en').value;
-                            item.issuer = div.querySelector('.p-issuer').value;
-                            item.date = div.querySelector('.p-date').value;
-                            item.category = div.querySelector('.p-cat-select').value;
-                            item.url_zh = div.querySelector('.p-url-zh').value; 
-                            item.url_en = div.querySelector('.p-url-en').value; 
-                            delete item.url;
-                        } else {
-                            item.category = div.querySelector('.p-category') ? div.querySelector('.p-category').value : '';
-                        }
-                        items.push(item);
-                    });
-                    currentData.pages[activePageId].items = items;
+                    const container = document.getElementById('page-items-editor');
+                    if(container) {
+                        const itemDivs = container.querySelectorAll('.page-item');
+                        itemDivs.forEach(div => {
+                            const item = {
+                                title: div.querySelector('.p-title').value,
+                                visible: div.querySelector('.p-visible') ? div.querySelector('.p-visible').checked : true
+                            };
+                            
+                            if (activePageId === 'laws') {
+                                item.title_en = div.querySelector('.p-title-en').value;
+                                item.issuer = div.querySelector('.p-issuer').value;
+                                item.date = div.querySelector('.p-date').value;
+                                item.category = div.querySelector('.p-cat-select').value;
+                                
+                                const fileFields = currentData.pages['laws'].fileFields || defaultFileFields;
+                                fileFields.forEach((field) => {
+                                    const key = field.key;
+                                    item[key] = div.querySelector(`.p-${key}`).value;
+                                });
+                            } else {
+                                item.url = div.querySelector('.p-url').value;
+                                item.category = div.querySelector('.p-category').value;
+                            }
+                            items.push(item);
+                        });
+                        currentData.pages[activePageId].items = items;
+                    }
                 }
             }
         }
 
-        function renderEditors() {
-            const settingsContainer = document.getElementById('settings-form');
-            settingsContainer.innerHTML = '';
-            for (const [key, config] of Object.entries(settingFieldsMap)) {
-                let value = currentData.settings[key] || '';
-                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n');
-                let inputHtml = config.type === 'textarea' 
-                    ? `<textarea data-key="${key}" rows="3" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm font-mono">${value}</textarea>`
-                    : `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 rounded p-3 text-sm focus:ring-2 focus:ring-thuBlue outline-none" />`;
-                settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm"><label class="block text-sm font-bold text-gray-700 mb-2">${config.label}</label>${inputHtml}</div>`;
+        // --- Toggle Logic ---
+        function togglePageSettings() {
+            const panel = document.getElementById('page-settings-panel');
+            const arrow = document.getElementById('page-settings-arrow');
+            panel.classList.toggle('hidden');
+            if(panel.classList.contains('hidden')) { arrow.classList.remove('rotate-180'); } else { arrow.classList.add('rotate-180'); }
+        }
+
+        // --- Page Settings Save/Restore ---
+        function savePageHeaderSettings() {
+            if (!currentData || !activePageId) return;
+            const page = currentData.pages[activePageId];
+            page.title = document.getElementById('page-setting-title').value;
+            page.tag = document.getElementById('page-setting-tag').value;
+            page.description = document.getElementById('page-setting-desc').value;
+            page.icon = document.getElementById('page-setting-icon').value;
+            
+            document.getElementById('current-page-title-display').innerText = `${page.title} - 設定`;
+            
+            renderPageEditor(); // Rebuild sidebar
+            alert("標題設定已暫存");
+        }
+
+        function restorePageHeaderSettings() {
+            if (!currentData || !activePageId) return;
+            const page = currentData.pages[activePageId];
+            document.getElementById('page-setting-title').value = page.title || '';
+            document.getElementById('page-setting-tag').value = page.tag || '';
+            document.getElementById('page-setting-desc').value = page.description || '';
+            document.getElementById('page-setting-icon').value = page.icon || '';
+            document.getElementById('page-icon-preview').className = `fas ${page.icon || 'fa-question'}`;
+        }
+
+        function savePageLabelSettings() {
+            if (!currentData || !activePageId) return;
+            const page = currentData.pages[activePageId];
+            if (!page.labels) page.labels = {};
+            page.labels.title = document.getElementById('page-label-title').value;
+            page.labels.title_en = document.getElementById('page-label-title-en').value;
+            
+            renderPageEditor(); 
+            alert("欄位名稱已更新");
+        }
+
+        function restorePageLabelSettings() {
+            if (!currentData || !activePageId) return;
+            const labels = currentData.pages[activePageId].labels || {};
+            document.getElementById('page-label-title').value = labels.title || '';
+            document.getElementById('page-label-title-en').value = labels.title_en || '';
+        }
+
+        function saveFileConfigSettings() {
+            if (!currentData || activePageId !== 'laws') return;
+            const newConfig = [];
+            for(let i=1; i<=5; i++) {
+                const label = document.getElementById(`file-conf-label-${i}`).value;
+                const icon = document.getElementById(`file-conf-icon-${i}`).value;
+                newConfig.push({ key: `url_${i}`, label: label, icon: icon });
             }
-            renderCardsList();
-            renderContactsList();
-            renderNewsList();
+            currentData.pages['laws'].fileFields = newConfig;
             renderPageEditor();
+            alert("檔案欄位設定已更新");
         }
 
-        // --- Render Functions (Restored) ---
-        function renderCardsList() {
-            const container = document.getElementById('cards-list-editor');
-            container.innerHTML = '';
-            currentData.cards.forEach((card, index) => {
-                container.innerHTML += `
-                <div class="card-item bg-white p-5 rounded-xl shadow-sm border border-gray-200 group relative" data-index="${index}">
-                    <div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-grip-lines text-gray-400"></i></div>
-                    <div class="mt-4 grid grid-cols-2 gap-4">
-                        <div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 text-sm font-bold text-thuBlue" value="${card.Title}"></div>
-                        <div><label class="block text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-sm text-thuGold" value="${card.Badge||''}"></div>
-                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2 text-sm" value="${card.Description}"></div>
-                        <div><label class="block text-xs font-bold text-gray-400">Icon (FontAwesome)</label><input type="text" class="card-icon w-full border rounded p-2 text-sm font-mono text-gray-500" value="${card.Icon}"></div>
-                        <div><label class="block text-xs font-bold text-gray-400">類型</label>
-                            <select class="card-type w-full border rounded p-2 text-sm"><option value="internal" ${card.Type==='internal'?'selected':''}>內部連結</option><option value="external" ${card.Type==='external'?'selected':''}>外部連結</option><option value="modal" ${card.Type==='modal'?'selected':''}>彈跳視窗</option></select>
-                        </div>
-                        <div class="col-span-2"><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${card.Link}"></div>
-                    </div>
-                    <button onclick="deleteCardItem(${index})" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash"></i></button>
-                </div>`;
-            });
-            if (sortableCards) sortableCards.destroy();
-            sortableCards = Sortable.create(container, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
-        }
-
-        function renderContactsList() {
-            const officeContainer = document.getElementById('office-contact-editor');
-            const staffContainer = document.getElementById('staff-contacts-editor');
-            officeContainer.innerHTML = ''; staffContainer.innerHTML = '';
-
-            const office = currentData.contacts.find(c => c.Type === 'office') || { Name: '實習與學生成就中心', Title: 'Office', Email: 'isac@thu.edu.tw', Description: '管理學院二樓 M207' };
-            officeContainer.innerHTML = `
-            <div class="office-item bg-blue-50/50 p-6 rounded-xl border border-blue-100">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div><label class="text-xs font-bold text-gray-400">單位名稱</label><input type="text" class="contact-name w-full border rounded p-2 font-bold" value="${office.Name}"></div>
-                    <div><label class="text-xs font-bold text-gray-400">Email</label><input type="text" class="contact-email w-full border rounded p-2 font-mono" value="${office.Email}"></div>
-                    <div class="hidden"><input type="text" class="contact-title" value="Office"></div>
-                    <div class="col-span-2"><label class="text-xs font-bold text-gray-400">位置/描述</label><input type="text" class="contact-desc w-full border rounded p-2" value="${office.Description}"></div>
-                </div>
-            </div>`;
-
-            const staff = currentData.contacts.filter(c => c.Type !== 'office');
-            staff.forEach((c, index) => {
-                staffContainer.innerHTML += `
-                <div class="staff-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${index}">
-                    <div class="drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab flex items-center justify-center hover:bg-gray-50 rounded-t-xl"><i class="fas fa-grip-lines text-gray-300"></i></div>
-                    <div class="mt-4 space-y-2">
-                        <div class="flex gap-2"><input type="text" class="contact-name w-2/3 border rounded p-1.5 font-bold text-sm" value="${c.Name}"><input type="text" class="contact-title w-1/3 border rounded p-1.5 text-sm text-gray-500 text-center" value="${c.Title}"></div>
-                        <div><input type="text" class="contact-email w-full border rounded p-1.5 text-xs font-mono text-gray-500" value="${c.Email}"></div>
-                        <div class="flex gap-2"><input type="text" class="contact-phone w-1/2 border rounded p-1.5 text-xs text-gray-500" value="${c.Phone||''}"><input type="hidden" class="contact-desc" value="${c.Description||''}"><select class="contact-type w-1/2 border rounded p-1.5 text-xs"><option value="staff" ${c.Type==='staff'?'selected':''}>職員</option><option value="director" ${c.Type==='director'?'selected':''}>主任</option></select></div>
-                    </div>
-                    <button onclick="deleteContactItem(${index})" class="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times-circle"></i></button>
-                </div>`;
-            });
-            if (sortableStaff) sortableStaff.destroy();
-            sortableStaff = Sortable.create(staffContainer, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
-        }
-
-        function renderNewsList() {
-            const container = document.getElementById('news-list-editor');
-            container.innerHTML = '';
-            currentData.news.forEach((news, index) => {
-                container.innerHTML += `
-                <div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3">
-                    <div class="flex gap-3">
-                        <input type="date" class="news-date border rounded p-2 text-sm w-40" value="${news.Date}">
-                        <select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${news.Type==='公告'?'selected':''}>公告</option><option value="活動" ${news.Type==='活動'?'selected':''}>活動</option><option value="緊急" ${news.Type==='緊急'?'selected':''}>緊急</option></select>
-                        <div class="flex items-center gap-2"><input type="checkbox" class="news-isnew w-4 h-4 text-thuBlue" ${news.IsNew?'checked':''}><label class="text-sm">顯示 NEW</label></div>
-                        <button onclick="deleteNewsItem(${index})" class="ml-auto text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button>
-                    </div>
-                    <div><input type="text" class="news-title w-full border rounded p-2 font-bold text-gray-700" value="${news.Title}" placeholder="公告標題"></div>
-                    <div><input type="text" class="news-link w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${news.Link}" placeholder="連結網址 (選填)"></div>
-                    <div><textarea class="news-content w-full border rounded p-2 text-sm h-20" placeholder="公告內容摘要...">${news.Content}</textarea></div>
-                </div>`;
-            });
-        }
-
+        // --- Page Editor & Category Logic ---
         function renderPageEditor() {
             const sidebar = document.getElementById('pages-sidebar');
             const container = document.getElementById('page-items-editor');
             
-            const titleInput = document.getElementById('page-setting-title');
-            const tagInput = document.getElementById('page-setting-tag');
-            const descInput = document.getElementById('page-setting-desc');
-            
             sidebar.innerHTML = '';
-            container.innerHTML = '';
-            
+            pageDefinitions.forEach(def => {
+                const isActive = def.id === activePageId;
+                let storedTitle = def.name;
+                let storedIcon = def.icon;
+                
+                if (currentData.pages && currentData.pages[def.id]) {
+                    storedTitle = currentData.pages[def.id].title || def.name;
+                    storedIcon = currentData.pages[def.id].icon || def.icon;
+                }
+
+                sidebar.innerHTML += `<div onclick="switchPageEditor('${def.id}')" class="sidebar-btn ${isActive ? 'active' : ''}"><i class="fas ${storedIcon} w-5 text-center"></i><span>${storedTitle}</span></div>`;
+            });
+
             if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
             if (!currentData.pages[activePageId]) currentData.pages[activePageId] = { title: "新頁面", tag:"", description:"", items: [] };
 
             const currentPageData = currentData.pages[activePageId];
 
-            pageDefinitions.forEach(page => {
-                const isActive = page.id === activePageId;
-                sidebar.innerHTML += `<div onclick="switchPageEditor('${page.id}')" class="sidebar-btn ${isActive ? 'active' : ''}"><i class="fas ${page.icon} w-5 text-center"></i><span>${page.name}</span></div>`;
-            });
+            document.getElementById('page-setting-title').value = currentPageData.title || '';
+            document.getElementById('page-setting-tag').value = currentPageData.tag || '';
+            document.getElementById('page-setting-desc').value = currentPageData.description || '';
+            
+            const currentIcon = currentPageData.icon || pageDefinitions.find(p=>p.id===activePageId)?.icon || 'fa-file';
+            document.getElementById('page-setting-icon').value = currentIcon;
+            document.getElementById('page-icon-preview').className = `fas ${currentIcon}`;
+            
+            document.getElementById('page-setting-icon').oninput = function() {
+                document.getElementById('page-icon-preview').className = `fas ${this.value}`;
+            };
 
-            titleInput.value = currentPageData.title || '';
-            tagInput.value = currentPageData.tag || '';
-            descInput.value = currentPageData.description || '';
+            document.getElementById('current-page-title-display').innerText = `${currentPageData.title} - 設定`;
+
+            const labels = currentPageData.labels || {};
+            document.getElementById('page-label-title').value = labels.title || (activePageId === 'laws' ? '法規名稱' : '標題');
+            document.getElementById('page-label-title-en').value = labels.title_en || '英文名稱';
+
+            const catManager = document.getElementById('category-manager');
+            const fileConfig = document.getElementById('file-fields-config');
+            const isLaws = activePageId === 'laws';
+            
+            if(isLaws) {
+                catManager.classList.remove('hidden');
+                fileConfig.classList.remove('hidden');
+                renderCategoryList();
+                renderFileConfigList();
+            } else {
+                catManager.classList.add('hidden');
+                fileConfig.classList.add('hidden');
+            }
 
             const isDepartmentPage = activePageId === 'evaluation';
             document.getElementById('page-add-item-btn').classList.toggle('hidden', isDepartmentPage);
             document.getElementById('faculty-add-item-btn').classList.toggle('hidden', !isDepartmentPage);
 
+            container.innerHTML = '';
             if (isDepartmentPage) {
                 renderDepartmentList(container);
             } else {
-                renderGenericList(container, currentPageData.items, activePageId === 'laws');
+                renderGenericList(container, currentPageData.items, isLaws);
             }
         }
 
-        function renderGenericList(container, items, isLaws) {
-            if (!items || items.length === 0) { container.innerHTML = '<div class="text-center py-20 text-gray-400">尚無資料</div>'; return; }
-            items.forEach((item, index) => {
-                if (isLaws) {
-                    container.innerHTML += `
-                    <div class="page-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-4 mb-3" data-index="${index}">
-                        <div class="flex justify-between border-b pb-2"><span class="font-bold text-gray-700">#${index+1} ${item.title}</span><button onclick="deletePageItem('${activePageId}', ${index})" class="text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button></div>
-                        <div><label class="text-xs font-bold text-gray-400">法規名稱</label><input type="text" class="p-title w-full border rounded p-2 text-sm" value="${item.title}"></div>
-                        <div><label class="text-xs font-bold text-gray-400">英文名稱</label><input type="text" class="p-title-en w-full border rounded p-2 text-sm" value="${item.title_en||''}"></div>
-                        <div class="grid grid-cols-3 gap-2">
-                             <div><label class="text-xs font-bold text-gray-400">發布單位</label><input type="text" class="p-issuer w-full border rounded p-2 text-sm" value="${item.issuer||''}"></div>
-                             <div><label class="text-xs font-bold text-gray-400">日期</label><input type="text" class="p-date w-full border rounded p-2 text-sm" value="${item.date||''}"></div>
-                             <div><label class="text-xs font-bold text-gray-400">分類</label>
-                                <select class="p-cat-select w-full border rounded p-2 text-sm"><option value="school" ${item.category==='school'?'selected':''}>校內</option><option value="edu" ${item.category==='edu'?'selected':''}>教育部</option><option value="admin" ${item.category==='admin'?'selected':''}>行政</option></select>
-                             </div>
-                        </div>
-                        <div class="grid grid-cols-2 gap-2">
-                            <div><label class="text-xs font-bold text-gray-400">中文PDF路徑</label><input type="text" class="p-url-zh w-full border rounded p-2 text-sm text-blue-600" value="${item.url_zh||item.url||''}"></div>
-                            <div><label class="text-xs font-bold text-gray-400">英文PDF路徑</label><input type="text" class="p-url-en w-full border rounded p-2 text-sm text-blue-600" value="${item.url_en||''}"></div>
-                        </div>
-                    </div>`;
-                } else {
-                    container.innerHTML += `
-                    <div class="page-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4 mb-3">
-                        <div class="flex-grow grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="p-title w-full border rounded p-2 text-sm font-bold" value="${item.title}"></div>
-                            <div><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="p-url w-full border rounded p-2 text-sm text-blue-600" value="${item.url}"></div>
-                        </div>
-                        <div><label class="block text-xs font-bold text-gray-400">分類</label><input type="text" class="p-category w-full border rounded p-2 text-sm" value="${item.category||''}"></div>
-                        <button onclick="deletePageItem('${activePageId}', ${index})" class="text-red-400 hover:text-red-600 p-2"><i class="fas fa-trash"></i></button>
-                    </div>`;
-                }
+        function renderFileConfigList() {
+            const container = document.getElementById('file-config-list');
+            const fields = currentData.pages['laws'].fileFields || defaultFileFields;
+            container.innerHTML = '';
+            fields.forEach((f, i) => {
+                const idx = i + 1;
+                container.innerHTML += `
+                <div class="flex gap-2 items-center">
+                    <span class="w-4 text-center font-bold text-gray-400">${idx}</span>
+                    <input type="text" id="file-conf-label-${idx}" value="${f.label}" class="w-1/2 border rounded p-1" placeholder="按鈕文字">
+                    <input type="text" id="file-conf-icon-${idx}" value="${f.icon}" class="w-1/3 border rounded p-1 font-mono text-gray-500" placeholder="Icon class">
+                    <i class="fas ${f.icon} text-gray-400"></i>
+                </div>`;
             });
         }
 
-        function renderDepartmentList(container) {
-             container.innerHTML = '';
-             currentData.departments.forEach((faculty, fIndex) => {
-                 let deptRows = '';
-                 faculty.departments.forEach((dept, dIndex) => {
-                     deptRows += `<div class="dept-row flex gap-2 mb-2"><input class="dept-name border rounded p-1 w-1/3" value="${dept.name}"><input class="dept-link border rounded p-1 w-2/3 text-blue-600" value="${dept.link}"><button onclick="deleteDepartment(${fIndex},${dIndex})"><i class="fas fa-trash text-red-400"></i></button></div>`;
-                 });
-                 container.innerHTML += `<div class="faculty-card bg-white p-4 rounded border mb-4"><div class="flex gap-2 mb-2"><input class="faculty-name font-bold border rounded p-1" value="${faculty.name}"><input class="faculty-icon border rounded p-1 w-24" value="${faculty.icon}"></div><div class="pl-4 border-l-2">${deptRows}<button onclick="addDepartment(${fIndex})" class="text-sm text-blue-500">+ Add Dept</button></div><button onclick="deleteFaculty(${fIndex})" class="text-xs text-red-500 mt-2">Delete Faculty</button></div>`;
-             });
-        }
-        
-        function switchPageEditor(pageId) {
-            collectDataFromEditors();
-            activePageId = pageId;
-            renderPageEditor();
+        function renderCategoryList() {
+            const listDiv = document.getElementById('cat-list');
+            const categories = currentData.pages['laws'].categories || [];
+            listDiv.innerHTML = '';
+            if (categories.length === 0) { listDiv.innerHTML = '<div class="text-xs text-gray-400 text-center py-2">無分類</div>'; return; }
+            categories.forEach(cat => {
+                listDiv.innerHTML += `
+                <div class="flex justify-between items-center bg-white border border-gray-200 p-2 rounded text-sm">
+                    <span class="font-bold text-thuBlue">${cat.name}</span>
+                    <button onclick="deleteCategory('${cat.id}')" class="text-red-400 hover:text-red-600 px-2"><i class="fas fa-trash"></i></button>
+                </div>`;
+            });
         }
 
-        // --- Helper Functions ---
-        function addCardItem() { collectDataFromEditors(); currentData.cards.push({Title:"新卡片", Badge:"", Description:"", Icon:"fa-star", Type:"external", Link:"#"}); renderCardsList(); }
+        function addNewCategory() {
+            const input = document.getElementById('new-cat-name');
+            const name = input.value.trim();
+            if(!name) return;
+            const categories = currentData.pages['laws'].categories;
+            if (categories.some(c => c.name === name)) { alert("分類名稱重複！"); return; }
+            const newId = 'cat_' + Date.now();
+            categories.push({ id: newId, name: name });
+            input.value = '';
+            collectDataFromEditors(); renderCategoryList(); renderPageEditor();
+        }
+
+        function deleteCategory(id) {
+            const items = currentData.pages['laws'].items;
+            const count = items.filter(i => i.category === id).length;
+            catToDeleteId = id;
+            if (count > 0) {
+                document.getElementById('cat-delete-msg').innerText = `目前有 ${count} 筆資料屬於此分類。請問您希望如何處理？`;
+                document.getElementById('cat-delete-modal').classList.remove('hidden');
+            } else { performCategoryDeletion(id); }
+        }
+
+        function confirmDeleteCategoryAction(action) {
+            const id = catToDeleteId;
+            const items = currentData.pages['laws'].items;
+            if (action === 'delete_items') {
+                for (let i = items.length - 1; i >= 0; i--) { if (items[i].category === id) items.splice(i, 1); }
+            } else if (action === 'keep_items') {
+                items.forEach(item => { if (item.category === id) item.category = ''; });
+            }
+            performCategoryDeletion(id); closeCatDeleteModal();
+        }
+
+        function performCategoryDeletion(id) {
+            const categories = currentData.pages['laws'].categories;
+            const idx = categories.findIndex(c => c.id === id);
+            if (idx > -1) { categories.splice(idx, 1); collectDataFromEditors(); renderCategoryList(); renderPageEditor(); }
+        }
+
+        function closeCatDeleteModal() { document.getElementById('cat-delete-modal').classList.add('hidden'); catToDeleteId = null; }
+
+        // --- Toggle Item Visibility ---
+        function toggleItemVisibility(checkbox) {
+            // This just updates UI state visually if needed, data is collected on save/action
+        }
+
+        // --- Accordion Logic ---
+        function toggleAccordion(index) {
+            const content = document.getElementById(`accordion-content-${index}`);
+            const arrow = document.getElementById(`accordion-arrow-${index}`);
+            
+            if (content.classList.contains('open')) {
+                content.classList.remove('open');
+                arrow.classList.remove('rotate');
+            } else {
+                content.classList.add('open');
+                arrow.classList.add('rotate');
+            }
+        }
+
+        // --- Single Item Save/Cancel ---
+        function saveSingleItem(index) {
+            collectDataFromEditors(); // Update memory
+            renderPageEditor(); // Re-render sorted/updated list
+            alert("項目已暫存 (記得最後按「儲存並發布」)");
+        }
+
+        function cancelSingleItem(index) {
+            renderPageEditor(); // Revert to memory state
+        }
+
+        // --- File Upload Logic ---
+        function openFileSelector(index, key) {
+            currentUploadTargetInput = document.getElementById(`input-${index}-${key}`);
+            document.getElementById('global-file-input').click();
+        }
+
+        async function handleFileUpload(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            
+            currentUploadTargetInput.value = "上傳中...";
+            currentUploadTargetInput.disabled = true;
+
+            try {
+                const reader = new FileReader();
+                reader.readAsDataURL(file);
+                reader.onload = async function () {
+                    const base64Content = reader.result.split(',')[1];
+                    const path = `${activePageId}/${file.name}`; // e.g. laws/doc.pdf
+                    
+                    const owner = localStorage.getItem('gh_owner');
+                    const repo = localStorage.getItem('gh_repo');
+                    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+                    
+                    let sha = null;
+                    try {
+                        const checkRes = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}` } });
+                        if (checkRes.ok) {
+                            const checkData = await checkRes.json();
+                            sha = checkData.sha;
+                        }
+                    } catch(e) {}
+
+                    const body = {
+                        message: `Upload ${file.name} via Admin CMS`,
+                        content: base64Content,
+                        branch: 'main'
+                    };
+                    if (sha) body.sha = sha;
+
+                    const putRes = await fetch(url, {
+                        method: 'PUT',
+                        headers: {
+                            'Authorization': `token ${sessionToken}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify(body)
+                    });
+
+                    if (!putRes.ok) throw new Error("Upload failed");
+                    
+                    currentUploadTargetInput.value = path;
+                    currentUploadTargetInput.disabled = false;
+                    alert("上傳成功！");
+                };
+            } catch (e) {
+                alert("上傳失敗: " + e.message);
+                currentUploadTargetInput.value = "";
+                currentUploadTargetInput.disabled = false;
+            }
+            input.value = ''; 
+        }
+
+        // --- Helper Functions (Add/Delete Items) ---
+        function addCardItem() { collectDataFromEditors(); currentData.cards.push({Title:"新卡片", Badge:"", Description:"", Icon:"fa-star", Type:"thu", Link:"#"}); renderCardsList(); }
         function deleteCardItem(idx) { if(confirm("確定刪除此卡片？")) { collectDataFromEditors(); currentData.cards.splice(idx,1); renderCardsList(); } }
-        
         function addContactItem() { collectDataFromEditors(); currentData.contacts.push({Name:"新成員", Title:"職稱", Email:"", Phone:"", Type:"staff"}); renderContactsList(); }
-        function deleteContactItem(idx) { 
-            const realIdx = currentData.contacts.filter(c => c.Type === 'office').length > 0 ? idx + 1 : idx; 
-            if(confirm("確定刪除？")) { collectDataFromEditors(); currentData.contacts.splice(realIdx, 1); renderContactsList(); } 
-        }
+        function deleteContactItem(idx) { const realIdx = currentData.contacts.filter(c => c.Type === 'office').length > 0 ? idx + 1 : idx; if(confirm("確定刪除？")) { collectDataFromEditors(); currentData.contacts.splice(realIdx, 1); renderContactsList(); } }
         function autoSortContacts() { collectDataFromEditors(); alert("此功能尚未實作自動排序邏輯"); } 
-
         function addNewsItem() { collectDataFromEditors(); currentData.news.unshift({Date: new Date().toISOString().split('T')[0], Type:"公告", Title:"", Link:"", Content:"", IsNew:true}); renderNewsList(); }
         function deleteNewsItem(idx) { if(confirm("確定刪除此公告？")) { collectDataFromEditors(); currentData.news.splice(idx,1); renderNewsList(); } }
-
-        function addPageItem() { collectDataFromEditors(); currentData.pages[activePageId].items.push({title:"",url:""}); renderPageEditor(); }
+        function addPageItem() { 
+            collectDataFromEditors(); 
+            const newItem = {title:"", url:"", visible: true};
+            currentData.pages[activePageId].items.push(newItem); 
+            renderPageEditor(); 
+        }
         function deletePageItem(id, idx) { collectDataFromEditors(); currentData.pages[id].items.splice(idx,1); renderPageEditor(); }
-        
         function addFaculty() { collectDataFromEditors(); currentData.departments.push({name:"新學院", icon:"fa-building", departments:[]}); renderPageEditor(); }
         function addDepartment(fIdx) { collectDataFromEditors(); currentData.departments[fIdx].departments.push({name:"新系所", link:""}); renderPageEditor(); }
         function deleteFaculty(fIdx) { if(confirm("確定刪除學院？")) { collectDataFromEditors(); currentData.departments.splice(fIdx,1); renderPageEditor(); } }
@@ -647,6 +1160,12 @@
             if(activeBtn) { activeBtn.classList.add('border-thuBlue', 'text-thuBlue', 'bg-white', 'font-bold'); activeBtn.classList.remove('border-transparent', 'text-gray-500', 'font-medium'); }
             
             if(tabId === 'raw') document.getElementById('raw-json').value = JSON.stringify(currentData, null, 4);
+            
+            // Re-render only when switching to ensure DOM exists
+            if(tabId === 'cards') renderCardsList();
+            if(tabId === 'contacts') renderContactsList();
+            if(tabId === 'news') renderNewsList();
+            if(tabId === 'pages') renderPageEditor();
         }
     </script>
 </body>
