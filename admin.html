@@ -13,26 +13,12 @@
             theme: {
                 extend: {
                     colors: {
-                        // === 修改後的色碼 ===
                         thuBlue: '#002147',       // 預設藍 (修改)
                         thuLightBlue: '#eef6fc',
                         thuGold: '#997933',       // 榮耀金 (舊變數修改)
                         darkBg: '#0f172a',
                         btnGreen: '#219653',
                         btnGreenHover: '#1e874b',
-                        
-                        // === 自定義識別色 (與預設列表同步) ===
-                        lapisYellow: '#E89B00',   // 琉璃黃
-                        concreteGrey: '#A6A9AA',  // 清水灰
-                        brickRed: '#A14332',      // 磚瓦紅
-                        windowBlack: '#2B2B2B',   // 窗框黑
-                        acaciaGreen: '#4A6B3E',   // 相思綠
-                        milkWhite: '#F4F1EA',     // 鮮乳白
-                        lakeBlue: '#365C68',      // 湖心藍
-                        phoenixOrange: '#FF5A45', // 鳳凰橘
-                        gloryGold: '#997933',     // 榮耀金 (修改)
-                        thuBlueNew: '#002147',    // 東海藍 (修改)
-                        grassGreen: '#219653',    // 青草綠
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -67,7 +53,7 @@
         .file-upload-label:hover { background-color: #e5e7eb; color: #002147; border-color: #d1d5db; }
         
         /* 色票預覽圓圈 */
-        .color-preview-circle { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); display: inline-block; vertical-align: middle; margin-right: 8px; }
+        .color-preview-circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #e5e7eb; box-shadow: 0 1px 2px rgba(0,0,0,0.1); }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
@@ -154,6 +140,9 @@
                         <button onclick="switchTab('contacts')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="contacts"><i class="fas fa-address-book mr-2"></i>聯絡資訊</button>
                         <button onclick="switchTab('pages')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="pages"><i class="fas fa-file-alt mr-2"></i>分頁內容</button>
                         <button onclick="switchTab('news')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="news"><i class="fas fa-bullhorn mr-2"></i>最新公告</button>
+                        
+                        <button onclick="switchTab('colors')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="colors"><i class="fas fa-palette mr-2"></i>顏色管理</button>
+
                         <button onclick="switchTab('settings')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="settings"><i class="fas fa-sliders-h mr-2"></i>網站設定</button>
                         
                         <button onclick="switchTab('code-editor')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors ml-auto" data-tab="code-editor"><i class="fas fa-code mr-2"></i>頁面原始碼</button>
@@ -185,6 +174,29 @@
                                 </div>
                                 <div id="staff-contacts-editor" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 min-h-[100px]"></div>
                             </div>
+                        </div>
+                        
+                        <div id="tab-colors" class="tab-content hidden animate-fade-in-up">
+                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
+                                <div><h3 class="text-lg font-bold text-gray-800">網站主題顏色管理</h3><p class="text-sm text-gray-500 mt-1">在此新增或修改顏色，儲存後會同步更新至卡片與聯絡人的選項中。</p></div>
+                                <button onclick="addColorItem()" class="bg-btnGreen text-white hover:bg-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 text-sm"><i class="fas fa-plus"></i> 新增顏色</button>
+                            </div>
+                            <div class="bg-blue-50 border border-blue-100 rounded-lg p-4 mb-6">
+                                <h4 class="font-bold text-thuBlue text-sm mb-2"><i class="fas fa-info-circle mr-1"></i> 使用說明</h4>
+                                <ul class="list-disc list-inside text-xs text-blue-800 space-y-1">
+                                    <li><strong>識別碼 (ID)：</strong> 系統內部使用的唯一代碼 (如: thu, gold)，請勿使用特殊符號或空格。</li>
+                                    <li><strong>顯示名稱：</strong> 在後台選單中看到的中文名稱。</li>
+                                    <li><strong>Hex 色碼：</strong> 顏色的十六進位代碼 (如: #002147)。</li>
+                                </ul>
+                            </div>
+                            <div id="colors-list-header" class="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-100 rounded-t-lg text-xs font-bold text-gray-500 uppercase tracking-wider">
+                                <div class="col-span-1 text-center">預覽</div>
+                                <div class="col-span-3">顯示名稱</div>
+                                <div class="col-span-3">識別碼 (ID)</div>
+                                <div class="col-span-3">Hex 色碼</div>
+                                <div class="col-span-2 text-right">操作</div>
+                            </div>
+                            <div id="colors-list-editor" class="space-y-2"></div>
                         </div>
 
                         <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
@@ -287,19 +299,9 @@
                              <div class="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg shadow-sm">
                                 <div class="flex items-start"><div class="flex-shrink-0"><i class="fas fa-shield-alt text-orange-500 text-lg mt-0.5"></i></div><div class="ml-3"><h3 class="text-sm font-bold text-orange-800">資安重要提醒</h3><p class="text-sm text-orange-700 mt-1 leading-relaxed">由於本網站架構為公開靜態網站，資料皆為<strong>公開可讀取</strong>。請<strong>切勿</strong>在此輸入個資、身分證號或內部機密。</p></div></div>
                             </div>
-                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
+                            <div class="grid grid-cols-1 gap-6 pb-20 max-w-4xl">
                                 <div id="settings-form" class="space-y-6"></div>
-                                <div>
-                                     <div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
-                                        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
-                                            <label class="block text-sm font-bold text-gray-700">自定義顏色管理</label>
-                                            <button onclick="addColor()" class="text-xs bg-thuBlue text-white px-2 py-1 rounded hover:bg-blue-800"><i class="fas fa-plus"></i> 新增顏色</button>
-                                        </div>
-                                        <p class="text-xs text-gray-500 mb-3"><i class="fas fa-info-circle"></i> 此處定義卡片與標籤可用的顏色。代碼(Key)建議使用英文字母，勿隨意更改既有的代碼，以免網頁樣式跑版。</p>
-                                        <div id="color-settings-list" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
-                                    </div>
                                 </div>
-                            </div>
                         </div>
 
                         <div id="tab-code-editor" class="tab-content hidden animate-fade-in-up">
@@ -358,31 +360,11 @@
         let currentSourceFile = '';
         let currentSourceSha = '';
 
-        // Default Colors Definition (Updated Hex Codes)
+        // Default Colors if data.json is missing them (Match color_test.txt)
         const defaultColors = [
-            { key: 'thu', name: '預設藍 (Default)', hex: '#002147' },
-            { key: 'thubluenew', name: '東海藍 (New)', hex: '#002147' },
-            { key: 'glorygold', name: '榮耀金 (Gold)', hex: '#997933' },
-            { key: 'phoenixorange', name: '鳳凰橘', hex: '#FF5A45' },
-            { key: 'brickred', name: '磚瓦紅', hex: '#A14332' },
-            { key: 'lapisyellow', name: '琉璃黃', hex: '#E89B00' },
-            { key: 'acaciagreen', name: '相思綠', hex: '#4A6B3E' },
-            { key: 'lakeblue', name: '湖心藍', hex: '#365C68' },
-            { key: 'concretegrey', name: '清水灰', hex: '#A6A9AA' },
-            { key: 'windowblack', name: '窗框黑', hex: '#2B2B2B' },
-            { key: 'milkwhite', name: '鮮乳白', hex: '#F4F1EA' },
-            { key: 'grassgreen', name: '青草綠', hex: '#219653' },
-            // Old colors for compatibility
-            { key: 'gold', name: '舊版金色', hex: '#fbbf24' },
-            { key: 'blue', name: '舊版天藍', hex: '#60a5fa' },
-            { key: 'green', name: '舊版綠色', hex: '#34d399' },
-            { key: 'orange', name: '舊版橘色', hex: '#fb923c' },
-            { key: 'purple', name: '舊版紫色', hex: '#a78bfa' },
-            { key: 'red', name: '舊版紅色', hex: '#f87171' },
-            { key: 'teal', name: '舊版藍綠', hex: '#2dd4bf' },
-            { key: 'indigo', name: '舊版靛藍', hex: '#818cf8' },
-            { key: 'cyan', name: '舊版青色', hex: '#22d3ee' },
-            { key: 'rose', name: '舊版玫瑰', hex: '#fb7185' }
+            { name: "預設藍 (Unified)", id: "thu", hex: "#002147" },
+            { name: "榮耀金 (Glory Gold)", id: "glorygold", hex: "#997933" },
+            { name: "東海藍 (New)", id: "thubluenew", hex: "#002147" }
         ];
 
         // --- Custom Message Modal Logic ---
@@ -455,8 +437,8 @@
                 if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
                 if (currentData.pages['laws'] && !currentData.pages['laws'].categories) currentData.pages['laws'].categories = JSON.parse(JSON.stringify(defaultCategories));
                 if (!currentData.departments) currentData.departments = [];
-                // Initialize customColors if missing
-                if (!currentData.customColors) currentData.customColors = JSON.parse(JSON.stringify(defaultColors));
+                // Initialize colors if missing (Using 'colors' key from color_test.txt)
+                if (!currentData.colors) currentData.colors = JSON.parse(JSON.stringify(defaultColors));
 
                 localStorage.setItem('gh_owner', owner);
                 localStorage.setItem('gh_repo', repo);
@@ -530,72 +512,72 @@
             });
         }
 
-        // --- Helper for Dynamic Colors ---
-        function getColorOptionsHtml(selectedValue) {
+        // --- Helper for Dynamic Colors (Updated based on color_test.txt) ---
+        function getColorOptions(selectedId) {
             let options = '';
-            // If customColors is not loaded yet, use default
-            const colors = (currentData && currentData.customColors) ? currentData.customColors : defaultColors;
+            // Ensure colors exist
+            const colors = currentData.colors || defaultColors;
             
             colors.forEach(c => {
-                const selected = (selectedValue === c.key) ? 'selected' : '';
-                options += `<option value="${c.key}" ${selected}>${c.name}</option>`;
+                const isSelected = c.id === selectedId ? 'selected' : '';
+                options += `<option value="${c.id}" ${isSelected} style="color:${c.hex}; font-weight:bold;">${c.name}</option>`;
             });
             return options;
         }
 
-        function renderColorSettings() {
-            const container = document.getElementById('color-settings-list');
-            if(!container || !currentData || !currentData.customColors) return;
-            container.innerHTML = '';
-            
-            currentData.customColors.forEach((c, index) => {
-                container.innerHTML += `
-                    <div class="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200 color-setting-item" data-index="${index}">
-                        <div class="color-preview-circle" style="background-color: ${c.hex}"></div>
-                        <input type="text" class="color-key border border-gray-300 rounded p-1 text-xs w-24 font-mono text-gray-500" value="${c.key}" placeholder="Key" title="代碼(Key)">
-                        <input type="text" class="color-name border border-gray-300 rounded p-1 text-xs flex-grow" value="${c.name}" placeholder="名稱">
-                        <div class="flex items-center gap-1 border border-gray-300 rounded bg-white p-1">
-                            <input type="color" class="w-6 h-6 p-0 border-0 cursor-pointer" value="${c.hex}" onchange="updateColorHexInput(this)">
-                            <input type="text" class="color-hex border-none outline-none text-xs w-16 font-mono uppercase" value="${c.hex}" onchange="updateColorPicker(this)">
-                        </div>
-                        <button onclick="removeColor(${index})" class="text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash-alt"></i></button>
-                    </div>
-                `;
-            });
-        }
-        
-        function updateColorHexInput(picker) {
-            const hexInput = picker.nextElementSibling;
-            hexInput.value = picker.value.toUpperCase();
-            picker.closest('.color-setting-item').querySelector('.color-preview-circle').style.backgroundColor = picker.value;
-        }
-
-        function updateColorPicker(textInput) {
-            const picker = textInput.previousElementSibling;
-            picker.value = textInput.value;
-            textInput.closest('.color-setting-item').querySelector('.color-preview-circle').style.backgroundColor = textInput.value;
-        }
-
-        function addColor() {
-            collectDataFromEditors();
-            currentData.customColors.push({ key: 'new_color', name: '新顏色', hex: '#000000' });
-            renderColorSettings();
-        }
-
-        function removeColor(index) {
-            collectDataFromEditors();
-            showMsg("刪除確認", "確定刪除此顏色設定？這可能會導致使用此顏色的元件顯示異常。", "confirm", () => {
-                currentData.customColors.splice(index, 1);
-                renderColorSettings();
-            });
-        }
-
         // --- Render Functions ---
+        // 2. Color Manager (New function from color_test.txt)
+        function renderColorManager() {
+            const container = document.getElementById('colors-list-editor'); container.innerHTML = '';
+            const colors = currentData.colors || [];
+            
+            colors.forEach((color, index) => {
+                container.innerHTML += `
+                <div class="grid grid-cols-12 gap-4 px-4 py-3 bg-white border border-gray-200 items-center color-item" data-index="${index}">
+                    <div class="col-span-1 flex justify-center">
+                        <div class="color-preview-circle" style="background-color: ${color.hex};"></div>
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-name w-full border rounded p-1.5 text-sm" value="${color.name}" placeholder="名稱">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-id w-full border rounded p-1.5 text-sm font-mono text-gray-600" value="${color.id}" placeholder="ID (英文)">
+                    </div>
+                    <div class="col-span-3">
+                        <div class="flex items-center gap-2">
+                             <input type="color" class="w-8 h-8 p-0 border-0 rounded cursor-pointer" value="${color.hex}" onchange="this.parentElement.nextElementSibling.value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor = this.value;">
+                             <input type="text" class="c-hex w-full border rounded p-1.5 text-sm font-mono uppercase" value="${color.hex}" onchange="this.previousElementSibling.previousElementSibling.value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor = this.value;">
+                        </div>
+                    </div>
+                    <div class="col-span-2 text-right">
+                        <button onclick="deleteColorItem(${index})" class="text-red-400 hover:text-red-600 p-2"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>`;
+            });
+            // Update other editors when colors change
+             if(document.getElementById('cards-list-editor').children.length > 0) renderCardsList(); 
+             if(document.getElementById('staff-contacts-editor').children.length > 0) renderContactsList();
+        }
+
+        function addColorItem() {
+            collectDataFromEditors();
+            currentData.colors.push({ name: "新顏色", id: "new_color", hex: "#000000" });
+            renderColorManager();
+        }
+
+        function deleteColorItem(index) {
+            if(confirm("確定刪除此顏色設定？這可能會影響使用此顏色的卡片。")) {
+                collectDataFromEditors();
+                currentData.colors.splice(index, 1);
+                renderColorManager();
+            }
+        }
+
         function renderCardsList() {
             const container = document.getElementById('cards-list-editor'); if(!container) return; container.innerHTML = '';
             currentData.cards.forEach((card, index) => {
-                const colorOptions = getColorOptionsHtml(card.Type);
-                container.innerHTML += `<div class="card-item bg-white p-5 rounded-xl shadow-sm border border-gray-200 group relative" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-grip-lines text-gray-400"></i></div><div class="mt-4 grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 text-sm font-bold text-thuBlue" value="${card.Title}"></div><div><label class="block text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-sm text-thuGold" value="${card.Badge||''}"></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2 text-sm" value="${card.Description}"></div><div><label class="block text-xs font-bold text-gray-400">Icon</label><input type="text" class="card-icon w-full border rounded p-2 text-sm font-mono text-gray-500" value="${card.Icon}"></div><div><label class="block text-xs font-bold text-gray-400">顏色類型</label><select class="card-type w-full border rounded p-2 text-sm">${colorOptions}</select></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${card.Link}"></div></div><button onclick="deleteCardItem(${index})" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash"></i></button></div>`;
+                const colorOptions = getColorOptions(card.Type); // Uses new getColorOptions
+                container.innerHTML += `<div class="card-item bg-white p-5 rounded-xl shadow-sm border border-gray-200 group relative" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-grip-lines text-gray-400"></i></div><div class="mt-4 grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 text-sm font-bold text-thuBlue" value="${card.Title}"></div><div><label class="block text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-sm text-thuGold" value="${card.Badge||''}"></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2 text-sm" value="${card.Description}"></div><div><label class="block text-xs font-bold text-gray-400">Icon</label><input type="text" class="card-icon w-full border rounded p-2 text-sm font-mono text-gray-500" value="${card.Icon}"></div><div><label class="block text-xs font-bold text-gray-400">主題顏色</label><select class="card-type w-full border rounded p-2 text-sm cursor-pointer hover:bg-gray-50">${colorOptions}</select></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${card.Link}"></div></div><button onclick="deleteCardItem(${index})" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash"></i></button></div>`;
             });
             if (sortableCards) sortableCards.destroy(); sortableCards = Sortable.create(container, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
         }
@@ -607,15 +589,16 @@
             officeContainer.innerHTML = `<div class="office-item bg-blue-50/50 p-6 rounded-xl border border-blue-100"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-xs font-bold text-gray-400">單位名稱</label><input type="text" class="contact-name w-full border rounded p-2 font-bold" value="${office.Name}"></div><div><label class="text-xs font-bold text-gray-400">Email</label><input type="text" class="contact-email w-full border rounded p-2 font-mono" value="${office.Email}"></div><div class="hidden"><input type="text" class="contact-title" value="Office"></div><div class="col-span-2"><label class="text-xs font-bold text-gray-400">描述</label><input type="text" class="contact-desc w-full border rounded p-2" value="${office.Description}"></div></div></div>`;
             const staff = currentData.contacts.filter(c => c.Type !== 'office');
             staff.forEach((c, index) => { 
-                const colorOptions = getColorOptionsHtml(c.Type || 'blue');
-                staffContainer.innerHTML += `<div class="staff-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab flex items-center justify-center hover:bg-gray-50 rounded-t-xl"><i class="fas fa-grip-lines text-gray-300"></i></div><div class="mt-4 space-y-2"><div class="flex gap-2"><div class="w-2/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">姓名</label><input type="text" class="contact-name w-full border rounded p-1.5 font-bold text-sm" value="${c.Name}"></div><div class="w-1/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">職稱</label><input type="text" class="contact-title w-full border rounded p-1.5 text-sm text-gray-500 text-center" value="${c.Title}"></div></div><div><label class="text-[10px] font-bold text-gray-400 block mb-1">Email</label><input type="text" class="contact-email w-full border rounded p-1.5 text-xs font-mono text-gray-500" value="${c.Email}"></div><div class="flex gap-2"><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">分機</label><input type="text" class="contact-phone w-full border rounded p-1.5 text-xs text-gray-500" value="${c.Phone||''}"></div><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">顏色</label><select class="contact-type w-full border rounded p-1.5 text-xs">${colorOptions}</select></div><input type="hidden" class="contact-desc" value="${c.Description||''}"></div></div><button onclick="deleteContactItem(${index})" class="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times-circle"></i></button></div>`; 
+                const colorOptions = getColorOptions(c.Type || 'blue'); // Uses new getColorOptions
+                // !!! 修改處：將隱藏的 Description 欄位改為可見的 Textarea !!!
+                staffContainer.innerHTML += `<div class="staff-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab flex items-center justify-center hover:bg-gray-50 rounded-t-xl"><i class="fas fa-grip-lines text-gray-300"></i></div><div class="mt-4 space-y-2"><div class="flex gap-2"><div class="w-2/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">姓名</label><input type="text" class="contact-name w-full border rounded p-1.5 font-bold text-sm" value="${c.Name}"></div><div class="w-1/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">職稱</label><input type="text" class="contact-title w-full border rounded p-1.5 text-sm text-gray-500 text-center" value="${c.Title}"></div></div><div><label class="text-[10px] font-bold text-gray-400 block mb-1">Email</label><input type="text" class="contact-email w-full border rounded p-1.5 text-xs font-mono text-gray-500" value="${c.Email}"></div><div class="flex gap-2"><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">分機</label><input type="text" class="contact-phone w-full border rounded p-1.5 text-xs text-gray-500" value="${c.Phone||''}"></div><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">顏色</label><select class="contact-type w-full border rounded p-1.5 text-xs">${colorOptions}</select></div></div><div class="mt-2"><label class="text-[10px] font-bold text-gray-400 block mb-1">負責業務 (職掌)</label><textarea class="contact-desc w-full border rounded p-1.5 text-xs text-gray-600 h-16 resize-y" placeholder="請輸入負責業務...">${c.Description||''}</textarea></div></div><button onclick="deleteContactItem(${index})" class="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times-circle"></i></button></div>`; 
             });
             if (sortableStaff) sortableStaff.destroy(); sortableStaff = Sortable.create(staffContainer, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
         }
 
         function renderNewsList() { 
             const container = document.getElementById('news-list-editor'); if(!container) return; container.innerHTML = '';
-            currentData.news.forEach((news, index) => { container.innerHTML += `<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${news.Date}"><select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${news.Type==='公告'?'selected':''}>公告</option><option value="活動" ${news.Type==='活動'?'selected':''}>活動</option><option value="緊急" ${news.Type==='緊急'?'selected':''}>緊急</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew w-4 h-4 text-thuBlue" ${news.IsNew?'checked':''}><label class="text-sm">顯示 NEW</label></div><button onclick="deleteNewsItem(${index})" class="ml-auto text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button></div><div><input type="text" class="news-title w-full border rounded p-2 font-bold text-gray-700" value="${news.Title}" placeholder="公告標題"></div><div><input type="text" class="news-link w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${news.Link}" placeholder="連結網址 (選填)"></div><div><textarea class="news-content w-full border rounded p-2 text-sm h-20" placeholder="內容摘要...">${news.Content}</textarea></div></div>`; });
+            currentData.news.forEach((news, index) => { container.innerHTML += `<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${news.Date}"><select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${news.Type==='公告'?'selected':''}>公告</option><option value="活動" ${news.Type==='活動'?'selected':''}>活動</option><option value="緊急" ${news.Type==='緊急'?'selected':''}>緊急</option><option value="重要公告" ${news.Type==='重要公告'?'selected':''}>重要公告</option><option value="計畫申請" ${news.Type==='計畫申請'?'selected':''}>計畫申請</option><option value="一般公告" ${news.Type==='一般公告'?'selected':''}>一般公告</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew w-4 h-4 text-thuBlue" ${news.IsNew?'checked':''}><label class="text-sm">顯示 NEW</label></div><button onclick="deleteNewsItem(${index})" class="ml-auto text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button></div><div><input type="text" class="news-title w-full border rounded p-2 font-bold text-gray-700" value="${news.Title}" placeholder="公告標題"></div><div><input type="text" class="news-link w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${news.Link}" placeholder="連結網址 (選填)"></div><div><textarea class="news-content w-full border rounded p-2 text-sm h-20" placeholder="內容摘要...">${news.Content}</textarea></div></div>`; });
         }
 
         function renderDepartmentList(container) {
@@ -661,7 +644,7 @@
                 let inputHtml = config.type === 'textarea' ? `<textarea data-key="${key}" rows="3" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm font-mono">${value}</textarea>` : `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 rounded p-3 text-sm focus:ring-2 focus:ring-thuBlue outline-none" />`;
                 settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm"><label class="block text-sm font-bold text-gray-700 mb-2">${config.label}</label>${inputHtml}</div>`;
             }
-            renderColorSettings(); // Render the new color settings
+            renderColorManager(); // Render the new color manager
             renderCardsList(); renderContactsList(); renderNewsList(); renderPageEditor();
         }
 
@@ -681,8 +664,21 @@
 
         function collectDataFromEditors() {
             if (!currentData) return;
+            // Collect Settings
             document.querySelectorAll('.setting-input').forEach(input => { const key = input.getAttribute('data-key'); let val = input.value; if (key === 'HeroSubtitle') { val = val.replace(/\n/g, '<br>'); } if(key) currentData.settings[key] = val; });
             currentData.settings['Copyright'] = `Copyright © ${new Date().getFullYear()} 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.`;
+            
+            // Collect Colors (New)
+            const colorItems = [];
+            document.querySelectorAll('.color-item').forEach(div => {
+                colorItems.push({
+                    name: div.querySelector('.c-name').value,
+                    id: div.querySelector('.c-id').value,
+                    hex: div.querySelector('.c-hex').value
+                });
+            });
+            currentData.colors = colorItems;
+
             const newsItems = []; document.querySelectorAll('.news-item').forEach(div => { newsItems.push({ Date: div.querySelector('.news-date').value, Type: div.querySelector('.news-type').value, Title: div.querySelector('.news-title').value, Link: div.querySelector('.news-link').value, Content: div.querySelector('.news-content').value, IsNew: div.querySelector('.news-isnew').checked }); }); currentData.news = newsItems;
             const cardItems = []; document.querySelectorAll('.card-item').forEach(div => { cardItems.push({ Title: div.querySelector('.card-title').value, Badge: div.querySelector('.card-badge').value, Description: div.querySelector('.card-desc').value, Icon: div.querySelector('.card-icon').value, Type: div.querySelector('.card-type').value, Link: div.querySelector('.card-link').value }); }); currentData.cards = cardItems;
             
@@ -691,17 +687,6 @@
             if(officeDiv) contactItems.push({ Name: officeDiv.querySelector('.contact-name').value, Title: officeDiv.querySelector('.contact-title').value, Email: officeDiv.querySelector('.contact-email').value, Phone: "", Description: officeDiv.querySelector('.contact-desc').value, Type: "office" });
             document.querySelectorAll('.staff-item').forEach(div => { contactItems.push({ Name: div.querySelector('.contact-name').value, Title: div.querySelector('.contact-title').value, Email: div.querySelector('.contact-email').value, Phone: div.querySelector('.contact-phone').value, Description: div.querySelector('.contact-desc').value, Type: div.querySelector('.contact-type').value }); }); 
             currentData.contacts = contactItems;
-
-            // Collect Color Settings
-            const customColors = [];
-            document.querySelectorAll('.color-setting-item').forEach(div => {
-                customColors.push({
-                    key: div.querySelector('.color-key').value,
-                    name: div.querySelector('.color-name').value,
-                    hex: div.querySelector('.color-hex').value
-                });
-            });
-            currentData.customColors = customColors;
 
             if (currentData.pages && currentData.pages[activePageId]) {
                 if (activePageId === 'evaluation') {
@@ -777,7 +762,7 @@
 
         function addCardItem() { collectDataFromEditors(); currentData.cards.push({Title:"新卡片", Badge:"", Description:"", Icon:"fa-star", Type:"thu", Link:"#"}); renderCardsList(); }
         function deleteCardItem(idx) { showMsg("刪除確認", "確定刪除此卡片？", "confirm", () => { collectDataFromEditors(); currentData.cards.splice(idx,1); renderCardsList(); }); }
-        function addContactItem() { collectDataFromEditors(); currentData.contacts.push({Name:"新成員", Title:"職稱", Email:"", Phone:"", Type:"staff"}); renderContactsList(); }
+        function addContactItem() { collectDataFromEditors(); currentData.contacts.push({Name:"新成員", Title:"職稱", Email:"", Phone:"", Type:"thu"}); renderContactsList(); }
         function deleteContactItem(idx) { const realIdx = currentData.contacts.filter(c => c.Type === 'office').length > 0 ? idx + 1 : idx; showMsg("刪除確認", "確定刪除此聯絡人？", "confirm", () => { collectDataFromEditors(); currentData.contacts.splice(realIdx, 1); renderContactsList(); }); }
         function autoSortContacts() { collectDataFromEditors(); showMsg("功能提示", "此功能尚未實作", "info"); } 
         function addNewsItem() { collectDataFromEditors(); currentData.news.unshift({Date: new Date().toISOString().split('T')[0], Type:"公告", Title:"", Link:"", Content:"", IsNew:true}); renderNewsList(); }
@@ -811,6 +796,7 @@
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
             document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('border-thuBlue', 'text-thuBlue', 'bg-white', 'font-bold');
             if(tabId === 'raw') document.getElementById('raw-json').value = JSON.stringify(currentData, null, 4);
+            if(tabId === 'colors') renderColorManager();
             if(tabId === 'cards') renderCardsList(); if(tabId === 'contacts') renderContactsList(); if(tabId === 'news') renderNewsList(); if(tabId === 'pages') renderPageEditor();
         }
 
