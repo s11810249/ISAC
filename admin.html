@@ -38,8 +38,17 @@
         /* 拖曳時的樣式 */
         .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002147; }
         .sortable-drag { opacity: 1 !important; } /* 確保拖曳中的元素完全不透明 */
-        .drag-handle { cursor: grab; touch-action: none; } 
-        .drag-handle:active { cursor: grabbing; }
+        
+        /* --- 修正：拖曳把手樣式確保跨平台兼容性 --- */
+        .drag-handle { 
+            cursor: grab; 
+            touch-action: none; /* 必須保留，用於防止行動裝置上的瀏覽器預設捲動行為 */
+            user-select: none; /* 防止文字被選取 */
+        } 
+        .drag-handle:active { 
+            cursor: grabbing; 
+        }
+        /* --- 修正結束 --- */
         
         .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
         .sidebar-btn:hover { background-color: #f3f4f6; color: #002147; }
@@ -437,6 +446,21 @@
             'OriginContent': { label: '計畫緣起 - 內容 (HTML)', type: 'textarea', group: 2 } 
         };
 
+        // --- 修正後的 Sortable.js 基礎設定，用於解決桌機「黏住」問題 ---
+        const SORTABLE_BASE_OPTIONS = {
+            handle: '.drag-handle', 
+            animation: 150, 
+            ghostClass: 'sortable-ghost', 
+            dragClass: 'sortable-drag',
+            forceFallback: true,        // 強制使用 Fallback 模式
+            fallbackOnBody: true,       // 關鍵：將拖曳元素附加到 body，確保 mouseup 事件被正確捕獲
+            onEnd:()=> { 
+                collectDataFromEditors(); 
+                markUnsaved(); 
+            }
+        };
+        // --- 修正後的 Sortable.js 基礎設定結束 ---
+
         // --- Core Functions ---
         async function loadData() {
             const owner = document.getElementById('gh-owner').value.trim();
@@ -511,7 +535,7 @@
         
         async function fetchRepoFile(path) {
             const owner = localStorage.getItem('gh_owner');
-            const repo = localStorage.getItem('gh_repo');
+            const repo = localStorage.getItem('gh-repo');
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
             
             const res = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
@@ -1040,17 +1064,10 @@
             const deleteFunc = mode === 'page' ? 'deletePageItem' : 'deleteTemplateItem';
             const saveFunc = mode === 'page' ? 'saveSingleItem' : 'saveTemplateItem';
 
-            // --- 強化 Sortable.js 設置，以解決部署環境問題 ---
+            // --- 強化 Sortable.js 設置，以解決部署環境問題 (使用 BASE OPTIONS) ---
             const sortableOptions = {
-                handle: '.drag-handle', 
-                animation: 150, 
-                ghostClass: 'sortable-ghost', 
-                dragClass: 'sortable-drag', // 增加拖曳中的類別
-                forceFallback: true, 
-                fallbackOnBody: true, // 讓拖曳物件跟隨滑鼠，增強兼容性
-                // 由於 Page/Template 列表在一個獨立的滾動容器內，需要啟用滾動偵測
-                scroll: true, 
-                onEnd: () => { collectDataFromEditors(); markUnsaved(); }
+                ...SORTABLE_BASE_OPTIONS,
+                scroll: true, // 專為列表滾動容器設計
             };
             // --- 強化 Sortable.js 設置 END ---
 
@@ -1158,15 +1175,7 @@
             
             if(sortableCards) sortableCards.destroy(); 
             // 重要：Grid 佈局下，ghostClass 有時會跑版，但基本拖曳功能正常
-            sortableCards = Sortable.create(c, {
-                handle:'.drag-handle', 
-                animation: 150, 
-                ghostClass: 'sortable-ghost', 
-                dragClass: 'sortable-drag', // 增加 dragClass
-                forceFallback: true, 
-                fallbackOnBody: true, // 增加 fallbackOnBody
-                onEnd:()=> { collectDataFromEditors(); markUnsaved(); }
-            }); 
+            sortableCards = Sortable.create(c, SORTABLE_BASE_OPTIONS); 
         }
 
         function renderContactsList() { 
@@ -1192,15 +1201,7 @@
                 </div>`;
             });
             if(sortableStaff) sortableStaff.destroy(); 
-            sortableStaff = Sortable.create(sc, {
-                handle:'.drag-handle', 
-                animation: 150, 
-                ghostClass: 'sortable-ghost', 
-                dragClass: 'sortable-drag', // 增加 dragClass
-                forceFallback: true, 
-                fallbackOnBody: true, // 增加 fallbackOnBody
-                onEnd:()=> { collectDataFromEditors(); markUnsaved(); }
-            });
+            sortableStaff = Sortable.create(sc, SORTABLE_BASE_OPTIONS);
         }
         function renderNewsList() { const c=document.getElementById('news-list-editor'); c.innerHTML=''; currentData.news.forEach((n,i)=>{ c.innerHTML+=`<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${n.Date}" onchange="markUnsaved()"><select class="news-type border rounded p-2 text-sm w-32" onchange="markUnsaved()"><option value="公告" ${n.Type==='公告'?'selected':''}>公告</option><option value="活動" ${n.Type==='活動'?'selected':''}>活動</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew" ${n.IsNew?'checked':''} onchange="markUnsaved()"><label class="text-sm">NEW</label></div><button onclick="deleteNewsItem(${i})" class="ml-auto text-red-400"><i class="fas fa-trash"></i></button></div><input class="news-title w-full border rounded p-2 font-bold" value="${n.Title}" onchange="markUnsaved()"><input class="news-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${n.Link}" onchange="markUnsaved()"><textarea class="news-content w-full border rounded p-2 text-sm h-20" onchange="markUnsaved()">${n.Content}</textarea></div>`; }); }
         
