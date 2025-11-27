@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>東海大學實習業務協作平台</title>
-    <!-- 核心函式庫 -->
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -17,6 +16,18 @@
                         thuBlue: '#002E5D',
                         thuLightBlue: '#eef6fc',
                         thuGold: '#C6A87C',
+                        // === 新增自定義顏色 ===
+                        lapisYellow: '#E89B00',   // 琉璃黃
+                        concreteGrey: '#A6A9AA',  // 清水灰
+                        brickRed: '#A14332',      // 磚瓦紅
+                        windowBlack: '#2B2B2B',   // 窗框黑
+                        acaciaGreen: '#4A6B3E',   // 相思綠
+                        milkWhite: '#F4F1EA',     // 鮮乳白
+                        lakeBlue: '#365C68',      // 湖心藍
+                        phoenixOrange: '#FF5A45', // 鳳凰橘
+                        gloryGold: '#E8B72D',     // 榮耀金
+                        thuBlueNew: '#005596',    // 東海藍
+                        grassGreen: '#219653',    // 青草綠
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -148,40 +159,32 @@
         }
     </style>
 </head>
-<!-- 修正：加入 overflow-x-hidden 防止橫向滾動 -->
 <body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen overflow-x-hidden">
     
-    <!-- 載入畫面 -->
     <div id="loading-overlay">
         <div class="relative w-20 h-20 mb-4">
             <div class="spinner"></div>
             <div id="loading-percent">0%</div>
         </div>
-        <!-- 載入文字修正為「載入中...」 -->
         <div class="text-white font-medium text-lg">載入中...</div>
     </div>
 
-    <!-- Sticky Header (滾動後出現的頂部導覽列) -->
     <nav id="sticky-header" class="fixed top-0 left-0 w-full bg-thuBlue/95 backdrop-blur-sm shadow-lg z-40 transition-all duration-500 ease-in-out -translate-y-full opacity-0 flex items-center h-16 px-4 sm:px-8">
         <div class="w-full max-w-7xl mx-auto flex justify-between items-center">
             <div class="flex items-center gap-3">
                 <img id="nav-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-6 sm:h-8 w-auto">
                 <div class="text-white leading-none flex flex-col justify-center">
-                    <!-- 修正 3: 矮頁首標題修正為完整名稱 -->
                     <span class="font-bold text-base sm:text-lg tracking-widest" id="nav-title">東海大學實習業務協作平台</span>
                 </div>
             </div>
-            <!-- 修正：手機版頁首連結加入文字說明，避免只有圖示造成誤會 -->
             <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 text-white hover:text-thuGold transition-colors text-xs sm:text-sm font-medium whitespace-nowrap">
                 <i class="fa-solid fa-house"></i> <span>東海首頁</span>
             </a>
         </div>
     </nav>
 
-    <!-- Hero Section (填滿畫面, min-h-screen) -->
     <div class="hero-bg text-white relative">
         <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
-            <!-- 修正：手機板強調「東海大學首頁」，使用金底白字，並顯示完整文字 -->
             <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-thuGold text-white border border-thuGold rounded-full hover:bg-[#b58f2a] transition-all duration-300 font-bold backdrop-blur-sm shadow-md text-sm sm:text-base hover:shadow-lg hover:-translate-y-0.5">
                 <i class="fa-solid fa-house"></i> 東海大學首頁
             </a>
@@ -192,19 +195,13 @@
              <div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
         </div>
 
-        <!-- Hero Content (Primary Focus) -->
-        <!-- 修正: 加入 w-full 確保容器寬度受控，調整 px 以適應手機 -->
         <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center pt-16 pb-24">
             
-            <!-- 1. Logo (獨立一行, 陰影效果, hover發光) -->
-            <!-- 修正: 調整 Logo 尺寸 (h-16 手機, md:h-24 電腦) -->
             <div class="title-group group flex flex-col items-center cursor-pointer animate-fade-in-up">
                 <div class="logo-container mb-6 sm:mb-8">
                     <img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-16 md:h-24 w-auto">
                 </div>
                 
-                <!-- 2. 標題 (加入 title-group class, 統一控制 logo 與文字的 hover 效果) -->
-                <!-- 修正: 調整標題尺寸 (text-2xl 手機, md:text-5xl 電腦)，減少間距 (tracking-wide 手機) -->
                 <div class="text-center mb-6 w-full" style="animation-delay: 0.2s;">
                     <h1 class="text-2xl sm:text-3xl md:text-5xl font-black tracking-wide md:tracking-widest leading-tight drop-shadow-xl mb-2 px-2">
                         <span id="hero-title-1" class="inline-block">實習業務</span><span class="text-thuGold inline-block" id="hero-title-2">協作平台</span>
@@ -213,11 +210,8 @@
                 </div>
             </div>
             
-            <!-- 3. 標語 -->
             <p id="hero-subtitle" class="text-base sm:text-lg text-blue-100/90 font-light mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in-up px-4" style="animation-delay: 0.4s;">載入中...</p>
             
-            <!-- 4. 操作按鈕 -->
-            <!-- 修正: 調整按鈕 padding (px-6 手機) -->
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 animate-fade-in-up w-full sm:w-auto px-4 sm:px-0" style="animation-delay: 0.6s;">
                 <button onclick="toggleModal('origin-modal')" class="group relative px-6 sm:px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
                     <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
@@ -228,7 +222,6 @@
                 </a>
             </div>
 
-            <!-- 5. 最新消息 -->
             <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-4 sm:p-5 text-left animate-fade-in-up hidden mt-8 mx-4" style="animation-delay: 0.8s;">
                 <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
                     <div class="flex items-center gap-2">
@@ -244,22 +237,18 @@
                 </ul>
             </div>
             
-            <!-- 6. 滾動箭頭 -->
-            <!-- 修正 4: 移除 onclick，改用 JavaScript 執行自訂滾動 -->
             <div id="scroll-arrow-target" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;" onclick="customScrollToMain()">
                 <i class="fas fa-chevron-down text-3xl"></i>
             </div>
         </div>
     </div>
 
-    <!-- Main Content Area -->
     <main id="main-content" class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-10 pb-20 flex-grow w-full">
         <div id="cards-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 sm:gap-8">
              <div class="col-span-full text-center text-gray-500 p-10 bg-white rounded-xl shadow-lg">讀取中...</div>
         </div>
     </main>
 
-    <!-- Fixed Footer (預設隱藏) -->
     <footer id="footer-trigger" class="fixed bottom-0 left-0 w-full z-50 bg-gray-800 text-gray-400 py-3 text-center text-xs border-t-3 border-thuGold hidden">
         <div class="container mx-auto px-4">
             <div class="flex flex-col items-center justify-center gap-1">
@@ -269,17 +258,12 @@
         </div>
     </footer>
 
-    <!-- Chatbot Button Stack -->
-    <!-- 修正 2: 整合 Chatbot Button 和 Scroll-to-Top Button 到一個堆棧容器，並調整位置 -->
-    <!-- 修正：將 bottom-8 改為 bottom-20 (手機板) 以避免蓋住 footer -->
     <div id="action-stack" class="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50 flex flex-col items-end gap-2">
         
-        <!-- 滑到最上方的按鈕 -->
         <button id="scroll-to-top" onclick="scrollToTop()" class="w-10 h-10 sm:w-12 sm:h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center z-50">
             <i class="fas fa-chevron-up text-lg sm:text-xl"></i>
         </button>
 
-        <!-- Chatbot Button (放在堆棧最下面，z-index 確保在 Footer 之上) -->
         <div class="flex flex-col items-end z-50">
             <div class="bg-white text-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-lg border border-gray-100 text-xs sm:text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
                 需要協助嗎？
@@ -292,7 +276,6 @@
     </div>
 
 
-    <!-- Modal 1: 計畫緣起 -->
     <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div>
         <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
@@ -307,7 +290,6 @@
         </div>
     </div>
 
-    <!-- Modal 2: 聯絡資訊 -->
     <div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div>
         <div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
@@ -329,7 +311,6 @@
         </div>
     </div>
 
-    <!-- Modal 3: 單一公告詳情 -->
     <div id="news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('news-modal')"></div>
         <div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
@@ -354,11 +335,9 @@
         </div>
     </div>
 
-    <!-- Modal 4: 所有公告列表 -->
     <div id="all-news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
         <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('all-news-modal')"></div>
         <div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded-xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
-            <!-- Header -->
             <div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-xl z-10">
                 <div class="flex items-center gap-3">
                     <i class="fas fa-list-ul text-thuGold text-2xl"></i>
@@ -366,7 +345,6 @@
                 </div>
                 <div class="cursor-pointer z-50" onclick="toggleModal('all-news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div>
             </div>
-            <!-- 工具列 -->
             <div class="flex-none px-6 sm:px-8 pt-6 pb-2 bg-gray-50">
                 <div class="flex flex-col sm:flex-row gap-3">
                     <div class="relative flex-grow">
@@ -378,14 +356,12 @@
                     </select>
                 </div>
             </div>
-            <!-- 列表 -->
             <div class="flex-grow overflow-y-auto px-6 sm:px-8 py-2 bg-gray-50 min-h-[300px]">
                 <ul id="all-news-list" class="space-y-2"></ul>
                 <div id="no-news-msg" class="hidden text-center py-10 text-gray-400">
                     <i class="fas fa-inbox text-4xl mb-2"></i><p>沒有符合條件的公告</p>
                 </div>
             </div>
-            <!-- Pagination -->
             <div class="flex-none bg-white border-t border-gray-100 rounded-b-xl z-10">
                 <div id="news-pagination" class="flex justify-center items-center gap-2 py-3 border-b border-gray-50"></div>
                 <div class="flex justify-end py-4 px-6 sm:px-8">
@@ -399,8 +375,56 @@
         // ==========================================
         // 1. 程式邏輯 (資料來源改為 Fetch data.json)
         // ==========================================
-        const colorMap = { 'thu': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' }, 'gold': { border: 'border-thuGold', icon: 'bg-thuGold', text: 'text-thuGold', hoverText: 'group-hover:text-thuGold', isGradient: true }, 'blue': { border: 'border-blue-500', icon: 'bg-blue-500', text: 'text-blue-600', hoverText: 'group-hover:text-blue-800' }, 'purple': { border: 'border-purple-500', icon: 'bg-purple-500', text: 'text-purple-600', hoverText: 'group-hover:text-purple-800' }, 'orange': { border: 'border-orange-500', icon: 'bg-orange-500', text: 'text-orange-600', hoverText: 'group-hover:text-orange-800' }, 'green': { border: 'border-green-500', icon: 'bg-green-500', text: 'text-green-600', hoverText: 'group-hover:text-green-800' }, 'red': { border: 'border-red-500', icon: 'bg-red-500', text: 'text-red-600', hoverText: 'group-hover:text-red-800' }, 'teal': { border: 'border-teal-500', icon: 'bg-teal-500', text: 'text-teal-600', hoverText: 'group-hover:text-teal-800' }, 'indigo': { border: 'border-indigo-500', icon: 'bg-indigo-500', text: 'text-indigo-600', hoverText: 'group-hover:text-indigo-800' }, 'cyan': { border: 'border-cyan-500', icon: 'bg-cyan-500', text: 'text-cyan-600', hoverText: 'group-hover:text-cyan-800' }, 'rose': { border: 'border-rose-500', icon: 'bg-rose-500', text: 'text-rose-600', hoverText: 'group-hover:text-rose-800' } };
-        const contactColorMap = { 'thu': { bg: 'bg-blue-50', text: 'text-thuBlue', badge: 'bg-gray-100 text-gray-600', border: 'hover:border-thuBlue' }, 'gold': { bg: 'bg-yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-yellow-500' }, 'purple': { bg: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800', border: 'hover:border-purple-500' }, 'orange': { bg: 'bg-orange-50', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-orange-500' }, 'blue': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', border: 'hover:border-blue-500' }, 'default': { bg: 'bg-gray-50', text: 'text-gray-600', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-gray-400' }, 'office': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-800', border: 'hover:border-green-500' } };
+        
+        // 擴充 Color Map，加入新顏色的定義
+        const colorMap = {
+            'thu': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' },
+            'gold': { border: 'border-thuGold', icon: 'bg-thuGold', text: 'text-thuGold', hoverText: 'group-hover:text-thuGold', isGradient: true },
+            'blue': { border: 'border-blue-500', icon: 'bg-blue-500', text: 'text-blue-600', hoverText: 'group-hover:text-blue-800' },
+            'purple': { border: 'border-purple-500', icon: 'bg-purple-500', text: 'text-purple-600', hoverText: 'group-hover:text-purple-800' },
+            'orange': { border: 'border-orange-500', icon: 'bg-orange-500', text: 'text-orange-600', hoverText: 'group-hover:text-orange-800' },
+            'green': { border: 'border-green-500', icon: 'bg-green-500', text: 'text-green-600', hoverText: 'group-hover:text-green-800' },
+            'red': { border: 'border-red-500', icon: 'bg-red-500', text: 'text-red-600', hoverText: 'group-hover:text-red-800' },
+            'teal': { border: 'border-teal-500', icon: 'bg-teal-500', text: 'text-teal-600', hoverText: 'group-hover:text-teal-800' },
+            'indigo': { border: 'border-indigo-500', icon: 'bg-indigo-500', text: 'text-indigo-600', hoverText: 'group-hover:text-indigo-800' },
+            'cyan': { border: 'border-cyan-500', icon: 'bg-cyan-500', text: 'text-cyan-600', hoverText: 'group-hover:text-cyan-800' },
+            'rose': { border: 'border-rose-500', icon: 'bg-rose-500', text: 'text-rose-600', hoverText: 'group-hover:text-rose-800' },
+            // === 新增自定義顏色映射 ===
+            'lapisyellow': { border: 'border-lapisYellow', icon: 'bg-lapisYellow', text: 'text-lapisYellow', hoverText: 'group-hover:text-lapisYellow' },
+            'concretegrey': { border: 'border-concreteGrey', icon: 'bg-concreteGrey', text: 'text-concreteGrey', hoverText: 'group-hover:text-concreteGrey' },
+            'brickred': { border: 'border-brickRed', icon: 'bg-brickRed', text: 'text-brickRed', hoverText: 'group-hover:text-brickRed' },
+            'windowblack': { border: 'border-windowBlack', icon: 'bg-windowBlack', text: 'text-windowBlack', hoverText: 'group-hover:text-windowBlack' },
+            'acaciagreen': { border: 'border-acaciaGreen', icon: 'bg-acaciaGreen', text: 'text-acaciaGreen', hoverText: 'group-hover:text-acaciaGreen' },
+            // 特別處理鮮乳白：背景很淺，Icon內的文字需要改成深色 (!text-gray-700)
+            'milkwhite': { border: 'border-gray-200', icon: 'bg-milkWhite !text-gray-700', text: 'text-gray-600', hoverText: 'group-hover:text-gray-800' },
+            'lakeblue': { border: 'border-lakeBlue', icon: 'bg-lakeBlue', text: 'text-lakeBlue', hoverText: 'group-hover:text-lakeBlue' },
+            'phoenixorange': { border: 'border-phoenixOrange', icon: 'bg-phoenixOrange', text: 'text-phoenixOrange', hoverText: 'group-hover:text-phoenixOrange' },
+            'glorygold': { border: 'border-gloryGold', icon: 'bg-gloryGold', text: 'text-gloryGold', hoverText: 'group-hover:text-gloryGold' },
+            'thubluenew': { border: 'border-thuBlueNew', icon: 'bg-thuBlueNew', text: 'text-thuBlueNew', hoverText: 'group-hover:text-thuBlueNew' },
+            'grassgreen': { border: 'border-grassGreen', icon: 'bg-grassGreen', text: 'text-grassGreen', hoverText: 'group-hover:text-grassGreen' }
+        };
+
+        const contactColorMap = {
+            'thu': { bg: 'bg-blue-50', text: 'text-thuBlue', badge: 'bg-gray-100 text-gray-600', border: 'hover:border-thuBlue' },
+            'gold': { bg: 'bg-yellow-50', text: 'text-yellow-700', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-yellow-500' },
+            'purple': { bg: 'bg-purple-50', text: 'text-purple-600', badge: 'bg-purple-100 text-purple-800', border: 'hover:border-purple-500' },
+            'orange': { bg: 'bg-orange-50', text: 'text-orange-600', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-orange-500' },
+            'blue': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', border: 'hover:border-blue-500' },
+            'default': { bg: 'bg-gray-50', text: 'text-gray-600', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-gray-400' },
+            'office': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-800', border: 'hover:border-green-500' },
+            // === 新增自定義顏色映射 (聯絡人卡片用) ===
+            'thubluenew': { bg: 'bg-blue-50', text: 'text-thuBlueNew', badge: 'bg-blue-100 text-blue-900', border: 'hover:border-thuBlueNew' },
+            'glorygold': { bg: 'bg-yellow-50', text: 'text-gloryGold', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-gloryGold' },
+            'lapisyellow': { bg: 'bg-orange-50', text: 'text-lapisYellow', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-lapisYellow' },
+            'phoenixorange': { bg: 'bg-red-50', text: 'text-phoenixOrange', badge: 'bg-red-100 text-red-800', border: 'hover:border-phoenixOrange' },
+            'brickred': { bg: 'bg-red-50', text: 'text-brickRed', badge: 'bg-red-100 text-red-900', border: 'hover:border-brickRed' },
+            'grassgreen': { bg: 'bg-green-50', text: 'text-grassGreen', badge: 'bg-green-100 text-green-800', border: 'hover:border-grassGreen' },
+            'acaciagreen': { bg: 'bg-green-50', text: 'text-acaciaGreen', badge: 'bg-green-100 text-green-900', border: 'hover:border-acaciaGreen' },
+            'lakeblue': { bg: 'bg-teal-50', text: 'text-lakeBlue', badge: 'bg-teal-100 text-teal-800', border: 'hover:border-lakeBlue' },
+            'concretegrey': { bg: 'bg-gray-100', text: 'text-concreteGrey', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-concreteGrey' },
+            'windowblack': { bg: 'bg-gray-200', text: 'text-windowBlack', badge: 'bg-gray-300 text-gray-800', border: 'hover:border-windowBlack' },
+            'milkwhite': { bg: 'bg-white', text: 'text-gray-500', badge: 'bg-gray-100 text-gray-600', border: 'hover:border-gray-300' }
+        };
 
         let currentNewsPage = 1;
         const newsPerPage = 5;
