@@ -44,13 +44,11 @@
         .sidebar-btn.active { background-color: #002E5D; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
         .sidebar-btn.active i { color: #C6A87C; }
 
-        /* Accordion Style */
         .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
         .accordion-content.open { max-height: 2000px; opacity: 1; }
         .accordion-arrow { transition: transform 0.3s ease; }
         .accordion-arrow.rotate { transform: rotate(180deg); }
 
-        /* Upload Button */
         .file-upload-label { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.375rem; background-color: #f3f4f6; color: #6b7280; transition: all 0.2s; border: 1px solid #e5e7eb; }
         .file-upload-label:hover { background-color: #e5e7eb; color: #002E5D; border-color: #d1d5db; }
     </style>
@@ -58,6 +56,18 @@
 <body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
 
     <input type="file" id="global-file-input" class="hidden" onchange="handleFileUpload(this)">
+
+    <div id="msg-modal" class="fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
+        <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
+        <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full relative z-10 mx-4 transform scale-95 transition-transform duration-300" id="msg-panel">
+            <div class="text-center mb-6">
+                <div id="msg-icon" class="w-14 h-14 rounded-full flex items-center justify-center text-2xl mx-auto mb-4"></div>
+                <h3 id="msg-title" class="text-lg font-bold text-gray-800 mb-2"></h3>
+                <p id="msg-body" class="text-gray-600 text-sm leading-relaxed"></p>
+            </div>
+            <div class="flex flex-col gap-2" id="msg-actions"></div>
+        </div>
+    </div>
 
     <div id="cat-delete-modal" class="fixed inset-0 z-[150] flex items-center justify-center hidden">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
@@ -276,10 +286,77 @@
         let sortableCards = null;
         let sortableStaff = null; 
         let sortablePageItems = null; 
+        
+        // New Global Sortable Instances for Departments
+        let sortableFaculties = null;
+        let sortableDepts = [];
+
         let sessionToken = ''; 
         let activePageId = 'laws'; 
         let catToDeleteId = null; 
-        let currentUploadTargetInput = null; 
+        let currentUploadTargetInput = null;
+        let confirmCallback = null; // For custom confirm modal
+
+        // --- Custom Message Modal Logic ---
+        function showMsg(title, body, type = 'info', onConfirm = null) {
+            const modal = document.getElementById('msg-modal');
+            const panel = document.getElementById('msg-panel');
+            const iconDiv = document.getElementById('msg-icon');
+            const titleEl = document.getElementById('msg-title');
+            const bodyEl = document.getElementById('msg-body');
+            const actions = document.getElementById('msg-actions');
+
+            titleEl.innerText = title;
+            bodyEl.innerText = body;
+            actions.innerHTML = '';
+
+            modal.classList.remove('hidden');
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                panel.classList.remove('scale-95');
+                panel.classList.add('scale-100');
+            }, 10);
+
+            if (type === 'success') {
+                iconDiv.className = 'w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4';
+                iconDiv.innerHTML = '<i class="fas fa-check"></i>';
+                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-btnGreen text-white font-bold py-2.5 rounded-lg hover:opacity-90 transition">確定</button>`;
+            } else if (type === 'error') {
+                iconDiv.className = 'w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4';
+                iconDiv.innerHTML = '<i class="fas fa-exclamation"></i>';
+                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-red-500 text-white font-bold py-2.5 rounded-lg hover:bg-red-600 transition">關閉</button>`;
+            } else if (type === 'confirm') {
+                confirmCallback = onConfirm;
+                iconDiv.className = 'w-14 h-14 bg-blue-100 text-thuBlue rounded-full flex items-center justify-center text-2xl mx-auto mb-4';
+                iconDiv.innerHTML = '<i class="fas fa-question"></i>';
+                actions.innerHTML = `
+                    <button onclick="executeConfirm()" class="w-full bg-thuBlue text-white font-bold py-2.5 rounded-lg hover:bg-blue-800 transition shadow-md">確定</button>
+                    <button onclick="closeMsg()" class="w-full bg-white text-gray-500 border border-gray-300 font-bold py-2.5 rounded-lg hover:bg-gray-50 transition">取消</button>
+                `;
+            } else {
+                // Info
+                iconDiv.className = 'w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4';
+                iconDiv.innerHTML = '<i class="fas fa-info"></i>';
+                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">知道了</button>`;
+            }
+        }
+
+        function closeMsg() {
+            const modal = document.getElementById('msg-modal');
+            const panel = document.getElementById('msg-panel');
+            modal.classList.add('opacity-0');
+            panel.classList.remove('scale-100');
+            panel.classList.add('scale-95');
+            setTimeout(() => {
+                modal.classList.add('hidden');
+                confirmCallback = null;
+            }, 300);
+        }
+
+        function executeConfirm() {
+            if (confirmCallback) confirmCallback();
+            closeMsg();
+        }
 
         // Define render functions FIRST so they are hoisted and available for loadData
         function renderCardsList() {
@@ -386,15 +463,99 @@
             });
         }
 
+        // --- Modified Render Department List with Sortable and Better UI ---
         function renderDepartmentList(container) {
-             container.innerHTML = '';
-             currentData.departments.forEach((faculty, fIndex) => {
-                 let deptRows = '';
-                 faculty.departments.forEach((dept, dIndex) => {
-                     deptRows += `<div class="dept-row flex gap-2 mb-2"><input class="dept-name border rounded p-1 w-1/3" value="${dept.name}"><input class="dept-link border rounded p-1 w-2/3 text-blue-600" value="${dept.link}"><button onclick="deleteDepartment(${fIndex},${dIndex})"><i class="fas fa-trash text-red-400"></i></button></div>`;
-                 });
-                 container.innerHTML += `<div class="faculty-card bg-white p-4 rounded border mb-4"><div class="flex gap-2 mb-2"><input class="faculty-name font-bold border rounded p-1" value="${faculty.name}"><input class="faculty-icon border rounded p-1 w-24" value="${faculty.icon}"></div><div class="pl-4 border-l-2">${deptRows}<button onclick="addDepartment(${fIndex})" class="text-sm text-blue-500">+ Add Dept</button></div><button onclick="deleteFaculty(${fIndex})" class="text-xs text-red-500 mt-2">Delete Faculty</button></div>`;
-             });
+            // Clear previous sortables to avoid leaks
+            if (sortableFaculties) { sortableFaculties.destroy(); sortableFaculties = null; }
+            sortableDepts.forEach(s => s.destroy());
+            sortableDepts = [];
+
+            container.innerHTML = '<div id="faculties-container" class="space-y-6"></div>';
+            const listContainer = document.getElementById('faculties-container');
+
+            currentData.departments.forEach((faculty, fIndex) => {
+                let deptRows = '';
+                faculty.departments.forEach((dept, dIndex) => {
+                    deptRows += `
+                    <div class="dept-row flex items-center gap-3 p-2 bg-gray-50 border border-gray-200 rounded mb-2 group">
+                        <div class="dept-drag-handle cursor-grab text-gray-400 hover:text-thuBlue py-1 px-2"><i class="fas fa-grip-vertical"></i></div>
+                        <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-2">
+                            <input class="dept-name border border-gray-300 rounded p-1.5 text-sm focus:ring-1 focus:ring-thuBlue outline-none" value="${dept.name}" placeholder="系所名稱">
+                            <input class="dept-link border border-gray-300 rounded p-1.5 text-sm text-blue-600 font-mono focus:ring-1 focus:ring-thuBlue outline-none" value="${dept.link}" placeholder="連結 URL">
+                        </div>
+                        <button onclick="deleteDepartment(${fIndex},${dIndex})" class="text-red-300 hover:text-red-600 p-2 transition" title="刪除系所"><i class="fas fa-trash-alt"></i></button>
+                    </div>`;
+                });
+
+                const iconVal = faculty.icon || 'fa-building';
+
+                listContainer.innerHTML += `
+                <div class="faculty-card bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" data-index="${fIndex}">
+                    <div class="faculty-drag-handle bg-gray-50 p-3 flex justify-between items-center cursor-move border-b border-gray-200 hover:bg-gray-100 transition-colors">
+                        <div class="flex items-center gap-2 font-bold text-gray-700">
+                            <i class="fas fa-grip-lines text-gray-400 mr-2"></i> 
+                            <span id="fac-header-${fIndex}">${faculty.name}</span>
+                        </div>
+                        <button onclick="deleteFaculty(${fIndex})" class="bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:text-red-600 px-3 py-1 rounded text-xs font-bold transition flex items-center gap-1 shadow-sm">
+                            <i class="fas fa-trash-alt"></i> 刪除學院
+                        </button>
+                    </div>
+                    
+                    <div class="p-5">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-4 mb-6 pb-6 border-b border-gray-100">
+                            <div class="md:col-span-5">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">學院名稱</label>
+                                <input class="faculty-name w-full border border-gray-300 rounded p-2 text-sm font-bold text-thuBlue focus:ring-2 focus:ring-thuBlue outline-none" 
+                                       value="${faculty.name}"
+                                       oninput="document.getElementById('fac-header-${fIndex}').innerText = this.value">
+                            </div>
+                            <div class="md:col-span-7">
+                                <label class="block text-xs font-bold text-gray-500 mb-1">Icon 圖示 (FontAwesome)</label>
+                                <div class="flex gap-2">
+                                    <div class="w-10 h-10 bg-gray-100 rounded flex items-center justify-center text-xl text-thuBlue border border-gray-200 shrink-0">
+                                        <i class="fas ${iconVal} faculty-icon-preview"></i>
+                                    </div>
+                                    <input class="faculty-icon flex-grow border border-gray-300 rounded p-2 text-sm font-mono text-gray-500 focus:ring-2 focus:ring-thuBlue outline-none" 
+                                           value="${faculty.icon}" 
+                                           oninput="this.parentElement.querySelector('.faculty-icon-preview').className='fas faculty-icon-preview '+this.value">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div>
+                            <div class="flex justify-between items-center mb-2">
+                                <label class="text-xs font-bold text-gray-500 uppercase tracking-wider">系所列表</label>
+                            </div>
+                            <div id="depts-container-${fIndex}" class="dept-list-container min-h-[10px]">
+                                ${deptRows}
+                            </div>
+                            <button onclick="addDepartment(${fIndex})" class="mt-3 w-full py-2.5 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-thuBlue hover:text-thuBlue transition font-bold text-sm flex items-center justify-center gap-2 hover:bg-blue-50">
+                                <i class="fas fa-plus"></i> 新增系所
+                            </button>
+                        </div>
+                    </div>
+                </div>`;
+            });
+
+            // Initialize Sortable for Faculties
+            sortableFaculties = Sortable.create(listContainer, {
+                handle: '.faculty-drag-handle',
+                animation: 150,
+                onEnd: () => { collectDataFromEditors(); renderPageEditor(); } // Re-render to update indices
+            });
+
+            // Initialize Sortable for Departments inside each Faculty
+            currentData.departments.forEach((_, fIndex) => {
+                const el = document.getElementById(`depts-container-${fIndex}`);
+                if(el) {
+                    sortableDepts.push(Sortable.create(el, {
+                        handle: '.dept-drag-handle',
+                        animation: 150,
+                        group: 'departments', // Optional: allow moving depts between colleges
+                        onEnd: () => { collectDataFromEditors(); renderPageEditor(); } // Re-render to update indices
+                    }));
+                }
+            });
         }
 
         // --- Render Generic List (Updated) ---
@@ -642,7 +803,9 @@
             }
         }
 
-        function logout() { if(confirm("確定要登出嗎？資料將不會保留。")) location.reload(); }
+        function logout() { 
+            showMsg("登出確認", "確定要登出嗎？資料將不會保留。", "confirm", () => location.reload());
+        }
 
         // --- Data Collection (Main) ---
         function collectDataFromEditors() {
@@ -715,6 +878,7 @@
             if (currentData.pages && currentData.pages[activePageId]) {
                 if (activePageId === 'evaluation') {
                     const faculties = [];
+                    // Using faculty-card logic for collection
                     document.querySelectorAll('.faculty-card').forEach(facultyDiv => {
                         const facultyName = facultyDiv.querySelector('.faculty-name').value; 
                         const facultyIcon = facultyDiv.querySelector('.faculty-icon').value;
@@ -782,7 +946,7 @@
             document.getElementById('current-page-title-display').innerText = `${page.title} - 設定`;
             
             renderPageEditor(); // Rebuild sidebar
-            alert("標題設定已暫存");
+            showMsg("設定已暫存", "標題設定已更新到暫存區 (記得最後按「儲存並發布」)", "info");
         }
 
         function restorePageHeaderSettings() {
@@ -803,7 +967,7 @@
             page.labels.title_en = document.getElementById('page-label-title-en').value;
             
             renderPageEditor(); 
-            alert("欄位名稱已更新");
+            showMsg("欄位已更新", "欄位名稱已更新", "success");
         }
 
         function restorePageLabelSettings() {
@@ -823,7 +987,7 @@
             }
             currentData.pages['laws'].fileFields = newConfig;
             renderPageEditor();
-            alert("檔案欄位設定已更新");
+            showMsg("設定已更新", "檔案欄位設定已更新", "success");
         }
 
         // --- ADDED: Missing Function ---
@@ -935,7 +1099,7 @@
             const name = input.value.trim();
             if(!name) return;
             const categories = currentData.pages['laws'].categories;
-            if (categories.some(c => c.name === name)) { alert("分類名稱重複！"); return; }
+            if (categories.some(c => c.name === name)) { showMsg("名稱重複", "分類名稱重複！", "error"); return; }
             const newId = 'cat_' + Date.now();
             categories.push({ id: newId, name: name });
             input.value = '';
@@ -994,7 +1158,7 @@
         function saveSingleItem(index) {
             collectDataFromEditors(); // Update memory
             renderPageEditor(); // Re-render sorted/updated list
-            alert("項目已暫存 (記得最後按「儲存並發布」)");
+            showMsg("項目已暫存", "記得最後按「儲存並發布」", "info");
         }
 
         function cancelSingleItem(index) {
@@ -1054,10 +1218,10 @@
                     
                     currentUploadTargetInput.value = path;
                     currentUploadTargetInput.disabled = false;
-                    alert("上傳成功！");
+                    showMsg("上傳成功", "檔案已上傳至 GitHub", "success");
                 };
             } catch (e) {
-                alert("上傳失敗: " + e.message);
+                showMsg("上傳失敗", e.message, "error");
                 currentUploadTargetInput.value = "";
                 currentUploadTargetInput.disabled = false;
             }
@@ -1066,52 +1230,69 @@
 
         // --- Helper Functions (Add/Delete Items) ---
         function addCardItem() { collectDataFromEditors(); currentData.cards.push({Title:"新卡片", Badge:"", Description:"", Icon:"fa-star", Type:"thu", Link:"#"}); renderCardsList(); }
-        function deleteCardItem(idx) { if(confirm("確定刪除此卡片？")) { collectDataFromEditors(); currentData.cards.splice(idx,1); renderCardsList(); } }
+        function deleteCardItem(idx) { showMsg("刪除確認", "確定刪除此卡片？", "confirm", () => { collectDataFromEditors(); currentData.cards.splice(idx,1); renderCardsList(); }); }
+        
         function addContactItem() { collectDataFromEditors(); currentData.contacts.push({Name:"新成員", Title:"職稱", Email:"", Phone:"", Type:"staff"}); renderContactsList(); }
-        function deleteContactItem(idx) { const realIdx = currentData.contacts.filter(c => c.Type === 'office').length > 0 ? idx + 1 : idx; if(confirm("確定刪除？")) { collectDataFromEditors(); currentData.contacts.splice(realIdx, 1); renderContactsList(); } }
-        function autoSortContacts() { collectDataFromEditors(); alert("此功能尚未實作自動排序邏輯"); } 
+        function deleteContactItem(idx) { 
+            const realIdx = currentData.contacts.filter(c => c.Type === 'office').length > 0 ? idx + 1 : idx; 
+            showMsg("刪除確認", "確定刪除此聯絡人？", "confirm", () => { collectDataFromEditors(); currentData.contacts.splice(realIdx, 1); renderContactsList(); }); 
+        }
+        
+        function autoSortContacts() { collectDataFromEditors(); showMsg("功能提示", "此功能尚未實作自動排序邏輯", "info"); } 
         function addNewsItem() { collectDataFromEditors(); currentData.news.unshift({Date: new Date().toISOString().split('T')[0], Type:"公告", Title:"", Link:"", Content:"", IsNew:true}); renderNewsList(); }
-        function deleteNewsItem(idx) { if(confirm("確定刪除此公告？")) { collectDataFromEditors(); currentData.news.splice(idx,1); renderNewsList(); } }
+        function deleteNewsItem(idx) { showMsg("刪除確認", "確定刪除此公告？", "confirm", () => { collectDataFromEditors(); currentData.news.splice(idx,1); renderNewsList(); }); }
+        
         function addPageItem() { 
             collectDataFromEditors(); 
             const newItem = {title:"", url:"", visible: true};
             currentData.pages[activePageId].items.push(newItem); 
             renderPageEditor(); 
         }
-        function deletePageItem(id, idx) { collectDataFromEditors(); currentData.pages[id].items.splice(idx,1); renderPageEditor(); }
+        function deletePageItem(id, idx) { showMsg("刪除確認", "確定刪除此項目？", "confirm", () => { collectDataFromEditors(); currentData.pages[id].items.splice(idx,1); renderPageEditor(); }); }
+        
         function addFaculty() { collectDataFromEditors(); currentData.departments.push({name:"新學院", icon:"fa-building", departments:[]}); renderPageEditor(); }
         function addDepartment(fIdx) { collectDataFromEditors(); currentData.departments[fIdx].departments.push({name:"新系所", link:""}); renderPageEditor(); }
-        function deleteFaculty(fIdx) { if(confirm("確定刪除學院？")) { collectDataFromEditors(); currentData.departments.splice(fIdx,1); renderPageEditor(); } }
-        function deleteDepartment(fIdx, dIdx) { collectDataFromEditors(); currentData.departments[fIdx].departments.splice(dIdx,1); renderPageEditor(); }
+        
+        function deleteFaculty(fIdx) { showMsg("刪除確認", "確定刪除此學院？底下的系所也會一併移除。", "confirm", () => { collectDataFromEditors(); currentData.departments.splice(fIdx,1); renderPageEditor(); }); }
+        function deleteDepartment(fIdx, dIdx) { 
+            showMsg("刪除確認", "確定刪除此系所？", "confirm", () => {
+                collectDataFromEditors();
+                currentData.departments[fIdx].departments.splice(dIdx, 1);
+                renderPageEditor();
+            });
+        }
 
         async function saveData() {
             collectDataFromEditors();
-            if (!sessionToken) { alert("請先登入"); return; }
-            if (!confirm("確定要發布更新嗎？")) return;
+            if (!sessionToken) { showMsg("權限錯誤", "請先登入", "error"); return; }
             
-            const btn = document.getElementById('save-btn');
-            const status = document.getElementById('save-status');
-            btn.disabled = true; 
-            status.innerHTML = '上傳中...'; status.className = 'text-sm font-bold text-thuBlue opacity-100';
+            showMsg("發布確認", "確定要將變更推送到 GitHub 嗎？", "confirm", async () => {
+                const btn = document.getElementById('save-btn');
+                const status = document.getElementById('save-status');
+                btn.disabled = true; 
+                status.innerHTML = '上傳中...'; status.className = 'text-sm font-bold text-thuBlue opacity-100';
 
-            try {
-                const jsonString = JSON.stringify(currentData, null, 4);
-                const encodedContent = window.btoa(unescape(encodeURIComponent(jsonString)));
-                const body = { message: `Update via Admin`, content: encodedContent, sha: fileSha };
-                const url = `https://api.github.com/repos/${localStorage.getItem('gh_owner')}/${localStorage.getItem('gh_repo')}/contents/${DATA_FILE}`;
-                
-                const response = await fetch(url, { method: 'PUT', headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
-                if (!response.ok) throw new Error("Upload failed");
-                const res = await response.json();
-                fileSha = res.content.sha;
-                status.innerHTML = '更新成功！'; status.className = 'text-sm font-bold text-green-600 opacity-100';
-                setTimeout(()=>status.classList.add('opacity-0'), 3000);
-            } catch(e) {
-                alert(e.message);
-                status.innerHTML = '失敗'; status.className = 'text-sm font-bold text-red-600 opacity-100';
-            } finally {
-                btn.disabled = false;
-            }
+                try {
+                    const jsonString = JSON.stringify(currentData, null, 4);
+                    const encodedContent = window.btoa(unescape(encodeURIComponent(jsonString)));
+                    const body = { message: `Update via Admin`, content: encodedContent, sha: fileSha };
+                    const url = `https://api.github.com/repos/${localStorage.getItem('gh_owner')}/${localStorage.getItem('gh_repo')}/contents/${DATA_FILE}`;
+                    
+                    const response = await fetch(url, { method: 'PUT', headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+                    if (!response.ok) throw new Error("Upload failed");
+                    const res = await response.json();
+                    fileSha = res.content.sha;
+                    status.innerHTML = '更新成功！'; status.className = 'text-sm font-bold text-green-600 opacity-100';
+                    setTimeout(()=>status.classList.add('opacity-0'), 3000);
+                    showMsg("發布成功", "網站資料已成功更新！", "success");
+                } catch(e) {
+                    // alert(e.message);
+                    status.innerHTML = '失敗'; status.className = 'text-sm font-bold text-red-600 opacity-100';
+                    showMsg("發布失敗", e.message, "error");
+                } finally {
+                    btn.disabled = false;
+                }
+            });
         }
         
         function switchTab(tabId) {
@@ -1130,6 +1311,14 @@
             if(tabId === 'news') renderNewsList();
             if(tabId === 'pages') renderPageEditor();
         }
+
+        // Prevent F5 Accidentally
+        window.addEventListener('beforeunload', function (e) {
+            if (currentData) {
+                e.preventDefault();
+                e.returnValue = '';
+            }
+        });
     </script>
 </body>
 </html>
