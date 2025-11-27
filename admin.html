@@ -13,13 +13,15 @@
             theme: {
                 extend: {
                     colors: {
-                        thuBlue: '#002E5D',
+                        // === 修改後的色碼 ===
+                        thuBlue: '#002147',       // 預設藍 (修改)
                         thuLightBlue: '#eef6fc',
-                        thuGold: '#C6A87C',
+                        thuGold: '#997933',       // 榮耀金 (舊變數修改)
                         darkBg: '#0f172a',
                         btnGreen: '#219653',
                         btnGreenHover: '#1e874b',
-                        // === 新增自定義識別色 ===
+                        
+                        // === 自定義識別色 (與預設列表同步) ===
                         lapisYellow: '#E89B00',   // 琉璃黃
                         concreteGrey: '#A6A9AA',  // 清水灰
                         brickRed: '#A14332',      // 磚瓦紅
@@ -28,8 +30,8 @@
                         milkWhite: '#F4F1EA',     // 鮮乳白
                         lakeBlue: '#365C68',      // 湖心藍
                         phoenixOrange: '#FF5A45', // 鳳凰橘
-                        gloryGold: '#E8B72D',     // 榮耀金
-                        thuBlueNew: '#005596',    // 東海藍
+                        gloryGold: '#997933',     // 榮耀金 (修改)
+                        thuBlueNew: '#002147',    // 東海藍 (修改)
                         grassGreen: '#219653',    // 青草綠
                     },
                     fontFamily: {
@@ -40,21 +42,21 @@
         }
     </script>
     <style>
-        .login-bg { background: linear-gradient(135deg, #002E5D 0%, #001a35 100%); position: relative; overflow: hidden; }
+        .login-bg { background: linear-gradient(135deg, #002147 0%, #001a35 100%); position: relative; overflow: hidden; }
         .login-bg::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background-image: linear-gradient(rgba(255, 255, 255, 0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.03) 1px, transparent 1px); background-size: 30px 30px; z-index: 1; }
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.2); }
         .animate-fade-in-up { animation: fadeInUp 0.6s ease-out forwards; }
         .animate-fade-out { animation: fadeOut 0.5s ease-out forwards; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
-        .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002E5D; }
+        .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002147; }
         .drag-handle { cursor: grab; }
         .drag-handle:active { cursor: grabbing; }
         
         .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
-        .sidebar-btn:hover { background-color: #f3f4f6; color: #002E5D; }
-        .sidebar-btn.active { background-color: #002E5D; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
-        .sidebar-btn.active i { color: #C6A87C; }
+        .sidebar-btn:hover { background-color: #f3f4f6; color: #002147; }
+        .sidebar-btn.active { background-color: #002147; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
+        .sidebar-btn.active i { color: #997933; }
 
         .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
         .accordion-content.open { max-height: 2000px; opacity: 1; }
@@ -62,7 +64,10 @@
         .accordion-arrow.rotate { transform: rotate(180deg); }
 
         .file-upload-label { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.375rem; background-color: #f3f4f6; color: #6b7280; transition: all 0.2s; border: 1px solid #e5e7eb; }
-        .file-upload-label:hover { background-color: #e5e7eb; color: #002E5D; border-color: #d1d5db; }
+        .file-upload-label:hover { background-color: #e5e7eb; color: #002147; border-color: #d1d5db; }
+        
+        /* 色票預覽圓圈 */
+        .color-preview-circle { width: 20px; height: 20px; border-radius: 50%; border: 1px solid rgba(0,0,0,0.1); display: inline-block; vertical-align: middle; margin-right: 8px; }
     </style>
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
@@ -282,7 +287,19 @@
                              <div class="mb-6 bg-orange-50 border-l-4 border-orange-400 p-4 rounded-r-lg shadow-sm">
                                 <div class="flex items-start"><div class="flex-shrink-0"><i class="fas fa-shield-alt text-orange-500 text-lg mt-0.5"></i></div><div class="ml-3"><h3 class="text-sm font-bold text-orange-800">資安重要提醒</h3><p class="text-sm text-orange-700 mt-1 leading-relaxed">由於本網站架構為公開靜態網站，資料皆為<strong>公開可讀取</strong>。請<strong>切勿</strong>在此輸入個資、身分證號或內部機密。</p></div></div>
                             </div>
-                            <div id="settings-form" class="grid grid-cols-1 gap-6 max-w-4xl pb-20"></div>
+                            <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 pb-20">
+                                <div id="settings-form" class="space-y-6"></div>
+                                <div>
+                                     <div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm">
+                                        <div class="flex justify-between items-center mb-4 border-b border-gray-100 pb-2">
+                                            <label class="block text-sm font-bold text-gray-700">自定義顏色管理</label>
+                                            <button onclick="addColor()" class="text-xs bg-thuBlue text-white px-2 py-1 rounded hover:bg-blue-800"><i class="fas fa-plus"></i> 新增顏色</button>
+                                        </div>
+                                        <p class="text-xs text-gray-500 mb-3"><i class="fas fa-info-circle"></i> 此處定義卡片與標籤可用的顏色。代碼(Key)建議使用英文字母，勿隨意更改既有的代碼，以免網頁樣式跑版。</p>
+                                        <div id="color-settings-list" class="space-y-2 max-h-[500px] overflow-y-auto pr-1"></div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
 
                         <div id="tab-code-editor" class="tab-content hidden animate-fade-in-up">
@@ -340,6 +357,33 @@
         // Source Editor Globals
         let currentSourceFile = '';
         let currentSourceSha = '';
+
+        // Default Colors Definition (Updated Hex Codes)
+        const defaultColors = [
+            { key: 'thu', name: '預設藍 (Default)', hex: '#002147' },
+            { key: 'thubluenew', name: '東海藍 (New)', hex: '#002147' },
+            { key: 'glorygold', name: '榮耀金 (Gold)', hex: '#997933' },
+            { key: 'phoenixorange', name: '鳳凰橘', hex: '#FF5A45' },
+            { key: 'brickred', name: '磚瓦紅', hex: '#A14332' },
+            { key: 'lapisyellow', name: '琉璃黃', hex: '#E89B00' },
+            { key: 'acaciagreen', name: '相思綠', hex: '#4A6B3E' },
+            { key: 'lakeblue', name: '湖心藍', hex: '#365C68' },
+            { key: 'concretegrey', name: '清水灰', hex: '#A6A9AA' },
+            { key: 'windowblack', name: '窗框黑', hex: '#2B2B2B' },
+            { key: 'milkwhite', name: '鮮乳白', hex: '#F4F1EA' },
+            { key: 'grassgreen', name: '青草綠', hex: '#219653' },
+            // Old colors for compatibility
+            { key: 'gold', name: '舊版金色', hex: '#fbbf24' },
+            { key: 'blue', name: '舊版天藍', hex: '#60a5fa' },
+            { key: 'green', name: '舊版綠色', hex: '#34d399' },
+            { key: 'orange', name: '舊版橘色', hex: '#fb923c' },
+            { key: 'purple', name: '舊版紫色', hex: '#a78bfa' },
+            { key: 'red', name: '舊版紅色', hex: '#f87171' },
+            { key: 'teal', name: '舊版藍綠', hex: '#2dd4bf' },
+            { key: 'indigo', name: '舊版靛藍', hex: '#818cf8' },
+            { key: 'cyan', name: '舊版青色', hex: '#22d3ee' },
+            { key: 'rose', name: '舊版玫瑰', hex: '#fb7185' }
+        ];
 
         // --- Custom Message Modal Logic ---
         function showMsg(title, body, type = 'info', onConfirm = null) {
@@ -407,9 +451,12 @@
                 const decodedContent = decodeURIComponent(escape(window.atob(cleanContent)));
                 currentData = JSON.parse(decodedContent);
                 
+                // Initialize default structures if missing
                 if (!currentData.pages) currentData.pages = JSON.parse(JSON.stringify(defaultPagesData));
                 if (currentData.pages['laws'] && !currentData.pages['laws'].categories) currentData.pages['laws'].categories = JSON.parse(JSON.stringify(defaultCategories));
                 if (!currentData.departments) currentData.departments = [];
+                // Initialize customColors if missing
+                if (!currentData.customColors) currentData.customColors = JSON.parse(JSON.stringify(defaultColors));
 
                 localStorage.setItem('gh_owner', owner);
                 localStorage.setItem('gh_repo', repo);
@@ -447,7 +494,6 @@
                 
                 const result = await response.json();
                 currentSourceSha = result.sha;
-                // Decode UTF-8 correctly
                 const decodedContent = decodeURIComponent(escape(window.atob(result.content.replace(/\n/g, ''))));
                 editor.value = decodedContent;
             } catch (e) {
@@ -469,9 +515,7 @@
                 const repo = localStorage.getItem('gh_repo');
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${currentSourceFile}`;
                 
-                // Encode UTF-8 correctly
                 const encodedContent = window.btoa(unescape(encodeURIComponent(content)));
-                
                 const body = { message: `Update ${currentSourceFile} via Admin Source Editor`, content: encodedContent, sha: currentSourceSha };
 
                 try {
@@ -486,11 +530,72 @@
             });
         }
 
-        // --- Render Functions (Simplified for brevity, logic maintained) ---
+        // --- Helper for Dynamic Colors ---
+        function getColorOptionsHtml(selectedValue) {
+            let options = '';
+            // If customColors is not loaded yet, use default
+            const colors = (currentData && currentData.customColors) ? currentData.customColors : defaultColors;
+            
+            colors.forEach(c => {
+                const selected = (selectedValue === c.key) ? 'selected' : '';
+                options += `<option value="${c.key}" ${selected}>${c.name}</option>`;
+            });
+            return options;
+        }
+
+        function renderColorSettings() {
+            const container = document.getElementById('color-settings-list');
+            if(!container || !currentData || !currentData.customColors) return;
+            container.innerHTML = '';
+            
+            currentData.customColors.forEach((c, index) => {
+                container.innerHTML += `
+                    <div class="flex gap-2 items-center bg-gray-50 p-2 rounded border border-gray-200 color-setting-item" data-index="${index}">
+                        <div class="color-preview-circle" style="background-color: ${c.hex}"></div>
+                        <input type="text" class="color-key border border-gray-300 rounded p-1 text-xs w-24 font-mono text-gray-500" value="${c.key}" placeholder="Key" title="代碼(Key)">
+                        <input type="text" class="color-name border border-gray-300 rounded p-1 text-xs flex-grow" value="${c.name}" placeholder="名稱">
+                        <div class="flex items-center gap-1 border border-gray-300 rounded bg-white p-1">
+                            <input type="color" class="w-6 h-6 p-0 border-0 cursor-pointer" value="${c.hex}" onchange="updateColorHexInput(this)">
+                            <input type="text" class="color-hex border-none outline-none text-xs w-16 font-mono uppercase" value="${c.hex}" onchange="updateColorPicker(this)">
+                        </div>
+                        <button onclick="removeColor(${index})" class="text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash-alt"></i></button>
+                    </div>
+                `;
+            });
+        }
+        
+        function updateColorHexInput(picker) {
+            const hexInput = picker.nextElementSibling;
+            hexInput.value = picker.value.toUpperCase();
+            picker.closest('.color-setting-item').querySelector('.color-preview-circle').style.backgroundColor = picker.value;
+        }
+
+        function updateColorPicker(textInput) {
+            const picker = textInput.previousElementSibling;
+            picker.value = textInput.value;
+            textInput.closest('.color-setting-item').querySelector('.color-preview-circle').style.backgroundColor = textInput.value;
+        }
+
+        function addColor() {
+            collectDataFromEditors();
+            currentData.customColors.push({ key: 'new_color', name: '新顏色', hex: '#000000' });
+            renderColorSettings();
+        }
+
+        function removeColor(index) {
+            collectDataFromEditors();
+            showMsg("刪除確認", "確定刪除此顏色設定？這可能會導致使用此顏色的元件顯示異常。", "confirm", () => {
+                currentData.customColors.splice(index, 1);
+                renderColorSettings();
+            });
+        }
+
+        // --- Render Functions ---
         function renderCardsList() {
             const container = document.getElementById('cards-list-editor'); if(!container) return; container.innerHTML = '';
             currentData.cards.forEach((card, index) => {
-                container.innerHTML += `<div class="card-item bg-white p-5 rounded-xl shadow-sm border border-gray-200 group relative" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-grip-lines text-gray-400"></i></div><div class="mt-4 grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 text-sm font-bold text-thuBlue" value="${card.Title}"></div><div><label class="block text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-sm text-thuGold" value="${card.Badge||''}"></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2 text-sm" value="${card.Description}"></div><div><label class="block text-xs font-bold text-gray-400">Icon</label><input type="text" class="card-icon w-full border rounded p-2 text-sm font-mono text-gray-500" value="${card.Icon}"></div><div><label class="block text-xs font-bold text-gray-400">類型</label><select class="card-type w-full border rounded p-2 text-sm"><option value="thu" ${(!card.Type||card.Type==='thu')?'selected':''}>預設藍 (THU Blue)</option><option value="thubluenew" ${card.Type==='thubluenew'?'selected':''}>東海藍 (THU New)</option><option value="glorygold" ${card.Type==='glorygold'?'selected':''}>榮耀金 (Glory Gold)</option><option value="phoenixorange" ${card.Type==='phoenixorange'?'selected':''}>鳳凰橘 (Phoenix Orange)</option><option value="brickred" ${card.Type==='brickred'?'selected':''}>磚瓦紅 (Brick Red)</option><option value="lapisyellow" ${card.Type==='lapisyellow'?'selected':''}>琉璃黃 (Lapis Yellow)</option><option value="acaciagreen" ${card.Type==='acaciagreen'?'selected':''}>相思綠 (Acacia Green)</option><option value="lakeblue" ${card.Type==='lakeblue'?'selected':''}>湖心藍 (Lake Blue)</option><option value="concretegrey" ${card.Type==='concretegrey'?'selected':''}>清水灰 (Concrete Grey)</option><option value="windowblack" ${card.Type==='windowblack'?'selected':''}>窗框黑 (Window Black)</option><option value="milkwhite" ${card.Type==='milkwhite'?'selected':''}>鮮乳白 (Milk White)</option><option value="grassgreen" ${card.Type==='grassgreen'?'selected':''}>青草綠 (Grass Green)</option><option disabled>--- 舊版選項 ---</option><option value="gold" ${card.Type==='gold'?'selected':''}>舊版金色</option><option value="blue" ${card.Type==='blue'?'selected':''}>舊版天藍</option><option value="green" ${card.Type==='green'?'selected':''}>舊版綠色</option><option value="orange" ${card.Type==='orange'?'selected':''}>舊版橘色</option><option value="purple" ${card.Type==='purple'?'selected':''}>舊版紫色</option><option value="red" ${card.Type==='red'?'selected':''}>舊版紅色</option><option value="teal" ${card.Type==='teal'?'selected':''}>舊版藍綠</option><option value="indigo" ${card.Type==='indigo'?'selected':''}>舊版靛藍</option><option value="cyan" ${card.Type==='cyan'?'selected':''}>舊版青色</option><option value="rose" ${card.Type==='rose'?'selected':''}>舊版玫瑰</option></select></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${card.Link}"></div></div><button onclick="deleteCardItem(${index})" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash"></i></button></div>`;
+                const colorOptions = getColorOptionsHtml(card.Type);
+                container.innerHTML += `<div class="card-item bg-white p-5 rounded-xl shadow-sm border border-gray-200 group relative" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex items-center justify-center hover:bg-gray-200 transition"><i class="fas fa-grip-lines text-gray-400"></i></div><div class="mt-4 grid grid-cols-2 gap-4"><div><label class="block text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 text-sm font-bold text-thuBlue" value="${card.Title}"></div><div><label class="block text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-sm text-thuGold" value="${card.Badge||''}"></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2 text-sm" value="${card.Description}"></div><div><label class="block text-xs font-bold text-gray-400">Icon</label><input type="text" class="card-icon w-full border rounded p-2 text-sm font-mono text-gray-500" value="${card.Icon}"></div><div><label class="block text-xs font-bold text-gray-400">顏色類型</label><select class="card-type w-full border rounded p-2 text-sm">${colorOptions}</select></div><div class="col-span-2"><label class="block text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${card.Link}"></div></div><button onclick="deleteCardItem(${index})" class="absolute top-2 right-2 text-red-400 hover:text-red-600 p-1"><i class="fas fa-trash"></i></button></div>`;
             });
             if (sortableCards) sortableCards.destroy(); sortableCards = Sortable.create(container, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
         }
@@ -501,16 +606,19 @@
             const office = currentData.contacts.find(c => c.Type === 'office') || { Name: '實習中心', Title: 'Office', Email: 'isac@thu.edu.tw', Description: '' };
             officeContainer.innerHTML = `<div class="office-item bg-blue-50/50 p-6 rounded-xl border border-blue-100"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-xs font-bold text-gray-400">單位名稱</label><input type="text" class="contact-name w-full border rounded p-2 font-bold" value="${office.Name}"></div><div><label class="text-xs font-bold text-gray-400">Email</label><input type="text" class="contact-email w-full border rounded p-2 font-mono" value="${office.Email}"></div><div class="hidden"><input type="text" class="contact-title" value="Office"></div><div class="col-span-2"><label class="text-xs font-bold text-gray-400">描述</label><input type="text" class="contact-desc w-full border rounded p-2" value="${office.Description}"></div></div></div>`;
             const staff = currentData.contacts.filter(c => c.Type !== 'office');
-            staff.forEach((c, index) => { staffContainer.innerHTML += `<div class="staff-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab flex items-center justify-center hover:bg-gray-50 rounded-t-xl"><i class="fas fa-grip-lines text-gray-300"></i></div><div class="mt-4 space-y-2"><div class="flex gap-2"><div class="w-2/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">姓名</label><input type="text" class="contact-name w-full border rounded p-1.5 font-bold text-sm" value="${c.Name}"></div><div class="w-1/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">職稱</label><input type="text" class="contact-title w-full border rounded p-1.5 text-sm text-gray-500 text-center" value="${c.Title}"></div></div><div><label class="text-[10px] font-bold text-gray-400 block mb-1">Email</label><input type="text" class="contact-email w-full border rounded p-1.5 text-xs font-mono text-gray-500" value="${c.Email}"></div><div class="flex gap-2"><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">分機</label><input type="text" class="contact-phone w-full border rounded p-1.5 text-xs text-gray-500" value="${c.Phone||''}"></div><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">顏色</label><select class="contact-type w-full border rounded p-1.5 text-xs"><option value="blue" ${(!c.Type||c.Type==='blue')?'selected':''}>預設藍</option><option value="thubluenew" ${c.Type==='thubluenew'?'selected':''}>東海藍</option><option value="glorygold" ${c.Type==='glorygold'?'selected':''}>榮耀金</option><option value="phoenixorange" ${c.Type==='phoenixorange'?'selected':''}>鳳凰橘</option><option value="brickred" ${c.Type==='brickred'?'selected':''}>磚瓦紅</option><option value="lapisyellow" ${c.Type==='lapisyellow'?'selected':''}>琉璃黃</option><option value="acaciagreen" ${c.Type==='acaciagreen'?'selected':''}>相思綠</option><option value="lakeblue" ${c.Type==='lakeblue'?'selected':''}>湖心藍</option><option value="concretegrey" ${c.Type==='concretegrey'?'selected':''}>清水灰</option><option value="windowblack" ${c.Type==='windowblack'?'selected':''}>窗框黑</option><option value="milkwhite" ${c.Type==='milkwhite'?'selected':''}>鮮乳白</option><option value="grassgreen" ${c.Type==='grassgreen'?'selected':''}>青草綠</option><option disabled>--- 舊版 ---</option><option value="gold" ${c.Type==='gold'?'selected':''}>舊版金色</option><option value="green" ${c.Type==='green'?'selected':''}>舊版綠色</option><option value="purple" ${c.Type==='purple'?'selected':''}>舊版紫色</option><option value="orange" ${c.Type==='orange'?'selected':''}>舊版橘色</option></select></div><input type="hidden" class="contact-desc" value="${c.Description||''}"></div></div><button onclick="deleteContactItem(${index})" class="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times-circle"></i></button></div>`; });
+            staff.forEach((c, index) => { 
+                const colorOptions = getColorOptionsHtml(c.Type || 'blue');
+                staffContainer.innerHTML += `<div class="staff-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${index}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 cursor-grab flex items-center justify-center hover:bg-gray-50 rounded-t-xl"><i class="fas fa-grip-lines text-gray-300"></i></div><div class="mt-4 space-y-2"><div class="flex gap-2"><div class="w-2/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">姓名</label><input type="text" class="contact-name w-full border rounded p-1.5 font-bold text-sm" value="${c.Name}"></div><div class="w-1/3"><label class="text-[10px] font-bold text-gray-400 block mb-1">職稱</label><input type="text" class="contact-title w-full border rounded p-1.5 text-sm text-gray-500 text-center" value="${c.Title}"></div></div><div><label class="text-[10px] font-bold text-gray-400 block mb-1">Email</label><input type="text" class="contact-email w-full border rounded p-1.5 text-xs font-mono text-gray-500" value="${c.Email}"></div><div class="flex gap-2"><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">分機</label><input type="text" class="contact-phone w-full border rounded p-1.5 text-xs text-gray-500" value="${c.Phone||''}"></div><div class="w-1/2"><label class="text-[10px] font-bold text-gray-400 block mb-1">顏色</label><select class="contact-type w-full border rounded p-1.5 text-xs">${colorOptions}</select></div><input type="hidden" class="contact-desc" value="${c.Description||''}"></div></div><button onclick="deleteContactItem(${index})" class="absolute top-2 right-2 text-red-300 hover:text-red-500 p-1 opacity-0 group-hover:opacity-100 transition"><i class="fas fa-times-circle"></i></button></div>`; 
+            });
             if (sortableStaff) sortableStaff.destroy(); sortableStaff = Sortable.create(staffContainer, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
         }
 
-        function renderNewsList() { /* (Keep existing logic) */
+        function renderNewsList() { 
             const container = document.getElementById('news-list-editor'); if(!container) return; container.innerHTML = '';
             currentData.news.forEach((news, index) => { container.innerHTML += `<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${news.Date}"><select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${news.Type==='公告'?'selected':''}>公告</option><option value="活動" ${news.Type==='活動'?'selected':''}>活動</option><option value="緊急" ${news.Type==='緊急'?'selected':''}>緊急</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew w-4 h-4 text-thuBlue" ${news.IsNew?'checked':''}><label class="text-sm">顯示 NEW</label></div><button onclick="deleteNewsItem(${index})" class="ml-auto text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button></div><div><input type="text" class="news-title w-full border rounded p-2 font-bold text-gray-700" value="${news.Title}" placeholder="公告標題"></div><div><input type="text" class="news-link w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${news.Link}" placeholder="連結網址 (選填)"></div><div><textarea class="news-content w-full border rounded p-2 text-sm h-20" placeholder="內容摘要...">${news.Content}</textarea></div></div>`; });
         }
 
-        function renderDepartmentList(container) { /* (Keep existing logic) */
+        function renderDepartmentList(container) {
             if (sortableFaculties) { sortableFaculties.destroy(); sortableFaculties = null; } sortableDepts.forEach(s => s.destroy()); sortableDepts = [];
             container.innerHTML = '<div id="faculties-container" class="space-y-6"></div>'; const listContainer = document.getElementById('faculties-container');
             currentData.departments.forEach((faculty, fIndex) => {
@@ -521,7 +629,7 @@
             currentData.departments.forEach((_, fIndex) => { const el = document.getElementById(`depts-container-${fIndex}`); if(el) { sortableDepts.push(Sortable.create(el, { handle: '.dept-drag-handle', animation: 150, group: 'departments', onEnd: () => { collectDataFromEditors(); renderPageEditor(); } })); } });
         }
 
-        // --- Render Generic List (Simplified) ---
+        // --- Render Generic List ---
         function renderGenericList(container, items, isLaws) {
             if (!items || items.length === 0) { container.innerHTML = '<div class="text-center py-20 text-gray-400">尚無資料</div>'; return; }
             let catOptions = '<option value="">未分類</option>'; if(isLaws) currentData.pages['laws'].categories.forEach(c => { catOptions += `<option value="${c.id}">${c.name}</option>`; });
@@ -545,7 +653,7 @@
             if (sortablePageItems) sortablePageItems.destroy(); sortablePageItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onEnd: () => { collectDataFromEditors(); renderPageEditor(); } });
         }
 
-        // --- Standard Editor Functions (Restored) ---
+        // --- Standard Editor Functions ---
         function renderEditors() {
             const settingsContainer = document.getElementById('settings-form'); settingsContainer.innerHTML = '';
             for (const [key, config] of Object.entries(settingFieldsMap)) {
@@ -553,6 +661,7 @@
                 let inputHtml = config.type === 'textarea' ? `<textarea data-key="${key}" rows="3" class="setting-input w-full border border-gray-300 p-3 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm font-mono">${value}</textarea>` : `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="setting-input w-full border border-gray-300 rounded p-3 text-sm focus:ring-2 focus:ring-thuBlue outline-none" />`;
                 settingsContainer.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-100 shadow-sm"><label class="block text-sm font-bold text-gray-700 mb-2">${config.label}</label>${inputHtml}</div>`;
             }
+            renderColorSettings(); // Render the new color settings
             renderCardsList(); renderContactsList(); renderNewsList(); renderPageEditor();
         }
 
@@ -582,6 +691,17 @@
             if(officeDiv) contactItems.push({ Name: officeDiv.querySelector('.contact-name').value, Title: officeDiv.querySelector('.contact-title').value, Email: officeDiv.querySelector('.contact-email').value, Phone: "", Description: officeDiv.querySelector('.contact-desc').value, Type: "office" });
             document.querySelectorAll('.staff-item').forEach(div => { contactItems.push({ Name: div.querySelector('.contact-name').value, Title: div.querySelector('.contact-title').value, Email: div.querySelector('.contact-email').value, Phone: div.querySelector('.contact-phone').value, Description: div.querySelector('.contact-desc').value, Type: div.querySelector('.contact-type').value }); }); 
             currentData.contacts = contactItems;
+
+            // Collect Color Settings
+            const customColors = [];
+            document.querySelectorAll('.color-setting-item').forEach(div => {
+                customColors.push({
+                    key: div.querySelector('.color-key').value,
+                    name: div.querySelector('.color-name').value,
+                    hex: div.querySelector('.color-hex').value
+                });
+            });
+            currentData.customColors = customColors;
 
             if (currentData.pages && currentData.pages[activePageId]) {
                 if (activePageId === 'evaluation') {
