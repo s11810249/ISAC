@@ -35,11 +35,9 @@
         .animate-fade-out { animation: fadeOut 0.5s ease-out forwards; }
         @keyframes fadeInUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
-        
-        /* 拖曳視覺優化 */
-        .sortable-ghost { opacity: 0.2; background: #eef6fc; border: 2px dashed #002147; }
-        .sortable-drag { cursor: grabbing; opacity: 1; background: white; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1); transform: scale(1.02); }
-        .drag-handle { cursor: grab; touch-action: none; user-select: none; } 
+        /* 拖曳時的樣式 */
+        .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002147; }
+        .drag-handle { cursor: grab; touch-action: none; } 
         .drag-handle:active { cursor: grabbing; }
         
         .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
@@ -128,6 +126,7 @@
                 <h3 class="text-xl font-bold text-gray-800"><i class="fas fa-sliders-h mr-2 text-thuBlue"></i>頁面進階設定</h3>
                 <button onclick="closeAdvancedSettingsModal()" class="text-gray-400 hover:text-gray-600"><i class="fas fa-times text-xl"></i></button>
             </div>
+            
             <div class="overflow-y-auto custom-scrollbar flex-grow pr-2">
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
                     <div class="space-y-6">
@@ -144,6 +143,7 @@
                                 </div>
                             </div>
                         </div>
+
                         <div id="modal-file-fields-config" class="hidden">
                             <div class="border-t border-gray-100 pt-4">
                                 <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">下載按鈕設定</label>
@@ -151,11 +151,13 @@
                             </div>
                         </div>
                     </div>
+
                     <div class="border-l border-gray-100 md:pl-8">
                         <div id="modal-category-manager" class="hidden h-full flex flex-col">
                             <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">分類標籤管理</label>
                             <div class="flex-grow border border-gray-200 rounded-xl overflow-hidden flex flex-col bg-white shadow-sm h-64 md:h-auto">
-                                <div class="bg-gray-50/50 p-3 flex-grow overflow-y-auto space-y-1 custom-scrollbar" id="cat-list"></div>
+                                <div class="bg-gray-50/50 p-3 flex-grow overflow-y-auto space-y-1 custom-scrollbar" id="cat-list">
+                                    </div>
                                 <div class="p-3 bg-white border-t border-gray-100">
                                     <div class="flex gap-2">
                                         <input type="text" id="new-cat-name" class="flex-grow border border-gray-200 rounded-lg p-2 text-sm outline-none focus:ring-1 focus:ring-thuBlue" placeholder="輸入新分類名稱...">
@@ -168,6 +170,7 @@
                     </div>
                 </div>
             </div>
+
             <div class="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-2 shrink-0">
                 <button onclick="closeAdvancedSettingsModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition">取消</button>
                 <button onclick="saveAdvancedSettings()" class="btn-confirm-lg bg-thuBlue hover:bg-blue-800"><i class="fas fa-save"></i> 儲存變更</button>
@@ -203,12 +206,19 @@
                     <div class="flex items-center gap-3">
                         <div class="hidden md:flex items-center gap-2 mr-2 px-3 py-1 bg-gray-50 rounded-lg border border-gray-200" title="網站儲存空間使用量">
                              <div class="text-[10px] font-bold text-gray-500 uppercase">Storage</div>
-                             <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden"><div id="storage-bar" class="h-full bg-thuBlue transition-all duration-1000" style="width: 0%"></div></div>
+                             <div class="w-24 h-2 bg-gray-200 rounded-full overflow-hidden">
+                                 <div id="storage-bar" class="h-full bg-thuBlue transition-all duration-1000" style="width: 0%"></div>
+                             </div>
                              <div id="storage-text" class="text-[10px] font-mono text-gray-600">Checking...</div>
                         </div>
-                        <div id="unsaved-badge" class="hidden px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full mr-2 flex items-center gap-1 border border-red-200"><i class="fas fa-pen"></i> <span id="unsaved-count">0</span> 變更未儲存</div>
+
+                        <div id="unsaved-badge" class="hidden px-2 py-1 bg-red-100 text-red-600 text-xs font-bold rounded-full mr-2 flex items-center gap-1 border border-red-200">
+                            <i class="fas fa-pen"></i> <span id="unsaved-count">0</span> 變更未儲存
+                        </div>
                         <div id="save-status" class="text-sm font-bold text-gray-600 transition-opacity opacity-0 mr-2"></div>
-                        <button onclick="saveData()" id="save-btn" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center gap-2 transform active:scale-95 transition-all text-sm"><i class="fas fa-cloud-upload-alt"></i> 儲存並發布</button>
+                        <button onclick="saveData()" id="save-btn" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-4 rounded-lg shadow-sm flex items-center gap-2 transform active:scale-95 transition-all text-sm">
+                            <i class="fas fa-cloud-upload-alt"></i> 儲存並發布
+                        </button>
                         <div class="h-6 w-px bg-gray-300 mx-1"></div>
                         <button onclick="logout()" class="text-sm text-red-500 hover:text-red-700 font-medium transition flex items-center gap-1 border border-red-100 bg-red-50 px-3 py-2 rounded-lg hover:bg-red-100"><i class="fas fa-sign-out-alt"></i> 登出</button>
                     </div>
@@ -259,12 +269,12 @@
                                 <div><h3 class="text-lg font-bold text-gray-800">網站主題顏色管理</h3><p class="text-sm text-gray-500 mt-1">「東海藍」與「榮耀金」為系統鎖定顏色，無法修改或刪除。</p></div>
                                 <button onclick="addColorItem()" class="bg-btnGreen text-white hover:bg-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 text-sm"><i class="fas fa-plus"></i> 新增顏色</button>
                             </div>
-                            <div id="colors-list-header" class="grid grid-cols-12 gap-4 px-4 py-2 bg-gray-100 rounded-t-lg text-xs font-bold text-gray-500 uppercase tracking-wider">
+                            <div id="colors-list-header" class="grid grid-cols-12 gap-3 px-4 py-2 bg-gray-100 rounded-t-lg text-xs font-bold text-gray-500 uppercase tracking-wider">
                                 <div class="col-span-1 text-center">預覽</div>
                                 <div class="col-span-3">顯示名稱</div>
                                 <div class="col-span-3">識別碼 (ID)</div>
-                                <div class="col-span-3">Hex 色碼</div>
-                                <div class="col-span-2 text-right">操作</div>
+                                <div class="col-span-4">Hex 色碼</div>
+                                <div class="col-span-1 text-right">操作</div>
                             </div>
                             <div id="colors-list-editor" class="space-y-2"></div>
                         </div>
@@ -273,7 +283,9 @@
                             <div class="flex flex-col md:flex-row gap-6 h-full min-h-[700px]">
                                 <div class="w-full md:w-80 shrink-0 flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                                     <div class="p-4 border-b border-gray-100 bg-gray-50 flex-grow overflow-y-auto custom-scrollbar">
-                                        <div class="flex justify-between items-center mb-3"><h4 class="text-sm font-bold text-gray-700">版型模板列表</h4></div>
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h4 class="text-sm font-bold text-gray-700">版型模板列表</h4>
+                                        </div>
                                         <div id="templates-sidebar" class="space-y-1 pr-1"></div>
                                     </div>
                                     <div class="mt-auto p-4 border-t border-gray-100 bg-gray-50">
@@ -309,14 +321,17 @@
                                 </div>
                             </div>
                         </div>
-
+                        
                         <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
                             <div class="flex flex-col md:flex-row gap-6 h-full min-h-[700px]">
                                 <div class="w-full md:w-80 shrink-0 flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
                                     <div class="p-4 border-b border-gray-100 bg-gray-50">
-                                        <div class="flex justify-between items-center mb-3"><h4 class="text-sm font-bold text-gray-700">頁面列表</h4></div>
+                                        <div class="flex justify-between items-center mb-3">
+                                            <h4 class="text-sm font-bold text-gray-700">頁面列表</h4>
+                                        </div>
                                         <div id="pages-sidebar" class="space-y-1 flex-grow overflow-y-auto custom-scrollbar pr-1 max-h-[500px]"></div>
                                     </div>
+
                                     <div class="mt-auto p-4 border-t border-gray-100 bg-gray-50 space-y-2">
                                         <button onclick="openCreatePageModal()" class="w-full bg-btnGreen text-white px-3 py-2 rounded-lg text-sm font-bold hover:bg-btnGreenHover transition shadow-sm mb-2"><i class="fas fa-plus mr-1"></i>新增頁面</button>
                                         <div class="flex gap-2">
@@ -329,9 +344,12 @@
                                         </div>
                                     </div>
                                 </div>
+                                
                                 <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col shadow-sm overflow-hidden">
                                     <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
-                                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2"><span id="current-page-title-display">載入中...</span></h3>
+                                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
+                                            <span id="current-page-title-display">載入中...</span>
+                                        </h3>
                                         <button onclick="addPageItem()" class="bg-btnGreen text-white hover:bg-btnGreenHover font-bold py-2 px-4 rounded-lg shadow-sm flex items-center gap-2 text-sm transition-all"><i class="fas fa-plus"></i> 新增項目</button>
                                     </div>
                                     <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[800px] custom-scrollbar"></div>
@@ -380,17 +398,35 @@
         let confirmCallback = null; 
         let unsavedChangesCount = 0;
         
+        // Editor Variables
         let activeTemplateKey = '';
-        let activeEditorMode = ''; 
-        let currentTab = 'cards'; 
+        let activeEditorMode = ''; // 'json' or 'html'
+        let currentTab = 'cards'; // Track current active tab
 
+        // Default Templates (Fallback if data.json is empty)
         const DEFAULT_TEMPLATES = {
-            'documents_list': { name: '文件列表', desc: '文件彙整版型', jsonPath: 'page_template/documents_list.json', htmlPath: 'page_template/documents_list.html', items: [] },
-            'general': { name: '一般列表', desc: '基礎列表版型', jsonPath: 'page_template/general.json', htmlPath: 'page_template/general.html', items: [] }
+            'documents_list': {
+                name: '文件列表 (Documents List)',
+                desc: '專為文件彙整設計的列表版型。支援多附件下載與分類篩選。',
+                jsonPath: 'page_template/documents_list.json',
+                htmlPath: 'page_template/documents_list.html',
+                items: []
+            },
+            'general': {
+                name: '一般連結列表 (General Link List)',
+                desc: '基礎列表版型，適合相關連結、課程列表等條列式內容。',
+                jsonPath: 'page_template/general.json',
+                htmlPath: 'page_template/general.html',
+                items: []
+            }
         };
 
-        const defaultColors = [ { name: "東海藍", id: "thu", hex: "#002147" }, { name: "榮耀金", id: "glorygold", hex: "#c6a87c" } ];
+        const defaultColors = [
+            { name: "東海藍", id: "thu", hex: "#002147" },
+            { name: "榮耀金", id: "glorygold", hex: "#c6a87c" } // Updated hex
+        ];
         
+        // Updated Setting Fields with grouping info
         const settingFieldsMap = { 
             'SiteTitle': { label: '網站主標題 (中文)', type: 'text', group: 1 }, 
             'SiteEngTitle': { label: '網站副標題 (英文)', type: 'text', group: 1 }, 
@@ -415,6 +451,7 @@
             btn.disabled = true; btn.classList.add('opacity-75', 'cursor-wait');
 
             try {
+                // 1. Get Data
                 const url = `https://api.github.com/repos/${owner}/${repo}/contents/${DATA_FILE}`;
                 const response = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
                 if (!response.ok) throw new Error(response.status === 404 ? "找不到 data.json" : "連線失敗 (請確認 Token)");
@@ -424,23 +461,24 @@
                 const decodedContent = decodeURIComponent(escape(window.atob(result.content.replace(/\n/g, ''))));
                 currentData = JSON.parse(decodedContent);
                 
-                // --- Initialize Missing Data (Fixes Login Crash) ---
+                // Initialize checks
                 if (!currentData.pages) currentData.pages = {};
                 if (!currentData.colors) currentData.colors = JSON.parse(JSON.stringify(defaultColors));
-                if (!currentData.cards) currentData.cards = [];
-                if (!currentData.contacts) currentData.contacts = [];
-                if (!currentData.news) currentData.news = [];
-                if (!currentData.templates) currentData.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
                 
-                // Fix Glory Gold Hex
+                // Force Update Glory Gold if it exists, or add it if missing (Important for fix)
                 const gold = currentData.colors.find(c => c.id === 'glorygold');
                 if(gold) gold.hex = '#c6a87c';
                 else currentData.colors.push({ name: "榮耀金", id: "glorygold", hex: "#c6a87c" });
+                
+                // Initialize Templates if missing
+                if (!currentData.templates) currentData.templates = JSON.parse(JSON.stringify(DEFAULT_TEMPLATES));
 
                 localStorage.setItem('gh_owner', owner);
                 localStorage.setItem('gh_repo', repo);
                 
+                // 2. Fetch Repo Storage Info
                 fetchRepoInfo(owner, repo);
+
                 renderEditors(); 
                 
                 document.getElementById('login-screen').classList.add('animate-fade-out');
@@ -458,8 +496,11 @@
                 const res = await fetch(`https://api.github.com/repos/${owner}/${repo}`, { headers: { 'Authorization': `token ${sessionToken}` } });
                 if(res.ok) {
                     const data = await res.json();
-                    const sizeMB = (data.size / 1024).toFixed(1);
-                    const percent = Math.min((data.size / 1048576) * 100, 100);
+                    const sizeKB = data.size; // KB
+                    const sizeMB = (sizeKB / 1024).toFixed(1);
+                    const sizeGB = (sizeKB / 1048576).toFixed(2);
+                    const percent = Math.min((sizeKB / 1048576) * 100, 100);
+                    
                     document.getElementById('storage-bar').style.width = `${percent}%`;
                     if(percent > 80) document.getElementById('storage-bar').classList.add('bg-red-500');
                     document.getElementById('storage-text').innerText = `${sizeMB} MB / 1 GB`;
@@ -471,10 +512,52 @@
             const owner = localStorage.getItem('gh_owner');
             const repo = localStorage.getItem('gh_repo');
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+            
             const res = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
             if(!res.ok) throw new Error(`找不到檔案：${path}，請確認該檔案已存在。`);
+            
             const data = await res.json();
             return decodeURIComponent(escape(window.atob(data.content.replace(/\n/g, ''))));
+        }
+
+        function renderEditors() {
+            // Settings - Grouped Layout
+            const g1 = document.getElementById('settings-group-1');
+            const g2 = document.getElementById('settings-group-2');
+            g1.innerHTML = ''; g2.innerHTML = '';
+
+            for (const [key, config] of Object.entries(settingFieldsMap)) {
+                let value = currentData.settings[key] || ''; 
+                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n');
+                
+                let inputHtml = config.type === 'textarea' ? 
+                    `<textarea data-key="${key}" rows="4" class="input-stylish font-mono text-sm resize-y" onchange="markUnsaved()">${value}</textarea>` : 
+                    `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="input-stylish text-sm" onchange="markUnsaved()" />`;
+                
+                const html = `<div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">${config.label}</label>${inputHtml}</div>`;
+                
+                if(config.group === 1) g1.innerHTML += html;
+                else g2.innerHTML += html;
+            }
+
+            renderColorManager();
+            renderCardsList();
+            renderContactsList();
+            renderNewsList();
+            
+            // Initial Page Load
+            renderPageSidebar();
+            if (activePageId && currentData.pages[activePageId]) {
+                switchPageEditor(activePageId);
+            } else {
+                const firstPage = Object.keys(currentData.pages)[0];
+                if (firstPage) switchPageEditor(firstPage);
+            }
+
+            // Initial Template Load
+            renderTemplateSidebar();
+            const firstTpl = Object.keys(currentData.templates)[0];
+            if(firstTpl) switchTemplateEditor(firstTpl);
         }
 
         // --- Render Sidebar Logic ---
@@ -486,6 +569,7 @@
             }
         }
 
+        // --- Template Management Logic (Updated Layout) ---
         function renderTemplateSidebar() {
             const sidebar = document.getElementById('templates-sidebar');
             sidebar.innerHTML = '';
@@ -499,11 +583,20 @@
             activeTemplateKey = key;
             const tpl = currentData.templates[key];
             renderTemplateSidebar();
+            
             document.getElementById('current-template-title-display').innerHTML = `${tpl.name} <span class="bg-gray-200 text-gray-600 px-2 py-0.5 rounded text-xs font-mono ml-2 border border-gray-300">${key}</span>`;
+            
             document.getElementById('tpl-edit-name').value = tpl.name;
             document.getElementById('tpl-edit-desc').value = tpl.desc;
-            if(!tpl.items) tpl.items = [];
-            const tplContext = { items: tpl.items, labels: tpl.labels || {title: "預設標題", title_en: "預設備註"}, categories: [], fileFields: null };
+            
+            if(!tpl.items) tpl.items = []; // Ensure items array exists
+            const tplContext = {
+                items: tpl.items,
+                labels: tpl.labels || {title: "預設標題", title_en: "預設備註"},
+                categories: [], 
+                fileFields: null 
+            };
+            
             renderGenericList(document.getElementById('template-items-editor'), tplContext, 'template');
             switchTemplateView('config');
         }
@@ -538,16 +631,289 @@
             renderGenericList(document.getElementById('template-items-editor'), tplContext, 'template');
         }
 
-        // --- Drag and Drop Helper (The Fix) ---
-        function handleDragEnd(evt, listArray, renderFunction) {
-            const item = listArray.splice(evt.oldIndex, 1)[0];
-            listArray.splice(evt.newIndex, 0, item);
-            
-            // Critical Fix: Defer re-rendering to let Sortable finish its internal cleanup
-            setTimeout(() => {
-                renderFunction();
+        function addNewTemplate() {
+            document.getElementById('msg-input-container').classList.remove('hidden');
+            const input = document.getElementById('msg-input');
+            input.value = '';
+            showMsg("新增模板", "請輸入新模板的 ID (英文小寫，例如: news_list)：", "confirm", async () => {
+                const id = input.value.trim().toLowerCase();
+                if(!id || !/^[a-z0-9_]+$/.test(id)) { showMsg("錯誤", "ID 格式不正確", "error"); return; }
+                if(currentData.templates[id]) { showMsg("錯誤", "ID 已存在", "error"); return; }
+
+                const defaultJson = { tag: "New", description: "Description...", labels:{title:"Title"}, items:[] };
+                const defaultHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>New Template</title></head><body><h1>{{PAGE_ID}}</h1></body></html>`;
+
+                showMsg("處理中", "正在建立模板檔案...", "info");
+                try {
+                    await uploadFileToGitHub(`page_template/${id}.json`, JSON.stringify(defaultJson, null, 4));
+                    await uploadFileToGitHub(`page_template/${id}.html`, defaultHtml);
+                    
+                    currentData.templates[id] = {
+                        name: "新模板 " + id,
+                        desc: "請編輯描述...",
+                        jsonPath: `page_template/${id}.json`,
+                        htmlPath: `page_template/${id}.html`,
+                        items: []
+                    };
+                    renderTemplateSidebar();
+                    switchTemplateEditor(id);
+                    showMsg("成功", "模板已建立", "success");
+                    markUnsaved(); 
+                } catch(e) {
+                    showMsg("失敗", e.message, "error");
+                }
+            });
+            document.getElementById('msg-input-container').classList.remove('hidden');
+        }
+
+        function deleteTemplate(key) {
+            showMsg("確認刪除", `確定要移除模板「${key}」嗎？(檔案不會被刪除，僅從選單移除)`, "confirm", () => {
+                delete currentData.templates[key];
                 markUnsaved();
-            }, 10);
+                const first = Object.keys(currentData.templates)[0];
+                if(first) switchTemplateEditor(first);
+                else {
+                    document.getElementById('templates-sidebar').innerHTML = '';
+                    document.getElementById('template-main-area').innerHTML = '<div class="p-10 text-center text-gray-400">無模板</div>';
+                }
+            });
+        }
+
+        async function editTemplateCode(key, type) {
+            activeTemplateKey = key;
+            activeEditorMode = type;
+            const tpl = currentData.templates[key];
+            const path = type === 'json' ? tpl.jsonPath : tpl.htmlPath;
+            const title = type === 'json' ? '編輯設定檔 (JSON)' : '編輯原始碼 (HTML)';
+            
+            document.getElementById('tpl-editor-title').innerText = `${tpl.name} - ${title}`;
+            document.getElementById('tpl-editor-path').innerText = path;
+            const editor = document.getElementById('tpl-code-area');
+            editor.value = "讀取中...";
+            document.getElementById('template-editor-modal').classList.remove('hidden');
+
+            try {
+                const content = await fetchRepoFile(path);
+                editor.value = content;
+            } catch(e) {
+                editor.value = "讀取失敗: " + e.message;
+            }
+        }
+
+        function closeTemplateEditor() {
+            document.getElementById('template-editor-modal').classList.add('hidden');
+        }
+
+        async function saveTemplateCode() {
+            const content = document.getElementById('tpl-code-area').value;
+            const tpl = currentData.templates[activeTemplateKey];
+            const path = activeEditorMode === 'json' ? tpl.jsonPath : tpl.htmlPath;
+
+            showMsg("確認", `確定要覆寫檔案 ${path} 嗎？`, "confirm", async () => {
+                try {
+                    await uploadFileToGitHub(path, content);
+                    showMsg("成功", "模板檔案已更新", "success");
+                    closeTemplateEditor();
+                } catch(e) {
+                    showMsg("失敗", e.message, "error");
+                }
+            });
+        }
+
+        // --- Page Management ---
+        function openCreatePageModal() {
+            document.getElementById('new-page-title').value = '';
+            document.getElementById('new-page-id').value = '';
+            document.getElementById('new-page-tag').value = '';
+            document.getElementById('new-page-icon').value = 'fa-file';
+            document.getElementById('new-page-desc').value = '';
+            renderTemplateOptions();
+            const radio = document.querySelector('input[name="page-template"]');
+            if(radio) radio.checked = true;
+            document.getElementById('create-page-modal').classList.remove('hidden');
+        }
+        function closeCreatePageModal() { document.getElementById('create-page-modal').classList.add('hidden'); }
+
+        function renderTemplateOptions() {
+            const container = document.getElementById('template-options');
+            container.innerHTML = '';
+            for (const [key, tpl] of Object.entries(currentData.templates)) {
+                container.innerHTML += `
+                <label class="relative flex flex-col p-4 bg-white border border-gray-200 rounded-xl cursor-pointer hover:border-thuBlue hover:ring-1 hover:ring-thuBlue transition-all group">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="font-bold text-gray-800 text-sm group-hover:text-thuBlue">${tpl.name}</span>
+                        <input type="radio" name="page-template" value="${key}" class="text-thuBlue focus:ring-thuBlue border-gray-300">
+                    </div>
+                    <p class="text-xs text-gray-500 leading-relaxed line-clamp-2">${tpl.desc}</p>
+                </label>`;
+            }
+        }
+
+        async function confirmCreatePage() {
+            const title = document.getElementById('new-page-title').value.trim();
+            let id = document.getElementById('new-page-id').value.trim().toLowerCase();
+            const tag = document.getElementById('new-page-tag').value.trim();
+            const icon = document.getElementById('new-page-icon').value.trim();
+            const desc = document.getElementById('new-page-desc').value.trim();
+            const templateKey = document.querySelector('input[name="page-template"]:checked')?.value;
+
+            if (!title || !id || !templateKey) { showMsg("錯誤", "請填寫完整資訊", "error"); return; }
+            if (!/^[a-z0-9_]+$/.test(id)) { showMsg("錯誤", "網址路徑只能包含小寫英文、數字與底線", "error"); return; }
+            if (currentData.pages[id]) { showMsg("錯誤", "此網址路徑已存在", "error"); return; }
+
+            closeCreatePageModal();
+            showMsg("處理中", "正在讀取模板並建立頁面，請稍候...", "info");
+
+            const tplConfig = currentData.templates[templateKey];
+            let newPageData, htmlContent;
+
+            try {
+                const jsonStr = await fetchRepoFile(tplConfig.jsonPath);
+                newPageData = JSON.parse(jsonStr);
+                if(tplConfig.items && tplConfig.items.length > 0) {
+                     newPageData.items = JSON.parse(JSON.stringify(tplConfig.items));
+                }
+                
+                newPageData.title = title;
+                if(tag) newPageData.tag = tag;
+                if(icon) newPageData.icon = icon;
+                if(desc) newPageData.description = desc;
+
+                const htmlStr = await fetchRepoFile(tplConfig.htmlPath);
+                htmlContent = htmlStr.replace(/{{PAGE_ID}}/g, id);
+            } catch(e) {
+                showMsg("錯誤", "讀取模板失敗: " + e.message, "error");
+                return;
+            }
+
+            currentData.pages[id] = { 
+                title: title, 
+                source: `pages/data_${id}.json`, 
+                template: templateKey, 
+                tag: newPageData.tag, 
+                icon: newPageData.icon,
+                description: newPageData.description,
+                loaded: true, 
+                ...newPageData 
+            };
+
+            try {
+                await uploadFileToGitHub(`${id}.html`, htmlContent);
+                await uploadFileToGitHub(`pages/data_${id}.json`, JSON.stringify(newPageData, null, 4));
+                await uploadFileToGitHub(DATA_FILE, JSON.stringify(currentData, null, 4), fileSha);
+                
+                showMsg("成功", `頁面 ${title} 已建立！`, "success", () => {
+                    activePageId = id;
+                    renderPageSidebar();
+                    switchPageEditor(id);
+                });
+                markUnsaved(); 
+            } catch (e) {
+                showMsg("失敗", "建立頁面失敗: " + e.message, "error");
+            }
+        }
+
+        function promptDeletePage() {
+            showMsg("刪除確認", `確定要刪除 ${activePageId} 頁面嗎？這將會刪除 ${activePageId}.html 與資料檔，此操作無法復原。`, "confirm", async () => {
+                showMsg("處理中", "正在刪除頁面檔案...", "info");
+                try {
+                    await deleteFileFromGitHub(`${activePageId}.html`);
+                    await deleteFileFromGitHub(`pages/data_${activePageId}.json`);
+                    delete currentData.pages[activePageId];
+                    await uploadFileToGitHub(DATA_FILE, JSON.stringify(currentData, null, 4), fileSha);
+                    
+                    showMsg("成功", "頁面已刪除", "success", () => {
+                        const firstPage = Object.keys(currentData.pages)[0];
+                        activePageId = firstPage || '';
+                        renderPageSidebar();
+                        if(activePageId) switchPageEditor(activePageId);
+                        else document.getElementById('page-items-editor').innerHTML = '';
+                    });
+                    markUnsaved(); 
+                } catch(e) {
+                    showMsg("失敗", "刪除失敗: " + e.message, "error");
+                }
+            });
+        }
+
+        function promptRenamePage() {
+            document.getElementById('msg-input-container').classList.remove('hidden');
+            const input = document.getElementById('msg-input');
+            input.value = activePageId;
+            
+            showMsg("變更路徑", "請輸入新的網址路徑 (不含 .html)：", "confirm", async () => {
+                const newId = input.value.trim().toLowerCase();
+                if(!newId || !/^[a-z0-9_]+$/.test(newId)) { showMsg("錯誤", "無效的路徑格式", "error"); return; }
+                if(currentData.pages[newId]) { showMsg("錯誤", "此路徑已存在", "error"); return; }
+                if(newId === activePageId) return;
+
+                showMsg("處理中", "正在搬移檔案...", "info");
+                try {
+                    const pageConfig = currentData.pages[activePageId];
+                    const oldHtml = await fetchRepoFile(`${activePageId}.html`);
+                    const oldJson = await fetchRepoFile(pageConfig.source); 
+                    
+                    const newHtml = oldHtml.replace(new RegExp(`pages/data_${activePageId}.json`, 'g'), `pages/data_${newId}.json`)
+                                           .replace(new RegExp(`const PAGE_ID = '${activePageId}'`, 'g'), `const PAGE_ID = '${newId}'`);
+                    
+                    await uploadFileToGitHub(`${newId}.html`, newHtml);
+                    await uploadFileToGitHub(`pages/data_${newId}.json`, oldJson);
+                    
+                    currentData.pages[newId] = JSON.parse(JSON.stringify(pageConfig));
+                    currentData.pages[newId].source = `pages/data_${newId}.json`;
+                    delete currentData.pages[activePageId];
+                    
+                    await deleteFileFromGitHub(`${activePageId}.html`);
+                    await deleteFileFromGitHub(pageConfig.source);
+                    
+                    await uploadFileToGitHub(DATA_FILE, JSON.stringify(currentData, null, 4), fileSha);
+                    
+                    showMsg("成功", "頁面路徑已變更", "success", () => {
+                        activePageId = newId;
+                        renderPageSidebar();
+                        switchPageEditor(newId);
+                    });
+                    markUnsaved();
+                } catch(e) {
+                    showMsg("失敗", "變更失敗: " + e.message, "error");
+                }
+            });
+            document.getElementById('msg-input-container').classList.remove('hidden');
+        }
+
+        async function uploadFileToGitHub(path, content, existingSha = null) {
+            const owner = localStorage.getItem('gh_owner');
+            const repo = localStorage.getItem('gh_repo');
+            if (!existingSha) {
+                try {
+                    const check = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: { 'Authorization': `token ${sessionToken}` } });
+                    if (check.ok) existingSha = (await check.json()).sha;
+                } catch(e) {}
+            }
+            const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: `Update ${path}`, content: btoa(unescape(encodeURIComponent(content))), branch: 'main', sha: existingSha })
+            });
+            if (!res.ok) throw new Error(`Upload ${path} failed`);
+            if (path === DATA_FILE) fileSha = (await res.json()).content.sha;
+        }
+
+        async function deleteFileFromGitHub(path) {
+            const owner = localStorage.getItem('gh_owner');
+            const repo = localStorage.getItem('gh_repo');
+            let sha = null;
+            try {
+                const check = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, { headers: { 'Authorization': `token ${sessionToken}` } });
+                if (check.ok) sha = (await check.json()).sha;
+            } catch(e) {}
+            if(sha) {
+                await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${path}`, {
+                    method: 'DELETE',
+                    headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: `Delete ${path}`, branch: 'main', sha: sha })
+                });
+            }
         }
 
         // --- Page Switching & Logic ---
@@ -587,7 +953,73 @@
             renderGenericList(document.getElementById('page-items-editor'), context, 'page');
         }
 
-        // --- Renderers ---
+        // --- Settings Modal Logic ---
+        function openBasicSettingsModal() {
+            if(!activePageId) return;
+            const p = currentData.pages[activePageId];
+            document.getElementById('page-setting-title').value = p.title || '';
+            document.getElementById('page-setting-icon').value = p.icon || '';
+            document.getElementById('page-setting-tag').value = p.tag || '';
+            document.getElementById('page-setting-desc').value = p.description || '';
+            document.getElementById('page-icon-preview').className = `fas ${p.icon || 'fa-question'}`;
+            document.getElementById('basic-settings-modal').classList.remove('hidden');
+        }
+        function closeBasicSettingsModal() { document.getElementById('basic-settings-modal').classList.add('hidden'); }
+        
+        function savePageHeaderSettings() { 
+            collectDataFromEditors();
+            const p = currentData.pages[activePageId];
+            p.title = document.getElementById('page-setting-title').value;
+            p.icon = document.getElementById('page-setting-icon').value;
+            p.tag = document.getElementById('page-setting-tag').value;
+            p.description = document.getElementById('page-setting-desc').value;
+            renderPageSidebar();
+            renderPageEditorUI();
+            closeBasicSettingsModal();
+            markUnsaved();
+            showMsg("成功", "基本設定已暫存", "success");
+        }
+
+        function openAdvancedSettingsModal() {
+            if(!activePageId) return;
+            const p = currentData.pages[activePageId];
+            
+            const labels = p.labels || {};
+            document.getElementById('page-label-title').value = labels.title || '';
+            document.getElementById('page-label-title-en').value = labels.title_en || '';
+
+            const catMgr = document.getElementById('modal-category-manager');
+            const fileMgr = document.getElementById('modal-file-fields-config');
+            
+            if(p.categories) { catMgr.classList.remove('hidden'); renderCategoryList(); } else { catMgr.classList.add('hidden'); }
+            if(p.fileFields) { fileMgr.classList.remove('hidden'); renderFileConfigList(); } else { fileMgr.classList.add('hidden'); }
+
+            document.getElementById('advanced-settings-modal').classList.remove('hidden');
+        }
+        function closeAdvancedSettingsModal() { document.getElementById('advanced-settings-modal').classList.add('hidden'); }
+
+        // New consolidated save function for Advanced Settings
+        function saveAdvancedSettings() {
+            // Save Labels
+            if(!currentData.pages[activePageId].labels) currentData.pages[activePageId].labels = {};
+            currentData.pages[activePageId].labels.title = document.getElementById('page-label-title').value;
+            currentData.pages[activePageId].labels.title_en = document.getElementById('page-label-title-en').value;
+
+            // Save File Config (if present)
+            if (currentData.pages[activePageId].fileFields) {
+                currentData.pages[activePageId].fileFields.forEach((f,i)=>{ 
+                    f.label = document.getElementById('ff-l-'+i).value; 
+                    f.icon = document.getElementById('ff-i-'+i).value; 
+                });
+            }
+
+            renderPageEditorUI();
+            closeAdvancedSettingsModal();
+            markUnsaved();
+            showMsg("成功", "進階設定已暫存", "success");
+        }
+
+        // --- Renderers (Generic List for Pages & Template Defaults) ---
         function renderGenericList(container, context, mode) {
             container.innerHTML = '';
             const items = context.items || [];
@@ -610,6 +1042,7 @@
             items.forEach((item, index) => {
                 const checked = (item.visible !== false) ? 'checked' : '';
                 let contentHtml = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">${titleLabel}</label><input type="text" class="p-title w-full border rounded p-2 text-sm" value="${item.title||''}" onchange="markUnsaved()"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">${titleEnLabel}</label><input type="text" class="p-title-en w-full border rounded p-2 text-sm" value="${item.title_en||''}" onchange="markUnsaved()"></div></div>`;
+                
                 contentHtml += `<div class="grid grid-cols-3 gap-4 mb-4"><div><label class="block text-xs font-bold text-gray-400 mb-1">發布單位</label><input type="text" class="p-issuer w-full border rounded p-2 text-sm" value="${item.issuer||''}" onchange="markUnsaved()"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">日期</label><input type="date" class="p-date w-full border rounded p-2 text-sm" value="${item.date||''}" onchange="markUnsaved()"></div><div><label class="block text-xs font-bold text-gray-400 mb-1">分類</label><select class="p-cat-select w-full border rounded p-2 text-sm" onchange="markUnsaved()">${catOptions.replace(`value="${item.category||''}"`, `value="${item.category||''}" selected`)}</select></div></div>`;
 
                 if (isResources) {
@@ -628,7 +1061,7 @@
                 <div class="${itemClass} bg-white rounded-xl border border-gray-200 shadow-sm mb-3 overflow-hidden" data-index="${index}">
                     <div class="bg-gray-50 p-3 px-4 flex justify-between items-center transition-colors">
                         <div class="flex items-center gap-3 overflow-hidden">
-                            <div class="drag-handle text-gray-400 hover:text-thuBlue w-6 text-center py-1 cursor-grab">
+                            <div class="drag-handle cursor-grab text-gray-400 hover:text-thuBlue w-6 text-center py-1">
                                 <i class="fas fa-grip-vertical"></i>
                             </div>
                             <span class="font-bold text-gray-700 truncate select-none cursor-pointer" onclick="toggleAccordion('${accId}')">
@@ -636,29 +1069,37 @@
                             </span>
                         </div>
                         <div class="flex items-center gap-3">
-                            <label class="flex items-center cursor-pointer select-none" title="顯示/隱藏"><div class="relative"><input type="checkbox" class="sr-only peer p-visible" ${checked} onchange="markUnsaved()"><div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div></div></label>
+                            <label class="flex items-center cursor-pointer select-none" title="顯示/隱藏">
+                                <div class="relative">
+                                    <input type="checkbox" class="sr-only peer p-visible" ${checked} onchange="markUnsaved()">
+                                    <div class="w-9 h-5 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-green-500"></div>
+                                </div>
+                            </label>
                             <div class="h-4 w-px bg-gray-300 mx-1"></div>
                             <button onclick="${deleteFunc}(${index})" class="text-gray-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash-alt"></i></button>
                             <button onclick="toggleAccordion('${accId}')" class="text-gray-400 hover:text-thuBlue p-2 transition"><i id="${accId}-arrow" class="fas fa-chevron-down accordion-arrow"></i></button>
                         </div>
                     </div>
                     <div id="${accId}-content" class="accordion-content bg-white">
-                        <div class="p-5">${contentHtml}<div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100"><button onclick="${saveFunc}()" class="bg-thuBlue text-white border border-thuBlue hover:bg-blue-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 text-sm">確認暫存</button></div></div>
+                        <div class="p-5">${contentHtml}
+                            <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
+                                <button onclick="${saveFunc}()" class="bg-thuBlue text-white border border-thuBlue hover:bg-blue-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 text-sm">確認暫存</button>
+                            </div>
+                        </div>
                     </div>
                 </div>`;
             });
             
-            // Re-initialize Sortable with correct handler and Fallback
             if (mode === 'page') {
                 if (sortablePageItems) sortablePageItems.destroy(); 
-                sortablePageItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', forceFallback: true, onEnd: (evt) => handleDragEnd(evt, currentData.pages[activePageId].items, renderPageEditorUI) });
+                sortablePageItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
             } else {
                 if (sortableTemplateItems) sortableTemplateItems.destroy();
-                sortableTemplateItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', dragClass: 'sortable-drag', forceFallback: true, onEnd: (evt) => handleDragEnd(evt, currentData.templates[activeTemplateKey].items, () => { switchTemplateEditor(activeTemplateKey); switchTemplateView('content'); }) });
+                sortableTemplateItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd: () => { collectDataFromEditors(); markUnsaved(); } });
             }
         }
 
-        // --- Render Cards List (Fixed Drag) ---
+        // --- UPDATED: Render Cards List (Accordion Style + 3 Cols) ---
         function renderCardsList() { 
             const c = document.getElementById('cards-list-editor'); 
             c.innerHTML=''; 
@@ -669,7 +1110,7 @@
                 <div class="card-item bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col group overflow-hidden h-fit" data-index="${i}">
                     <div class="bg-gray-50 px-4 py-3 border-b border-gray-100 flex justify-between items-center transition hover:bg-gray-100">
                         <div class="flex items-center gap-3 overflow-hidden flex-grow">
-                             <div class="drag-handle text-gray-400 hover:text-thuBlue py-1 px-1 cursor-grab"><i class="fas fa-grip-vertical"></i></div>
+                             <div class="drag-handle cursor-grab text-gray-400 hover:text-thuBlue py-1 px-1"><i class="fas fa-grip-vertical"></i></div>
                              <div class="flex flex-col cursor-pointer" onclick="toggleAccordion('${accId}')">
                                  <span class="text-xs font-bold text-gray-400 uppercase tracking-wide">Card #${i+1}</span>
                                  <span class="font-bold text-gray-700 truncate w-32">${x.Title}</span>
@@ -680,6 +1121,7 @@
                             <button onclick="toggleAccordion('${accId}')" class="text-gray-400 hover:text-thuBlue p-2"><i id="${accId}-arrow" class="fas fa-chevron-down accordion-arrow"></i></button>
                         </div>
                     </div>
+                    
                     <div id="${accId}-content" class="accordion-content bg-white">
                         <div class="p-4 space-y-3">
                             <div><label class="text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 font-bold text-thuBlue text-sm" value="${x.Title}" onchange="markUnsaved()"></div>
@@ -700,28 +1142,19 @@
             }); 
             
             if(sortableCards) sortableCards.destroy(); 
-            sortableCards = Sortable.create(c, {
-                handle:'.drag-handle', 
-                animation: 150, 
-                ghostClass: 'sortable-ghost', 
-                dragClass: 'sortable-drag',
-                forceFallback: true, 
-                onEnd: (evt) => handleDragEnd(evt, currentData.cards, renderCardsList)
-            }); 
+            // 重要：Grid 佈局下，ghostClass 有時會跑版，但基本拖曳功能正常
+            sortableCards = Sortable.create(c, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd:()=> { collectDataFromEditors(); markUnsaved(); }}); 
         }
 
-        // --- Render Contacts (Fixed Drag for Mixed List) ---
         function renderContactsList() { 
             const oc=document.getElementById('office-contact-editor'); const sc=document.getElementById('staff-contacts-editor'); oc.innerHTML=''; sc.innerHTML='';
             const off = currentData.contacts.find(c=>c.Type==='office')||{Name:'中心',Title:'Office',Email:'',Description:''};
             oc.innerHTML=`<div class="office-item bg-blue-50 p-6 rounded-xl border border-blue-100"><div class="grid grid-cols-2 gap-4"><div><label class="text-xs font-bold text-gray-400">名稱</label><input class="contact-name w-full border rounded p-2 font-bold" value="${off.Name}" onchange="markUnsaved()"></div><div><label class="text-xs font-bold text-gray-400">Email</label><input class="contact-email w-full border rounded p-2 font-mono" value="${off.Email}" onchange="markUnsaved()"></div><div class="col-span-2"><label class="text-xs font-bold text-gray-400">描述</label><input class="contact-desc w-full border rounded p-2" value="${off.Description}" onchange="markUnsaved()"></div><input type="hidden" class="contact-type" value="office"><input type="hidden" class="contact-title" value="Office"></div></div>`;
-            
-            const staffMembers = currentData.contacts.filter(c=>c.Type!=='office');
-            staffMembers.forEach((c,i)=>{ 
+            currentData.contacts.filter(c=>c.Type!=='office').forEach((c,i)=>{ 
                 sc.innerHTML+=`
                 <div class="staff-item bg-white rounded-xl border border-gray-200 shadow-sm flex flex-col group overflow-hidden" data-index="${i}">
-                    <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center transition hover:bg-gray-100">
-                        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2 drag-handle w-full cursor-grab">
+                    <div class="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center cursor-move drag-handle hover:bg-gray-100 transition">
+                        <div class="text-xs font-bold text-gray-400 uppercase tracking-wider flex items-center gap-2">
                             <i class="fas fa-grip-lines"></i>
                             Staff #${i+1}
                         </div>
@@ -735,56 +1168,9 @@
                     </div>
                 </div>`;
             });
-            
             if(sortableStaff) sortableStaff.destroy(); 
-            sortableStaff = Sortable.create(sc, {
-                handle:'.drag-handle', 
-                animation: 150, 
-                ghostClass: 'sortable-ghost', 
-                dragClass: 'sortable-drag',
-                forceFallback: true, 
-                onEnd: (evt) => {
-                    const office = currentData.contacts.find(c => c.Type === 'office');
-                    const staff = currentData.contacts.filter(c => c.Type !== 'office');
-                    const item = staff.splice(evt.oldIndex, 1)[0];
-                    staff.splice(evt.newIndex, 0, item);
-                    currentData.contacts = [office, ...staff].filter(x => x);
-                    setTimeout(() => { renderContactsList(); markUnsaved(); }, 10);
-                }
-            });
+            sortableStaff = Sortable.create(sc, {handle:'.drag-handle', animation: 150, ghostClass: 'sortable-ghost', forceFallback: true, onEnd:()=> { collectDataFromEditors(); markUnsaved(); }});
         }
-
-        function renderEditors() {
-            const g1 = document.getElementById('settings-group-1');
-            const g2 = document.getElementById('settings-group-2');
-            g1.innerHTML = ''; g2.innerHTML = '';
-
-            for (const [key, config] of Object.entries(settingFieldsMap)) {
-                let value = currentData.settings[key] || ''; 
-                if (key === 'HeroSubtitle') value = value.replace(/<br\s*\/?>/gi, '\n');
-                let inputHtml = config.type === 'textarea' ? `<textarea data-key="${key}" rows="4" class="input-stylish font-mono text-sm resize-y setting-input" onchange="markUnsaved()">${value}</textarea>` : `<input type="text" data-key="${key}" value="${value.replace(/"/g, '&quot;')}" class="input-stylish text-sm setting-input" onchange="markUnsaved()" />`;
-                const html = `<div><label class="block text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">${config.label}</label>${inputHtml}</div>`;
-                if(config.group === 1) g1.innerHTML += html; else g2.innerHTML += html;
-            }
-
-            renderColorManager();
-            renderCardsList();
-            renderContactsList();
-            renderNewsList();
-            
-            renderPageSidebar();
-            if (activePageId && currentData.pages[activePageId]) {
-                switchPageEditor(activePageId);
-            } else {
-                const pageKeys = Object.keys(currentData.pages);
-                if (pageKeys.length > 0) switchPageEditor(pageKeys[0]);
-            }
-
-            renderTemplateSidebar();
-            const tplKeys = Object.keys(currentData.templates);
-            if(tplKeys.length > 0) switchTemplateEditor(tplKeys[0]);
-        }
-
         function renderNewsList() { const c=document.getElementById('news-list-editor'); c.innerHTML=''; currentData.news.forEach((n,i)=>{ c.innerHTML+=`<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${n.Date}" onchange="markUnsaved()"><select class="news-type border rounded p-2 text-sm w-32" onchange="markUnsaved()"><option value="公告" ${n.Type==='公告'?'selected':''}>公告</option><option value="活動" ${n.Type==='活動'?'selected':''}>活動</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew" ${n.IsNew?'checked':''} onchange="markUnsaved()"><label class="text-sm">NEW</label></div><button onclick="deleteNewsItem(${i})" class="ml-auto text-red-400"><i class="fas fa-trash"></i></button></div><input class="news-title w-full border rounded p-2 font-bold" value="${n.Title}" onchange="markUnsaved()"><input class="news-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${n.Link}" onchange="markUnsaved()"><textarea class="news-content w-full border rounded p-2 text-sm h-20" onchange="markUnsaved()">${n.Content}</textarea></div>`; }); }
         
         function addCardItem() { collectDataFromEditors(); currentData.cards.push({Title:"新卡片",Badge:"",Description:"",Icon:"fa-star",Type:"thu",Link:"#"}); renderCardsList(); markUnsaved(); }
@@ -802,7 +1188,30 @@
         function addNewCategory() { const n = document.getElementById('new-cat-name').value.trim(); if(!n)return; if(!currentData.pages[activePageId].categories) currentData.pages[activePageId].categories=[]; currentData.pages[activePageId].categories.push({id:'cat_'+Date.now(), name:n}); document.getElementById('new-cat-name').value=''; renderCategoryList(); markUnsaved(); }
         function renderCategoryList() { const l = document.getElementById('cat-list'); l.innerHTML=''; currentData.pages[activePageId].categories.forEach((c,i)=>{ l.innerHTML+=`<div class="flex justify-between p-2 border-b"><span class="font-bold">${c.name}</span><button onclick="deleteCategory(${i})" class="text-red-400"><i class="fas fa-trash"></i></button></div>`}); }
         function deleteCategory(i) { showMsg("確認", "確定刪除此分類？", "confirm", () => { currentData.pages[activePageId].categories.splice(i,1); renderCategoryList(); markUnsaved(); }); }
-        function renderFileConfigList() { const l=document.getElementById('file-config-list'); l.innerHTML=''; currentData.pages[activePageId].fileFields.forEach((f,i)=>{l.innerHTML+=`<div class="flex gap-2 mb-1"><input value="${f.label}" id="ff-l-${i}" class="border rounded p-1 text-xs w-1/2" onchange="markUnsaved()"><input value="${f.icon}" id="ff-i-${i}" class="border rounded p-1 text-xs w-1/3" onchange="markUnsaved()"><i class="fas ${f.icon}"></i></div>`}); }
+        
+        // Updated File Config List with Live Preview
+        function renderFileConfigList() { 
+            const l=document.getElementById('file-config-list'); 
+            l.innerHTML=''; 
+            currentData.pages[activePageId].fileFields.forEach((f,i)=>{
+                l.innerHTML+=`<div class="flex gap-2 mb-2 items-center bg-white p-2 border rounded-lg">
+                    <div class="w-1/2">
+                        <label class="block text-[10px] text-gray-400 mb-0.5">顯示文字</label>
+                        <input value="${f.label}" id="ff-l-${i}" class="input-stylish py-1.5 px-2 text-xs" onchange="markUnsaved()">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-[10px] text-gray-400 mb-0.5">Icon 代碼</label>
+                        <div class="flex items-center gap-2">
+                            <input value="${f.icon}" id="ff-i-${i}" class="input-stylish py-1.5 px-2 text-xs font-mono" oninput="document.getElementById('ff-icon-prev-${i}').className='fas '+this.value; markUnsaved()">
+                            <div class="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-600 shrink-0">
+                                <i id="ff-icon-prev-${i}" class="fas ${f.icon}"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }); 
+        }
+        
         function saveFileConfigSettings() { currentData.pages[activePageId].fileFields.forEach((f,i)=>{ f.label=document.getElementById('ff-l-'+i).value; f.icon=document.getElementById('ff-i-'+i).value; }); markUnsaved(); showMsg("成功", "設定已更新", "success"); }
         function saveSingleItem() { collectDataFromEditors(); renderPageEditorUI(); showMsg("暫存", "項目已暫存，請記得按儲存並發布", "info"); }
         function saveTemplateItem() { collectDataFromEditors(); switchTemplateEditor(activeTemplateKey); switchTemplateView('content'); showMsg("暫存", "項目已暫存，請記得按儲存並發布", "info"); }
@@ -817,21 +1226,31 @@
         function toggleTokenVisibility() { const t=document.getElementById('gh-token'); const i=document.getElementById('token-eye-icon'); if(t.type==='password'){t.type='text';i.className='fas fa-eye-slash'}else{t.type='password';i.className='fas fa-eye'} }
         function logout() { showMsg("登出確認", "確定要登出嗎？資料將不會保留。", "confirm", () => location.reload()); }
 
-        // --- Render Color Manager ---
+        // --- Render Color Manager (Fixed Lock Logic & Color Picker) ---
         function renderColorManager() {
             const container = document.getElementById('colors-list-editor');
             container.innerHTML = '';
             
+            // 確保 Glory Gold 存在
             const hasGold = currentData.colors.find(c => c.id === 'glorygold');
             if (!hasGold) currentData.colors.push({name: "榮耀金", id: "glorygold", hex: "#c6a87c"});
 
             currentData.colors.forEach((c, i) => {
+                // 修正 1: 加入 'thublue' 到鎖定清單，確保正確鎖定
                 const isLocked = ['thu', 'glorygold', 'thubluenew', 'thublue'].includes(c.id);
+                
+                // 修正 2: 調整 grid col-span 分配，縮小 Hex 與刪除鍵的距離
                 container.innerHTML += `
-                <div class="color-item grid grid-cols-12 gap-4 items-center p-3 bg-white border border-gray-100 rounded-lg hover:shadow-sm transition" data-index="${i}">
-                    <div class="col-span-1 text-center flex justify-center"><div class="color-preview-circle" style="background-color: ${c.hex};"></div></div>
-                    <div class="col-span-3"><input type="text" class="c-name w-full border rounded p-2 text-sm" value="${c.name}" onchange="markUnsaved()"></div>
-                    <div class="col-span-3"><input type="text" class="c-id w-full border rounded p-2 text-sm font-mono text-gray-500" value="${c.id}" ${isLocked ?'readonly title="系統預設顏色無法修改 ID"':''} onchange="markUnsaved()"></div>
+                <div class="color-item grid grid-cols-12 gap-3 items-center p-3 bg-white border border-gray-100 rounded-lg hover:shadow-sm transition" data-index="${i}">
+                    <div class="col-span-1 text-center flex justify-center">
+                        <div class="color-preview-circle" style="background-color: ${c.hex};"></div>
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-name w-full border rounded p-2 text-sm" value="${c.name}" onchange="markUnsaved()" placeholder="顏色名稱">
+                    </div>
+                    <div class="col-span-3">
+                        <input type="text" class="c-id w-full border rounded p-2 text-sm font-mono text-gray-500" value="${c.id}" ${isLocked ?'readonly title="系統預設顏色無法修改 ID"':''} onchange="markUnsaved()">
+                    </div>
                     <div class="col-span-4 flex gap-2">
                         <div class="relative flex-grow">
                             <input type="text" class="c-hex w-full border rounded p-2 pl-8 text-sm font-mono uppercase" value="${c.hex}" ${isLocked ?'readonly title="系統預設顏色無法修改 Hex"':''} onchange="this.closest('.color-item').querySelector('input[type=color]').value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor=this.value; markUnsaved()">
@@ -840,7 +1259,10 @@
                         ${!isLocked ? `<input type="color" class="h-9 w-9 p-0.5 border border-gray-200 rounded cursor-pointer bg-white" value="${c.hex}" oninput="this.closest('.color-item').querySelector('.c-hex').value = this.value; this.closest('.color-item').querySelector('.color-preview-circle').style.backgroundColor=this.value; markUnsaved()">` : ''}
                     </div>
                     <div class="col-span-1 text-right">
-                        ${isLocked ? '<span class="text-xs text-gray-400"><i class="fas fa-lock"></i></span>' : `<button onclick="deleteColorItem(${i})" class="text-gray-400 hover:text-red-500 p-2 transition"><i class="fas fa-trash-alt"></i></button>`}
+                        ${isLocked 
+                            ? '<span class="text-xs text-gray-400"><i class="fas fa-lock"></i></span>' 
+                            : `<button onclick="deleteColorItem(${i})" class="text-gray-400 hover:text-red-500 p-2 transition"><i class="fas fa-trash-alt"></i></button>`
+                        }
                     </div>
                 </div>`;
             });
@@ -900,6 +1322,7 @@
                 cancelBtn.onclick = () => { modal.classList.add('hidden'); document.getElementById('msg-input').value = ''; }; 
                 
                 const confirmBtn = document.createElement('button');
+                // Updated confirm button style to match "Create Page" style
                 confirmBtn.className = 'w-full py-2.5 rounded-lg bg-thuBlue text-white font-bold hover:bg-blue-800 transition shadow-md text-sm flex items-center justify-center gap-2 transform active:scale-95';
                 confirmBtn.innerHTML = '<i class="fas fa-check"></i> 確認';
                 confirmBtn.onclick = () => { if(callback) callback(); modal.classList.add('hidden'); document.getElementById('msg-input').value = ''; };
@@ -922,12 +1345,11 @@
         function collectDataFromEditors() {
             if (!currentData) return;
 
+            // Settings, Cards, Contacts, News, Colors always collected
             document.querySelectorAll('.setting-input').forEach(input => {
                 if(currentData.settings) currentData.settings[input.dataset.key] = input.value;
             });
 
-            // Note: Sortable lists update model in real-time now via handleDragEnd.
-            // But we still collect values for text inputs.
             const cards = [];
             document.querySelectorAll('.card-item').forEach(el => {
                 cards.push({
@@ -944,28 +1366,55 @@
             const contacts = [];
             const offEl = document.querySelector('.office-item');
             if(offEl) {
-                contacts.push({ Name: offEl.querySelector('.contact-name').value, Title: 'Office', Email: offEl.querySelector('.contact-email').value, Description: offEl.querySelector('.contact-desc').value, Type: 'office' });
+                contacts.push({
+                    Name: offEl.querySelector('.contact-name').value,
+                    Title: 'Office',
+                    Email: offEl.querySelector('.contact-email').value,
+                    Description: offEl.querySelector('.contact-desc').value,
+                    Type: 'office'
+                });
             }
             document.querySelectorAll('.staff-item').forEach(el => {
-                contacts.push({ Name: el.querySelector('.contact-name').value, Title: el.querySelector('.contact-title').value, Email: el.querySelector('.contact-email').value, Phone: el.querySelector('.contact-phone').value, Type: el.querySelector('.contact-type').value, Description: el.querySelector('.contact-desc').value });
+                contacts.push({
+                    Name: el.querySelector('.contact-name').value,
+                    Title: el.querySelector('.contact-title').value,
+                    Email: el.querySelector('.contact-email').value,
+                    Phone: el.querySelector('.contact-phone').value,
+                    Type: el.querySelector('.contact-type').value,
+                    Description: el.querySelector('.contact-desc').value
+                });
             });
             currentData.contacts = contacts;
 
             const news = [];
             document.querySelectorAll('.news-item').forEach(el => {
-                news.push({ Date: el.querySelector('.news-date').value, Type: el.querySelector('.news-type').value, Title: el.querySelector('.news-title').value, Link: el.querySelector('.news-link').value, Content: el.querySelector('.news-content').value, IsNew: el.querySelector('.news-isnew').checked });
+                news.push({
+                    Date: el.querySelector('.news-date').value,
+                    Type: el.querySelector('.news-type').value,
+                    Title: el.querySelector('.news-title').value,
+                    Link: el.querySelector('.news-link').value,
+                    Content: el.querySelector('.news-content').value,
+                    IsNew: el.querySelector('.news-isnew').checked
+                });
             });
             currentData.news = news;
 
             const colors = [];
             document.querySelectorAll('.color-item').forEach(el => {
-                colors.push({ name: el.querySelector('.c-name').value, id: el.querySelector('.c-id').value, hex: el.querySelector('.c-hex').value });
+                colors.push({
+                    name: el.querySelector('.c-name').value,
+                    id: el.querySelector('.c-id').value,
+                    hex: el.querySelector('.c-hex').value
+                });
             });
             currentData.colors = colors;
 
+            // Conditional collection based on Active Tab
+            // If in Pages tab
             if (currentTab === 'pages' && activePageId && currentData.pages[activePageId]) {
                 const pageItems = [];
-                document.getElementById('page-items-editor').querySelectorAll('.page-item').forEach(el => {
+                const container = document.getElementById('page-items-editor');
+                container.querySelectorAll('.page-item').forEach(el => {
                     const item = {
                         title: el.querySelector('.p-title').value,
                         title_en: el.querySelector('.p-title-en').value,
@@ -974,16 +1423,25 @@
                         category: el.querySelector('.p-cat-select').value,
                         visible: el.querySelector('.p-visible').checked
                     };
+                    
                     const isResources = !!currentData.pages[activePageId].fileFields;
-                    if(isResources) { el.querySelectorAll('.p-file-field').forEach(fi => item[fi.dataset.key] = fi.value); } else { item.url = el.querySelector('.p-url').value; }
+                    if(isResources) {
+                        el.querySelectorAll('.p-file-field').forEach(fi => {
+                            item[fi.dataset.key] = fi.value;
+                        });
+                    } else {
+                        item.url = el.querySelector('.p-url').value;
+                    }
                     pageItems.push(item);
                 });
                 currentData.pages[activePageId].items = pageItems;
             }
-            
+
+            // If in Templates tab
             if (currentTab === 'templates' && activeTemplateKey && currentData.templates[activeTemplateKey]) {
                 const tplItems = [];
-                document.getElementById('template-items-editor').querySelectorAll('.template-item').forEach(el => {
+                const container = document.getElementById('template-items-editor');
+                container.querySelectorAll('.template-item').forEach(el => {
                     const item = {
                         title: el.querySelector('.p-title').value,
                         title_en: el.querySelector('.p-title-en').value,
@@ -992,7 +1450,9 @@
                         category: el.querySelector('.p-cat-select').value,
                         visible: el.querySelector('.p-visible').checked
                     };
-                     const urlInput = el.querySelector('.p-url'); if(urlInput) item.url = urlInput.value;
+                     const urlInput = el.querySelector('.p-url');
+                     if(urlInput) item.url = urlInput.value;
+
                      tplItems.push(item);
                 });
                 currentData.templates[activeTemplateKey].items = tplItems;
@@ -1029,7 +1489,12 @@
                 
                 if (currentTab === 'templates' && activeTemplateKey) {
                     const tpl = currentData.templates[activeTemplateKey];
-                    const tplJson = { tag: "Template", description: tpl.desc, labels: tpl.labels || {title:"Title"}, items: tpl.items };
+                    const tplJson = {
+                        tag: "Template", 
+                        description: tpl.desc,
+                        labels: tpl.labels || {title:"Title"},
+                        items: tpl.items
+                    };
                     await uploadFileToGitHub(tpl.jsonPath, JSON.stringify(tplJson, null, 4));
                 }
 
@@ -1056,7 +1521,10 @@
             if (input.files && input.files[0] && currentUploadTargetInput) {
                 const file = input.files[0];
                 const fileName = `${Date.now()}_${file.name}`;
+                // const path = `files/${fileName}`; // Need full backend for real upload
+
                 showMsg("上傳中", "正在上傳檔案...", "info");
+                // Mock upload for CMS demo
                 currentUploadTargetInput.value = `files/${fileName}`;
                 showMsg("提示", "檔案上傳功能需配合完整後端，目前僅填入路徑。", "success");
                 markUnsaved(); 
