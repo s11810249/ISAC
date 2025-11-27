@@ -13,21 +13,23 @@
             theme: {
                 extend: {
                     colors: {
-                        thuBlue: '#002E5D',
-                        thuLightBlue: '#eef6fc',
-                        thuGold: '#C6A87C',
-                        // === 新增自定義顏色 ===
-                        lapisYellow: '#E89B00',   // 琉璃黃
-                        concreteGrey: '#A6A9AA',  // 清水灰
-                        brickRed: '#A14332',      // 磚瓦紅
-                        windowBlack: '#2B2B2B',   // 窗框黑
-                        acaciaGreen: '#4A6B3E',   // 相思綠
-                        milkWhite: '#F4F1EA',     // 鮮乳白
-                        lakeBlue: '#365C68',      // 湖心藍
-                        phoenixOrange: '#FF5A45', // 鳳凰橘
-                        gloryGold: '#c6a87c',     // 榮耀金
-                        thuBlueNew: '#005596',    // 東海藍
-                        grassGreen: '#219653',    // 青草綠
+                        // === 修改：使用 CSS 變數以同步後台設定 ===
+                        thuBlue: 'var(--color-thu)',       // 對應 id: thu
+                        thuLightBlue: '#eef6fc',           // 固定淺色底
+                        thuGold: 'var(--color-glorygold)', // 對應 id: glorygold
+                        
+                        // 自定義顏色映射 (對應 data.json 中的 id)
+                        lapisYellow: 'var(--color-lapisyellow)',
+                        concreteGrey: 'var(--color-concretegrey)',
+                        brickRed: 'var(--color-brickred)',
+                        windowBlack: 'var(--color-windowblack)',
+                        acaciaGreen: 'var(--color-acaciagreen)',
+                        milkWhite: 'var(--color-milkwhite)',
+                        lakeBlue: 'var(--color-lakeblue)',
+                        phoenixOrange: 'var(--color-phoenixorange)',
+                        thuBlueNew: 'var(--color-thubluenew)',
+                        gloryGold: 'var(--color-glorygold)',
+                        grassGreen: 'var(--color-grassgreen)',
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -37,9 +39,25 @@
         }
     </script>
     <style>
+        /* 定義預設顏色變數 (防止 JS 載入失敗時的備案) */
+        :root {
+            --color-thu: #002E5D;
+            --color-glorygold: #C6A87C;
+            --color-lapisyellow: #E89B00;
+            --color-concretegrey: #A6A9AA;
+            --color-brickred: #A14332;
+            --color-windowblack: #2B2B2B;
+            --color-acaciagreen: #4A6B3E;
+            --color-milkwhite: #F4F1EA;
+            --color-lakeblue: #365C68;
+            --color-phoenixorange: #FF5A45;
+            --color-thubluenew: #005596;
+            --color-grassgreen: #219653;
+        }
+
         /* 自定義樣式 */
         .hero-bg {
-            background: linear-gradient(135deg, #002E5D 0%, #001a35 100%);
+            background: linear-gradient(135deg, var(--color-thu) 0%, #001a35 100%);
             position: relative;
             overflow: hidden;
             min-height: 100vh; /* 確保填滿畫面 */
@@ -85,7 +103,7 @@
             width: 80px;
             height: 80px;
             border: 6px solid #eef6fc; /* 輕量化底色 */
-            border-top-color: #C6A87C; /* 主色 */
+            border-top-color: var(--color-glorygold); /* 主色 */
             border-radius: 50%;
             animation: spin 1s linear infinite;
             position: relative;
@@ -131,19 +149,18 @@
         /* 2. 標題與 LOGO hover 發光效果 */
         .title-group:hover #hero-logo {
              /* hover發光 */
-             filter: drop-shadow(0 0 20px #C6A87C) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)); 
+             filter: drop-shadow(0 0 20px var(--color-glorygold)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)); 
              transform: scale(1.05);
         }
         .title-group:hover #hero-title-1,
         .title-group:hover #hero-title-2,
         .title-group:hover #hero-eng-title {
-            /* 修正: 降低發光強度，確保文字可讀性 */
-            text-shadow: 0 0 4px #fff, 0 0 10px #C6A87C;
+            text-shadow: 0 0 4px #fff, 0 0 10px var(--color-glorygold);
             transform: scale(1.02);
             transition: text-shadow 0.3s ease-out, transform 0.3s ease-out;
         }
         
-        /* 修正 2: 滾動按鈕的隱藏/顯示 */
+        /* 修正: 滾動按鈕的隱藏/顯示 */
         #scroll-to-top.hidden {
             opacity: 0;
             visibility: hidden;
@@ -185,7 +202,7 @@
 
     <div class="hero-bg text-white relative">
         <div class="absolute top-4 right-4 sm:top-6 sm:right-6 z-30">
-            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-thuGold text-white border border-thuGold rounded-full hover:bg-[#b58f2a] transition-all duration-300 font-bold backdrop-blur-sm shadow-md text-sm sm:text-base hover:shadow-lg hover:-translate-y-0.5">
+            <a href="https://www.thu.edu.tw/" target="_blank" class="flex items-center gap-2 px-3 py-1.5 sm:px-4 sm:py-2 bg-thuGold text-white border border-thuGold rounded-full hover:brightness-110 transition-all duration-300 font-bold backdrop-blur-sm shadow-md text-sm sm:text-base hover:shadow-lg hover:-translate-y-0.5">
                 <i class="fa-solid fa-house"></i> 東海大學首頁
             </a>
         </div>
@@ -213,7 +230,7 @@
             <p id="hero-subtitle" class="text-base sm:text-lg text-blue-100/90 font-light mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in-up px-4" style="animation-delay: 0.4s;">載入中...</p>
             
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 animate-fade-in-up w-full sm:w-auto px-4 sm:px-0" style="animation-delay: 0.6s;">
-                <button onclick="toggleModal('origin-modal')" class="group relative px-6 sm:px-8 py-3.5 bg-thuGold hover:bg-[#b58f2a] text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
+                <button onclick="toggleModal('origin-modal')" class="group relative px-6 sm:px-8 py-3.5 bg-thuGold hover:brightness-110 text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
                     <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
                     <span class="relative flex items-center justify-center gap-2 text-base sm:text-lg"><i class="fas fa-feather-alt"></i> <span>查看計畫緣起</span></span>
                 </button>
@@ -376,7 +393,7 @@
         // 1. 程式邏輯 (資料來源改為 Fetch data.json)
         // ==========================================
         
-        // 擴充 Color Map，加入新顏色的定義
+        // Color Map 邏輯
         const colorMap = {
             'thu': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' },
             'gold': { border: 'border-thuGold', icon: 'bg-thuGold', text: 'text-thuGold', hoverText: 'group-hover:text-thuGold', isGradient: true },
@@ -389,13 +406,13 @@
             'indigo': { border: 'border-indigo-500', icon: 'bg-indigo-500', text: 'text-indigo-600', hoverText: 'group-hover:text-indigo-800' },
             'cyan': { border: 'border-cyan-500', icon: 'bg-cyan-500', text: 'text-cyan-600', hoverText: 'group-hover:text-cyan-800' },
             'rose': { border: 'border-rose-500', icon: 'bg-rose-500', text: 'text-rose-600', hoverText: 'group-hover:text-rose-800' },
-            // === 新增自定義顏色映射 ===
+            // 自定義顏色
+            'thublue': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' },
             'lapisyellow': { border: 'border-lapisYellow', icon: 'bg-lapisYellow', text: 'text-lapisYellow', hoverText: 'group-hover:text-lapisYellow' },
             'concretegrey': { border: 'border-concreteGrey', icon: 'bg-concreteGrey', text: 'text-concreteGrey', hoverText: 'group-hover:text-concreteGrey' },
             'brickred': { border: 'border-brickRed', icon: 'bg-brickRed', text: 'text-brickRed', hoverText: 'group-hover:text-brickRed' },
             'windowblack': { border: 'border-windowBlack', icon: 'bg-windowBlack', text: 'text-windowBlack', hoverText: 'group-hover:text-windowBlack' },
             'acaciagreen': { border: 'border-acaciaGreen', icon: 'bg-acaciaGreen', text: 'text-acaciaGreen', hoverText: 'group-hover:text-acaciaGreen' },
-            // 特別處理鮮乳白：背景很淺，Icon內的文字需要改成深色 (!text-gray-700)
             'milkwhite': { border: 'border-gray-200', icon: 'bg-milkWhite !text-gray-700', text: 'text-gray-600', hoverText: 'group-hover:text-gray-800' },
             'lakeblue': { border: 'border-lakeBlue', icon: 'bg-lakeBlue', text: 'text-lakeBlue', hoverText: 'group-hover:text-lakeBlue' },
             'phoenixorange': { border: 'border-phoenixOrange', icon: 'bg-phoenixOrange', text: 'text-phoenixOrange', hoverText: 'group-hover:text-phoenixOrange' },
@@ -412,7 +429,7 @@
             'blue': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', border: 'hover:border-blue-500' },
             'default': { bg: 'bg-gray-50', text: 'text-gray-600', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-gray-400' },
             'office': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-800', border: 'hover:border-green-500' },
-            // === 新增自定義顏色映射 (聯絡人卡片用) ===
+            // 自定義顏色
             'thubluenew': { bg: 'bg-blue-50', text: 'text-thuBlueNew', badge: 'bg-blue-100 text-blue-900', border: 'hover:border-thuBlueNew' },
             'glorygold': { bg: 'bg-yellow-50', text: 'text-gloryGold', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-gloryGold' },
             'lapisyellow': { bg: 'bg-orange-50', text: 'text-lapisYellow', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-lapisYellow' },
@@ -428,13 +445,13 @@
 
         let currentNewsPage = 1;
         const newsPerPage = 5;
-        let siteNews = []; // 全域變數
+        let siteNews = []; 
         let filteredNews = [];
         let siteContacts = [];
         
         let initialLoadStartTime = Date.now();
-        const minLoadingTime = 500; // 修正 4: 最小載入時間（減少以避免過度延遲）
-        const maxSimulatedProgress = 90; // 修正 4: 最大模擬進度
+        const minLoadingTime = 500;
+        const maxSimulatedProgress = 90;
 
         // 輔助函式
         const setText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
@@ -453,7 +470,6 @@
 
         // 隱藏載入畫面
         function hideLoadingOverlay() {
-            // 修正 4: 確保至少跑 3 秒的邏輯
             const totalElapsedTime = Date.now() - initialLoadStartTime;
             const requiredDelay = Math.max(0, 3000 - totalElapsedTime); 
 
@@ -465,7 +481,7 @@
                     overlay.style.opacity = '0';
                     setTimeout(() => {
                         overlay.style.display = 'none';
-                    }, 500); // 等待淡出動畫完成
+                    }, 500); 
                 }
             }, requiredDelay);
         }
@@ -478,13 +494,13 @@
             });
         };
         
-        // 修正 4: 自訂滾動邏輯，避開 Sticky Header
+        // 自訂滾動邏輯
         window.customScrollToMain = function() {
             const mainContent = document.getElementById('main-content');
             const stickyHeader = document.getElementById('sticky-header');
             
             if (mainContent && stickyHeader) {
-                const headerHeight = stickyHeader.offsetHeight || 64; // 預設 64px
+                const headerHeight = stickyHeader.offsetHeight || 64; 
                 const targetPosition = mainContent.offsetTop - headerHeight;
                 
                 window.scrollTo({
@@ -513,7 +529,7 @@
             let progress = 0;
             const interval = setInterval(() => {
                 if (progress < maxSimulatedProgress) {
-                    progress += 5; // 模擬較快的開始進度
+                    progress += 5; 
                 }
                 updateProgress(progress);
             }, 100);
@@ -524,6 +540,22 @@
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
                 if (!response.ok) throw new Error("無法讀取資料庫");
                 const data = await response.json();
+
+                // === 新增：動態注入顏色變數，實現與後台同步 ===
+                if (data.colors) {
+                    const rootStyle = document.documentElement.style;
+                    // 設定預設值 (確保 data.json 異常時仍有顏色)
+                    rootStyle.setProperty('--color-thu', '#002E5D');
+                    rootStyle.setProperty('--color-glorygold', '#C6A87C');
+
+                    data.colors.forEach(c => {
+                        // 將 ID 轉為小寫並設定為 CSS 變數 (例如 thublue -> --color-thublue)
+                        if(c.id && c.hex) {
+                            rootStyle.setProperty(`--color-${c.id.toLowerCase()}`, c.hex);
+                        }
+                    });
+                }
+                // ===========================================
 
                 // 停止模擬進度
                 clearInterval(interval);
@@ -562,7 +594,7 @@
         function renderSettings(settings) {
             if (!settings) return;
             document.title = settings.SiteTitle;
-            // 修正 3: 矮頁首標題修正為完整名稱
+            // 矮頁首標題修正為完整名稱
             document.getElementById('sticky-header').querySelector('#nav-title').innerText = settings.SiteTitle; 
             setText('hero-eng-title', settings.SiteEngTitle);
             setHTML('hero-subtitle', settings.HeroSubtitle);
@@ -573,21 +605,14 @@
             const fullTitle = settings.SiteTitle || "";
             const keyword = "協作平台";
             
-            // 修正：更聰明的標題切割邏輯
+            // 標題切割邏輯
             if (fullTitle.includes(keyword)) {
                 const parts = fullTitle.split(keyword);
-                // parts[0] 是關鍵字前面的文字 (如 "實習業務")
-                // parts[1] 是關鍵字後面的文字 (如 "AA")
-                
                 setText('hero-title-1', parts[0]);
-                
-                // 將後面的文字接在關鍵字後面，一起變成金色
-                // 這樣 "協作平台" + "AA" 都會顯示在第二個 span 內
                 setText('hero-title-2', keyword + (parts[1] || "")); 
             } else { 
-                // 若完全不包含關鍵字，則全部顯示在第一個 span (白色)
                 setText('hero-title-1', fullTitle); 
-                setText('hero-title-2', ""); // 清空第二個 span
+                setText('hero-title-2', ""); 
             }
 
             if (settings.LogoUrl) {
@@ -802,7 +827,7 @@
         document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
         
         // --- Custom Scroll Logic for Footer ---
-        const heroHeightThreshold = 600; // 滾動超過這個高度才顯示 footer
+        const heroHeightThreshold = 600; 
         window.addEventListener('scroll', () => { 
             const stickyHeader = document.getElementById('sticky-header'); 
             const footerTrigger = document.getElementById('footer-trigger'); 
@@ -816,7 +841,6 @@
             }
 
             // 控制版權頁顯示
-            // 修正邏輯：滾動距離大於 Hero區塊高度的 90% 時顯示 footer
             if (window.scrollY >= window.innerHeight * 0.9) {
                 footerTrigger.classList.remove('hidden');
             } else {
