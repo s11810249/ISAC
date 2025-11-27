@@ -74,6 +74,7 @@
     <script>
         let allLaws = [];
         let categories = [];
+        let fileFieldsConfig = [];
         
         document.addEventListener('scroll', () => { const btn = document.getElementById('scroll-to-top'); if(window.scrollY>300) btn.classList.add('show'); else btn.classList.remove('show'); });
 
@@ -100,6 +101,15 @@
                         { id: 'edu', name: '教育部法規' },
                         { id: 'admin', name: '行政函釋' },
                         { id: 'school', name: '校內法規' }
+                    ];
+                    
+                    // Get File Fields Config
+                    fileFieldsConfig = pageInfo.fileFields || [
+                        { key: 'url_1', label: '中文版', icon: 'fa-file-pdf' },
+                        { key: 'url_2', label: '英文版', icon: 'fa-file-pdf' },
+                        { key: 'url_3', label: '附件一', icon: 'fa-paperclip' },
+                        { key: 'url_4', label: '附件二', icon: 'fa-paperclip' },
+                        { key: 'url_5', label: '相關連結', icon: 'fa-link' }
                     ];
 
                     allLaws = pageInfo.items;
@@ -137,25 +147,52 @@
         function renderLaws(items) {
             const container = document.getElementById('laws-container');
             container.innerHTML = '';
-            if (!items || items.length === 0) { container.innerHTML = '<div class="text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">沒有符合條件的法規</div>'; return; }
+            
+            // Filter visible items
+            const visibleItems = items.filter(i => i.visible !== false);
 
-            items.forEach(item => {
+            if (!visibleItems || visibleItems.length === 0) { 
+                container.innerHTML = '<div class="text-center py-12 text-gray-400 bg-white rounded-xl border border-dashed border-gray-300">沒有符合條件的法規</div>'; 
+                return; 
+            }
+
+            visibleItems.forEach(item => {
                 let btns = '';
-                if (item.url_zh) btns += `<a href="${item.url_zh}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 中文版</a>`;
-                if (item.url_en) btns += `<a href="${item.url_en}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 英文版</a>`;
-                if (!item.url_zh && !item.url_en && item.url) btns += `<a href="${item.url}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 下載</a>`;
+                
+                // Backward compatibility
+                if (item.url_zh && !item.url_1) {
+                    btns += `<a href="${item.url_zh}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 中文版</a>`;
+                }
+                if (item.url_en && !item.url_2) {
+                    btns += `<a href="${item.url_en}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 英文版</a>`;
+                }
+                if (item.url && !item.url_zh && !item.url_en && !item.url_1) {
+                    btns += `<a href="${item.url}" target="_blank" class="download-btn"><i class="fas fa-file-pdf"></i> 下載</a>`;
+                }
+
+                // New Dynamic Fields Logic
+                // Only render if URL exists. We removed "show_" config per request, now purely based on content existence.
+                fileFieldsConfig.forEach(field => {
+                    const key = field.key;
+                    const url = item[key];
+                    
+                    if (url && url.trim() !== "") {
+                        const label = field.label || '檔案下載';
+                        const icon = field.icon || 'fa-download';
+                        btns += `<a href="${url}" target="_blank" class="download-btn"><i class="fas ${icon}"></i> ${label}</a>`;
+                    }
+                });
 
                 const formattedDate = item.date ? item.date.replace(/-/g, '/') : '';
                 const issuerText = item.issuer || '東海大學';
 
-                // 移除 truncate 以支援換行
                 container.innerHTML += `
                 <div class="group block bg-white border border-gray-200 rounded-lg p-5 transition cursor-default mb-3">
                     <div class="flex flex-col sm:flex-row sm:items-center gap-4">
                         <div class="flex-grow min-w-0">
                             <div class="flex flex-wrap items-center gap-2 mb-2">
                                 <span class="issuer-tag">${issuerText}</span>
-                                ${formattedDate ? `<span class="text-xs text-gray-500 flex items-center gap-1"><i class="far fa-clock"></i> ${formattedDate}</span>` : ''}
+                                ${formattedDate ? `<span class="text-xs text-gray-500 flex items-center gap-1"><i class="fas fa-calendar-alt"></i> 最新修正日期：${formattedDate}</span>` : ''}
                             </div>
                             <h3 class="text-lg font-bold text-gray-800 transition leading-tight mb-0.5">${item.title}</h3>
                             ${item.title_en ? `<p class="text-xs text-gray-400 font-medium">${item.title_en}</p>` : ''}
