@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TEST | 實習業務協作平台</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>tailwind.config={theme:{extend:{colors:{thuBlue:'#002E5D',thuGold:'#C6A87C'},fontFamily:{sans:['"Noto Sans TC"','sans-serif']}}}}</script>
+    <style>.page-header{background:linear-gradient(135deg,#002E5D 0%,#001a35 100%)}</style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen">
+    <nav class="bg-thuBlue text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3"><img src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" class="h-8 w-auto"><span class="font-bold hidden sm:inline">實習業務協作平台</span></a>
+            <a href="index.html" class="text-sm bg-white/10 px-4 py-1.5 rounded-full hover:bg-white/20 transition"><i class="fas fa-arrow-left"></i> 回首頁</a>
+        </div>
+    </nav>
+    <header class="page-header text-white py-12 text-center">
+        <div class="inline-block bg-white/10 px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20" id="header-tag">Loading...</div>
+        <h1 class="text-3xl font-bold mb-2 tracking-widest" id="header-title">Loading...</h1>
+        <p class="text-gray-400 text-sm" id="header-desc"></p>
+    </header>
+    <main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full">
+        <div id="filter-container" class="flex flex-wrap justify-center gap-2 mb-10"></div>
+        <div id="items-container" class="space-y-4 min-h-[300px]"><div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div></div>
+    </main>
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-xs border-t-4 border-thuGold"><p>Copyright © 2025 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p></footer>
+    <script>
+        const pageData = {"tag":"Resources","description":"在此輸入頁面說明...","icon":"fa-folder-open","labels":{"title":"文件名稱","title_en":"英文名稱/備註"},"categories":[{"id":"cat_default","name":"預設分類"}],"fileFields":[{"key":"url_1","label":"主要文件","icon":"fa-file-pdf"},{"key":"url_2","label":"附件","icon":"fa-paperclip"}],"items":[],"title":"TEST"};
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Fetch the specific data for this page
+                const [globalRes, pageRes] = await Promise.all([
+                    fetch('data.json?t='+Date.now()),
+                    fetch('pages/data_laws2.json?t='+Date.now())
+                ]);
+                const globalData = await globalRes.json();
+                // We use fetched pageData to render fresh content
+                const fetchedPageData = await pageRes.json();
+                
+                document.title = `${fetchedPageData.title} | ${globalData.settings.SiteTitle}`;
+                document.getElementById('header-tag').innerText = fetchedPageData.tag || 'Page';
+                document.getElementById('header-title').innerText = fetchedPageData.title;
+                document.getElementById('header-desc').innerText = fetchedPageData.description || '';
+                
+                renderContent(fetchedPageData);
+            } catch(e) { document.getElementById('items-container').innerHTML = '<div class="text-center text-red-500">資料讀取錯誤</div>'; console.error(e); }
+        });
+
+        function renderContent(data) {
+            const container = document.getElementById('items-container');
+            const filters = document.getElementById('filter-container');
+            container.innerHTML = ''; filters.innerHTML = '';
+            
+            // Categories
+            if(data.categories && data.categories.length > 0) {
+                filters.innerHTML = '<button onclick="filterItems(\'all\')" class="filter-btn active px-4 py-1.5 rounded-full text-sm bg-thuBlue text-white" id="btn-all">全部</button>';
+                data.categories.forEach(cat => {
+                    filters.innerHTML += `<button onclick="filterItems('${cat.id}')" class="filter-btn px-4 py-1.5 rounded-full text-sm bg-white border border-gray-300 text-gray-600" id="btn-${cat.id}">${cat.name}</button>`;
+                });
+            }
+
+            // Items
+            window.allItems = data.items || [];
+            filterItems('all');
+        }
+
+        window.filterItems = function(catId) {
+            document.querySelectorAll('.filter-btn').forEach(b=>{b.classList.remove('bg-thuBlue','text-white');b.classList.add('bg-white','text-gray-600')});
+            const btn = document.getElementById('btn-'+catId);
+            if(btn) { btn.classList.add('bg-thuBlue','text-white'); btn.classList.remove('bg-white','text-gray-600'); }
+            
+            const items = catId === 'all' ? window.allItems : window.allItems.filter(i => i.category === catId);
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+            
+            if(items.length === 0) { container.innerHTML = '<div class="text-center py-10 text-gray-400">無資料</div>'; return; }
+            
+            items.forEach(item => {
+                if(item.visible === false) return;
+                let btns = '';
+                // Dynamic File Fields
+                const fields = pageData.fileFields || [];
+                if(fields.length > 0) {
+                    fields.forEach(f => {
+                        if(item[f.key]) btns += `<a href="${item[f.key]}" target="_blank" class="bg-red-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1 hover:bg-red-700"><i class="fas ${f.icon}"></i> ${f.label}</a>`;
+                    });
+                } else if(item.url) {
+                     btns += `<a href="${item.url}" target="_blank" class="text-blue-600 hover:underline text-sm"><i class="fas fa-link"></i> 連結</a>`;
+                }
+
+                container.innerHTML += `<div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
+                    <div>
+                        <div class="flex items-center gap-2 mb-1">
+                             ${item.date ? `<span class="text-xs text-gray-400 font-mono">${item.date}</span>` : ''}
+                             ${item.issuer ? `<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">${item.issuer}</span>` : ''}
+                        </div>
+                        <h3 class="text-lg font-bold text-gray-800">${item.title}</h3>
+                        ${item.title_en ? `<p class="text-xs text-gray-500">${item.title_en}</p>` : ''}
+                    </div>
+                    <div class="flex flex-wrap gap-2 shrink-0">${btns}</div>
+                </div>`;
+            });
+        }
+    </script>
+</body>
+</html>
