@@ -19,8 +19,6 @@
                         darkBg: '#0f172a',
                         btnGreen: '#219653',
                         btnGreenHover: '#1e874b',
-                        pdfRed: '#dc2626',
-                        pdfRedHover: '#b91c1c'
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -46,26 +44,6 @@
         .sidebar-btn.active { background-color: #002E5D; color: white; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); }
         .sidebar-btn.active i { color: #C6A87C; }
 
-        /* 按鈕風格統一 (加強版) */
-        .btn-primary { 
-            @apply bg-thuBlue text-white border-2 border-thuBlue hover:bg-blue-800 hover:border-blue-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide; 
-        }
-        /* 修正：將次要按鈕改為灰色背景，增加對比度 */
-        .btn-secondary { 
-            @apply bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200 hover:text-gray-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:bg-gray-300 text-sm tracking-wide; 
-        }
-        .btn-danger { 
-            @apply bg-white text-red-500 border border-red-200 hover:bg-red-50 hover:text-red-600 font-bold py-1.5 px-3 rounded-lg transition-all duration-200 flex items-center justify-center gap-2 active:bg-red-100 text-sm; 
-        }
-        /* 修正：將成功按鈕改為綠色實心背景 */
-        .btn-success { 
-            @apply bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide; 
-        }
-        /* 確認暫存 (藍色實心強調) */
-        .btn-info {
-            @apply bg-blue-600 text-white border border-blue-700 hover:bg-blue-700 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide;
-        }
-        
         /* Accordion Style */
         .accordion-content { transition: max-height 0.3s ease-out, opacity 0.3s ease-out; max-height: 0; opacity: 0; overflow: hidden; }
         .accordion-content.open { max-height: 2000px; opacity: 1; }
@@ -79,10 +57,8 @@
 </head>
 <body class="bg-gray-100 min-h-screen text-gray-700 font-sans">
 
-    <!-- Hidden File Input for Uploads -->
     <input type="file" id="global-file-input" class="hidden" onchange="handleFileUpload(this)">
 
-    <!-- Modal: Category Delete -->
     <div id="cat-delete-modal" class="fixed inset-0 z-[150] flex items-center justify-center hidden">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-md w-full relative z-10 mx-4 animate-fade-in-up">
@@ -101,7 +77,6 @@
         </div>
     </div>
 
-    <!-- Login Screen -->
     <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-10 animate-fade-in-up">
             <div class="text-center mb-8">
@@ -119,7 +94,6 @@
         <div class="absolute bottom-4 text-white/30 text-xs">Powered by GitHub API | Secure Connection</div>
     </div>
 
-    <!-- Dashboard -->
     <div id="dashboard-ui" class="hidden min-h-screen flex flex-col transition-opacity duration-500 opacity-0">
         <nav class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -143,16 +117,14 @@
                     </div>
 
                     <div class="p-6 md:p-8 flex-grow relative pb-24">
-                        <!-- Tab: Cards -->
                         <div id="tab-cards" class="tab-content block animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">首頁功能卡片管理</h3><p class="text-sm text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i> 按住卡片上方標題列（握把）即可拖曳。</p></div>
-                                <button onclick="addCardItem()" class="btn-success"><i class="fas fa-plus"></i> 新增卡片</button>
+                                <button onclick="addCardItem()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide"><i class="fas fa-plus"></i> 新增卡片</button>
                             </div>
                             <div id="cards-list-editor" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
                         </div>
 
-                        <!-- Tab: Contacts -->
                         <div id="tab-contacts" class="tab-content hidden animate-fade-in-up">
                             <div class="mb-10">
                                 <div class="flex items-center gap-2 mb-4"><div class="w-1 h-6 bg-green-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">單位基本資料 (固定)</h3></div>
@@ -162,15 +134,14 @@
                                 <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 mb-4 border-b border-gray-100 pb-2">
                                     <div class="flex items-center gap-2"><div class="w-1 h-6 bg-blue-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">團隊成員管理</h3></div>
                                     <div class="flex gap-2">
-                                        <button onclick="autoSortContacts()" class="btn-secondary"><i class="fas fa-sort-amount-down"></i> 職級排序</button>
-                                        <button onclick="addContactItem()" class="btn-success"><i class="fas fa-user-plus"></i> 新增人員</button>
+                                        <button onclick="autoSortContacts()" class="bg-white border border-gray-300 text-gray-600 px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-gray-50 hover:text-thuBlue shadow-sm transition"><i class="fas fa-sort-amount-down mr-1.5"></i> 職級排序</button>
+                                        <button onclick="addContactItem()" class="bg-thuBlue text-white px-3 py-1.5 rounded-lg text-xs font-medium hover:bg-blue-800 shadow-md transition flex items-center"><i class="fas fa-user-plus mr-1.5"></i> 新增人員</button>
                                     </div>
                                 </div>
                                 <div id="staff-contacts-editor" class="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 min-h-[100px]"></div>
                             </div>
                         </div>
 
-                        <!-- Tab: Pages (Split View) -->
                         <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
                             <div class="flex flex-col md:flex-row gap-6 h-full">
                                 <div class="w-full md:w-64 shrink-0 space-y-1">
@@ -182,7 +153,6 @@
                                 </div>
                                 <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col">
                                     
-                                    <!-- 可收折的頁面設定面板 -->
                                     <div class="border-b border-gray-200 bg-gray-50">
                                         <div class="p-4 px-6 flex justify-between items-center cursor-pointer hover:bg-gray-100 transition" onclick="togglePageSettings()">
                                             <h3 class="text-lg font-bold text-thuBlue flex items-center gap-2">
@@ -195,12 +165,10 @@
                                         
                                         <div id="page-settings-panel" class="hidden border-t border-gray-200 p-6 bg-white animate-fade-in-up">
                                             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                <!-- 基本資訊 -->
                                                 <div class="space-y-4">
                                                     <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b pb-1 mb-2">基本資訊</h4>
                                                     <div><label class="block text-xs font-bold text-gray-500 mb-1">主標題 (Main Title)</label><input type="text" id="page-setting-title" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-bold text-gray-800"></div>
                                                     
-                                                    <!-- Icon 編輯欄位 -->
                                                     <div class="flex items-end gap-2">
                                                         <div class="flex-grow"><label class="block text-xs font-bold text-gray-500 mb-1">選單圖示 (Icon)</label><input type="text" id="page-setting-icon" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none font-mono" placeholder="fa-balance-scale"></div>
                                                         <div class="w-10 h-10 rounded bg-gray-100 flex items-center justify-center text-thuBlue border border-gray-200 mb-0.5"><i id="page-icon-preview" class="fas fa-question"></i></div>
@@ -209,16 +177,14 @@
                                                     <div><label class="block text-xs font-bold text-gray-500 mb-1">標籤 (Tag)</label><input type="text" id="page-setting-tag" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="例如: Evaluation Data"></div>
                                                     <div><label class="block text-xs font-bold text-gray-500 mb-1">副標題/說明 (Subtitle)</label><input type="text" id="page-setting-desc" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-2 focus:ring-thuBlue outline-none" placeholder="顯示於主標題下方"></div>
                                                     <div class="flex justify-end gap-2 pt-2">
-                                                        <button onclick="restorePageHeaderSettings()" class="btn-secondary">取消</button>
-                                                        <button onclick="savePageHeaderSettings()" class="btn-primary">儲存</button>
+                                                        <button onclick="restorePageHeaderSettings()" class="bg-white text-gray-600 border border-gray-300 hover:bg-gray-100 hover:text-gray-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:bg-gray-300 text-sm tracking-wide">取消</button>
+                                                        <button onclick="savePageHeaderSettings()" class="bg-thuBlue text-white border-2 border-thuBlue hover:bg-blue-800 hover:border-blue-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide">儲存</button>
                                                     </div>
                                                 </div>
 
-                                                <!-- 進階設定 -->
                                                 <div class="space-y-4 border-l pl-6 border-gray-100">
                                                     <h4 class="text-xs font-bold text-gray-400 uppercase tracking-wider border-b pb-1 mb-2">進階設定</h4>
                                                     
-                                                    <!-- 自訂欄位名稱 -->
                                                     <div id="custom-labels-config" class="mb-4">
                                                         <label class="block text-xs font-bold text-gray-500 mb-1">項目標題欄位名稱</label>
                                                         <div class="flex gap-2 mb-2">
@@ -226,30 +192,28 @@
                                                             <input type="text" id="page-label-title-en" class="w-1/2 border border-gray-300 rounded p-2 text-sm" placeholder="英文 (預設: 英文名稱)">
                                                         </div>
                                                         <div class="flex justify-end gap-2">
-                                                            <button onclick="restorePageLabelSettings()" class="btn-secondary">取消</button>
-                                                            <button onclick="savePageLabelSettings()" class="btn-success">儲存欄位名稱</button>
+                                                            <button onclick="restorePageLabelSettings()" class="bg-white text-gray-600 border border-gray-300 hover:bg-gray-100 hover:text-gray-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:bg-gray-300 text-sm tracking-wide">取消</button>
+                                                            <button onclick="savePageLabelSettings()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide">儲存欄位名稱</button>
                                                         </div>
                                                     </div>
 
-                                                    <!-- 檔案下載欄位設定 -->
                                                     <div id="file-fields-config" class="mb-4 hidden">
                                                         <label class="block text-xs font-bold text-gray-500 mb-2">檔案下載欄位設定 (最多5組)</label>
                                                         <div class="space-y-2 bg-gray-50 p-2 rounded border border-gray-200 text-xs">
                                                             <div id="file-config-list" class="space-y-2"></div>
                                                             <div class="flex justify-end pt-1">
-                                                                <button onclick="saveFileConfigSettings()" class="btn-success">更新欄位設定</button>
+                                                                <button onclick="saveFileConfigSettings()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide">更新欄位設定</button>
                                                             </div>
                                                         </div>
                                                     </div>
 
-                                                    <!-- 分類管理 -->
                                                     <div id="category-manager" class="hidden">
                                                         <label class="block text-xs font-bold text-gray-500 mb-2">分類管理 (Category)</label>
                                                         <div class="bg-gray-50 rounded-lg border border-gray-200 p-3">
                                                             <div id="cat-list" class="space-y-2 mb-3 max-h-[150px] overflow-y-auto"></div>
                                                             <div class="flex gap-2 border-t border-gray-200 pt-2">
                                                                 <input type="text" id="new-cat-name" class="flex-grow border border-gray-300 rounded p-1.5 text-sm" placeholder="輸入新分類名稱...">
-                                                                <button onclick="addNewCategory()" class="btn-success">新增</button>
+                                                                <button onclick="addNewCategory()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide">新增</button>
                                                             </div>
                                                         </div>
                                                     </div>
@@ -261,8 +225,8 @@
                                     <div class="flex justify-between items-center p-4 px-6 border-b border-gray-100 bg-white sticky top-0 z-10">
                                         <div><h3 class="text-base font-bold text-gray-800">內容列表管理</h3></div>
                                         <div class="flex gap-2 items-center">
-                                            <button id="page-add-item-btn" onclick="addPageItem()" class="btn-success"><i class="fas fa-plus"></i> 新增項目</button>
-                                            <button id="faculty-add-item-btn" onclick="addFaculty()" class="btn-success hidden"><i class="fas fa-plus"></i> 新增學院</button>
+                                            <button id="page-add-item-btn" onclick="addPageItem()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide"><i class="fas fa-plus"></i> 新增項目</button>
+                                            <button id="faculty-add-item-btn" onclick="addFaculty()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide hidden"><i class="fas fa-plus"></i> 新增學院</button>
                                         </div>
                                     </div>
                                     <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[600px]"></div>
@@ -270,16 +234,14 @@
                             </div>
                         </div>
 
-                        <!-- Tab: News -->
                         <div id="tab-news" class="tab-content hidden animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">公告管理</h3><p class="text-sm text-gray-500 mt-1">管理首頁與公告列表的內容。</p></div>
-                                <button onclick="addNewsItem()" class="btn-success"><i class="fas fa-plus"></i> 新增公告</button>
+                                <button onclick="addNewsItem()" class="bg-btnGreen text-white border border-btnGreen hover:bg-btnGreenHover hover:border-btnGreenHover font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide"><i class="fas fa-plus"></i> 新增公告</button>
                             </div>
                             <div id="news-list-editor" class="space-y-4"></div>
                         </div>
 
-                        <!-- Tab: Settings -->
                         <div id="tab-settings" class="tab-content hidden animate-fade-in-up">
                             <div class="flex items-end justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">基本資訊設定</h3><p class="text-sm text-gray-500 mt-1">此處可以修改網站標題與Logo。版權年份會自動更新。</p></div>
@@ -290,7 +252,6 @@
                             <div id="settings-form" class="grid grid-cols-1 gap-6 max-w-4xl"></div>
                         </div>
 
-                        <!-- Tab: Raw -->
                         <div id="tab-raw" class="tab-content hidden animate-fade-in-up">
                             <div class="bg-gray-800 text-gray-300 px-4 py-2 rounded-t-lg text-xs font-mono flex justify-between items-center border border-gray-700"><span><i class="far fa-file-code mr-2"></i>data.json</span><span class="bg-gray-700 px-2 py-0.5 rounded text-[10px]">READ ONLY VIEW</span></div>
                              <div class="bg-red-900/30 border border-red-500/50 text-red-200 p-3 mb-0 text-xs flex gap-2 items-center"><i class="fas fa-exclamation-triangle"></i><span>警告：此檔案內容對全體網路使用者公開，請勿檢查是否包含任何敏感個資。</span></div>
@@ -307,7 +268,6 @@
         </div>
     </div>
 
-    <!-- Scripts -->
     <script>
         // Global Variables
         let currentData = null;
@@ -510,14 +470,12 @@
 
                 container.innerHTML += `
                 <div class="page-item bg-white rounded-xl border border-gray-200 shadow-sm mb-3 overflow-hidden" data-index="${index}">
-                    <!-- Header / Drag Handle -->
                     <div class="drag-handle bg-gray-50 p-3 px-4 flex justify-between items-center cursor-move hover:bg-gray-100 transition-colors">
                         <div class="flex items-center gap-3 overflow-hidden" onclick="toggleAccordion(${index})">
                             <div class="cursor-pointer text-gray-400 hover:text-thuBlue w-6 text-center"><i class="fas fa-grip-vertical"></i></div>
                             <span class="font-bold text-gray-700 truncate select-none">#${index+1} ${item.title || '(無標題)'}</span>
                         </div>
                         <div class="flex items-center gap-3">
-                            <!-- Visibility Toggle (No Text) -->
                             <label class="flex items-center cursor-pointer select-none" title="前台顯示/隱藏">
                                 <div class="relative">
                                     <input type="checkbox" class="sr-only peer p-visible" ${checked} onchange="toggleItemVisibility(this)">
@@ -532,13 +490,12 @@
                         </div>
                     </div>
                     
-                    <!-- Content -->
                     <div id="accordion-content-${index}" class="accordion-content bg-white">
                         <div class="p-5">
                             ${contentHtml}
                             <div class="flex justify-end gap-2 mt-4 pt-4 border-t border-gray-100">
-                                <button onclick="cancelSingleItem(${index})" class="btn-secondary">取消變更</button>
-                                <button onclick="saveSingleItem(${index})" class="btn-info">確認暫存</button>
+                                <button onclick="cancelSingleItem(${index})" class="bg-white text-gray-600 border border-gray-300 hover:bg-gray-100 hover:text-gray-800 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:bg-gray-300 text-sm tracking-wide">取消變更</button>
+                                <button onclick="saveSingleItem(${index})" class="bg-blue-600 text-white border border-blue-700 hover:bg-blue-700 font-bold py-2 px-5 rounded-lg shadow-sm transition-all duration-200 flex items-center justify-center gap-2 active:scale-95 text-sm tracking-wide">確認暫存</button>
                             </div>
                         </div>
                     </div>
@@ -867,6 +824,12 @@
             currentData.pages['laws'].fileFields = newConfig;
             renderPageEditor();
             alert("檔案欄位設定已更新");
+        }
+
+        // --- ADDED: Missing Function ---
+        function switchPageEditor(pageId) {
+            activePageId = pageId;
+            renderPageEditor();
         }
 
         // --- Page Editor & Category Logic ---
