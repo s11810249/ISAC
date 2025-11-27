@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>載入中...</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>
+        const PAGE_ID = '{{PAGE_ID}}';
+        tailwind.config = { theme: { extend: { colors: { thuBlue: '#002E5D', thuGold: '#C6A87C' }, fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] } } } }
+    </script>
+    <style>.page-header{background:linear-gradient(135deg,#002E5D 0%,#001a35 100%)}</style>
+</head>
+<body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen">
+    
+    <nav class="bg-thuBlue text-white shadow-lg sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
+            <a href="index.html" class="flex items-center gap-3"><img id="nav-logo" src="" class="h-8 w-auto hidden"><span id="nav-title" class="font-bold hidden sm:inline"></span></a>
+            <a href="index.html" class="text-sm bg-white/10 px-4 py-1.5 rounded-full hover:bg-white/20 transition"><i class="fas fa-arrow-left"></i> 回首頁</a>
+        </div>
+    </nav>
+
+    <header class="page-header text-white py-12 text-center">
+        <div id="header-tag" class="inline-block bg-white/10 px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20 hidden">Link</div>
+        <h1 id="header-title" class="text-3xl font-bold mb-2 tracking-widest">Loading...</h1>
+        <p id="header-desc" class="text-gray-400 text-sm max-w-2xl mx-auto px-4"></p>
+    </header>
+
+    <main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full">
+        <div id="filter-container" class="flex flex-wrap justify-center gap-2 mb-10"></div>
+        <div id="items-container" class="space-y-4 min-h-[300px]">
+            <div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div>
+        </div>
+    </main>
+
+    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-xs border-t-4 border-thuGold"><p id="footer-copyright"></p></footer>
+
+    <script>
+        let allItems = [];
+
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                const [globalRes, pageRes] = await Promise.all([ fetch('data.json?t='+Date.now()), fetch(`pages/data_${PAGE_ID}.json?t=`+Date.now()) ]);
+                if(!globalRes.ok || !pageRes.ok) throw new Error("資料讀取失敗");
+                
+                const globalData = await globalRes.json();
+                const pageData = await pageRes.json();
+
+                document.title = `${pageData.title} | ${globalData.settings.SiteTitle}`;
+                document.getElementById('nav-title').innerText = globalData.settings.SiteTitle;
+                document.getElementById('footer-copyright').innerText = globalData.settings.Copyright;
+                if(globalData.settings.LogoUrl) { const l = document.getElementById('nav-logo'); l.src=globalData.settings.LogoUrl; l.classList.remove('hidden'); }
+
+                document.getElementById('header-title').innerText = pageData.title;
+                document.getElementById('header-desc').innerText = pageData.description || '';
+                if(pageData.tag) { const t = document.getElementById('header-tag'); t.innerText=pageData.tag; t.classList.remove('hidden'); }
+
+                allItems = pageData.items || [];
+
+                const filterContainer = document.getElementById('filter-container');
+                if(pageData.categories && pageData.categories.length > 0) {
+                    filterContainer.innerHTML = '<button onclick="filterItems(\'all\')" class="filter-btn active px-4 py-1.5 rounded-full text-sm bg-thuBlue text-white" id="btn-all">全部</button>';
+                    pageData.categories.forEach(cat => {
+                        filterContainer.innerHTML += `<button onclick="filterItems('${cat.id}')" class="filter-btn px-4 py-1.5 rounded-full text-sm bg-white border border-gray-300 text-gray-600 hover:bg-gray-50" id="btn-${cat.id}">${cat.name}</button>`;
+                    });
+                }
+                filterItems('all');
+            } catch(e) { document.getElementById('items-container').innerHTML = '<div class="text-center text-red-500 py-10">資料讀取錯誤</div>'; }
+        });
+
+        window.filterItems = function(catId) {
+            document.querySelectorAll('.filter-btn').forEach(b => { b.classList.remove('bg-thuBlue','text-white'); b.classList.add('bg-white','text-gray-600'); });
+            const btn = document.getElementById('btn-'+catId);
+            if(btn) { btn.classList.remove('bg-white','text-gray-600'); btn.classList.add('bg-thuBlue','text-white'); }
+
+            const items = catId === 'all' ? allItems : allItems.filter(i => i.category === catId);
+            const container = document.getElementById('items-container');
+            container.innerHTML = '';
+
+            if(items.length === 0) { container.innerHTML = '<div class="text-center py-10 text-gray-400 border-2 border-dashed border-gray-200 rounded-lg">無資料</div>'; return; }
+
+            // General Link List 渲染邏輯：單一連結
+            items.forEach((item, index) => {
+                if(item.visible === false) return;
+                const link = item.url ? `<a href="${item.url}" target="_blank" class="w-10 h-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center hover:bg-blue-600 hover:text-white transition-all"><i class="fas fa-arrow-right"></i></a>` : '';
+                
+                container.innerHTML += `
+                <div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm hover:shadow-md transition-all flex items-center justify-between group">
+                    <div class="flex items-center gap-4">
+                        <div class="w-10 h-10 rounded-full bg-gray-100 flex items-center justify-center text-gray-400 group-hover:bg-thuBlue group-hover:text-white transition-colors"><i class="fas fa-link"></i></div>
+                        <div>
+                            <h3 class="text-lg font-bold text-gray-800">${item.title}</h3>
+                            ${item.title_en ? `<p class="text-xs text-gray-500">${item.title_en}</p>` : ''}
+                        </div>
+                    </div>
+                    ${link}
+                </div>`;
+            });
+        }
+    </script>
+</body>
+</html>
