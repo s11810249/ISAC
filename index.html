@@ -547,10 +547,24 @@
             setHTML('modal-origin-content', settings.OriginContent);
 
             const fullTitle = settings.SiteTitle || "";
-            if (fullTitle.includes("協作平台")) {
-                setText('hero-title-1', fullTitle.split("協作平台")[0]);
-                setText('hero-title-2', "協作平台");
-            } else { setText('hero-title-1', fullTitle); }
+            const keyword = "協作平台";
+            
+            // 修正：更聰明的標題切割邏輯
+            if (fullTitle.includes(keyword)) {
+                const parts = fullTitle.split(keyword);
+                // parts[0] 是關鍵字前面的文字 (如 "實習業務")
+                // parts[1] 是關鍵字後面的文字 (如 "AA")
+                
+                setText('hero-title-1', parts[0]);
+                
+                // 將後面的文字接在關鍵字後面，一起變成金色
+                // 這樣 "協作平台" + "AA" 都會顯示在第二個 span 內
+                setText('hero-title-2', keyword + (parts[1] || "")); 
+            } else { 
+                // 若完全不包含關鍵字，則全部顯示在第一個 span (白色)
+                setText('hero-title-1', fullTitle); 
+                setText('hero-title-2', ""); // 清空第二個 span
+            }
 
             if (settings.LogoUrl) {
                 document.querySelectorAll('img[alt="Logo"]').forEach(img => { img.src = settings.LogoUrl; img.classList.remove('hidden'); });
