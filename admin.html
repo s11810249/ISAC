@@ -13,26 +13,12 @@
             theme: {
                 extend: {
                     colors: {
-                        // 更新為指定的新色碼
-                        thuBlue: '#002147',       // 統一更新
-                        thuGold: '#C6A87C',       // 維持原樣或依需求更改
+                        thuBlue: '#002147',       // Unified Dark Blue
+                        thuGold: '#997933',       // Unified Gold
                         thuLightBlue: '#eef6fc',
                         darkBg: '#0f172a',
                         btnGreen: '#219653',
                         btnGreenHover: '#1e874b',
-                        
-                        // 預定義顏色 (用於後台預覽)
-                        gloryGold: '#997933',     // 統一更新
-                        lapisYellow: '#E89B00',
-                        concreteGrey: '#A6A9AA',
-                        brickRed: '#A14332',
-                        windowBlack: '#2B2B2B',
-                        acaciaGreen: '#4A6B3E',
-                        milkWhite: '#F4F1EA',
-                        lakeBlue: '#365C68',
-                        phoenixOrange: '#FF5A45',
-                        thuBlueNew: '#005596',
-                        grassGreen: '#219653',
                     },
                     fontFamily: {
                         sans: ['"Noto Sans TC"', 'sans-serif'],
@@ -66,7 +52,6 @@
         .file-upload-label { cursor: pointer; display: inline-flex; align-items: center; justify-content: center; width: 2rem; height: 2rem; border-radius: 0.375rem; background-color: #f3f4f6; color: #6b7280; transition: all 0.2s; border: 1px solid #e5e7eb; }
         .file-upload-label:hover { background-color: #e5e7eb; color: #002147; border-color: #d1d5db; }
         
-        /* 色彩選擇器樣式 */
         .color-preview-circle { width: 24px; height: 24px; border-radius: 50%; border: 2px solid #fff; box-shadow: 0 0 0 1px #e5e7eb; }
     </style>
 </head>
@@ -74,6 +59,7 @@
 
     <input type="file" id="global-file-input" class="hidden" onchange="handleFileUpload(this)">
 
+    <!-- 訊息視窗 -->
     <div id="msg-modal" class="fixed inset-0 z-[200] flex items-center justify-center hidden opacity-0 transition-opacity duration-300">
         <div class="absolute inset-0 bg-gray-900/60 backdrop-blur-sm"></div>
         <div class="bg-white rounded-xl shadow-2xl p-6 max-w-sm w-full relative z-10 mx-4 transform scale-95 transition-transform duration-300" id="msg-panel">
@@ -86,6 +72,7 @@
         </div>
     </div>
 
+    <!-- 登入畫面 -->
     <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-10 animate-fade-in-up">
             <div class="text-center mb-8">
@@ -103,6 +90,7 @@
         <div class="absolute bottom-4 text-white/30 text-xs">Powered by GitHub API | Secure Connection</div>
     </div>
 
+    <!-- 主控台介面 -->
     <div id="dashboard-ui" class="hidden min-h-screen flex flex-col transition-opacity duration-500 opacity-0">
         <nav class="bg-white border-b border-gray-200 sticky top-0 z-40 shadow-sm">
             <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -136,12 +124,12 @@
                         <button onclick="switchTab('news')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="news"><i class="fas fa-bullhorn mr-2"></i>最新公告</button>
                         <button onclick="switchTab('settings')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="settings"><i class="fas fa-sliders-h mr-2"></i>網站設定</button>
                         <button onclick="switchTab('colors')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="colors"><i class="fas fa-palette mr-2"></i>色彩設定</button>
-                        
                         <button onclick="switchTab('code-editor')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors ml-auto" data-tab="code-editor"><i class="fas fa-code mr-2"></i>原始碼</button>
                         <button onclick="switchTab('raw')" class="tab-btn px-6 py-4 text-sm font-medium text-gray-500 border-b-2 border-transparent hover:text-gray-700 hover:bg-gray-100 focus:outline-none whitespace-nowrap transition-colors" data-tab="raw"><i class="far fa-file-code mr-2"></i>JSON</button>
                     </div>
 
                     <div class="p-6 md:p-8 flex-grow relative">
+                        <!-- 1. 首頁卡片 -->
                         <div id="tab-cards" class="tab-content block animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">首頁功能卡片管理</h3><p class="text-sm text-gray-500 mt-1"><i class="fas fa-info-circle mr-1"></i> 拖曳可排序。</p></div>
@@ -150,6 +138,7 @@
                             <div id="cards-list-editor" class="grid grid-cols-1 lg:grid-cols-2 gap-6"></div>
                         </div>
 
+                        <!-- 2. 聯絡資訊 -->
                         <div id="tab-contacts" class="tab-content hidden animate-fade-in-up">
                             <div class="mb-10">
                                 <div class="flex items-center gap-2 mb-4"><div class="w-1 h-6 bg-green-500 rounded-full"></div><h3 class="text-lg font-bold text-gray-800">單位基本資料</h3></div>
@@ -164,6 +153,7 @@
                             </div>
                         </div>
 
+                        <!-- 3. 分頁內容 (Pages) - 完整還原 -->
                         <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
                             <div class="flex flex-col md:flex-row gap-6 h-full">
                                 <div class="w-full md:w-64 shrink-0 space-y-1">
@@ -173,14 +163,17 @@
                                 <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col">
                                     <div class="p-4 px-6 border-b border-gray-200 bg-gray-50 flex justify-between items-center">
                                          <h3 class="text-base font-bold text-thuBlue" id="current-page-title-display">內容編輯</h3>
-                                         <button id="page-add-item-btn" onclick="addPageItem()" class="bg-btnGreen text-white font-bold py-1.5 px-4 rounded shadow-sm text-sm">新增項目</button>
-                                         <button id="faculty-add-item-btn" onclick="addFaculty()" class="bg-btnGreen text-white font-bold py-1.5 px-4 rounded shadow-sm text-sm hidden">新增學院</button>
+                                         <div class="flex gap-2">
+                                            <button id="page-add-item-btn" onclick="addPageItem()" class="bg-btnGreen text-white font-bold py-1.5 px-4 rounded shadow-sm text-sm">新增項目</button>
+                                            <button id="faculty-add-item-btn" onclick="addFaculty()" class="bg-btnGreen text-white font-bold py-1.5 px-4 rounded shadow-sm text-sm hidden">新增學院</button>
+                                         </div>
                                     </div>
                                     <div id="page-items-editor" class="p-6 space-y-4 bg-gray-50/50 flex-grow overflow-y-auto max-h-[600px]"></div>
                                 </div>
                             </div>
                         </div>
 
+                        <!-- 4. 公告 (News) -->
                         <div id="tab-news" class="tab-content hidden animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div><h3 class="text-lg font-bold text-gray-800">公告管理</h3></div>
@@ -189,11 +182,13 @@
                             <div id="news-list-editor" class="space-y-4"></div>
                         </div>
 
+                        <!-- 5. 網站設定 -->
                         <div id="tab-settings" class="tab-content hidden animate-fade-in-up">
                             <h3 class="text-lg font-bold text-gray-800 mb-6 border-b pb-2">基本資訊設定</h3>
                             <div id="settings-form" class="grid grid-cols-1 gap-6 max-w-4xl pb-20"></div>
                         </div>
 
+                        <!-- 6. 色彩設定 (Colors) -->
                         <div id="tab-colors" class="tab-content hidden animate-fade-in-up">
                             <div class="flex items-center justify-between mb-6 pb-2 border-b border-gray-100">
                                 <div>
@@ -217,6 +212,7 @@
                             </div>
                         </div>
 
+                        <!-- 7. 原始碼編輯 -->
                         <div id="tab-code-editor" class="tab-content hidden animate-fade-in-up">
                             <div class="flex justify-between mb-2">
                                 <h3 class="text-lg font-bold">原始碼管理</h3>
@@ -233,6 +229,7 @@
                             <textarea id="source-code-editor" class="w-full h-[600px] font-mono text-sm bg-gray-800 text-gray-200 p-4 rounded"></textarea>
                         </div>
 
+                        <!-- 8. RAW JSON -->
                         <div id="tab-raw" class="tab-content hidden animate-fade-in-up">
                             <textarea id="raw-json" class="w-full h-[600px] font-mono text-sm bg-gray-800 text-gray-300 p-4 rounded" readonly></textarea>
                         </div>
@@ -242,21 +239,22 @@
         </main>
     </div>
 
+    <!-- Script 邏輯 -->
     <script>
-        // --- 預設顏色列表 (依需求更新) ---
+        // --- 預設顏色列表 ---
         const defaultColors = [
-            { name: "預設藍 (Unified)", id: "thu", hex: "#002147" },  // 統一改為 #002147
-            { name: "榮耀金 (Glory Gold)", id: "glorygold", hex: "#997933" }, // 統一改為 #997933
-            { name: "琉璃黃 (Lapis Yellow)", id: "lapisyellow", hex: "#E89B00" },
-            { name: "清水灰 (Concrete Grey)", id: "concretegrey", hex: "#A6A9AA" },
-            { name: "磚瓦紅 (Brick Red)", id: "brickred", hex: "#A14332" },
-            { name: "窗框黑 (Window Black)", id: "windowblack", hex: "#2B2B2B" },
-            { name: "相思綠 (Acacia Green)", id: "acaciagreen", hex: "#4A6B3E" },
-            { name: "鮮乳白 (Milk White)", id: "milkwhite", hex: "#F4F1EA" },
-            { name: "湖心藍 (Lake Blue)", id: "lakeblue", hex: "#365C68" },
-            { name: "鳳凰橘 (Phoenix Orange)", id: "phoenixorange", hex: "#FF5A45" },
-            { name: "東海藍 (New)", id: "thubluenew", hex: "#005596" },
-            { name: "青草綠 (Grass Green)", id: "grassgreen", hex: "#219653" }
+            { "name": "預設藍 (Unified)", "id": "thu", "hex": "#002147" },
+            { "name": "榮耀金 (Glory Gold)", "id": "glorygold", "hex": "#997933" },
+            { "name": "琉璃黃 (Lapis Yellow)", "id": "lapisyellow", "hex": "#E89B00" },
+            { "name": "清水灰 (Concrete Grey)", "id": "concretegrey", "hex": "#A6A9AA" },
+            { "name": "磚瓦紅 (Brick Red)", "id": "brickred", "hex": "#A14332" },
+            { "name": "窗框黑 (Window Black)", "id": "windowblack", "hex": "#2B2B2B" },
+            { "name": "相思綠 (Acacia Green)", "id": "acaciagreen", "hex": "#4A6B3E" },
+            { "name": "鮮乳白 (Milk White)", "id": "milkwhite", "hex": "#F4F1EA" },
+            { "name": "湖心藍 (Lake Blue)", "id": "lakeblue", "hex": "#365C68" },
+            { "name": "鳳凰橘 (Phoenix Orange)", "id": "phoenixorange", "hex": "#FF5A45" },
+            { "name": "東海藍 (New Standard)", "id": "thubluenew", "hex": "#005596" },
+            { "name": "青草綠 (Grass Green)", "id": "grassgreen", "hex": "#219653" }
         ];
 
         // Global Variables
@@ -266,6 +264,7 @@
         let sortableCards = null, sortableStaff = null, sortablePageItems = null, sortableFaculties = null, sortableDepts = [];
         let sessionToken = ''; 
         let activePageId = 'laws'; 
+        let currentUploadTargetInput = null; // 上傳目標
         let currentSourceFile = '', currentSourceSha = '';
 
         // --- Core Functions ---
@@ -295,7 +294,7 @@
                 // 初始化資料結構
                 if (!currentData.pages) currentData.pages = {};
                 if (!currentData.departments) currentData.departments = [];
-                // 初始化顏色設定 (若無則使用預設)
+                // 初始化顏色設定
                 if (!currentData.colors || currentData.colors.length === 0) {
                     currentData.colors = JSON.parse(JSON.stringify(defaultColors));
                 }
@@ -328,11 +327,242 @@
                 settingsContainer.innerHTML += `<div><label class="block text-sm font-bold mb-1">${label}</label>${input}</div>`;
             }
 
-            renderColorManager(); // Render Colors First
+            renderColorManager(); 
             renderCardsList();
             renderContactsList();
             renderNewsList();
             renderPageEditor();
+        }
+
+        // --- Page Editor Logic (Restored) ---
+        const pageDefinitions = [
+            { id: 'laws', name: '實習相關法規', icon: 'fa-balance-scale' }, 
+            { id: 'downloads', name: '實習表單下載', icon: 'fa-file-download' }, 
+            { id: 'insurance', name: '實習保險專區', icon: 'fa-shield-alt' }, 
+            { id: 'courses', name: '實習前哨站課程', icon: 'fa-graduation-cap' }, 
+            { id: 'evaluation', name: '系所評鑑資料', icon: 'fa-chart-line', isDepartmentPage: true }
+        ];
+
+        function switchPageEditor(id) { 
+            activePageId = id; 
+            renderPageEditor(); 
+        }
+
+        function renderPageEditor() {
+            const sidebar = document.getElementById('pages-sidebar'); 
+            sidebar.innerHTML = '';
+            
+            // Render Sidebar
+            pageDefinitions.forEach(def => { 
+                const isActive = def.id === activePageId;
+                let storedTitle = (currentData.pages && currentData.pages[def.id]) ? (currentData.pages[def.id].title || def.name) : def.name;
+                if(def.id === 'evaluation') storedTitle = "系所評鑑資料"; 
+                
+                sidebar.innerHTML += `
+                    <div onclick="switchPageEditor('${def.id}')" class="sidebar-btn ${isActive ? 'active' : ''}">
+                        <i class="fas ${def.icon} w-5 text-center"></i>
+                        <span>${storedTitle}</span>
+                    </div>`; 
+            });
+
+            // Update Header
+            const pageData = currentData.pages[activePageId] || {};
+            const displayTitle = pageDefinitions.find(d => d.id === activePageId).name;
+            document.getElementById('current-page-title-display').innerText = `${pageData.title || displayTitle} - 內容管理`;
+            
+            // Toggle Buttons
+            const isDepartmentPage = activePageId === 'evaluation';
+            document.getElementById('page-add-item-btn').classList.toggle('hidden', isDepartmentPage);
+            document.getElementById('faculty-add-item-btn').classList.toggle('hidden', !isDepartmentPage);
+
+            // Render Content
+            const container = document.getElementById('page-items-editor');
+            container.innerHTML = '';
+
+            if (isDepartmentPage) {
+                renderDepartmentList(container);
+            } else {
+                if (!currentData.pages[activePageId]) currentData.pages[activePageId] = { title: displayTitle, items: [] };
+                renderGenericList(container, currentData.pages[activePageId].items, activePageId === 'laws');
+            }
+        }
+
+        function renderGenericList(container, items, isLaws) {
+             if (!items || items.length === 0) { 
+                 container.innerHTML = '<div class="text-center py-20 text-gray-400">尚無資料，請點擊上方按鈕新增。</div>'; 
+                 return; 
+             }
+
+             // Categories options for Laws
+             let catOptions = '<option value="">未分類</option>'; 
+             if(isLaws && currentData.pages['laws'].categories) {
+                 currentData.pages['laws'].categories.forEach(c => { 
+                     catOptions += `<option value="${c.id}">${c.name}</option>`; 
+                 });
+             }
+
+             items.forEach((item, index) => {
+                 let innerHtml = '';
+                 
+                 if (isLaws) {
+                     innerHtml = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">法規名稱</label><input type="text" class="p-title w-full border rounded p-2 text-sm" value="${item.title}"></div>
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">英文名稱</label><input type="text" class="p-title-en w-full border rounded p-2 text-sm" value="${item.title_en||''}"></div>
+                        </div>
+                        <div class="grid grid-cols-3 gap-4 mb-4">
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">發布單位</label><input type="text" class="p-issuer w-full border rounded p-2 text-sm" value="${item.issuer||''}"></div>
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">日期</label><input type="date" class="p-date w-full border rounded p-2 text-sm" value="${item.date||''}"></div>
+                            <div>
+                                <label class="block text-xs font-bold text-gray-400 mb-1">分類</label>
+                                <select class="p-cat-select w-full border rounded p-2 text-sm">
+                                    ${catOptions.replace(`value="${item.category||''}"`, `value="${item.category||''}" selected`)}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="bg-gray-50 p-4 rounded border border-gray-200">
+                            <label class="block text-xs font-bold text-gray-400 mb-2">檔案下載連結</label>
+                            ${renderFileFields(item, index)}
+                        </div>
+                     `;
+                 } else {
+                     innerHtml = `
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">標題</label><input type="text" class="p-title w-full border rounded p-2 text-sm font-bold" value="${item.title}"></div>
+                            <div><label class="block text-xs font-bold text-gray-400 mb-1">連結 URL</label><input type="text" class="p-url w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${item.url}"></div>
+                        </div>
+                        <div class="mt-2">
+                             <label class="block text-xs font-bold text-gray-400 mb-1">分類標籤 (選填)</label><input type="text" class="p-category w-full border rounded p-2 text-sm" value="${item.category||''}">
+                        </div>
+                     `;
+                 }
+
+                 container.innerHTML += `
+                    <div class="page-item bg-white rounded-xl border border-gray-200 shadow-sm mb-3 overflow-hidden" data-index="${index}">
+                        <div class="drag-handle bg-gray-50 p-3 px-4 flex justify-between items-center cursor-move hover:bg-gray-100 transition-colors">
+                            <div class="flex items-center gap-3 overflow-hidden">
+                                <span class="font-bold text-gray-700 truncate">#${index+1} ${item.title || '(無標題)'}</span>
+                            </div>
+                            <div class="flex items-center gap-3">
+                                <button onclick="deletePageItem('${activePageId}', ${index})" class="text-gray-400 hover:text-red-600 p-2 transition"><i class="fas fa-trash-alt"></i></button>
+                            </div>
+                        </div>
+                        <div class="p-5">
+                            ${innerHtml}
+                        </div>
+                    </div>
+                 `;
+             });
+             
+             if (sortablePageItems) sortablePageItems.destroy();
+             sortablePageItems = Sortable.create(container, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
+        }
+
+        function renderFileFields(item, index) {
+            const fields = (currentData.pages['laws'].fileFields || []).length > 0 ? currentData.pages['laws'].fileFields : [
+                { key: 'url_1', label: '中文版', icon: 'fa-file-pdf' },
+                { key: 'url_2', label: '英文版', icon: 'fa-file-pdf' },
+                { key: 'url_3', label: '附件一', icon: 'fa-paperclip' }
+            ];
+            let html = '';
+            fields.forEach(f => {
+                html += `
+                <div class="flex gap-2 items-center mb-2">
+                    <div class="w-24 flex-shrink-0 text-xs font-bold text-gray-500 flex items-center gap-1"><i class="fas ${f.icon}"></i> ${f.label}</div>
+                    <div class="flex-grow flex gap-1">
+                        <input type="text" id="input-${index}-${f.key}" class="p-${f.key} flex-grow border rounded p-1.5 text-sm text-blue-600 font-mono" value="${item[f.key]||''}">
+                        <button onclick="openFileSelector(${index}, '${f.key}')" class="file-upload-label" title="上傳檔案"><i class="fas fa-cloud-upload-alt"></i></button>
+                    </div>
+                </div>`;
+            });
+            return html;
+        }
+
+        function renderDepartmentList(container) {
+             if (sortableFaculties) sortableFaculties.destroy();
+             sortableDepts.forEach(s => s.destroy()); sortableDepts = [];
+             
+             container.innerHTML = '<div id="faculties-container" class="space-y-6"></div>';
+             const listContainer = document.getElementById('faculties-container');
+
+             currentData.departments.forEach((faculty, fIndex) => {
+                 let deptRows = '';
+                 faculty.departments.forEach((dept, dIndex) => {
+                     deptRows += `
+                     <div class="dept-row flex items-center gap-3 p-2 bg-gray-50 border border-gray-200 rounded mb-2 group">
+                         <div class="dept-drag-handle cursor-grab text-gray-400 hover:text-thuBlue py-1 px-2"><i class="fas fa-grip-vertical"></i></div>
+                         <div class="flex-grow grid grid-cols-1 sm:grid-cols-2 gap-2">
+                             <input class="dept-name border border-gray-300 rounded p-1.5 text-sm outline-none" value="${dept.name}" placeholder="系所名稱">
+                             <input class="dept-link border border-gray-300 rounded p-1.5 text-sm text-blue-600 font-mono outline-none" value="${dept.link}" placeholder="連結 URL">
+                         </div>
+                         <button onclick="deleteDepartment(${fIndex},${dIndex})" class="text-red-300 hover:text-red-600 p-2 transition"><i class="fas fa-trash-alt"></i></button>
+                     </div>`;
+                 });
+
+                 listContainer.innerHTML += `
+                    <div class="faculty-card bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden" data-index="${fIndex}">
+                        <div class="faculty-drag-handle bg-gray-50 p-3 flex justify-between items-center cursor-move border-b border-gray-200 hover:bg-gray-100">
+                             <div class="flex items-center gap-2 font-bold text-gray-700">
+                                 <i class="fas fa-grip-lines text-gray-400 mr-2"></i> 
+                                 <span id="fac-header-${fIndex}">${faculty.name}</span>
+                             </div>
+                             <button onclick="deleteFaculty(${fIndex})" class="bg-white text-red-500 border border-red-200 hover:bg-red-50 px-3 py-1 rounded text-xs font-bold"><i class="fas fa-trash-alt"></i> 刪除學院</button>
+                        </div>
+                        <div class="p-5">
+                             <div class="mb-4">
+                                 <label class="block text-xs font-bold text-gray-500 mb-1">學院名稱 & Icon</label>
+                                 <div class="flex gap-2">
+                                     <input class="faculty-name flex-grow border border-gray-300 rounded p-2 text-sm font-bold text-thuBlue" value="${faculty.name}" oninput="document.getElementById('fac-header-${fIndex}').innerText = this.value">
+                                     <input class="faculty-icon w-32 border border-gray-300 rounded p-2 text-sm font-mono text-gray-500" value="${faculty.icon||''}" placeholder="Icon class">
+                                 </div>
+                             </div>
+                             <div>
+                                 <label class="text-xs font-bold text-gray-500 uppercase tracking-wider mb-2 block">系所列表</label>
+                                 <div id="depts-container-${fIndex}" class="dept-list-container min-h-[10px]">${deptRows}</div>
+                                 <button onclick="addDepartment(${fIndex})" class="mt-3 w-full py-2 border-2 border-dashed border-gray-300 text-gray-500 rounded-lg hover:border-thuBlue hover:text-thuBlue transition font-bold text-sm flex items-center justify-center gap-2"><i class="fas fa-plus"></i> 新增系所</button>
+                             </div>
+                        </div>
+                    </div>`;
+             });
+
+             sortableFaculties = Sortable.create(listContainer, { handle: '.faculty-drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
+             currentData.departments.forEach((_, fIndex) => { 
+                 const el = document.getElementById(`depts-container-${fIndex}`); 
+                 if(el) { 
+                     sortableDepts.push(Sortable.create(el, { handle: '.dept-drag-handle', animation: 150, group: 'departments', onEnd: () => collectDataFromEditors() })); 
+                 } 
+             });
+        }
+        
+        function openFileSelector(index, key) { 
+             currentUploadTargetInput = document.getElementById(`input-${index}-${key}`); 
+             document.getElementById('global-file-input').click(); 
+        }
+
+        async function handleFileUpload(input) {
+            if (!input.files || input.files.length === 0) return;
+            const file = input.files[0];
+            currentUploadTargetInput.value = "上傳中..."; currentUploadTargetInput.disabled = true;
+            try {
+                const reader = new FileReader(); reader.readAsDataURL(file);
+                reader.onload = async function () {
+                    const base64Content = reader.result.split(',')[1];
+                    const path = `files/${file.name}`; // Simple path
+                    const owner = localStorage.getItem('gh_owner'); const repo = localStorage.getItem('gh_repo');
+                    const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
+                    let sha = null; try { const check = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}` } }); if(check.ok) sha = (await check.json()).sha; } catch(e){}
+                    
+                    const res = await fetch(url, { method: 'PUT', headers: { 'Authorization': `token ${sessionToken}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: `Upload ${file.name}`, content: base64Content, sha: sha }) });
+                    if (!res.ok) throw new Error("Upload failed");
+                    
+                    // GitHub Pages URL assumption
+                    const fileUrl = `https://${owner}.github.io/${repo}/${path}`;
+                    currentUploadTargetInput.value = fileUrl; 
+                    currentUploadTargetInput.disabled = false;
+                    alert("上傳成功！連結已填入。");
+                };
+            } catch (e) { alert("上傳失敗: " + e.message); currentUploadTargetInput.value = ""; currentUploadTargetInput.disabled = false; } 
+            input.value = '';
         }
 
         // --- Color Management Logic ---
@@ -373,7 +603,7 @@
             if(confirm("確定刪除此顏色設定？")) {
                 currentData.colors.splice(index, 1);
                 renderColorManager();
-                renderCardsList(); // Refresh dropdowns
+                renderCardsList(); 
                 renderContactsList();
             }
         }
@@ -393,10 +623,10 @@
 
         function getHexById(id) {
             const c = (currentData.colors || []).find(x => x.id === id);
-            return c ? c.hex : '#cccccc';
+            return c ? c.hex : '#002147';
         }
 
-        // --- Modified Render Functions (Using Dynamic Colors) ---
+        // --- Render Lists ---
         function renderCardsList() {
             const container = document.getElementById('cards-list-editor'); container.innerHTML = '';
             currentData.cards.forEach((card, index) => {
@@ -430,11 +660,9 @@
             const officeContainer = document.getElementById('office-contact-editor'); const staffContainer = document.getElementById('staff-contacts-editor');
             officeContainer.innerHTML = ''; staffContainer.innerHTML = '';
             
-            // Office
             const office = currentData.contacts.find(c => c.Type === 'office') || { Name: '實習中心', Title: 'Office', Email: 'isac@thu.edu.tw', Description: '' };
             officeContainer.innerHTML = `<div class="office-item bg-blue-50/50 p-6 rounded-xl border border-blue-100"><div class="grid grid-cols-1 md:grid-cols-2 gap-4"><div><label class="text-xs font-bold text-gray-400">單位名稱</label><input type="text" class="contact-name w-full border rounded p-2 font-bold" value="${office.Name}"></div><div><label class="text-xs font-bold text-gray-400">Email</label><input type="text" class="contact-email w-full border rounded p-2 font-mono" value="${office.Email}"></div><div class="hidden"><input type="text" class="contact-title" value="Office"></div><div class="col-span-2"><label class="text-xs font-bold text-gray-400">描述</label><input type="text" class="contact-desc w-full border rounded p-2" value="${office.Description}"></div></div></div>`;
             
-            // Staff
             const staff = currentData.contacts.filter(c => c.Type !== 'office');
             staff.forEach((c, index) => { 
                 const hex = getHexById(c.Type);
@@ -458,43 +686,51 @@
             if (sortableStaff) sortableStaff.destroy(); sortableStaff = Sortable.create(staffContainer, { handle: '.drag-handle', animation: 150, onEnd: () => collectDataFromEditors() });
         }
 
-        // --- Other Render Functions (Minimal Change) ---
         function renderNewsList() {
             const container = document.getElementById('news-list-editor'); container.innerHTML = '';
             currentData.news.forEach((news, index) => { container.innerHTML += `<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${news.Date}"><select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${news.Type==='公告'?'selected':''}>公告</option><option value="活動" ${news.Type==='活動'?'selected':''}>活動</option><option value="緊急" ${news.Type==='緊急'?'selected':''}>緊急</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew w-4 h-4 text-thuBlue" ${news.IsNew?'checked':''}><label class="text-sm">顯示 NEW</label></div><button onclick="deleteNewsItem(${index})" class="ml-auto text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button></div><div><input type="text" class="news-title w-full border rounded p-2 font-bold text-gray-700" value="${news.Title}"></div><div><input type="text" class="news-link w-full border rounded p-2 text-sm text-blue-600 font-mono" value="${news.Link}"></div><div><textarea class="news-content w-full border rounded p-2 text-sm h-20">${news.Content}</textarea></div></div>`; });
         }
-        function renderPageEditor() {
-            // Simplified placeholder for Page/Department Editor logic
-            // In a real file, keep the existing complex logic for Laws/Pages/Departments
-            const sidebar = document.getElementById('pages-sidebar'); sidebar.innerHTML = '';
-            const pageDefinitions = [{ id: 'laws', name: '實習相關法規' }, { id: 'downloads', name: '實習表單下載' }, { id: 'insurance', name: '實習保險專區' }, { id: 'courses', name: '實習前哨站課程' }, { id: 'evaluation', name: '系所評鑑資料' }];
-            pageDefinitions.forEach(def => { 
-                sidebar.innerHTML += `<div onclick="switchPageEditor('${def.id}')" class="sidebar-btn ${def.id===activePageId?'active':''}"><i class="fas fa-file w-5"></i><span>${def.name}</span></div>`; 
-            });
-            const container = document.getElementById('page-items-editor'); container.innerHTML = '<div class="text-gray-400 text-center p-4">頁面內容編輯器 (邏輯保留)</div>';
-            // Note: In full version, re-implement renderGenericList / renderDepartmentList here.
-        }
-        function switchPageEditor(id) { activePageId = id; renderPageEditor(); }
 
         // --- Data Collection & Save ---
         function collectDataFromEditors() {
             if (!currentData) return;
             document.querySelectorAll('.setting-input').forEach(input => { const key = input.getAttribute('data-key'); let val = input.value; if (key === 'HeroSubtitle') val = val.replace(/\n/g, '<br>'); currentData.settings[key] = val; });
             
-            // Collect News
             const newsItems = []; document.querySelectorAll('.news-item').forEach(div => { newsItems.push({ Date: div.querySelector('.news-date').value, Type: div.querySelector('.news-type').value, Title: div.querySelector('.news-title').value, Link: div.querySelector('.news-link').value, Content: div.querySelector('.news-content').value, IsNew: div.querySelector('.news-isnew').checked }); }); currentData.news = newsItems;
             
-            // Collect Cards (using dynamic type)
             const cardItems = []; document.querySelectorAll('.card-item').forEach(div => { cardItems.push({ Title: div.querySelector('.card-title').value, Badge: div.querySelector('.card-badge').value, Description: div.querySelector('.card-desc').value, Icon: div.querySelector('.card-icon').value, Type: div.querySelector('.card-type').value, Link: div.querySelector('.card-link').value }); }); currentData.cards = cardItems;
             
-            // Collect Contacts
             const contactItems = []; 
             const officeDiv = document.querySelector('.office-item');
             if(officeDiv) contactItems.push({ Name: officeDiv.querySelector('.contact-name').value, Title: "Office", Email: officeDiv.querySelector('.contact-email').value, Phone: "", Description: officeDiv.querySelector('.contact-desc').value, Type: "office" });
             document.querySelectorAll('.staff-item').forEach(div => { contactItems.push({ Name: div.querySelector('.contact-name').value, Title: div.querySelector('.contact-title').value, Email: div.querySelector('.contact-email').value, Phone: div.querySelector('.contact-phone').value, Description: "", Type: div.querySelector('.contact-type').value }); }); 
             currentData.contacts = contactItems;
-            
-            // Note: Colors collection is handled by updateColor directly modifying currentData.colors
+
+            if (activePageId === 'evaluation') {
+                 const faculties = [];
+                 document.querySelectorAll('.faculty-card').forEach(fDiv => {
+                     const depts = [];
+                     fDiv.querySelectorAll('.dept-row').forEach(dDiv => {
+                         depts.push({ name: dDiv.querySelector('.dept-name').value, link: dDiv.querySelector('.dept-link').value });
+                     });
+                     faculties.push({ name: fDiv.querySelector('.faculty-name').value, icon: fDiv.querySelector('.faculty-icon').value, departments: depts });
+                 });
+                 currentData.departments = faculties;
+            } else if (currentData.pages && currentData.pages[activePageId]) {
+                const items = [];
+                document.querySelectorAll('.page-item').forEach(div => {
+                    const item = { title: div.querySelector('.p-title').value };
+                    if (activePageId === 'laws') {
+                        item.title_en = div.querySelector('.p-title-en').value; item.issuer = div.querySelector('.p-issuer').value; item.date = div.querySelector('.p-date').value; item.category = div.querySelector('.p-cat-select').value;
+                        (currentData.pages['laws'].fileFields || []).forEach(f => { const inp = div.querySelector(`.p-${f.key}`); if(inp) item[f.key] = inp.value; });
+                        if(!currentData.pages['laws'].fileFields) { ["url_1","url_2","url_3"].forEach(k => { const inp = div.querySelector(`.p-${k}`); if(inp) item[k] = inp.value; }) }
+                    } else {
+                        item.url = div.querySelector('.p-url').value; item.category = div.querySelector('.p-category').value;
+                    }
+                    items.push(item);
+                });
+                currentData.pages[activePageId].items = items;
+            }
         }
 
         // --- Utils ---
@@ -504,6 +740,24 @@
         function deleteContactItem(idx) { const realIdx = currentData.contacts.filter(c => c.Type === 'office').length > 0 ? idx + 1 : idx; if(confirm("確定刪除？")) { currentData.contacts.splice(realIdx, 1); renderContactsList(); } }
         function addNewsItem() { currentData.news.unshift({Date: new Date().toISOString().split('T')[0], Type:"公告", Title:"", Link:"", Content:"", IsNew:true}); renderNewsList(); }
         function deleteNewsItem(idx) { if(confirm("確定刪除？")) { currentData.news.splice(idx,1); renderNewsList(); } }
+        
+        function addPageItem() { 
+            collectDataFromEditors();
+            if (!currentData.pages[activePageId]) currentData.pages[activePageId] = { title: "New Page", items: [] };
+            currentData.pages[activePageId].items.push({title: "新項目", url: "#", visible: true}); 
+            renderPageEditor(); 
+        }
+        function deletePageItem(id, idx) { 
+            if(confirm("確定刪除此項目？")) {
+                currentData.pages[id].items.splice(idx, 1);
+                renderPageEditor();
+            }
+        }
+        
+        function addFaculty() { collectDataFromEditors(); currentData.departments.push({name: "新學院", icon: "fa-building", departments: []}); renderPageEditor(); }
+        function deleteFaculty(idx) { if(confirm("確定刪除此學院？")) { currentData.departments.splice(idx, 1); renderPageEditor(); } }
+        function addDepartment(fIdx) { collectDataFromEditors(); currentData.departments[fIdx].departments.push({name: "新系所", link: ""}); renderPageEditor(); }
+        function deleteDepartment(fIdx, dIdx) { if(confirm("確定刪除此系所？")) { currentData.departments[fIdx].departments.splice(dIdx, 1); renderPageEditor(); } }
         
         async function saveData() {
             collectDataFromEditors(); if (!sessionToken) { alert("請先登入"); return; }
@@ -526,16 +780,18 @@
             document.getElementById(`tab-${tabId}`).classList.remove('hidden');
             document.querySelector(`.tab-btn[data-tab="${tabId}"]`).classList.add('border-thuBlue', 'text-thuBlue', 'bg-white', 'font-bold');
             if(tabId === 'raw') document.getElementById('raw-json').value = JSON.stringify(currentData, null, 4);
-            if(tabId === 'cards') renderCardsList(); if(tabId === 'contacts') renderContactsList(); if(tabId === 'news') renderNewsList(); if(tabId === 'colors') renderColorManager();
+            if(tabId === 'cards') renderCardsList(); 
+            if(tabId === 'contacts') renderContactsList(); 
+            if(tabId === 'news') renderNewsList(); 
+            if(tabId === 'colors') renderColorManager();
+            if(tabId === 'pages') renderPageEditor();
         }
         
-        // UI Helpers
         function toggleTokenVisibility() { const x = document.getElementById("gh-token"); x.type = x.type === "password" ? "text" : "password"; }
         function logout() { if(confirm("確定登出？")) location.reload(); }
         
-        // --- Source Code Editor Stubs ---
-        async function loadSourceFile(f) { /* 保留功能 */ }
-        async function saveCurrentSourceFile() { /* 保留功能 */ }
+        async function loadSourceFile(f) {}
+        async function saveCurrentSourceFile() {}
         
         window.addEventListener('beforeunload', function (e) { if (currentData) { e.preventDefault(); e.returnValue = ''; } });
     </script>
