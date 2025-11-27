@@ -316,17 +316,19 @@
         let currentUploadTargetInput = null;
         let confirmCallback = null; 
 
-        // --- Templates Configuration ---
+        // --- Templates Configuration (Refactored to fetch from files) ---
         const PAGE_TEMPLATES = {
             'documents_list': {
                 name: '通用文件列表 (Universal Document List)',
                 desc: '專為文件彙整設計的列表版型。支援多附件下載與分類篩選。',
-                path: 'page_template/documents_list.json'
+                jsonPath: 'page_template/documents_list.json',
+                htmlPath: 'page_template/documents_list.html' // External HTML template
             },
             'general': {
                 name: '一般連結列表 (General Link List)',
                 desc: '基礎列表版型，適合相關連結、課程列表等條列式內容。',
-                path: 'page_template/general.json'
+                jsonPath: 'page_template/general.json',
+                htmlPath: 'page_template/general.html' // External HTML template
             }
         };
 
@@ -337,47 +339,6 @@
         ];
         
         const settingFieldsMap = { 'SiteTitle': { label: '網站主標題 (中文)', type: 'text' }, 'SiteEngTitle': { label: '網站副標題 (英文)', type: 'text' }, 'HeroSubtitle': { label: '首頁歡迎詞', type: 'textarea' }, 'LogoUrl': { label: 'Logo 圖片連結', type: 'text' }, 'OriginTitle': { label: '計畫緣起 - 標題', type: 'text' }, 'OriginContent': { label: '計畫緣起 - 內容 (HTML)', type: 'textarea' } };
-
-        // --- Message Modal Logic ---
-        function showMsg(title, body, type = 'info', onConfirm = null) {
-            const modal = document.getElementById('msg-modal');
-            const panel = document.getElementById('msg-panel');
-            const iconDiv = document.getElementById('msg-icon');
-            const titleEl = document.getElementById('msg-title');
-            const bodyEl = document.getElementById('msg-body');
-            const actions = document.getElementById('msg-actions');
-
-            titleEl.innerText = title;
-            bodyEl.innerText = body;
-            actions.innerHTML = '';
-
-            modal.classList.remove('hidden'); // Ensure it is visible
-            setTimeout(() => { modal.classList.remove('opacity-0'); panel.classList.remove('scale-95'); panel.classList.add('scale-100'); }, 10);
-
-            if (type === 'success') {
-                iconDiv.className = 'w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-check"></i>';
-                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-btnGreen text-white font-bold py-2.5 rounded-lg hover:opacity-90 transition">確定</button>`;
-            } else if (type === 'error') {
-                iconDiv.className = 'w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-exclamation"></i>';
-                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-red-500 text-white font-bold py-2.5 rounded-lg hover:bg-red-600 transition">關閉</button>`;
-            } else if (type === 'confirm') {
-                confirmCallback = onConfirm;
-                iconDiv.className = 'w-14 h-14 bg-blue-100 text-thuBlue rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-question"></i>';
-                actions.innerHTML = `<button onclick="executeConfirm()" class="w-full bg-thuBlue text-white font-bold py-2.5 rounded-lg hover:bg-blue-800 transition shadow-md">確定</button><button onclick="closeMsg()" class="w-full bg-white text-gray-500 border border-gray-300 font-bold py-2.5 rounded-lg hover:bg-gray-50 transition">取消</button>`;
-            } else {
-                iconDiv.className = 'w-14 h-14 bg-blue-50 text-blue-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML = '<i class="fas fa-info"></i>';
-                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">知道了</button>`;
-            }
-        }
-
-        function closeMsg() {
-            const modal = document.getElementById('msg-modal');
-            const panel = document.getElementById('msg-panel');
-            modal.classList.add('opacity-0'); panel.classList.remove('scale-100'); panel.classList.add('scale-95');
-            setTimeout(() => { modal.classList.add('hidden'); confirmCallback = null; }, 300);
-        }
-
-        function executeConfirm() { if (confirmCallback) confirmCallback(); closeMsg(); }
 
         // --- Core Functions ---
         async function loadData() {
@@ -425,17 +386,17 @@
             }
         }
         
-        // --- Helper to fetch JSON from Repo ---
-        async function fetchRepoJSON(path) {
+        // --- Helper to fetch File content from Repo ---
+        async function fetchRepoFile(path) {
             const owner = localStorage.getItem('gh_owner');
             const repo = localStorage.getItem('gh_repo');
             const url = `https://api.github.com/repos/${owner}/${repo}/contents/${path}`;
             
             const res = await fetch(url, { headers: { 'Authorization': `token ${sessionToken}`, 'Accept': 'application/vnd.github.v3+json' }, cache: 'no-store' });
-            if(!res.ok) throw new Error(`找不到模板檔案：${path}，請確認該檔案已存在於您的儲存庫中。`);
+            if(!res.ok) throw new Error(`找不到檔案：${path} (404)`);
             
             const data = await res.json();
-            return JSON.parse(decodeURIComponent(escape(window.atob(data.content.replace(/\n/g, '')))));
+            return decodeURIComponent(escape(window.atob(data.content.replace(/\n/g, ''))));
         }
 
         // --- Main Render Function ---
@@ -509,17 +470,25 @@
 
             const tplConfig = PAGE_TEMPLATES[templateKey];
             let newPageData;
+            let htmlContent;
 
             try {
-                // 1. Fetch Template Data from JSON file
-                newPageData = await fetchRepoJSON(tplConfig.path);
+                // 1. Fetch JSON Data structure
+                const jsonStr = await fetchRepoFile(tplConfig.jsonPath);
+                newPageData = JSON.parse(jsonStr);
                 newPageData.title = title; // Override title
+
+                // 2. Fetch HTML Template
+                const htmlStr = await fetchRepoFile(tplConfig.htmlPath);
+                // Replace Placeholders
+                htmlContent = htmlStr.replace(/{{PAGE_ID}}/g, id);
+
             } catch(e) {
-                showMsg("錯誤", e.message, "error");
+                showMsg("錯誤", "讀取模板失敗: " + e.message, "error");
                 return;
             }
 
-            // 2. Prepare Data structure
+            // 3. Register in Data
             currentData.pages[id] = {
                 title: title,
                 source: `pages/data_${id}.json`, // External source reference
@@ -527,118 +496,6 @@
                 tag: newPageData.tag,
                 icon: newPageData.icon
             };
-
-            // 3. Prepare HTML Content
-            // !!! IMPORTANT: escape script tags inside string !!!
-            const htmlContent = `<!DOCTYPE html>
-<html lang="zh-TW">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>${title} | ${currentData.settings.SiteTitle || '網站'}</title>
-    <script src="https://cdn.tailwindcss.com"><\/script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    <script>tailwind.config={theme:{extend:{colors:{thuBlue:'#002E5D',thuGold:'#C6A87C'},fontFamily:{sans:['"Noto Sans TC"','sans-serif']}}}}<\/script>
-    <style>.page-header{background:linear-gradient(135deg,#002E5D 0%,#001a35 100%)}</style>
-</head>
-<body class="bg-gray-50 font-sans text-gray-700 flex flex-col min-h-screen">
-    <nav class="bg-thuBlue text-white shadow-lg sticky top-0 z-50">
-        <div class="max-w-7xl mx-auto px-4 h-16 flex justify-between items-center">
-            <a href="index.html" class="flex items-center gap-3"><img src="${currentData.settings.LogoUrl}" class="h-8 w-auto"><span class="font-bold hidden sm:inline">${currentData.settings.SiteTitle}</span></a>
-            <a href="index.html" class="text-sm bg-white/10 px-4 py-1.5 rounded-full hover:bg-white/20 transition"><i class="fas fa-arrow-left"></i> 回首頁</a>
-        </div>
-    </nav>
-    <header class="page-header text-white py-12 text-center">
-        <div class="inline-block bg-white/10 px-4 py-1 rounded-full text-sm text-thuGold mb-3 border border-white/20" id="header-tag">Loading...</div>
-        <h1 class="text-3xl font-bold mb-2 tracking-widest" id="header-title">Loading...</h1>
-        <p class="text-gray-400 text-sm" id="header-desc"></p>
-    </header>
-    <main class="flex-grow max-w-5xl mx-auto px-4 py-12 w-full">
-        <div id="filter-container" class="flex flex-wrap justify-center gap-2 mb-10"></div>
-        <div id="items-container" class="space-y-4 min-h-[300px]"><div class="text-center py-12 text-gray-400"><i class="fas fa-spinner fa-spin text-2xl"></i></div></div>
-    </main>
-    <footer class="bg-gray-800 text-gray-400 py-6 text-center text-xs border-t-4 border-thuGold"><p>${currentData.settings.Copyright}</p></footer>
-    <script>
-        const pageData = ${JSON.stringify(newPageData)};
-        document.addEventListener('DOMContentLoaded', async function() {
-            try {
-                // Fetch the specific data for this page
-                const [globalRes, pageRes] = await Promise.all([
-                    fetch('data.json?t='+Date.now()),
-                    fetch('pages/data_${id}.json?t='+Date.now())
-                ]);
-                const globalData = await globalRes.json();
-                // We use fetched pageData to render fresh content
-                const fetchedPageData = await pageRes.json();
-                
-                document.title = \`\${fetchedPageData.title} | \${globalData.settings.SiteTitle}\`;
-                document.getElementById('header-tag').innerText = fetchedPageData.tag || 'Page';
-                document.getElementById('header-title').innerText = fetchedPageData.title;
-                document.getElementById('header-desc').innerText = fetchedPageData.description || '';
-                
-                renderContent(fetchedPageData);
-            } catch(e) { document.getElementById('items-container').innerHTML = '<div class="text-center text-red-500">資料讀取錯誤</div>'; console.error(e); }
-        });
-
-        function renderContent(data) {
-            const container = document.getElementById('items-container');
-            const filters = document.getElementById('filter-container');
-            container.innerHTML = ''; filters.innerHTML = '';
-            
-            // Categories
-            if(data.categories && data.categories.length > 0) {
-                filters.innerHTML = '<button onclick="filterItems(\\'all\\')" class="filter-btn active px-4 py-1.5 rounded-full text-sm bg-thuBlue text-white" id="btn-all">全部</button>';
-                data.categories.forEach(cat => {
-                    filters.innerHTML += \`<button onclick="filterItems('\${cat.id}')" class="filter-btn px-4 py-1.5 rounded-full text-sm bg-white border border-gray-300 text-gray-600" id="btn-\${cat.id}">\${cat.name}</button>\`;
-                });
-            }
-
-            // Items
-            window.allItems = data.items || [];
-            filterItems('all');
-        }
-
-        window.filterItems = function(catId) {
-            document.querySelectorAll('.filter-btn').forEach(b=>{b.classList.remove('bg-thuBlue','text-white');b.classList.add('bg-white','text-gray-600')});
-            const btn = document.getElementById('btn-'+catId);
-            if(btn) { btn.classList.add('bg-thuBlue','text-white'); btn.classList.remove('bg-white','text-gray-600'); }
-            
-            const items = catId === 'all' ? window.allItems : window.allItems.filter(i => i.category === catId);
-            const container = document.getElementById('items-container');
-            container.innerHTML = '';
-            
-            if(items.length === 0) { container.innerHTML = '<div class="text-center py-10 text-gray-400">無資料</div>'; return; }
-            
-            items.forEach(item => {
-                if(item.visible === false) return;
-                let btns = '';
-                // Dynamic File Fields
-                const fields = pageData.fileFields || [];
-                if(fields.length > 0) {
-                    fields.forEach(f => {
-                        if(item[f.key]) btns += \`<a href="\${item[f.key]}" target="_blank" class="bg-red-600 text-white px-3 py-1 rounded text-xs flex items-center gap-1 hover:bg-red-700"><i class="fas \${f.icon}"></i> \${f.label}</a>\`;
-                    });
-                } else if(item.url) {
-                     btns += \`<a href="\${item.url}" target="_blank" class="text-blue-600 hover:underline text-sm"><i class="fas fa-link"></i> 連結</a>\`;
-                }
-
-                container.innerHTML += \`<div class="bg-white p-5 rounded-lg border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between">
-                    <div>
-                        <div class="flex items-center gap-2 mb-1">
-                             \${item.date ? \`<span class="text-xs text-gray-400 font-mono">\${item.date}</span>\` : ''}
-                             \${item.issuer ? \`<span class="text-xs bg-gray-100 text-gray-600 px-2 py-0.5 rounded">\${item.issuer}</span>\` : ''}
-                        </div>
-                        <h3 class="text-lg font-bold text-gray-800">\${item.title}</h3>
-                        \${item.title_en ? \`<p class="text-xs text-gray-500">\${item.title_en}</p>\` : ''}
-                    </div>
-                    <div class="flex flex-wrap gap-2 shrink-0">\${btns}</div>
-                </div>\`;
-            });
-        }
-    <\/script>
-</body>
-</html>`;
 
             // 4. Upload Files & Update Data
             try {
@@ -701,7 +558,8 @@
                 document.getElementById('page-items-editor').innerHTML = '<div class="text-center py-10"><i class="fas fa-spinner fa-spin text-thuBlue text-2xl"></i><p class="mt-2 text-gray-500">正在讀取外部資料檔...</p></div>';
                 
                 try {
-                    const content = await fetchRepoJSON(pageConfig.source);
+                    const contentJson = await fetchRepoFile(pageConfig.source);
+                    const content = JSON.parse(contentJson);
                     Object.assign(pageConfig, content);
                     pageConfig.loaded = true;
                     document.getElementById('external-badge').classList.remove('hidden');
@@ -826,7 +684,7 @@
             sortablePageItems = new Sortable(container, { handle: '.drag-handle', animation: 150, ghostClass: 'sortable-ghost', onEnd: () => collectDataFromEditors() });
         }
 
-        // --- Other Renderers (Simplified for brevity as they are unchanged) ---
+        // --- Other Renderers ---
         function renderCardsList() { const c = document.getElementById('cards-list-editor'); c.innerHTML=''; currentData.cards.forEach((x,i)=>{ c.innerHTML+=`<div class="card-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm relative group" data-index="${i}"><div class="drag-handle absolute top-0 left-0 right-0 h-6 bg-gray-100 rounded-t-xl cursor-grab flex justify-center hover:bg-gray-200"><i class="fas fa-grip-lines text-gray-400"></i></div><div class="mt-4 grid grid-cols-2 gap-4"><div><label class="text-xs font-bold text-gray-400">標題</label><input type="text" class="card-title w-full border rounded p-2 font-bold text-thuBlue" value="${x.Title}"></div><div><label class="text-xs font-bold text-gray-400">標籤</label><input type="text" class="card-badge w-full border rounded p-2 text-thuGold" value="${x.Badge||''}"></div><div class="col-span-2"><label class="text-xs font-bold text-gray-400">描述</label><input type="text" class="card-desc w-full border rounded p-2" value="${x.Description}"></div><div><label class="text-xs font-bold text-gray-400">Icon</label><input type="text" class="card-icon w-full border rounded p-2 font-mono" value="${x.Icon}"></div><div><label class="text-xs font-bold text-gray-400">顏色</label><select class="card-type w-full border rounded p-2">${getColorOptions(x.Type)}</select></div><div class="col-span-2"><label class="text-xs font-bold text-gray-400">連結</label><input type="text" class="card-link w-full border rounded p-2 font-mono text-blue-600" value="${x.Link}"></div></div><button onclick="deleteCardItem(${i})" class="absolute top-2 right-2 text-red-400 hover:text-red-600"><i class="fas fa-trash"></i></button></div>`}); if(sortableCards) sortableCards.destroy(); sortableCards = Sortable.create(c, {handle:'.drag-handle', onEnd:()=>collectDataFromEditors()}); }
         function renderContactsList() { 
             const oc=document.getElementById('office-contact-editor'); const sc=document.getElementById('staff-contacts-editor'); oc.innerHTML=''; sc.innerHTML='';
@@ -836,7 +694,6 @@
             if(sortableStaff) sortableStaff.destroy(); sortableStaff = Sortable.create(sc, {handle:'.drag-handle', onEnd:()=>collectDataFromEditors()});
         }
         function renderNewsList() { const c=document.getElementById('news-list-editor'); c.innerHTML=''; currentData.news.forEach((n,i)=>{ c.innerHTML+=`<div class="news-item bg-white p-5 rounded-xl border border-gray-200 shadow-sm flex flex-col gap-3"><div class="flex gap-3"><input type="date" class="news-date border rounded p-2 text-sm w-40" value="${n.Date}"><select class="news-type border rounded p-2 text-sm w-32"><option value="公告" ${n.Type==='公告'?'selected':''}>公告</option><option value="活動" ${n.Type==='活動'?'selected':''}>活動</option></select><div class="flex items-center gap-2"><input type="checkbox" class="news-isnew" ${n.IsNew?'checked':''}><label class="text-sm">NEW</label></div><button onclick="deleteNewsItem(${i})" class="ml-auto text-red-400"><i class="fas fa-trash"></i></button></div><input class="news-title w-full border rounded p-2 font-bold" value="${n.Title}"><input class="news-link w-full border rounded p-2 text-sm font-mono text-blue-600" value="${n.Link}"><textarea class="news-content w-full border rounded p-2 text-sm h-20">${n.Content}</textarea></div>`; }); }
-        
         function renderColorManager() {
             const container = document.getElementById('colors-list-editor'); container.innerHTML = '';
             const colors = currentData.colors || [];
@@ -845,6 +702,35 @@
             });
         }
         
+        // --- Message Modal Logic ---
+        function showMsg(title, body, type = 'info', onConfirm = null) {
+            const modal = document.getElementById('msg-modal');
+            const panel = document.getElementById('msg-panel');
+            document.getElementById('msg-title').innerText = title;
+            document.getElementById('msg-body').innerText = body;
+            
+            // Icon
+            const iconDiv = document.getElementById('msg-icon');
+            if(type==='error') { iconDiv.className='w-14 h-14 bg-red-100 text-red-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML='<i class="fas fa-exclamation"></i>'; }
+            else if(type==='success') { iconDiv.className='w-14 h-14 bg-green-100 text-green-500 rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML='<i class="fas fa-check"></i>'; }
+            else { iconDiv.className='w-14 h-14 bg-blue-100 text-thuBlue rounded-full flex items-center justify-center text-2xl mx-auto mb-4'; iconDiv.innerHTML='<i class="fas fa-info"></i>'; }
+
+            // Actions
+            const actions = document.getElementById('msg-actions');
+            actions.innerHTML = '';
+            if(type==='confirm') {
+                confirmCallback = onConfirm;
+                actions.innerHTML = `<button onclick="executeConfirm()" class="w-full bg-thuBlue text-white font-bold py-2.5 rounded-lg hover:bg-blue-800 transition shadow-md">確定</button><button onclick="closeMsg()" class="w-full bg-white text-gray-500 border border-gray-300 font-bold py-2.5 rounded-lg hover:bg-gray-50 transition">取消</button>`;
+            } else {
+                actions.innerHTML = `<button onclick="closeMsg()" class="w-full bg-gray-100 text-gray-700 font-bold py-2.5 rounded-lg hover:bg-gray-200 transition">確定</button>`;
+            }
+
+            modal.classList.remove('hidden');
+            setTimeout(() => { modal.classList.remove('opacity-0'); panel.classList.remove('scale-95'); panel.classList.add('scale-100'); }, 10);
+        }
+        function closeMsg() { const m=document.getElementById('msg-modal'); const p=document.getElementById('msg-panel'); m.classList.add('opacity-0'); p.classList.remove('scale-100'); p.classList.add('scale-95'); setTimeout(()=>{m.classList.add('hidden');confirmCallback=null},300); }
+        function executeConfirm() { if(confirmCallback) confirmCallback(); closeMsg(); }
+
         // --- Helpers ---
         function getColorOptions(sel) { let h=''; (currentData.colors||defaultColors).forEach(c=>{ h+=`<option value="${c.id}" ${c.id===sel?'selected':''} style="color:${c.hex};font-weight:bold">${c.name}</option>`}); return h; }
         
@@ -857,36 +743,23 @@
             // Check for external pages that are loaded (modified)
             for (const [id, page] of Object.entries(currentData.pages)) {
                 if (page.source && page.loaded) {
-                    // Create clean object for storage (remove app-only flags)
                     const { loaded, sha, source, template, ...contentToSave } = page;
                     changedPages.push({ path: page.source, content: contentToSave, sha: page.sha });
-                    // NOTE: data.json only keeps registry info, but here we keep full object in memory
-                    // We rely on the fact that when saving data.json, we might want to strip content? 
-                    // To be safe and simple, we keep data.json lightweight by removing Items from it IF it's an external page?
-                    // Actually, let's keep it simple: data.json acts as registry. 
                 }
             }
 
-            showMsg("確認", `確定要儲存變更嗎？將更新 ${changedPages.length + 1} 個檔案。`, "confirm", async () => {
+            showMsg("確認", `確定要儲存變更嗎？`, "confirm", async () => {
                 const btn = document.getElementById('save-btn'); 
                 const status = document.getElementById('save-status');
                 btn.disabled = true; 
                 status.innerText = '儲存中...'; status.className = 'text-thuBlue font-bold text-sm mr-2';
 
                 try {
-                    // 1. Save all external page files
                     await Promise.all(changedPages.map(p => uploadFileToGitHub(p.path, JSON.stringify(p.content, null, 4), p.sha)));
-
-                    // 2. Save Main data.json
-                    // Create a registry-only version of data.json to keep it small? 
-                    // Or just save as is. For now, save as is to avoid breaking legacy pages.
-                    // Ideally, for external pages, we should verify we aren't duplicating data in data.json.
-                    // But current structure keeps them in memory.
-                    // OPTIMIZATION: Create a clean copy where external pages have empty items/cats in data.json
+                    
                     const cleanData = JSON.parse(JSON.stringify(currentData));
                     for(const key in cleanData.pages) {
                         if(cleanData.pages[key].source) {
-                            // Strip content from main data.json to keep it light
                             delete cleanData.pages[key].items;
                             delete cleanData.pages[key].categories;
                             delete cleanData.pages[key].fileFields;
@@ -911,21 +784,15 @@
 
         function collectDataFromEditors() {
             if(!currentData) return;
-            // Settings
             document.querySelectorAll('.setting-input').forEach(i => { const k=i.getAttribute('data-key'); let v=i.value; if(k==='HeroSubtitle') v=v.replace(/\n/g,'<br>'); currentData.settings[k]=v; });
-            // Colors
             const cols = []; document.querySelectorAll('.color-item').forEach(d => cols.push({name:d.querySelector('.c-name').value, id:d.querySelector('.c-id').value, hex:d.querySelector('.c-hex').value})); currentData.colors = cols;
-            // Cards
             const cards=[]; document.querySelectorAll('.card-item').forEach(d => cards.push({Title:d.querySelector('.card-title').value, Badge:d.querySelector('.card-badge').value, Description:d.querySelector('.card-desc').value, Icon:d.querySelector('.card-icon').value, Type:d.querySelector('.card-type').value, Link:d.querySelector('.card-link').value})); currentData.cards = cards;
-            // News
             const news=[]; document.querySelectorAll('.news-item').forEach(d => news.push({Date:d.querySelector('.news-date').value, Type:d.querySelector('.news-type').value, Title:d.querySelector('.news-title').value, Link:d.querySelector('.news-link').value, Content:d.querySelector('.news-content').value, IsNew:d.querySelector('.news-isnew').checked})); currentData.news = news;
-            // Contacts
             const contacts=[]; 
             const od=document.querySelector('.office-item'); if(od) contacts.push({Name:od.querySelector('.contact-name').value, Title:'Office', Email:od.querySelector('.contact-email').value, Phone:'', Description:od.querySelector('.contact-desc').value, Type:'office'});
             document.querySelectorAll('.staff-item').forEach(d => contacts.push({Name:d.querySelector('.contact-name').value, Title:d.querySelector('.contact-title').value, Email:d.querySelector('.contact-email').value, Phone:d.querySelector('.contact-phone').value, Description:d.querySelector('.contact-desc').value, Type:d.querySelector('.contact-type').value}));
             currentData.contacts = contacts;
             
-            // Current Page Content
             if(currentData.pages && currentData.pages[activePageId]) {
                 const page = currentData.pages[activePageId];
                 page.title = document.getElementById('page-setting-title').value;
@@ -936,7 +803,6 @@
                 page.labels.title = document.getElementById('page-label-title').value;
                 page.labels.title_en = document.getElementById('page-label-title-en').value;
                 
-                // Collect Items
                 const items = [];
                 document.querySelectorAll('.page-item').forEach(d => {
                     const item = {
@@ -947,7 +813,6 @@
                         category: d.querySelector('.p-cat-select').value,
                         visible: d.querySelector('.p-visible').checked
                     };
-                    // Files or URL
                     if(page.fileFields) {
                         d.querySelectorAll('.p-file-field').forEach(fi => item[fi.getAttribute('data-key')] = fi.value);
                     } else {
@@ -968,8 +833,6 @@
         async function handleFileUpload(input) {
             if (!input.files || input.files.length === 0) return;
             const file = input.files[0];
-            
-            // UI Feedback
             const originalText = currentUploadTargetInput.value;
             currentUploadTargetInput.value = "上傳中..."; 
             currentUploadTargetInput.disabled = true;
@@ -979,15 +842,12 @@
                 reader.readAsDataURL(file);
                 reader.onload = async function () {
                     const base64Content = reader.result.split(',')[1];
-                    // Force path to 'files/' directory
                     const path = `files/${file.name}`;
-                    
-                    await uploadFileToGitHub(path, atob(base64Content)); // Decode here because uploadFile re-encodes
-                    
+                    await uploadFileToGitHub(path, atob(base64Content));
                     currentUploadTargetInput.value = path;
                     currentUploadTargetInput.disabled = false;
                     showMsg("上傳成功", `檔案已上傳至 ${path}`, "success");
-                    collectDataFromEditors(); // Save state
+                    collectDataFromEditors();
                 };
             } catch (e) {
                 showMsg("上傳失敗", e.message, "error");
