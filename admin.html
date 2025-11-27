@@ -15,7 +15,7 @@
                     colors: {
                         thuBlue: '#002147',
                         thuLightBlue: '#eef6fc',
-                        thuGold: '#c6a87c', // Updated to #c6a87c
+                        thuGold: '#c6a87c',
                         darkBg: '#0f172a',
                         btnGreen: '#219653',
                         btnGreenHover: '#1e874b',
@@ -37,7 +37,7 @@
         @keyframes fadeOut { from { opacity: 1; } to { opacity: 0; pointer-events: none; } }
         /* 拖曳時的樣式 */
         .sortable-ghost { opacity: 0.4; background: #eef6fc; border: 2px dashed #002147; }
-        .drag-handle { cursor: grab; touch-action: none; } /* 重要：touch-action 防止手機滾動干擾拖曳 */
+        .drag-handle { cursor: grab; touch-action: none; } 
         .drag-handle:active { cursor: grabbing; }
         
         .sidebar-btn { display: flex; align-items: center; gap: 12px; padding: 12px 16px; border-radius: 8px; transition: all 0.2s; cursor: pointer; color: #4b5563; font-weight: 500; }
@@ -135,25 +135,19 @@
                             <div class="space-y-3">
                                 <div>
                                     <span class="text-[11px] text-gray-400 block mb-1">主標題欄位 (例如：文件名稱)</span>
-                                    <input type="text" id="page-label-title" class="input-stylish bg-white" placeholder="預設：標題">
+                                    <input type="text" id="page-label-title" class="input-stylish bg-white" placeholder="預設：標題" onchange="markUnsaved()">
                                 </div>
                                 <div>
                                     <span class="text-[11px] text-gray-400 block mb-1">副標題欄位 (例如：備註/英文名)</span>
-                                    <input type="text" id="page-label-title-en" class="input-stylish bg-white" placeholder="預設：備註">
+                                    <input type="text" id="page-label-title-en" class="input-stylish bg-white" placeholder="預設：備註" onchange="markUnsaved()">
                                 </div>
                             </div>
-                            <button onclick="savePageLabelSettings()" class="mt-4 w-full py-2 bg-white border border-gray-300 text-gray-600 rounded-lg text-xs font-bold hover:bg-gray-50 hover:text-thuBlue transition shadow-sm">
-                                <i class="fas fa-sync-alt mr-1"></i> 更新欄位名稱
-                            </button>
                         </div>
 
                         <div id="modal-file-fields-config" class="hidden">
                             <div class="border-t border-gray-100 pt-4">
                                 <label class="text-xs text-gray-500 font-bold block mb-3 uppercase tracking-wide">下載按鈕設定</label>
                                 <div class="border border-gray-200 rounded-xl p-3 bg-gray-50 space-y-2 max-h-60 overflow-y-auto custom-scrollbar" id="file-config-list"></div>
-                                <button onclick="saveFileConfigSettings()" class="btn-confirm-lg w-full justify-center mt-3 bg-thuBlue hover:bg-blue-800 text-xs">
-                                    <i class="fas fa-save mr-1"></i> 儲存按鈕設定
-                                </button>
                             </div>
                         </div>
                     </div>
@@ -177,8 +171,9 @@
                 </div>
             </div>
 
-            <div class="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-3 shrink-0">
-                <button onclick="closeAdvancedSettingsModal()" class="px-6 py-2.5 rounded-lg text-gray-600 font-bold hover:bg-gray-200 transition-colors text-sm">關閉</button>
+            <div class="pt-6 mt-6 border-t border-gray-100 flex justify-end gap-2 shrink-0">
+                <button onclick="closeAdvancedSettingsModal()" class="px-4 py-2 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-bold transition">取消</button>
+                <button onclick="saveAdvancedSettings()" class="btn-confirm-lg bg-thuBlue hover:bg-blue-800"><i class="fas fa-save"></i> 儲存變更</button>
             </div>
         </div>
     </div>
@@ -297,15 +292,10 @@
                                         <button onclick="addNewTemplate()" class="w-full bg-btnGreen text-white px-3 py-2.5 rounded-lg text-sm font-bold hover:bg-btnGreenHover shadow-sm transition"><i class="fas fa-plus mr-1"></i>新增模板</button>
                                     </div>
                                 </div>
-                                
                                 <div class="flex-grow bg-white rounded-xl border border-gray-200 flex flex-col shadow-sm overflow-hidden">
                                     <div class="p-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
-                                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2">
-                                            <span id="current-template-title-display">請選擇模板</span>
-                                        </h3>
-                                        <div class="flex gap-2" id="template-actions">
-                                            <button onclick="deleteTemplate(activeTemplateKey)" class="text-red-400 hover:text-red-600 px-3 py-1.5 rounded text-sm transition font-bold"><i class="fas fa-trash-alt mr-1"></i>刪除模板</button>
-                                        </div>
+                                        <h3 class="text-base font-bold text-gray-800 flex items-center gap-2"><span id="current-template-title-display">請選擇模板</span></h3>
+                                        <div class="flex gap-2" id="template-actions"><button onclick="deleteTemplate(activeTemplateKey)" class="text-red-400 hover:text-red-600 px-3 py-1.5 rounded text-sm transition font-bold"><i class="fas fa-trash-alt mr-1"></i>刪除模板</button></div>
                                     </div>
                                     <div id="template-main-area" class="flex flex-col flex-grow">
                                         <div class="flex border-b border-gray-200 bg-white">
@@ -313,51 +303,25 @@
                                             <button onclick="switchTemplateView('content')" id="btn-tpl-content" class="px-6 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">預設內容編輯</button>
                                             <button onclick="switchTemplateView('code')" id="btn-tpl-code" class="px-6 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 hover:bg-gray-50 focus:outline-none transition-colors">原始碼管理</button>
                                         </div>
-                                        
                                         <div class="p-6 bg-gray-50/50 flex-grow overflow-y-auto max-h-[800px] custom-scrollbar">
-                                            
                                             <div id="tpl-view-config" class="space-y-6 max-w-2xl animate-fade-in-up">
-                                                <div>
-                                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">模板名稱 (Name)</label>
-                                                    <input type="text" id="tpl-edit-name" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-1 focus:ring-thuBlue" onchange="updateTemplateMeta(); markUnsaved()">
-                                                </div>
-                                                <div>
-                                                    <label class="block text-xs font-bold text-gray-500 uppercase mb-1">描述說明 (Description)</label>
-                                                    <textarea id="tpl-edit-desc" rows="3" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-1 focus:ring-thuBlue resize-none" onchange="updateTemplateMeta(); markUnsaved()"></textarea>
-                                                </div>
-                                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-800">
-                                                    <i class="fas fa-info-circle mr-1"></i> 基本設定僅修改後台顯示名稱。若要修改欄位定義或排版，請前往「原始碼管理」。
-                                                </div>
+                                                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">模板名稱 (Name)</label><input type="text" id="tpl-edit-name" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-1 focus:ring-thuBlue" onchange="updateTemplateMeta(); markUnsaved()"></div>
+                                                <div><label class="block text-xs font-bold text-gray-500 uppercase mb-1">描述說明 (Description)</label><textarea id="tpl-edit-desc" rows="3" class="w-full border border-gray-300 rounded p-2 text-sm focus:ring-1 focus:ring-thuBlue resize-none" onchange="updateTemplateMeta(); markUnsaved()"></textarea></div>
+                                                <div class="bg-blue-50 p-4 rounded-lg border border-blue-100 text-sm text-blue-800"><i class="fas fa-info-circle mr-1"></i> 基本設定僅修改後台顯示名稱。若要修改欄位定義或排版，請前往「原始碼管理」。</div>
                                             </div>
-
-                                            <div id="tpl-view-content" class="hidden animate-fade-in-up">
-                                                <div class="mb-4 flex justify-between items-center">
-                                                    <p class="text-sm text-gray-500">在此設定此模板的「預設內容」，建立新頁面時會自動帶入。</p>
-                                                </div>
-                                                <div id="template-items-editor" class="space-y-4"></div>
-                                            </div>
-
+                                            <div id="tpl-view-content" class="hidden animate-fade-in-up"><div class="mb-4 flex justify-between items-center"><p class="text-sm text-gray-500">在此設定此模板的「預設內容」，建立新頁面時會自動帶入。</p></div><div id="template-items-editor" class="space-y-4"></div></div>
                                             <div id="tpl-view-code" class="hidden animate-fade-in-up">
                                                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer group" onclick="editTemplateCode(activeTemplateKey, 'json')">
-                                                        <div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors"><i class="fas fa-cogs"></i></div>
-                                                        <h4 class="font-bold text-gray-800 text-lg mb-2">設定檔 (JSON)</h4>
-                                                        <p class="text-sm text-gray-500">定義模板的欄位結構、標籤名稱與功能開關。</p>
-                                                    </div>
-                                                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer group" onclick="editTemplateCode(activeTemplateKey, 'html')">
-                                                        <div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition-colors"><i class="fas fa-code"></i></div>
-                                                        <h4 class="font-bold text-gray-800 text-lg mb-2">排版原始碼 (HTML)</h4>
-                                                        <p class="text-sm text-gray-500">編輯前端顯示的 HTML 結構與樣式。</p>
-                                                    </div>
+                                                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer group" onclick="editTemplateCode(activeTemplateKey, 'json')"><div class="w-12 h-12 bg-blue-100 text-blue-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-blue-600 group-hover:text-white transition-colors"><i class="fas fa-cogs"></i></div><h4 class="font-bold text-gray-800 text-lg mb-2">設定檔 (JSON)</h4><p class="text-sm text-gray-500">定義模板的欄位結構、標籤名稱與功能開關。</p></div>
+                                                    <div class="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition cursor-pointer group" onclick="editTemplateCode(activeTemplateKey, 'html')"><div class="w-12 h-12 bg-purple-100 text-purple-600 rounded-lg flex items-center justify-center text-xl mb-4 group-hover:bg-purple-600 group-hover:text-white transition-colors"><i class="fas fa-code"></i></div><h4 class="font-bold text-gray-800 text-lg mb-2">排版原始碼 (HTML)</h4><p class="text-sm text-gray-500">編輯前端顯示的 HTML 結構與樣式。</p></div>
                                                 </div>
                                             </div>
-
                                         </div>
                                     </div>
                                 </div>
                             </div>
                         </div>
-
+                        
                         <div id="tab-pages" class="tab-content hidden animate-fade-in-up">
                             <div class="flex flex-col md:flex-row gap-6 h-full min-h-[700px]">
                                 <div class="w-full md:w-80 shrink-0 flex flex-col h-full bg-white border border-gray-200 rounded-xl overflow-hidden shadow-sm">
@@ -1033,10 +997,22 @@
             document.getElementById('advanced-settings-modal').classList.remove('hidden');
         }
         function closeAdvancedSettingsModal() { document.getElementById('advanced-settings-modal').classList.add('hidden'); }
-        function savePageLabelSettings() {
+
+        // New consolidated save function for Advanced Settings
+        function saveAdvancedSettings() {
+            // Save Labels
             if(!currentData.pages[activePageId].labels) currentData.pages[activePageId].labels = {};
             currentData.pages[activePageId].labels.title = document.getElementById('page-label-title').value;
             currentData.pages[activePageId].labels.title_en = document.getElementById('page-label-title-en').value;
+
+            // Save File Config (if present)
+            if (currentData.pages[activePageId].fileFields) {
+                currentData.pages[activePageId].fileFields.forEach((f,i)=>{ 
+                    f.label = document.getElementById('ff-l-'+i).value; 
+                    f.icon = document.getElementById('ff-i-'+i).value; 
+                });
+            }
+
             renderPageEditorUI();
             closeAdvancedSettingsModal();
             markUnsaved();
@@ -1212,7 +1188,30 @@
         function addNewCategory() { const n = document.getElementById('new-cat-name').value.trim(); if(!n)return; if(!currentData.pages[activePageId].categories) currentData.pages[activePageId].categories=[]; currentData.pages[activePageId].categories.push({id:'cat_'+Date.now(), name:n}); document.getElementById('new-cat-name').value=''; renderCategoryList(); markUnsaved(); }
         function renderCategoryList() { const l = document.getElementById('cat-list'); l.innerHTML=''; currentData.pages[activePageId].categories.forEach((c,i)=>{ l.innerHTML+=`<div class="flex justify-between p-2 border-b"><span class="font-bold">${c.name}</span><button onclick="deleteCategory(${i})" class="text-red-400"><i class="fas fa-trash"></i></button></div>`}); }
         function deleteCategory(i) { showMsg("確認", "確定刪除此分類？", "confirm", () => { currentData.pages[activePageId].categories.splice(i,1); renderCategoryList(); markUnsaved(); }); }
-        function renderFileConfigList() { const l=document.getElementById('file-config-list'); l.innerHTML=''; currentData.pages[activePageId].fileFields.forEach((f,i)=>{l.innerHTML+=`<div class="flex gap-2 mb-1"><input value="${f.label}" id="ff-l-${i}" class="border rounded p-1 text-xs w-1/2" onchange="markUnsaved()"><input value="${f.icon}" id="ff-i-${i}" class="border rounded p-1 text-xs w-1/3" onchange="markUnsaved()"><i class="fas ${f.icon}"></i></div>`}); }
+        
+        // Updated File Config List with Live Preview
+        function renderFileConfigList() { 
+            const l=document.getElementById('file-config-list'); 
+            l.innerHTML=''; 
+            currentData.pages[activePageId].fileFields.forEach((f,i)=>{
+                l.innerHTML+=`<div class="flex gap-2 mb-2 items-center bg-white p-2 border rounded-lg">
+                    <div class="w-1/2">
+                        <label class="block text-[10px] text-gray-400 mb-0.5">顯示文字</label>
+                        <input value="${f.label}" id="ff-l-${i}" class="input-stylish py-1.5 px-2 text-xs" onchange="markUnsaved()">
+                    </div>
+                    <div class="w-1/2">
+                        <label class="block text-[10px] text-gray-400 mb-0.5">Icon 代碼</label>
+                        <div class="flex items-center gap-2">
+                            <input value="${f.icon}" id="ff-i-${i}" class="input-stylish py-1.5 px-2 text-xs font-mono" oninput="document.getElementById('ff-icon-prev-${i}').className='fas '+this.value; markUnsaved()">
+                            <div class="w-8 h-8 bg-gray-100 rounded flex items-center justify-center text-gray-600 shrink-0">
+                                <i id="ff-icon-prev-${i}" class="fas ${f.icon}"></i>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            }); 
+        }
+        
         function saveFileConfigSettings() { currentData.pages[activePageId].fileFields.forEach((f,i)=>{ f.label=document.getElementById('ff-l-'+i).value; f.icon=document.getElementById('ff-i-'+i).value; }); markUnsaved(); showMsg("成功", "設定已更新", "success"); }
         function saveSingleItem() { collectDataFromEditors(); renderPageEditorUI(); showMsg("暫存", "項目已暫存，請記得按儲存並發布", "info"); }
         function saveTemplateItem() { collectDataFromEditors(); switchTemplateEditor(activeTemplateKey); switchTemplateView('content'); showMsg("暫存", "項目已暫存，請記得按儲存並發布", "info"); }
