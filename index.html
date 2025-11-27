@@ -13,10 +13,10 @@
             theme: {
                 extend: {
                     colors: {
-                        // === 修改：使用 CSS 變數以同步後台設定 ===
-                        thuBlue: 'var(--color-thu)',       // 對應 id: thu
-                        thuLightBlue: '#eef6fc',           // 固定淺色底
-                        thuGold: 'var(--color-glorygold)', // 對應 id: glorygold
+                        // 使用 CSS 變數以同步後台設定
+                        thuBlue: 'var(--color-thu)',       
+                        thuLightBlue: '#eef6fc',           
+                        thuGold: 'var(--color-glorygold)', 
                         
                         // 自定義顏色映射 (對應 data.json 中的 id)
                         lapisYellow: 'var(--color-lapisyellow)',
@@ -55,12 +55,11 @@
             --color-grassgreen: #219653;
         }
 
-        /* 自定義樣式 */
         .hero-bg {
             background: linear-gradient(135deg, var(--color-thu) 0%, #001a35 100%);
             position: relative;
             overflow: hidden;
-            min-height: 100vh; /* 確保填滿畫面 */
+            min-height: 100vh;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -83,14 +82,13 @@
         ::-webkit-scrollbar-thumb { background: #ccc; border-radius: 4px; }
         ::-webkit-scrollbar-thumb:hover { background: #aaa; }
 
-        /* 載入畫面樣式 */
         #loading-overlay {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background-color: #001a35; /* 深藍色背景 */
+            background-color: #001a35;
             z-index: 9999;
             display: flex;
             align-items: center;
@@ -102,78 +100,33 @@
         .spinner {
             width: 80px;
             height: 80px;
-            border: 6px solid #eef6fc; /* 輕量化底色 */
-            border-top-color: var(--color-glorygold); /* 主色 */
+            border: 6px solid #eef6fc;
+            border-top-color: var(--color-glorygold);
             border-radius: 50%;
             animation: spin 1s linear infinite;
             position: relative;
         }
 
-        @keyframes spin {
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         #loading-percent {
-            position: absolute;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            font-size: 1.1rem;
-            font-weight: bold;
-            color: white;
-            font-family: monospace;
+            position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            font-size: 1.1rem; font-weight: bold; color: white; font-family: monospace;
         }
         
-        /* 滾動箭頭動畫 */
-        @keyframes bounce {
-          0%, 20%, 50%, 80%, 100% {
-            transform: translateY(0);
-          }
-          40% {
-            transform: translateY(-10px);
-          }
-          60% {
-            transform: translateY(-5px);
-          }
-        }
-        .animate-scroll-down {
-          animation: bounce 2s infinite;
+        @keyframes bounce { 0%, 20%, 50%, 80%, 100% { transform: translateY(0); } 40% { transform: translateY(-10px); } 60% { transform: translateY(-5px); } }
+        .animate-scroll-down { animation: bounce 2s infinite; }
+        
+        #hero-logo { filter: drop-shadow(0 0 15px rgba(0, 0, 0, 1)) drop-shadow(0 0 3px rgba(255, 255, 255, 0.4)); transition: all 0.3s ease-out; }
+        
+        .title-group:hover #hero-logo { filter: drop-shadow(0 0 20px var(--color-glorygold)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)); transform: scale(1.05); }
+        .title-group:hover #hero-title-1, .title-group:hover #hero-title-2, .title-group:hover #hero-eng-title {
+            text-shadow: 0 0 4px #fff, 0 0 10px var(--color-glorygold); transform: scale(1.02); transition: text-shadow 0.3s ease-out, transform 0.3s ease-out;
         }
         
-        /* 1. LOGO獨立陰影與發光效果 (平時的陰影) */
-        #hero-logo {
-            filter: drop-shadow(0 0 15px rgba(0, 0, 0, 1)) drop-shadow(0 0 3px rgba(255, 255, 255, 0.4)); 
-            transition: all 0.3s ease-out;
-        }
-        
-        /* 2. 標題與 LOGO hover 發光效果 */
-        .title-group:hover #hero-logo {
-             /* hover發光 */
-             filter: drop-shadow(0 0 20px var(--color-glorygold)) drop-shadow(0 0 10px rgba(255, 255, 255, 0.8)); 
-             transform: scale(1.05);
-        }
-        .title-group:hover #hero-title-1,
-        .title-group:hover #hero-title-2,
-        .title-group:hover #hero-eng-title {
-            text-shadow: 0 0 4px #fff, 0 0 10px var(--color-glorygold);
-            transform: scale(1.02);
-            transition: text-shadow 0.3s ease-out, transform 0.3s ease-out;
-        }
-        
-        /* 修正: 滾動按鈕的隱藏/顯示 */
-        #scroll-to-top.hidden {
-            opacity: 0;
-            visibility: hidden;
-        }
-        #scroll-to-top.show {
-            opacity: 1;
-            visibility: visible;
-        }
-        
-        /* 確保按鈕堆棧在 Footer 之上 */
-        #action-stack {
-            z-index: 100;
-        }
+        #scroll-to-top.hidden { opacity: 0; visibility: hidden; }
+        #scroll-to-top.show { opacity: 1; visibility: visible; }
+        #action-stack { z-index: 100; }
     </style>
 </head>
 <body class="bg-gray-100 font-sans text-gray-700 flex flex-col min-h-screen overflow-x-hidden">
@@ -206,19 +159,13 @@
                 <i class="fa-solid fa-house"></i> 東海大學首頁
             </a>
         </div>
-        
         <div class="absolute top-0 left-0 w-full h-full overflow-hidden z-0 pointer-events-none">
              <div class="absolute -top-20 -right-20 w-96 h-96 bg-thuGold opacity-10 rounded-full blur-3xl"></div>
              <div class="absolute top-40 -left-20 w-72 h-72 bg-blue-400 opacity-10 rounded-full blur-3xl"></div>
         </div>
-
         <div class="w-full max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center flex flex-col items-center justify-center pt-16 pb-24">
-            
             <div class="title-group group flex flex-col items-center cursor-pointer animate-fade-in-up">
-                <div class="logo-container mb-6 sm:mb-8">
-                    <img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-16 md:h-24 w-auto">
-                </div>
-                
+                <div class="logo-container mb-6 sm:mb-8"><img id="hero-logo" src="https://www.thu.edu.tw/upload/pagepic_upload/logo_w.svg" alt="Logo" class="h-16 md:h-24 w-auto"></div>
                 <div class="text-center mb-6 w-full" style="animation-delay: 0.2s;">
                     <h1 class="text-2xl sm:text-3xl md:text-5xl font-black tracking-wide md:tracking-widest leading-tight drop-shadow-xl mb-2 px-2">
                         <span id="hero-title-1" class="inline-block">實習業務</span><span class="text-thuGold inline-block" id="hero-title-2">協作平台</span>
@@ -226,9 +173,7 @@
                     <p id="hero-eng-title" class="text-sm md:text-base text-blue-200 tracking-wide font-light opacity-90 px-4">Internship Coordination Platform</p>
                 </div>
             </div>
-            
             <p id="hero-subtitle" class="text-base sm:text-lg text-blue-100/90 font-light mb-8 sm:mb-10 max-w-3xl mx-auto leading-relaxed animate-fade-in-up px-4" style="animation-delay: 0.4s;">載入中...</p>
-            
             <div class="flex flex-col sm:flex-row items-center justify-center gap-4 sm:gap-5 animate-fade-in-up w-full sm:w-auto px-4 sm:px-0" style="animation-delay: 0.6s;">
                 <button onclick="toggleModal('origin-modal')" class="group relative px-6 sm:px-8 py-3.5 bg-thuGold hover:brightness-110 text-white font-bold rounded-full transition-all duration-300 shadow-lg hover:shadow-orange-500/20 hover:-translate-y-1 overflow-hidden w-full sm:w-60">
                     <div class="absolute inset-0 w-full h-full bg-white/20 group-hover:translate-x-full transition-transform duration-500 -skew-x-12 -ml-4"></div>
@@ -238,25 +183,14 @@
                     <i class="fa-solid fa-link text-blue-300"></i> 實習中心網頁
                 </a>
             </div>
-
             <div id="news-container" class="w-full max-w-3xl mx-auto bg-white/10 backdrop-blur-md rounded-xl border border-white/20 p-4 sm:p-5 text-left animate-fade-in-up hidden mt-8 mx-4" style="animation-delay: 0.8s;">
                 <div class="flex items-center justify-between mb-3 pb-2 border-b border-white/10">
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-bullhorn text-thuGold animate-pulse"></i>
-                        <span class="font-bold text-white text-base tracking-wide">最新公告</span>
-                    </div>
-                    <button id="view-more-news-btn" onclick="openAllNewsModal()" class="hidden text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 border border-white/10">
-                        查看所有 <i class="fas fa-chevron-right text-[10px]"></i>
-                    </button>
+                    <div class="flex items-center gap-2"><i class="fas fa-bullhorn text-thuGold animate-pulse"></i><span class="font-bold text-white text-base tracking-wide">最新公告</span></div>
+                    <button id="view-more-news-btn" onclick="openAllNewsModal()" class="hidden text-xs bg-white/20 hover:bg-white/30 text-white px-3 py-1.5 rounded-full transition-colors flex items-center gap-1 border border-white/10">查看所有 <i class="fas fa-chevron-right text-[10px]"></i></button>
                 </div>
-                <ul id="news-list" class="space-y-3 text-sm text-blue-50">
-                    <li class="text-center py-2 text-gray-300">讀取公告中...</li>
-                </ul>
+                <ul id="news-list" class="space-y-3 text-sm text-blue-50"><li class="text-center py-2 text-gray-300">讀取公告中...</li></ul>
             </div>
-            
-            <div id="scroll-arrow-target" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;" onclick="customScrollToMain()">
-                <i class="fas fa-chevron-down text-3xl"></i>
-            </div>
+            <div id="scroll-arrow-target" class="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-white/50 hover:text-white transition cursor-pointer p-3 z-20 animate-scroll-down hidden md:block" style="bottom: 1vh;" onclick="customScrollToMain()"><i class="fas fa-chevron-down text-3xl"></i></div>
         </div>
     </div>
 
@@ -276,124 +210,19 @@
     </footer>
 
     <div id="action-stack" class="fixed bottom-20 sm:bottom-8 right-4 sm:right-8 z-50 flex flex-col items-end gap-2">
-        
-        <button id="scroll-to-top" onclick="scrollToTop()" class="w-10 h-10 sm:w-12 sm:h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center z-50">
-            <i class="fas fa-chevron-up text-lg sm:text-xl"></i>
-        </button>
-
+        <button id="scroll-to-top" onclick="scrollToTop()" class="w-10 h-10 sm:w-12 sm:h-12 bg-thuGold text-white rounded-full shadow-lg hover:bg-yellow-700 transition-all duration-300 hidden md:flex items-center justify-center z-50"><i class="fas fa-chevron-up text-lg sm:text-xl"></i></button>
         <div class="flex flex-col items-end z-50">
-            <div class="bg-white text-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-lg border border-gray-100 text-xs sm:text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">
-                需要協助嗎？
-                <div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div>
-            </div>
-            <button onclick="toggleModal('contact-modal')" class="w-12 h-12 sm:w-14 sm:h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white">
-                <i class="fas fa-headset text-xl sm:text-2xl group-hover:animate-pulse"></i>
-            </button>
+            <div class="bg-white text-gray-800 px-3 py-1.5 sm:px-4 sm:py-2 rounded-2xl shadow-lg border border-gray-100 text-xs sm:text-sm font-bold mb-2 animate-bounce origin-bottom-right relative cursor-pointer" onclick="toggleModal('contact-modal')">需要協助嗎？<div class="absolute -bottom-1.5 right-6 w-3 h-3 bg-white transform rotate-45 border-r border-b border-gray-100"></div></div>
+            <button onclick="toggleModal('contact-modal')" class="w-12 h-12 sm:w-14 sm:h-14 bg-thuBlue hover:bg-blue-800 text-white rounded-full shadow-2xl flex items-center justify-center transition-all duration-300 hover:scale-110 hover:rotate-12 group focus:outline-none focus:ring-4 focus:ring-blue-300 border-2 border-white"><i class="fas fa-headset text-xl sm:text-2xl group-hover:animate-pulse"></i></button>
         </div>
     </div>
 
-
-    <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
-            <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
-                <div class="flex items-center gap-2"><i class="fas fa-feather-alt text-thuGold text-xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue" id="modal-origin-title">計畫緣起</p></div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
-            </div>
-            <div class="px-6 sm:px-8 py-6 text-left"><div id="modal-origin-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 text-sm sm:text-base"></div></div>
-            <div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
-                <button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉視窗</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
-            <div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-2xl z-10">
-                <div class="flex items-center gap-3"><i class="fas fa-address-book text-thuGold text-xl sm:text-2xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue">聯絡資訊</p></div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div>
-            </div>
-            <div class="flex-grow overflow-y-auto px-4 sm:px-8 py-6 sm:py-8 bg-gray-50">
-                <div class="mb-6 text-center bg-blue-50 border border-blue-100 rounded-xl p-4 sm:p-5">
-                    <p class="text-gray-700 font-medium text-sm sm:text-base"><i class="fas fa-info-circle text-thuBlue mr-2"></i>如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。</p>
-                </div>
-                <div id="contacts-container" class="flex flex-col gap-6">
-                    <div class="text-center text-gray-400">載入中...</div>
-                </div>
-            </div>
-            <div class="flex-none flex justify-end py-4 sm:py-5 px-6 sm:px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10">
-                <button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">關閉</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('news-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]">
-            <div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white">
-                <div class="flex items-center gap-2">
-                    <i class="fas fa-bullhorn text-thuGold text-xl"></i>
-                    <p class="text-xl font-bold text-thuBlue">公告詳情</p>
-                </div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div>
-            </div>
-            <div class="px-6 sm:px-8 py-6 text-left">
-                <div class="mb-4">
-                    <span id="modal-news-date" class="text-sm text-gray-500 font-mono"></span>
-                    <h2 id="modal-news-title" class="text-xl sm:text-2xl font-bold text-gray-800 mt-1"></h2>
-                </div>
-                <hr class="border-gray-200 mb-4">
-                <div id="modal-news-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 leading-relaxed text-sm sm:text-base"></div>
-            </div>
-            <div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100">
-                <button onclick="toggleModal('news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="all-news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]">
-        <div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('all-news-modal')"></div>
-        <div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded-xl shadow-2xl z-50 flex flex-col max-h-[90vh]">
-            <div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-xl z-10">
-                <div class="flex items-center gap-3">
-                    <i class="fas fa-list-ul text-thuGold text-2xl"></i>
-                    <p class="text-xl sm:text-2xl font-bold text-thuBlue">所有公告</p>
-                </div>
-                <div class="cursor-pointer z-50" onclick="toggleModal('all-news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div>
-            </div>
-            <div class="flex-none px-6 sm:px-8 pt-6 pb-2 bg-gray-50">
-                <div class="flex flex-col sm:flex-row gap-3">
-                    <div class="relative flex-grow">
-                        <i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i>
-                        <input type="text" id="news-search" placeholder="搜尋公告標題..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm transition-all" oninput="renderAllNewsUI(true)">
-                    </div>
-                    <select id="news-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm bg-white text-gray-600 min-w-[120px] cursor-pointer" onchange="renderAllNewsUI(true)">
-                        <option value="all">所有類型</option>
-                    </select>
-                </div>
-            </div>
-            <div class="flex-grow overflow-y-auto px-6 sm:px-8 py-2 bg-gray-50 min-h-[300px]">
-                <ul id="all-news-list" class="space-y-2"></ul>
-                <div id="no-news-msg" class="hidden text-center py-10 text-gray-400">
-                    <i class="fas fa-inbox text-4xl mb-2"></i><p>沒有符合條件的公告</p>
-                </div>
-            </div>
-            <div class="flex-none bg-white border-t border-gray-100 rounded-b-xl z-10">
-                <div id="news-pagination" class="flex justify-center items-center gap-2 py-3 border-b border-gray-50"></div>
-                <div class="flex justify-end py-4 px-6 sm:px-8">
-                    <button onclick="toggleModal('all-news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300">關閉</button>
-                </div>
-            </div>
-        </div>
-    </div>
+    <div id="origin-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('origin-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-2xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]"><div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white"><div class="flex items-center gap-2"><i class="fas fa-feather-alt text-thuGold text-xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue" id="modal-origin-title">計畫緣起</p></div><div class="cursor-pointer z-50" onclick="toggleModal('origin-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div></div><div class="px-6 sm:px-8 py-6 text-left"><div id="modal-origin-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 text-sm sm:text-base"></div></div><div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100"><button onclick="toggleModal('origin-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉視窗</button></div></div></div>
+    <div id="contact-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('contact-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-5xl mx-auto rounded-2xl shadow-2xl z-50 flex flex-col max-h-[90vh]"><div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-2xl z-10"><div class="flex items-center gap-3"><i class="fas fa-address-book text-thuGold text-xl sm:text-2xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue">聯絡資訊</p></div><div class="cursor-pointer z-50" onclick="toggleModal('contact-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div></div><div class="flex-grow overflow-y-auto px-4 sm:px-8 py-6 sm:py-8 bg-gray-50"><div class="mb-6 text-center bg-blue-50 border border-blue-100 rounded-xl p-4 sm:p-5"><p class="text-gray-700 font-medium text-sm sm:text-base"><i class="fas fa-info-circle text-thuBlue mr-2"></i>如果您在操作上有任何問題，歡迎聯繫實習與學生成就中心或相關承辦人員。</p></div><div id="contacts-container" class="flex flex-col gap-6"><div class="text-center text-gray-400">載入中...</div></div></div><div class="flex-none flex justify-end py-4 sm:py-5 px-6 sm:px-8 bg-white border-t border-gray-100 rounded-b-2xl z-10"><button onclick="toggleModal('contact-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300 text-base shadow-md">關閉</button></div></div></div>
+    <div id="news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('news-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-3xl mx-auto rounded-xl shadow-2xl z-50 overflow-y-auto max-h-[90vh]"><div class="flex justify-between items-center py-4 px-6 border-b border-gray-200 sticky top-0 bg-white"><div class="flex items-center gap-2"><i class="fas fa-bullhorn text-thuGold text-xl"></i><p class="text-xl font-bold text-thuBlue">公告詳情</p></div><div class="cursor-pointer z-50" onclick="toggleModal('news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl transition"></i></div></div><div class="px-6 sm:px-8 py-6 text-left"><div class="mb-4"><span id="modal-news-date" class="text-sm text-gray-500 font-mono"></span><h2 id="modal-news-title" class="text-xl sm:text-2xl font-bold text-gray-800 mt-1"></h2></div><hr class="border-gray-200 mb-4"><div id="modal-news-content" class="prose prose-blue max-w-none text-gray-600 space-y-4 leading-relaxed text-sm sm:text-base"></div></div><div class="flex justify-end pt-4 pb-6 px-6 bg-gray-50 rounded-b-xl border-t border-gray-100"><button onclick="toggleModal('news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-6 rounded-lg transition duration-300">關閉</button></div></div></div>
+    <div id="all-news-modal" class="modal opacity-0 pointer-events-none fixed w-full h-full top-0 left-0 flex items-center justify-center z-[100]"><div class="modal-overlay absolute w-full h-full bg-gray-900 opacity-50" onclick="toggleModal('all-news-modal')"></div><div class="modal-container bg-white w-11/12 md:max-w-4xl mx-auto rounded-xl shadow-2xl z-50 flex flex-col max-h-[90vh]"><div class="flex-none flex justify-between items-center py-4 sm:py-5 px-6 sm:px-8 border-b border-gray-200 bg-white rounded-t-xl z-10"><div class="flex items-center gap-3"><i class="fas fa-list-ul text-thuGold text-2xl"></i><p class="text-xl sm:text-2xl font-bold text-thuBlue">所有公告</p></div><div class="cursor-pointer z-50" onclick="toggleModal('all-news-modal')"><i class="fas fa-times text-gray-500 hover:text-gray-800 text-xl sm:text-2xl transition"></i></div></div><div class="flex-none px-6 sm:px-8 pt-6 pb-2 bg-gray-50"><div class="flex flex-col sm:flex-row gap-3"><div class="relative flex-grow"><i class="fas fa-search absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400"></i><input type="text" id="news-search" placeholder="搜尋公告標題..." class="w-full pl-10 pr-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm transition-all" oninput="renderAllNewsUI(true)"></div><select id="news-filter" class="px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-thuBlue outline-none text-sm bg-white text-gray-600 min-w-[120px] cursor-pointer" onchange="renderAllNewsUI(true)"><option value="all">所有類型</option></select></div></div><div class="flex-grow overflow-y-auto px-6 sm:px-8 py-2 bg-gray-50 min-h-[300px]"><ul id="all-news-list" class="space-y-2"></ul><div id="no-news-msg" class="hidden text-center py-10 text-gray-400"><i class="fas fa-inbox text-4xl mb-2"></i><p>沒有符合條件的公告</p></div></div><div class="flex-none bg-white border-t border-gray-100 rounded-b-xl z-10"><div id="news-pagination" class="flex justify-center items-center gap-2 py-3 border-b border-gray-50"></div><div class="flex justify-end py-4 px-6 sm:px-8"><button onclick="toggleModal('all-news-modal')" class="bg-thuBlue hover:bg-blue-800 text-white font-bold py-2 px-8 rounded-lg transition duration-300">關閉</button></div></div></div></div>
 
     <script>
-        // ==========================================
-        // 1. 程式邏輯 (資料來源改為 Fetch data.json)
-        // ==========================================
-        
-        // Color Map 邏輯
         const colorMap = {
             'thu': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' },
             'gold': { border: 'border-thuGold', icon: 'bg-thuGold', text: 'text-thuGold', hoverText: 'group-hover:text-thuGold', isGradient: true },
@@ -406,7 +235,7 @@
             'indigo': { border: 'border-indigo-500', icon: 'bg-indigo-500', text: 'text-indigo-600', hoverText: 'group-hover:text-indigo-800' },
             'cyan': { border: 'border-cyan-500', icon: 'bg-cyan-500', text: 'text-cyan-600', hoverText: 'group-hover:text-cyan-800' },
             'rose': { border: 'border-rose-500', icon: 'bg-rose-500', text: 'text-rose-600', hoverText: 'group-hover:text-rose-800' },
-            // 自定義顏色
+            // CSS Variables Mapped
             'thublue': { border: 'border-thuBlue', icon: 'bg-thuBlue', text: 'text-thuBlue', hoverText: 'group-hover:text-thuBlue' },
             'lapisyellow': { border: 'border-lapisYellow', icon: 'bg-lapisYellow', text: 'text-lapisYellow', hoverText: 'group-hover:text-lapisYellow' },
             'concretegrey': { border: 'border-concreteGrey', icon: 'bg-concreteGrey', text: 'text-concreteGrey', hoverText: 'group-hover:text-concreteGrey' },
@@ -429,7 +258,6 @@
             'blue': { bg: 'bg-blue-50', text: 'text-blue-600', badge: 'bg-blue-100 text-blue-800', border: 'hover:border-blue-500' },
             'default': { bg: 'bg-gray-50', text: 'text-gray-600', badge: 'bg-gray-200 text-gray-700', border: 'hover:border-gray-400' },
             'office': { bg: 'bg-green-50', text: 'text-green-600', badge: 'bg-green-100 text-green-800', border: 'hover:border-green-500' },
-            // 自定義顏色
             'thubluenew': { bg: 'bg-blue-50', text: 'text-thuBlueNew', badge: 'bg-blue-100 text-blue-900', border: 'hover:border-thuBlueNew' },
             'glorygold': { bg: 'bg-yellow-50', text: 'text-gloryGold', badge: 'bg-yellow-100 text-yellow-800', border: 'hover:border-gloryGold' },
             'lapisyellow': { bg: 'bg-orange-50', text: 'text-lapisYellow', badge: 'bg-orange-100 text-orange-800', border: 'hover:border-lapisYellow' },
@@ -453,139 +281,85 @@
         const minLoadingTime = 500;
         const maxSimulatedProgress = 90;
 
-        // 輔助函式
         const setText = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerText = val || ''; };
         const setHTML = (id, val) => { if(document.getElementById(id)) document.getElementById(id).innerHTML = val || ''; };
-        const toggleModal = (id) => {
-            const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active');
-        };
+        const toggleModal = (id) => { const m = document.getElementById(id); m.classList.toggle('opacity-0'); m.classList.toggle('pointer-events-none'); document.querySelector('body').classList.toggle('modal-active'); };
 
-        // 模擬進度條更新
-        function updateProgress(progress) {
-            const percentElement = document.getElementById('loading-percent');
-            if (percentElement) {
-                percentElement.innerText = `${Math.min(100, progress)}%`;
-            }
-        }
+        function updateProgress(progress) { const percentElement = document.getElementById('loading-percent'); if (percentElement) percentElement.innerText = `${Math.min(100, progress)}%`; }
 
-        // 隱藏載入畫面
         function hideLoadingOverlay() {
             const totalElapsedTime = Date.now() - initialLoadStartTime;
             const requiredDelay = Math.max(0, 3000 - totalElapsedTime); 
-
             updateProgress(100);
-
             setTimeout(() => {
                 const overlay = document.getElementById('loading-overlay');
-                if (overlay) {
-                    overlay.style.opacity = '0';
-                    setTimeout(() => {
-                        overlay.style.display = 'none';
-                    }, 500); 
-                }
+                if (overlay) { overlay.style.opacity = '0'; setTimeout(() => { overlay.style.display = 'none'; }, 500); }
             }, requiredDelay);
         }
 
-        // 滾動到頂部功能
-        window.scrollToTop = function() {
-            window.scrollTo({
-                top: 0,
-                behavior: 'smooth'
-            });
-        };
+        window.scrollToTop = function() { window.scrollTo({ top: 0, behavior: 'smooth' }); };
         
-        // 自訂滾動邏輯
         window.customScrollToMain = function() {
             const mainContent = document.getElementById('main-content');
             const stickyHeader = document.getElementById('sticky-header');
-            
             if (mainContent && stickyHeader) {
                 const headerHeight = stickyHeader.offsetHeight || 64; 
                 const targetPosition = mainContent.offsetTop - headerHeight;
-                
-                window.scrollTo({
-                    top: targetPosition,
-                    behavior: 'smooth'
-                });
+                window.scrollTo({ top: targetPosition, behavior: 'smooth' });
             }
         };
 
-
-        // 控制滾動按鈕顯示/隱藏
         document.addEventListener('scroll', function() {
             const button = document.getElementById('scroll-to-top');
-            if (window.scrollY > 300) {
-                if (button) button.classList.add('show');
-            } else {
-                if (button) button.classList.remove('show');
-            }
+            if (window.scrollY > 300) { if (button) button.classList.add('show'); } else { if (button) button.classList.remove('show'); }
         });
 
-
-        // 頁面載入初始化
         document.addEventListener('DOMContentLoaded', async function() {
-            
-            // 步驟 1: 模擬開始載入
             let progress = 0;
-            const interval = setInterval(() => {
-                if (progress < maxSimulatedProgress) {
-                    progress += 5; 
-                }
-                updateProgress(progress);
-            }, 100);
-
+            const interval = setInterval(() => { if (progress < maxSimulatedProgress) progress += 5; updateProgress(progress); }, 100);
 
             try {
-                // 步驟 2: 讀取 JSON 資料
                 const response = await fetch(`data.json?t=${new Date().getTime()}`);
                 if (!response.ok) throw new Error("無法讀取資料庫");
                 const data = await response.json();
 
-                // === 新增：動態注入顏色變數，實現與後台同步 ===
+                // === CSS Variables Sync Logic ===
                 if (data.colors) {
                     const rootStyle = document.documentElement.style;
-                    // 設定預設值 (確保 data.json 異常時仍有顏色)
+                    // Defaults
                     rootStyle.setProperty('--color-thu', '#002E5D');
                     rootStyle.setProperty('--color-glorygold', '#C6A87C');
-
+                    // Dynamic Injection
                     data.colors.forEach(c => {
-                        // 將 ID 轉為小寫並設定為 CSS 變數 (例如 thublue -> --color-thublue)
                         if(c.id && c.hex) {
                             rootStyle.setProperty(`--color-${c.id.toLowerCase()}`, c.hex);
                         }
                     });
                 }
-                // ===========================================
+                // =================================
 
-                // 停止模擬進度
                 clearInterval(interval);
                 updateProgress(maxSimulatedProgress);
 
-                // 步驟 3: 處理資料
                 const settings = data.settings;
                 const cards = data.cards;
                 siteContacts = data.contacts;
                 siteNews = data.news || [];
                 
-                // 排序新聞 (降序)
                 siteNews.sort((a, b) => new Date(b.Date) - new Date(a.Date));
 
-                // 步驟 4: 渲染內容
                 renderSettings(settings);
                 renderCards(cards);
                 renderContacts(siteContacts);
                 renderNewsWidget(siteNews);
 
-                // 步驟 5: 完成載入
                 hideLoadingOverlay();
-
 
             } catch (error) {
                 console.error("Error loading data:", error);
                 clearInterval(interval);
                 updateProgress(100);
                 hideLoadingOverlay();
-
                 document.getElementById('cards-container').innerHTML = `<div class="col-span-full text-center text-red-500 p-10 bg-white rounded-xl shadow-lg">資料載入失敗，請確認 data.json 是否存在。</div>`;
                 document.getElementById('news-container').classList.add('hidden');
             }
@@ -594,7 +368,6 @@
         function renderSettings(settings) {
             if (!settings) return;
             document.title = settings.SiteTitle;
-            // 矮頁首標題修正為完整名稱
             document.getElementById('sticky-header').querySelector('#nav-title').innerText = settings.SiteTitle; 
             setText('hero-eng-title', settings.SiteEngTitle);
             setHTML('hero-subtitle', settings.HeroSubtitle);
@@ -605,7 +378,6 @@
             const fullTitle = settings.SiteTitle || "";
             const keyword = "協作平台";
             
-            // 標題切割邏輯
             if (fullTitle.includes(keyword)) {
                 const parts = fullTitle.split(keyword);
                 setText('hero-title-1', parts[0]);
@@ -629,7 +401,6 @@
                 const theme = colorMap[colorKey] || colorMap['thu'];
                 const bgClass = theme.isGradient ? 'bg-gradient-to-br from-white to-blue-50' : 'bg-white';
                 const badgeHtml = item.Badge ? `<div class="absolute top-0 right-0 ${theme.icon} text-white text-[10px] font-bold px-2 py-0.5 rounded-bl-lg">${item.Badge}</div>` : '';
-                
                 const externalLink = item.Link.startsWith('http') || item.Link.startsWith('tools/');
                 const target = externalLink ? 'target="_blank"' : '';
 
@@ -694,28 +465,22 @@
         }
 
         // === NEWS LOGIC ===
-        
         function renderNewsWidget(data) {
             const heroList = document.getElementById('news-list');
             const wrapper = document.getElementById('news-container');
             const moreBtn = document.getElementById('view-more-news-btn');
             heroList.innerHTML = '';
 
-            if (!data || data.length === 0) {
-                wrapper.classList.add('hidden');
-                return;
-            }
+            if (!data || data.length === 0) { wrapper.classList.add('hidden'); return; }
             wrapper.classList.remove('hidden');
-            wrapper.classList.add('animate-fade-in-up'); // Ensure animation works after load
+            wrapper.classList.add('animate-fade-in-up'); 
 
-            if (data.length > 3) moreBtn.classList.remove('hidden');
-            else moreBtn.classList.add('hidden');
+            if (data.length > 3) moreBtn.classList.remove('hidden'); else moreBtn.classList.add('hidden');
 
             data.slice(0, 3).forEach((item, index) => {
                 const isNew = item.IsNew === true || item.IsNew === 'TRUE' || item.IsNew === 'true';
                 const newBadge = isNew ? '<span class="bg-red-500 text-white text-[10px] px-1.5 py-0.5 rounded ml-2 align-middle">NEW</span>' : '';
                 const typeBadge = item.Type ? `<span class="text-xs text-blue-300 border border-blue-300/30 px-1.5 py-0.5 rounded mr-2">${item.Type}</span>` : '';
-
                 const hasLink = item.Link && item.Link.trim() !== '' && item.Link.trim() !== '#';
                 const href = hasLink ? item.Link : 'javascript:void(0)';
                 const target = hasLink ? 'target="_blank"' : '';
@@ -724,15 +489,9 @@
                 heroList.innerHTML += `
                 <li class="flex items-start gap-3 hover:bg-white/5 p-1 rounded transition-colors">
                     <div class="flex-shrink-0 mt-0.5 text-thuGold font-mono whitespace-nowrap">${item.Date}</div>
-                    <div class="flex-grow min-w-0">
-                        ${typeBadge}
-                        <a href="${href}" ${target} ${onClick} class="hover:text-white hover:underline transition-colors leading-relaxed cursor-pointer truncate block">
-                            ${item.Title} ${newBadge}
-                        </a>
-                    </div>
+                    <div class="flex-grow min-w-0">${typeBadge}<a href="${href}" ${target} ${onClick} class="hover:text-white hover:underline transition-colors leading-relaxed cursor-pointer truncate block">${item.Title} ${newBadge}</a></div>
                 </li>`;
             });
-            
             initNewsFilters();
         }
 
@@ -746,17 +505,13 @@
         function renderAllNewsUI(resetPage = false) {
             const search = document.getElementById('news-search').value.toLowerCase();
             const type = document.getElementById('news-filter').value;
-            
-            // 1. Filtering
             filteredNews = siteNews.filter(item => {
                 const matchSearch = item.Title.toLowerCase().includes(search);
                 const matchType = type === 'all' || (item.Type || '一般公告') === type;
                 return matchSearch && matchType;
             });
 
-            // 2. Pagination State
             if (resetPage) currentNewsPage = 1;
-            
             const totalPages = Math.ceil(filteredNews.length / newsPerPage);
             if (currentNewsPage > totalPages) currentNewsPage = totalPages > 0 ? totalPages : 1;
             if (currentNewsPage < 1) currentNewsPage = 1;
@@ -765,19 +520,15 @@
             const end = start + newsPerPage;
             const pageItems = filteredNews.slice(start, end);
 
-            // 3. Render List
             const list = document.getElementById('all-news-list');
             const noMsg = document.getElementById('no-news-msg');
             list.innerHTML = '';
 
-            if (pageItems.length === 0) {
-                noMsg.classList.remove('hidden');
-            } else {
+            if (pageItems.length === 0) { noMsg.classList.remove('hidden'); } else {
                 noMsg.classList.add('hidden');
                 pageItems.forEach(item => {
                     const originalIndex = siteNews.indexOf(item); 
                     let dateStr = item.Date;
-                    
                     const hasLink = item.Link && item.Link.trim() !== '' && item.Link.trim() !== '#';
                     const href = hasLink ? item.Link : 'javascript:void(0)';
                     const target = hasLink ? 'target="_blank"' : '';
@@ -787,19 +538,13 @@
                     list.innerHTML += `
                     <li class="border-b border-gray-100 pb-3 last:border-0">
                         <div class="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-3">
-                            <div class="flex items-center gap-2 shrink-0">
-                                <span class="text-gray-400 font-mono text-sm">${dateStr}</span>
-                                ${typeTag}
-                            </div>
-                            <a href="${href}" ${target} ${onClick} class="text-gray-700 hover:text-thuBlue hover:underline font-medium cursor-pointer block truncate">
-                                ${item.Title}
-                            </a>
+                            <div class="flex items-center gap-2 shrink-0"><span class="text-gray-400 font-mono text-sm">${dateStr}</span>${typeTag}</div>
+                            <a href="${href}" ${target} ${onClick} class="text-gray-700 hover:text-thuBlue hover:underline font-medium cursor-pointer block truncate">${item.Title}</a>
                         </div>
                     </li>`;
                 });
             }
 
-            // 4. Render Pagination
             const pag = document.getElementById('news-pagination');
             pag.innerHTML = '';
             if (totalPages > 1) {
@@ -826,7 +571,6 @@
 
         document.onkeydown = function(evt) { if((evt.key==="Escape"||evt.keyCode===27)) document.querySelectorAll('.modal:not(.opacity-0)').forEach(m=>toggleModal(m.id)); };
         
-        // --- Custom Scroll Logic for Footer ---
         const heroHeightThreshold = 600; 
         window.addEventListener('scroll', () => { 
             const stickyHeader = document.getElementById('sticky-header'); 
@@ -840,7 +584,6 @@
                 stickyHeader.classList.remove('translate-y-0','opacity-100'); 
             }
 
-            // 控制版權頁顯示
             if (window.scrollY >= window.innerHeight * 0.9) {
                 footerTrigger.classList.remove('hidden');
             } else {
