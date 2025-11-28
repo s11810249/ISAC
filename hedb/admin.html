@@ -42,6 +42,7 @@
         .nav-btn { border-bottom: 3px solid transparent; color: #64748b; transition: all 0.2s; }
         .nav-btn:hover:not(.active) { color: #002E5D; background: #f8fafc; }
 
+        /* 還原 v4.0 的按鈕樣式 */
         .year-add-btn {
             border: 2px dashed #bbf7d0;
             color: #219653;
@@ -116,6 +117,11 @@
             transition: all 0.2s;
         }
         .custom-checkbox:focus { ring: 2px solid #002E5D; }
+
+        /* 新增：用於編輯器邏輯區塊的樣式 (保留 v5.0) */
+        .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+        .logic-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.75rem; transition: all 0.2s; }
+        .logic-card:hover { border-color: #CBD5E1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-slate-700 bg-background">
@@ -308,7 +314,7 @@
         </main>
     </div>
 
-    <div id="msg-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 transition-opacity opacity-0">
+    <div id="msg-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center modal-overlay p-4 transition-opacity opacity-0">
         <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6 text-center transform scale-95 transition-transform duration-300" id="msg-panel">
             <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm" id="msg-icon"></div>
             <h3 class="text-xl font-bold text-slate-800 mb-2" id="msg-title"></h3>
@@ -325,39 +331,51 @@
         </div>
     </div>
 
-    <div id="editor-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300">
-            <h3 class="text-xl font-bold text-slate-800 mb-4" id="editor-title">編輯欄位屬性</h3>
+    <div id="editor-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[85vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-sliders-h text-primary"></i> <span id="editor-title">編輯欄位屬性</span></h3>
+                <button onclick="document.getElementById('editor-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            
             <input type="hidden" id="ed-id"> <input type="hidden" id="ed-orig-id">
-            <div class="space-y-4 max-h-[70vh] overflow-y-auto custom-scroll pr-2">
-                <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">ID (Unique)</label><input type="text" id="ed-field-id" class="w-full border border-slate-300 rounded p-2 text-sm font-mono text-blue-600 focus:ring-primary"></div>
-                <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">名稱</label><input type="text" id="ed-label" class="w-full border border-slate-300 rounded p-2 text-sm focus:ring-primary"></div>
-                <div id="ed-category-container"><label class="text-xs font-bold text-slate-500 uppercase block mb-1">分類</label><select id="ed-category" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-primary"></select></div>
-                <div class="grid grid-cols-2 gap-4">
-                    <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">類型</label><select id="ed-type" class="w-full border border-slate-300 rounded p-2 text-sm bg-white focus:ring-primary" onchange="renderOpts()"></select></div>
-                    <div class="pt-6 space-y-2"><label class="flex items-center text-sm"><input type="checkbox" id="ed-required" class="custom-checkbox mr-2"> 必填</label><label class="flex items-center text-sm"><input type="checkbox" id="ed-system" class="custom-checkbox mr-2"> 系統預設</label></div>
+            
+            <div class="flex flex-grow overflow-hidden">
+                <div class="w-80 bg-slate-50 border-r border-slate-200 flex-shrink-0 overflow-y-auto custom-scroll p-6 space-y-5">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">基本設定</h4>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位 ID <span class="text-red-500">*</span></label><input type="text" id="ed-field-id" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono text-blue-600 focus:ring-primary outline-none" placeholder="e.g. f_name"></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">顯示名稱 <span class="text-red-500">*</span></label><input type="text" id="ed-label" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none" placeholder="e.g. 學生姓名"></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">所屬分類</label><select id="ed-category" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none"></select></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位類型</label><select id="ed-type" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none" onchange="renderOpts()"></select></div>
+                    <div class="pt-2 space-y-2">
+                        <label class="flex items-center text-sm cursor-pointer"><input type="checkbox" id="ed-required" class="custom-checkbox mr-2"> 必填項目</label>
+                        <label class="flex items-center text-sm cursor-pointer"><input type="checkbox" id="ed-system" class="custom-checkbox mr-2"> 系統預設</label>
+                    </div>
+                    
+                    <div class="border-t border-slate-200 pt-4 mt-4">
+                         <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">顯示條件 (選填)</h4>
+                         <div class="text-[10px] text-slate-400 mb-2">當滿足條件時才顯示此欄位 (例如: 給付類型選其他時，才顯示說明欄)。</div>
+                         <div class="bg-white border border-slate-200 rounded p-3 space-y-2">
+                             <div><label class="text-[10px] font-bold text-slate-500">監聽欄位</label><select id="ed-vis-dep" class="w-full border border-slate-200 rounded p-1.5 text-xs bg-slate-50"></select></div>
+                             <div><label class="text-[10px] font-bold text-slate-500">當值等於</label><input id="ed-vis-val" class="w-full border border-slate-200 rounded p-1.5 text-xs bg-slate-50" placeholder="值"></div>
+                         </div>
+                    </div>
                 </div>
-                <div id="ed-opts" class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm space-y-3"></div>
+
+                <div class="flex-grow overflow-y-auto custom-scroll p-8 bg-white" id="ed-opts-container">
+                    </div>
             </div>
-            <div class="mt-6 flex justify-end gap-3 pt-4 border-t border-slate-100">
-                <button onclick="document.getElementById('editor-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button>
-                <button onclick="saveField()" class="px-4 py-2 btn-manage rounded-lg font-bold text-sm shadow">暫存設定</button>
+            
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="document.getElementById('editor-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm transition">取消</button>
+                <button onclick="saveField()" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow hover:shadow-lg transition">確認暫存</button>
             </div>
         </div>
     </div>
 
-    <div id="picker-modal" class="fixed inset-0 z-[55] hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col max-h-[80vh]">
-            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2"><h3 class="text-lg font-bold text-slate-800">從模板複製欄位</h3><button onclick="document.getElementById('picker-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button></div>
-            <div class="bg-slate-50 p-2 rounded mb-2 border border-slate-200"><label class="flex items-center text-sm font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="picker-select-all" class="custom-checkbox mr-2" onchange="togglePickerAll(this)"> 全選 / 取消全選</label></div>
-            <div id="picker-list" class="flex-grow overflow-y-auto custom-scroll space-y-2 p-1"></div>
-            <div class="mt-4 pt-2 border-t border-slate-100 flex justify-end"><button onclick="addSelectedFields()" class="w-full btn-create font-bold py-2.5 rounded-lg shadow transition">確認複製選取欄位</button></div>
-        </div>
-    </div>
+    <div id="picker-modal" class="fixed inset-0 z-[55] hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col max-h-[80vh]"><div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2"><h3 class="text-lg font-bold text-slate-800">從模板複製</h3><button onclick="document.getElementById('picker-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button></div><div class="bg-slate-50 p-2 rounded mb-2 border border-slate-200"><label class="flex items-center text-sm font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="picker-select-all" class="custom-checkbox mr-2" onchange="togglePickerAll(this)"> 全選</label></div><div id="picker-list" class="flex-grow overflow-y-auto custom-scroll space-y-2 p-1"></div><div class="mt-4 pt-2 border-t border-slate-100 flex justify-end"><button onclick="addSelectedFields()" class="w-full btn-create font-bold py-2.5 rounded-lg shadow">確認複製</button></div></div></div>
 
-    <div id="move-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300"><div class="mb-4"><h3 class="text-lg font-bold text-slate-800"><i class="fas fa-exchange-alt text-primary mr-2"></i>移動順序</h3><p class="text-sm text-slate-500 mt-1">將 <span id="move-target-name" class="font-bold text-primary"></span> 移動至：</p></div><div class="mb-6"><select id="move-select" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none max-h-60 overflow-y-auto custom-scroll"></select></div><div class="flex justify-end gap-3"><button onclick="document.getElementById('move-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg transition text-sm">取消</button><button onclick="saveMove()" class="px-4 py-2 btn-manage rounded-lg font-bold shadow-md transition text-sm">確認移動</button></div></div>
-    </div>
+    <div id="move-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300"><div class="mb-4"><h3 class="text-lg font-bold text-slate-800">移動順序</h3><p class="text-sm text-slate-500 mt-1">將 <span id="move-target-name" class="font-bold text-primary"></span> 移動至：</p></div><div class="mb-6"><select id="move-select" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none max-h-60 overflow-y-auto custom-scroll"></select></div><div class="flex justify-end gap-3"><button onclick="document.getElementById('move-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button><button onclick="saveMove()" class="px-4 py-2 btn-manage rounded-lg font-bold shadow-md text-sm">確認移動</button></div></div></div>
 
     <script>
         let ghConfig = { user: '', repo: '', path: 'hedb/config.json', token: '' };
@@ -385,16 +403,10 @@
                 document.getElementById('gh-repo').value = c.repo;
                 document.getElementById('gh-token').value = c.token;
             }
-            window.addEventListener('beforeunload', (e) => {
-                if (unsavedChanges) { e.preventDefault(); e.returnValue = ''; }
-            });
+            window.addEventListener('beforeunload', (e) => { if (unsavedChanges) { e.preventDefault(); e.returnValue = ''; } });
         }
 
-        function setUnsaved(val) {
-            unsavedChanges = val;
-            const badge = document.getElementById('unsaved-badge');
-            if(val) badge.classList.remove('hidden'); else badge.classList.add('hidden');
-        }
+        function setUnsaved(val) { unsavedChanges = val; document.getElementById('unsaved-badge').classList.toggle('hidden', !val); }
 
         async function connectGitHub() {
             const btn = document.getElementById('btn-connect');
@@ -402,576 +414,395 @@
             const user = document.getElementById('gh-user').value.trim();
             const repo = document.getElementById('gh-repo').value.trim();
             const token = document.getElementById('gh-token').value.trim();
-
             if(!user || !repo || !token) { msg.style.opacity='1'; msg.innerText='請填寫完整資訊'; return; }
 
             btn.innerHTML = '<div class="spinner"></div> 連線中...'; btn.disabled = true;
             ghConfig = { user, repo, path: 'hedb/config.json', token };
-
             try {
                 const res = await apiFetch(ghConfig.path);
-                if(res.status === 404) {
-                    configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [] };
-                    configSha = null;
-                } else {
-                    configData = res.data;
-                    configSha = res.sha; 
+                if(res.status === 404) { configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [] }; configSha = null; } 
+                else {
+                    configData = res.data; configSha = res.sha; 
                     if(!configData.templateCategories) configData.templateCategories = [];
-                    if(!configData.fieldTypes || configData.fieldTypes.length === 0) configData.fieldTypes = JSON.parse(JSON.stringify(SYSTEM_DEFAULT_TYPES));
-                    
-                    const uniqueTypes = new Map();
-                    [...SYSTEM_DEFAULT_TYPES, ...configData.fieldTypes].forEach(t => uniqueTypes.set(t.key, t));
+                    if(!configData.fieldTypes) configData.fieldTypes = [];
+                    const uniqueTypes = new Map(); [...SYSTEM_DEFAULT_TYPES, ...configData.fieldTypes].forEach(t => uniqueTypes.set(t.key, t));
                     configData.fieldTypes = Array.from(uniqueTypes.values());
                 }
-
                 localStorage.setItem('gh_creds_v10', JSON.stringify(ghConfig));
                 document.getElementById('login-screen').classList.add('hidden');
                 document.getElementById('admin-interface').classList.remove('hidden');
                 document.getElementById('admin-interface').style.opacity = '1';
-                
-                await syncYearsFromFiles();
-                renderYearList();
-                if(configData.academicYears.length > 0) selectYear(configData.academicYears[0].year);
-                renderTemplateCats();
-                renderTypeManagerPage(); 
-
-            } catch (err) {
-                console.error(err);
-                msg.style.opacity='1'; msg.innerText='連線失敗: ' + err.message;
-            } finally {
-                btn.innerHTML = '登入系統'; btn.disabled = false;
-            }
+                await syncYearsFromFiles(); renderYearList(); if(configData.academicYears.length > 0) selectYear(configData.academicYears[0].year);
+                renderTemplateCats(); renderTypeManagerPage(); 
+            } catch (err) { console.error(err); msg.style.opacity='1'; msg.innerText='連線失敗: ' + err.message; } finally { btn.innerHTML = '登入系統'; btn.disabled = false; }
         }
 
         async function syncYearsFromFiles() {
             try {
                 const dirRes = await apiFetch('hedb/year_templates');
                 if(dirRes.status !== 200 || !Array.isArray(dirRes.data)) return;
-                
-                const fileYears = dirRes.data
-                    .filter(f => f.name.match(/^year_(.+)_templates\.json$/))
-                    .map(f => f.name.match(/^year_(.+)_templates\.json$/)[1]);
-                
+                const fileYears = dirRes.data.filter(f => f.name.match(/^year_(.+)_templates\.json$/)).map(f => f.name.match(/^year_(.+)_templates\.json$/)[1]);
                 let changed = false;
-                fileYears.forEach(y => {
-                    if(!configData.academicYears.some(cy => cy.year === y)) {
-                        configData.academicYears.push({ year: y, isDefault: false });
-                        changed = true;
-                    }
-                });
-
-                if(changed) {
-                    configData.academicYears.sort((a,b) => b.year.localeCompare(a.year)); 
-                    setUnsaved(true);
-                    showMsg('info', '同步完成', '系統已自動偵測到檔案庫中的學年度模組並加入列表，請記得儲存設定。');
-                }
-            } catch(e) { console.error("Sync failed", e); }
+                fileYears.forEach(y => { if(!configData.academicYears.some(cy => cy.year === y)) { configData.academicYears.push({ year: y, isDefault: false }); changed = true; } });
+                if(changed) { configData.academicYears.sort((a,b) => b.year.localeCompare(a.year)); setUnsaved(true); showMsg('info', '同步完成', '系統已自動偵測到檔案庫中的學年度模組。'); }
+            } catch(e) {}
         }
 
         function toggleToken() {
-            const t = document.getElementById('gh-token');
-            const i = document.getElementById('token-eye');
-            t.type = t.type === 'password' ? 'text' : 'password';
-            i.className = t.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
+            const t = document.getElementById('gh-token'), i = document.getElementById('token-eye');
+            t.type = t.type === 'password' ? 'text' : 'password'; i.className = t.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash';
         }
         function logout() { showMsg('confirm', '確定登出？', '未儲存的變更將會遺失。', null, () => { localStorage.removeItem('gh_creds_v10'); location.reload(); }); }
 
         function showMsg(type, title, desc, inputConfig = null, onConfirm = null) {
-            const modal = document.getElementById('msg-modal');
-            const icon = document.getElementById('msg-icon');
-            const btns = document.getElementById('msg-btns');
-            const inputArea = document.getElementById('msg-input-area');
-            
-            document.getElementById('msg-title').innerText = title;
-            document.getElementById('msg-desc').innerText = desc;
-            inputArea.classList.add('hidden');
-            document.getElementById('msg-select-area').classList.add('hidden');
-
+            const modal = document.getElementById('msg-modal'), icon = document.getElementById('msg-icon'), btns = document.getElementById('msg-btns'), inputArea = document.getElementById('msg-input-area');
+            document.getElementById('msg-title').innerText = title; document.getElementById('msg-desc').innerText = desc;
+            inputArea.classList.add('hidden'); document.getElementById('msg-select-area').classList.add('hidden');
             let iconClass = '', iconHtml = '';
             if(type === 'success') { iconClass = 'bg-emerald-100 text-emerald-600'; iconHtml = '<i class="fas fa-check"></i>'; }
             else if(type === 'error') { iconClass = 'bg-red-100 text-red-600'; iconHtml = '<i class="fas fa-times"></i>'; }
             else if(type === 'info') { iconClass = 'bg-blue-100 text-blue-600'; iconHtml = '<i class="fas fa-info"></i>'; }
             else if(type === 'confirm' || type === 'prompt') { iconClass = 'bg-amber-100 text-amber-600'; iconHtml = '<i class="fas fa-question"></i>'; }
-            
-            icon.className = `w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm ${iconClass}`;
-            icon.innerHTML = iconHtml;
+            icon.className = `w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm ${iconClass}`; icon.innerHTML = iconHtml;
 
             if(type === 'prompt' && inputConfig) {
-                inputArea.classList.remove('hidden');
-                document.getElementById('msg-input-label').innerText = inputConfig.label || '名稱';
-                const inp = document.getElementById('msg-input');
-                inp.value = inputConfig.value || '';
-                
+                inputArea.classList.remove('hidden'); document.getElementById('msg-input-label').innerText = inputConfig.label || '名稱';
+                const inp = document.getElementById('msg-input'); inp.value = inputConfig.value || '';
                 if(inputConfig.showSelect) {
-                    document.getElementById('msg-select-area').classList.remove('hidden');
-                    const sel = document.getElementById('msg-select');
-                    sel.innerHTML = '<option value="">不複製 (空白)</option>';
-                    configData.academicYears.forEach(y => sel.innerHTML += `<option value="${y.year}">複製 ${y.year}</option>`);
+                    document.getElementById('msg-select-area').classList.remove('hidden'); const sel = document.getElementById('msg-select');
+                    sel.innerHTML = '<option value="">不複製 (空白)</option>'; configData.academicYears.forEach(y => sel.innerHTML += `<option value="${y.year}">複製 ${y.year}</option>`);
                 }
                 setTimeout(() => inp.focus(), 50);
             }
-
             btns.innerHTML = '';
-            const cancelBtn = document.createElement('button');
-            cancelBtn.className = 'px-5 py-2.5 rounded-lg border border-slate-300 font-bold text-slate-600 hover:bg-slate-50 transition text-sm';
+            const cancelBtn = document.createElement('button'); cancelBtn.className = 'px-5 py-2.5 rounded-lg border border-slate-300 font-bold text-slate-600 hover:bg-slate-50 transition text-sm';
             cancelBtn.innerText = type === 'success' || type === 'info' ? '關閉' : '取消';
             cancelBtn.onclick = () => { modal.classList.add('hidden'); modal.classList.remove('opacity-100'); };
             btns.appendChild(cancelBtn);
 
             if(type === 'confirm' || type === 'prompt') {
-                const okBtn = document.createElement('button');
-                okBtn.className = `px-5 py-2.5 rounded-lg font-bold text-white shadow-md transition text-sm ${type==='prompt' ? 'bg-primary hover:bg-sky-900' : 'bg-danger hover:bg-red-700'}`;
+                const okBtn = document.createElement('button'); okBtn.className = `px-5 py-2.5 rounded-lg font-bold text-white shadow-md transition text-sm ${type==='prompt' ? 'bg-primary' : 'bg-danger'}`;
                 okBtn.innerText = '確認';
-                // 修正：先關閉視窗，再執行 callback，避免 callback 內部開啟新視窗被立即關閉
                 okBtn.onclick = async () => {
-                    modal.classList.add('hidden'); 
-                    modal.classList.remove('opacity-100');
+                    modal.classList.add('hidden'); modal.classList.remove('opacity-100');
                     if(onConfirm) {
-                        if(type === 'prompt') {
-                            const val = document.getElementById('msg-input').value.trim();
-                            const selVal = document.getElementById('msg-select').value;
-                            await onConfirm(val, selVal);
-                        } else {
-                            await onConfirm();
-                        }
+                        if(type === 'prompt') await onConfirm(document.getElementById('msg-input').value.trim(), document.getElementById('msg-select').value);
+                        else await onConfirm();
                     }
                 };
                 btns.appendChild(okBtn);
             }
-            modal.classList.remove('hidden');
-            setTimeout(() => { modal.classList.add('opacity-100'); document.getElementById('msg-panel').classList.remove('scale-95'); document.getElementById('msg-panel').classList.add('scale-100'); }, 10);
+            modal.classList.remove('hidden'); setTimeout(() => { modal.classList.add('opacity-100'); document.getElementById('msg-panel').classList.remove('scale-95'); document.getElementById('msg-panel').classList.add('scale-100'); }, 10);
         }
 
-        // --- Year Management ---
+        // --- Core Functions (v4.0) ---
         function renderYearList() {
             const el = document.getElementById('year-list'); el.innerHTML = '';
             configData.academicYears.sort((a,b) => b.year.localeCompare(a.year));
             configData.academicYears.forEach(y => {
-                const div = document.createElement('div');
-                div.className = `list-item ${activeYearId===y.year?'active':''}`;
-                div.onclick = () => selectYear(y.year);
-                div.innerHTML = `<div class="flex items-center gap-2"><span class="font-bold text-sm">${y.year} 學年度</span>${y.isDefault?'<span class="text-[10px] bg-secondary text-white px-1.5 rounded font-bold ml-2">Def</span>':''}</div>`;
-                el.appendChild(div);
+                const div = document.createElement('div'); div.className = `list-item ${activeYearId===y.year?'active':''}`; div.onclick = () => selectYear(y.year);
+                div.innerHTML = `<div class="flex items-center gap-2"><span class="font-bold text-sm">${y.year} 學年度</span>${y.isDefault?'<span class="text-[10px] bg-secondary text-white px-1.5 rounded font-bold ml-2">Def</span>':''}</div>`; el.appendChild(div);
             });
         }
-
         function openYearModal() {
-            showMsg('prompt', '新增學年度', '請輸入學年度並選擇是否複製模板', {label: '學年度 (如: 114)', showSelect: true}, async (year, copyFrom) => {
-                if(!year) return;
-                if(configData.academicYears.some(y => y.year === year)) { showMsg('error', '錯誤', '學年度已存在'); return; }
-
-                const path = `hedb/year_templates/year_${year}_templates.json`;
-                let initialData = { fields: [] };
-
+            showMsg('prompt', '新增學年度', '請輸入學年度', {label: '學年度', showSelect: true}, async (year, copyFrom) => {
+                if(!year || configData.academicYears.some(y => y.year === year)) return showMsg('error','錯誤','學年度無效或已存在');
                 try {
-                    if (copyFrom) {
-                        const sourcePath = `hedb/year_templates/year_${copyFrom}_templates.json`;
-                        const res = await apiFetch(sourcePath);
-                        if (res.status === 200) initialData = res.data; 
-                    }
-                    
+                    let initialData = { fields: [] };
+                    if (copyFrom) { const res = await apiFetch(`hedb/year_templates/year_${copyFrom}_templates.json`); if (res.status === 200) initialData = res.data; }
+                    const path = `hedb/year_templates/year_${year}_templates.json`;
                     const check = await apiFetch(path);
-                    const sha = check.status === 200 ? check.sha : null;
-                    
-                    await uploadFile(path, initialData, sha); 
-                    
-                    configData.academicYears.push({ year, isDefault: false });
-                    await saveConfig(); 
-                    
-                    setUnsaved(false); renderYearList(); selectYear(year); showMsg('success', '成功', '學年度模組已建立');
-                } catch(e) { showMsg('error', '失敗', e.message); }
+                    await uploadFile(path, initialData, check.status===200?check.sha:null);
+                    configData.academicYears.push({ year, isDefault: false }); await saveConfig();
+                    setUnsaved(false); renderYearList(); selectYear(year); showMsg('success', '成功', '學年度已建立');
+                } catch(e) { showMsg('error','失敗',e.message); }
             });
         }
-
         function renameCurrentYear() {
             if(!activeYearId) return;
-            showMsg('prompt', '重新命名學年度', '請輸入新名稱，這將會搬移設定檔。', {label: '新名稱', value: activeYearId}, async (newYear) => {
-                if(!newYear || newYear === activeYearId) return;
-                if(configData.academicYears.some(y => y.year === newYear)) { showMsg('error', '錯誤', '名稱已存在'); return; }
+            showMsg('prompt', '重新命名', '輸入新名稱', {label: '名稱', value: activeYearId}, async (newYear) => {
+                if(!newYear || newYear === activeYearId || configData.academicYears.some(y=>y.year===newYear)) return;
                 try {
                     const oldPath = `hedb/year_templates/year_${activeYearId}_templates.json`;
                     const newPath = `hedb/year_templates/year_${newYear}_templates.json`;
                     const res = await apiFetch(oldPath);
-                    const content = res.status === 200 ? res.data : { fields: [] };
-                    
                     const checkNew = await apiFetch(newPath);
-                    const newSha = checkNew.status === 200 ? checkNew.sha : null;
-                    
-                    await uploadFile(newPath, content, newSha); 
-                    
-                    if (res.status === 200) await deleteFile(oldPath, res.sha);
-
-                    const yConf = configData.academicYears.find(y => y.year === activeYearId);
-                    yConf.year = newYear; 
-                    
-                    await saveConfig(); 
-
-                    activeYearId = newYear; renderYearList(); selectYear(newYear); showMsg('success', '成功', '學年度已重新命名');
-                } catch(err) { showMsg('error', '失敗', err.message); }
+                    await uploadFile(newPath, res.status===200?res.data:{fields:[]}, checkNew.status===200?checkNew.sha:null);
+                    if(res.status===200) await deleteFile(oldPath, res.sha);
+                    const y = configData.academicYears.find(y=>y.year===activeYearId); y.year = newYear; await saveConfig();
+                    activeYearId = newYear; renderYearList(); selectYear(newYear); showMsg('success','成功','已重新命名');
+                } catch(e) { showMsg('error','失敗',e.message); }
             });
         }
-
         async function selectYear(year) {
-            activeYearId = year;
-            renderYearList();
-            const yConf = configData.academicYears.find(y => y.year === year);
+            activeYearId = year; renderYearList();
             document.getElementById('current-year-title').innerText = `${year} 學年度`;
+            const yConf = configData.academicYears.find(y => y.year === year);
             document.getElementById('is-default-year').checked = yConf.isDefault || false;
             document.getElementById('default-badge').classList.toggle('hidden', !yConf.isDefault);
             document.getElementById('year-empty-state').classList.add('hidden');
-            document.getElementById('year-config-panel').classList.remove('hidden');
-            document.getElementById('year-config-panel').classList.add('flex');
-
-            // 載入時重置篩選器
-            updateYearFilterOptions();
-            document.getElementById('year-filter-cat').value = 'all';
-
-            const path = `hedb/year_templates/year_${year}_templates.json`;
-            document.getElementById('year-field-list').innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400"><div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>讀取設定中...</td></tr>`;
-            
-            try {
-                const res = await apiFetch(path);
-                yearTemplateData = res.status === 404 ? { fields: [] } : res.data;
-                renderYearFields();
-            } catch(e) {
-                document.getElementById('year-field-list').innerHTML = `<tr><td colspan="6" class="p-4 text-red-500 text-center">讀取失敗: ${e.message}</td></tr>`;
-            }
+            document.getElementById('year-config-panel').classList.remove('hidden'); document.getElementById('year-config-panel').classList.add('flex');
+            updateYearFilterOptions(); document.getElementById('year-filter-cat').value = 'all';
+            document.getElementById('year-field-list').innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400"><div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>讀取中...</td></tr>`;
+            try { const res = await apiFetch(`hedb/year_templates/year_${year}_templates.json`); yearTemplateData = res.status===404?{fields:[]}:res.data; renderYearFields(); } catch(e) {}
         }
-
-        // 修正：學年度區篩選器更新
         function updateYearFilterOptions() {
-            const sel = document.getElementById('year-filter-cat');
-            const currentVal = sel.value;
-            sel.innerHTML = '<option value="all">所有分類</option>';
-            configData.templateCategories.forEach(c => {
-                sel.innerHTML += `<option value="${c.id}">${c.name}</option>`;
-            });
-            sel.innerHTML += '<option value="uncategorized">未分類</option>';
-            sel.value = currentVal; // 保持目前選擇
+            const sel = document.getElementById('year-filter-cat'), val = sel.value; sel.innerHTML = '<option value="all">所有分類</option>';
+            configData.templateCategories.forEach(c => sel.innerHTML += `<option value="${c.id}">${c.name}</option>`);
+            sel.innerHTML += '<option value="uncategorized">未分類</option>'; sel.value = val;
         }
-
         function deleteCurrentYear() {
-            showMsg('confirm', '確認刪除學年度？', `這將會刪除 ${activeYearId} 學年度，無法復原。`, null, async () => {
-                const path = `hedb/year_templates/year_${activeYearId}_templates.json`;
+            showMsg('confirm', '刪除學年度？', '無法復原', null, async () => {
                 try {
-                    const check = await apiFetch(path);
-                    if(check.status === 200) await deleteFile(path, check.sha);
-                    
-                    configData.academicYears = configData.academicYears.filter(y => y.year !== activeYearId);
-                    await saveConfig(); 
-
-                    activeYearId = null; setUnsaved(false);
-                    document.getElementById('year-config-panel').classList.add('hidden');
-                    document.getElementById('year-empty-state').classList.remove('hidden');
-                    renderYearList(); showMsg('success', '成功', '學年度已刪除');
-                } catch(e) { showMsg('error', '失敗', e.message); }
+                    const path = `hedb/year_templates/year_${activeYearId}_templates.json`;
+                    const check = await apiFetch(path); if(check.status===200) await deleteFile(path, check.sha);
+                    configData.academicYears = configData.academicYears.filter(y => y.year !== activeYearId); await saveConfig();
+                    activeYearId = null; setUnsaved(false); document.getElementById('year-config-panel').classList.add('hidden'); document.getElementById('year-empty-state').classList.remove('hidden');
+                    renderYearList(); showMsg('success','成功','已刪除');
+                } catch(e) { showMsg('error','失敗',e.message); }
             });
         }
-
         function renderYearFields() {
-            const listEl = document.getElementById('year-field-list');
-            const filterCat = document.getElementById('year-filter-cat')?.value || 'all';
+            const listEl = document.getElementById('year-field-list'), filter = document.getElementById('year-filter-cat')?.value || 'all';
             listEl.innerHTML = '';
-            
-            if(!yearTemplateData.fields || yearTemplateData.fields.length === 0) {
-                listEl.innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400">尚未加入欄位</td></tr>`;
-                return;
-            }
-
-            // 修正：支援篩選邏輯，並保留原始 index
             yearTemplateData.fields.forEach((f, idx) => {
-                // 篩選檢查
-                if(filterCat !== 'all') {
-                    if(filterCat === 'uncategorized' && f.category) return;
-                    if(filterCat !== 'uncategorized' && f.category !== filterCat) return;
-                }
-
-                const catName = f.category ? (configData.templateCategories.find(c => c.id === f.category)?.name || '未分類') : '未分類';
-                const typeLabel = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type;
-                
-                // 篩選狀態下隱藏排序按鈕，避免混亂
-                const sortBtns = filterCat === 'all' ? `
-                    <button onclick="moveField(${idx}, -1, 'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition"><i class="fas fa-arrow-up"></i></button>
-                    <button onclick="moveField(${idx}, 1, 'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition"><i class="fas fa-arrow-down"></i></button>
-                    <button onclick="openMoveModal(${idx}, 'year')" class="p-1.5 hover:bg-indigo-100 rounded text-slate-400 hover:text-primary transition mr-1"><i class="fas fa-exchange-alt"></i></button>
-                ` : `<span class="text-xs text-slate-300 mr-2">(篩選中無法排序)</span>`;
-
-                listEl.innerHTML += `
-                <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
-                    <td class="text-center py-3"><input type="checkbox" class="year-check custom-checkbox" value="${idx}"></td>
-                    <td class="text-center font-mono text-xs text-slate-400">${idx+1}</td>
-                    <td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td>
-                    <td class="text-xs text-slate-500">${catName}</td>
-                    <td class="text-xs text-slate-500">${typeLabel}</td>
-                    <td class="text-right py-3 pr-4">
-                        <div class="flex items-center justify-end gap-1">
-                            ${sortBtns}
-                            <button onclick="editField('${f.id}', 'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-primary transition"><i class="fas fa-pen"></i></button>
-                            <button onclick="removeYearField(${idx})" class="p-1.5 hover:bg-red-100 rounded text-slate-400 hover:text-danger transition"><i class="fas fa-trash-alt"></i></button>
-                        </div>
-                    </td>
-                </tr>`;
+                if(filter !== 'all' && ((filter==='uncategorized'&&f.category) || (filter!=='uncategorized'&&f.category!==filter))) return;
+                const catName = configData.templateCategories.find(c => c.id === f.category)?.name || '未分類';
+                const typeName = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type;
+                const btns = filter === 'all' ? `
+                    <button onclick="moveField(${idx},-1,'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-up"></i></button>
+                    <button onclick="moveField(${idx},1,'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-down"></i></button>
+                    <button onclick="openMoveModal(${idx},'year')" class="p-1.5 hover:bg-indigo-100 rounded text-slate-400 text-primary mr-1"><i class="fas fa-exchange-alt"></i></button>` : '';
+                listEl.innerHTML += `<tr class="hover:bg-slate-50 border-b border-slate-100 transition"><td class="text-center py-3"><input type="checkbox" class="year-check custom-checkbox" value="${idx}"></td><td class="text-center font-mono text-xs text-slate-400">${idx+1}</td><td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td><td class="text-xs text-slate-500">${catName}</td><td class="text-xs text-slate-500">${typeName}</td><td class="text-right py-3 pr-4"><div class="flex justify-end gap-1">${btns}<button onclick="editField('${f.id}','year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-pen"></i></button><button onclick="removeYearField(${idx})" class="p-1.5 hover:bg-red-100 rounded text-slate-400 text-danger"><i class="fas fa-trash-alt"></i></button></div></td></tr>`;
             });
+            if(listEl.innerHTML==='') listEl.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">無資料</td></tr>';
         }
-
-        function removeYearField(idx) {
-            showMsg('confirm', '移除欄位？', '確定要從此學年度移除此欄位？', null, () => {
-                yearTemplateData.fields.splice(idx, 1); renderYearFields(); setUnsaved(true); showMsg('success', '成功', '欄位已移除');
-            });
-        }
-
+        function removeYearField(idx) { yearTemplateData.fields.splice(idx, 1); renderYearFields(); setUnsaved(true); }
         function toggleYearAll(el) { document.querySelectorAll('.year-check').forEach(c => c.checked = el.checked); }
-
         function deleteSelectedYearFields() {
-            const checked = Array.from(document.querySelectorAll('.year-check:checked')).map(c => parseInt(c.value));
-            if(checked.length === 0) return;
-            showMsg('confirm', '批次刪除', `確定移除選取的 ${checked.length} 個欄位？`, null, () => {
-                checked.sort((a,b) => b - a).forEach(idx => yearTemplateData.fields.splice(idx, 1));
-                renderYearFields(); setUnsaved(true); showMsg('success', '成功', '已移除選取項目');
-            });
+            const chk = Array.from(document.querySelectorAll('.year-check:checked')).map(c=>parseInt(c.value));
+            if(chk.length) showMsg('confirm','批次刪除',`刪除 ${chk.length} 個欄位？`, null, () => { chk.sort((a,b)=>b-a).forEach(i => yearTemplateData.fields.splice(i,1)); renderYearFields(); setUnsaved(true); });
         }
-
-        function toggleDefaultYear() {
-            const isChecked = document.getElementById('is-default-year').checked;
+        function toggleDefaultYear() { 
+            const chk = document.getElementById('is-default-year').checked; 
             configData.academicYears.forEach(y => y.isDefault = false);
-            const curr = configData.academicYears.find(y => y.year === activeYearId);
-            if(curr) curr.isDefault = isChecked;
-            document.getElementById('default-badge').classList.toggle('hidden', !isChecked);
-            setUnsaved(true);
-            showMsg('success', '成功', '預設學年度已更新');
+            const curr = configData.academicYears.find(y => y.year === activeYearId); if(curr) curr.isDefault = chk;
+            document.getElementById('default-badge').classList.toggle('hidden', !chk); setUnsaved(true); 
         }
 
-        // --- Template Categories ---
+        // --- Template Cats & Global ---
         function renderTemplateCats() {
-            const el = document.getElementById('template-cat-list'); el.innerHTML = '';
-            el.innerHTML += `<div class="list-item ${activeCatId==='all'?'active':''}" onclick="selectCat('all')"><span class="font-bold text-sm">全部欄位</span></div>`;
-            configData.templateCategories.forEach(c => {
-                el.innerHTML += `<div class="list-item ${activeCatId===c.id?'active':''}" onclick="selectCat('${c.id}')"><span class="font-bold text-sm">${c.name}</span></div>`;
-            });
+            const el = document.getElementById('template-cat-list'); el.innerHTML = `<div class="list-item ${activeCatId==='all'?'active':''}" onclick="selectCat('all')"><span class="font-bold text-sm">全部欄位</span></div>`;
+            configData.templateCategories.forEach(c => el.innerHTML += `<div class="list-item ${activeCatId===c.id?'active':''}" onclick="selectCat('${c.id}')"><span class="font-bold text-sm">${c.name}</span></div>`);
             el.innerHTML += `<div class="list-item ${activeCatId==='uncategorized'?'active':''}" onclick="selectCat('uncategorized')"><span class="text-sm">未分類</span></div>`;
-            
-            // 同步更新學年度區的篩選清單
             updateYearFilterOptions();
         }
-
-        function openCategoryModal() {
-            showMsg('prompt', '新增模板分類', '請輸入分類名稱', {label: '名稱'}, (val) => {
-                if(val) { configData.templateCategories.push({ id: 'cat_'+Date.now(), name: val }); renderTemplateCats(); setUnsaved(true); showMsg('success', '成功', '分類已建立'); }
-            });
-        }
-
-        function renameCurrentCat() {
-            if(activeCatId==='all'||activeCatId==='uncategorized') return;
-            const c = configData.templateCategories.find(x => x.id === activeCatId);
-            showMsg('prompt', '重新命名分類', '請輸入新名稱', {label: '名稱', value: c.name}, (val) => {
-                if(val) { c.name = val; renderTemplateCats(); setUnsaved(true); document.getElementById('current-cat-title').innerText = val; showMsg('success', '成功', '分類已重新命名'); }
-            });
-        }
-
-        function deleteCurrentCat() {
-            if(activeCatId==='all'||activeCatId==='uncategorized') return;
-            showMsg('confirm', '刪除分類？', '分類下的欄位將變為「未分類」。', null, () => {
-                configData.templateCategories = configData.templateCategories.filter(c => c.id !== activeCatId);
-                configData.globalFields.forEach(f => { if(f.category === activeCatId) delete f.category; });
-                selectCat('all'); setUnsaved(true); showMsg('success', '成功', '分類已刪除');
-            });
-        }
-
-        function selectCat(id) {
-            activeCatId = id; renderTemplateCats();
-            const name = id === 'all' ? '全部欄位' : id === 'uncategorized' ? '未分類' : configData.templateCategories.find(c=>c.id===id).name;
-            document.getElementById('current-cat-title').innerText = name;
-            document.getElementById('cat-actions').classList.toggle('hidden', id === 'all' || id === 'uncategorized');
-            renderGlobalList();
-        }
-
-        // --- Custom Type Management ---
-        function openTypeManager() { switchView('types'); renderTypeManagerPage(); } 
-        function renderTypeManagerPage() {
-            const list = document.getElementById('type-list-page');
-            list.innerHTML = '';
-            configData.fieldTypes.forEach((t, i) => {
-                list.innerHTML += `<tr class="hover:bg-slate-50 transition"><td class="px-4 py-3 font-mono text-xs text-primary font-bold">${t.key}</td><td class="px-4 py-3 text-xs font-bold text-slate-700">${t.label}</td><td class="px-4 py-3 text-right"><button onclick="delCustomTypePage('${t.key}')" class="text-slate-300 hover:text-danger"><i class="fas fa-trash-alt"></i></button></td></tr>`;
-            });
-        }
-
-        function addCustomTypePage() {
-            const key = document.getElementById('new-type-key-page').value.trim();
-            const label = document.getElementById('new-type-label-page').value.trim();
-            if(!key || !label) return;
-            if(configData.fieldTypes.some(t=>t.key===key)) { showMsg('error', '錯誤', 'Key 已存在'); return; }
-            configData.fieldTypes.push({key, label}); setUnsaved(true); renderTypeManagerPage(); showMsg('success', '成功', '類型已新增');
-        }
-        function delCustomTypePage(key) { showMsg('confirm', '刪除類型？', '已使用此類型的欄位可能會顯示異常。', null, () => { configData.fieldTypes = configData.fieldTypes.filter(t => t.key !== key); setUnsaved(true); renderTypeManagerPage(); showMsg('success', '成功', '類型已刪除'); }); }
-
-        function updateTypeSelect() {
-            const sel = document.getElementById('ed-type'); sel.innerHTML = '';
-            configData.fieldTypes.forEach(t => sel.innerHTML += `<option value="${t.key}">${t.label}</option>`);
-        }
-
-        // --- Global Fields ---
+        function openCategoryModal() { showMsg('prompt','新增分類','名稱',{label:'名稱'},(v)=>{if(v){configData.templateCategories.push({id:'cat_'+Date.now(),name:v});renderTemplateCats();setUnsaved(true);}}); }
+        function renameCurrentCat() { const c=configData.templateCategories.find(x=>x.id===activeCatId); if(c) showMsg('prompt','重新命名','名稱',{label:'名稱',value:c.name},(v)=>{if(v){c.name=v;renderTemplateCats();setUnsaved(true);document.getElementById('current-cat-title').innerText=v;}}); }
+        function deleteCurrentCat() { showMsg('confirm','刪除分類？','欄位將變未分類',null,()=>{ configData.templateCategories=configData.templateCategories.filter(c=>c.id!==activeCatId); configData.globalFields.forEach(f=>{if(f.category===activeCatId)delete f.category}); selectCat('all'); setUnsaved(true); }); }
+        function selectCat(id) { activeCatId=id; renderTemplateCats(); document.getElementById('current-cat-title').innerText=id==='all'?'全部欄位':id==='uncategorized'?'未分類':configData.templateCategories.find(c=>c.id===id).name; document.getElementById('cat-actions').classList.toggle('hidden', id==='all'||id==='uncategorized'); renderGlobalList(); }
+        
         function renderGlobalList() {
-            const el = document.getElementById('global-field-list');
-            let list = configData.globalFields;
-            if(activeCatId === 'uncategorized') list = list.filter(f => !f.category);
-            else if(activeCatId !== 'all') list = list.filter(f => f.category === activeCatId);
-            list.sort((a,b) => a.order - b.order);
-            
-            el.innerHTML = list.map((f, i) => {
-                const typeLabel = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type;
-                return `
-                <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
-                    <td class="text-center font-mono text-xs text-slate-400 py-3">${i+1}</td>
-                    <td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td>
-                    <td class="text-xs text-primary font-mono">${typeLabel}</td>
-                    <td class="text-xs text-slate-400">${f.required?'<span class="text-red-500 bg-red-50 px-1 rounded">必填</span>':''}</td>
-                    <td class="text-right flex justify-end gap-1 py-3 pr-4">
-                        <button onclick="moveField(${i}, -1, 'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition"><i class="fas fa-arrow-up"></i></button>
-                        <button onclick="moveField(${i}, 1, 'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition"><i class="fas fa-arrow-down"></i></button>
-                        <button onclick="openMoveModal(${i}, 'global')" class="p-1.5 hover:bg-indigo-100 rounded text-slate-400 hover:text-primary transition mr-1"><i class="fas fa-exchange-alt"></i></button>
-                        <button onclick="editField('${f.id}', 'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-primary transition mr-1"><i class="fas fa-pen"></i></button>
-                        <button onclick="delGlobalField('${f.id}')" class="p-1.5 hover:bg-red-100 rounded text-slate-400 hover:text-danger transition"><i class="fas fa-trash-alt"></i></button>
-                    </td>
-                </tr>
-            `}).join('');
+            const el = document.getElementById('global-field-list'); let list = configData.globalFields;
+            if(activeCatId==='uncategorized') list=list.filter(f=>!f.category); else if(activeCatId!=='all') list=list.filter(f=>f.category===activeCatId);
+            list.sort((a,b)=>a.order-b.order);
+            el.innerHTML = list.map((f,i)=> {
+                const typeName = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type;
+                return `<tr class="hover:bg-slate-50 border-b border-slate-100 transition"><td class="text-center font-mono text-xs text-slate-400 py-3">${i+1}</td><td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td><td class="text-xs text-primary font-mono">${typeName}</td><td class="text-xs text-slate-400">${f.required?'<span class="text-red-500">必填</span>':''}</td><td class="text-right flex justify-end gap-1 py-3 pr-4"><button onclick="moveField(${i},-1,'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-up"></i></button><button onclick="moveField(${i},1,'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-down"></i></button><button onclick="editField('${f.id}','global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-pen"></i></button><button onclick="delGlobalField('${f.id}')" class="p-1.5 hover:bg-red-100 rounded text-slate-400 text-danger"><i class="fas fa-trash-alt"></i></button></td></tr>`;
+            }).join('');
         }
+        function addNewGlobalField() { isEditMode=false;targetList='global';prepEditor(); }
+        function editField(id, type) { isEditMode=true;targetList=type;const list=type==='global'?configData.globalFields:yearTemplateData.fields; prepEditor(list.find(f=>f.id===id)); }
+        function delGlobalField(id) { showMsg('confirm','刪除模板？','確定刪除',null,()=>{configData.globalFields=configData.globalFields.filter(f=>f.id!==id);renderGlobalList();setUnsaved(true);}); }
+        function moveField(idx,dir,type) { const list=type==='global'?configData.globalFields:yearTemplateData.fields; if(list[idx+dir]){[list[idx],list[idx+dir]]=[list[idx+dir],list[idx]]; if(type==='global')list.forEach((f,i)=>f.order=i+1); type==='global'?renderGlobalList():renderYearFields(); setUnsaved(true);} }
+        function openMoveModal(idx,type) { moveSrcIndex=idx;moveType=type;const list=type==='global'?configData.globalFields:yearTemplateData.fields; const sel=document.getElementById('move-select'); sel.innerHTML=''; list.forEach((f,i)=>sel.innerHTML+=`<option value="${i}" ${i===idx?'selected':''}>${i+1}. ${f.label}</option>`); document.getElementById('move-target-name').innerText=list[idx].label; document.getElementById('move-modal').classList.remove('hidden'); }
+        function saveMove() { const t=parseInt(document.getElementById('move-select').value); if(t!==moveSrcIndex){ const list=moveType==='global'?configData.globalFields:yearTemplateData.fields; list.splice(t,0,list.splice(moveSrcIndex,1)[0]); if(moveType==='global')list.forEach((f,i)=>f.order=i+1); moveType==='global'?renderGlobalList():renderYearFields(); setUnsaved(true); } document.getElementById('move-modal').classList.add('hidden'); }
 
-        function addNewGlobalField() {
-            isEditMode = false; targetList = 'global';
-            document.getElementById('editor-title').innerText = '建立新欄位模板';
-            document.getElementById('ed-orig-id').value = '';
-            document.getElementById('ed-field-id').value = ''; document.getElementById('ed-label').value = '';
-            const idField = document.getElementById('ed-field-id'); idField.readOnly = false; idField.classList.remove('bg-gray-100', 'text-gray-500');
-            updateTypeSelect(); document.getElementById('ed-type').value = 'text';
-            document.getElementById('editor-modal').dataset.curr = '{}';
-            
-            const catSel = document.getElementById('ed-category');
-            catSel.innerHTML = '<option value="">未分類</option>';
-            configData.templateCategories.forEach(c => catSel.innerHTML += `<option value="${c.id}" ${activeCatId===c.id?'selected':''}>${c.name}</option>`);
-            document.getElementById('ed-category-container').classList.remove('hidden');
-            
-            renderOpts(); document.getElementById('editor-modal').classList.remove('hidden');
-        }
-
-        function editField(id, type) {
-            isEditMode = true; targetList = type; updateTypeSelect();
-            let f;
-            if (type === 'global') {
-                f = configData.globalFields.find(c => c.id === id);
-                document.getElementById('editor-title').innerText = '編輯欄位模板';
-                document.getElementById('ed-field-id').readOnly = false; 
-            } else {
-                f = yearTemplateData.fields.find(c => c.id === id);
-                document.getElementById('editor-title').innerText = `編輯欄位 (${activeYearId} 學年度)`;
-                document.getElementById('ed-field-id').readOnly = true; 
-            }
-            
-            // 修正：無論是 Global 或 Year，都允許編輯分類
-            const catSel = document.getElementById('ed-category');
-            catSel.innerHTML = '<option value="">未分類</option>';
-            configData.templateCategories.forEach(c => catSel.innerHTML += `<option value="${c.id}" ${f.category===c.id?'selected':''}>${c.name}</option>`);
-            document.getElementById('ed-category-container').classList.remove('hidden');
-
-            document.getElementById('ed-orig-id').value = f.id;
-            document.getElementById('ed-field-id').value = f.id; 
-            document.getElementById('ed-label').value = f.label;
-            document.getElementById('ed-type').value = f.type;
+        // --- Editor Logic (v5.0 Upgrade, integrated into v4.0 UI) ---
+        function prepEditor(f = {}) {
+            document.getElementById('editor-title').innerText = isEditMode ? '編輯欄位' : '建立新欄位';
+            document.getElementById('ed-orig-id').value = f.id || '';
+            document.getElementById('ed-field-id').value = f.id || ''; document.getElementById('ed-field-id').readOnly = isEditMode && targetList !== 'global';
+            document.getElementById('ed-label').value = f.label || '';
             document.getElementById('ed-required').checked = f.required || false;
             document.getElementById('ed-system').checked = f.isSystem || false;
+
+            const catSel = document.getElementById('ed-category'); catSel.innerHTML = '<option value="">未分類</option>';
+            configData.templateCategories.forEach(c => catSel.innerHTML += `<option value="${c.id}" ${f.category===c.id?'selected':''}>${c.name}</option>`);
+
+            const typeSel = document.getElementById('ed-type'); typeSel.innerHTML = '';
+            configData.fieldTypes.forEach(t => typeSel.innerHTML += `<option value="${t.key}" ${f.type===t.key?'selected':''}>${t.label}</option>`);
+            if(!f.type) typeSel.value = 'text';
+
+            // Visibility Rules Populator
+            const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields;
+            const visDepSel = document.getElementById('ed-vis-dep'); visDepSel.innerHTML = '<option value="">無 (總是顯示)</option>';
+            allFields.filter(x => x.id !== f.id).forEach(x => visDepSel.innerHTML += `<option value="${x.id}" ${f.visibilityRule?.dep===x.id?'selected':''}>${x.label} (${x.id})</option>`);
+            document.getElementById('ed-vis-val').value = f.visibilityRule?.val || '';
+
             document.getElementById('editor-modal').dataset.curr = JSON.stringify(f);
-            renderOpts(); document.getElementById('editor-modal').classList.remove('hidden');
+            document.getElementById('editor-modal').classList.remove('hidden');
+            renderOpts();
         }
 
-        function saveField() {
-            const newId = document.getElementById('ed-field-id').value.trim();
-            const label = document.getElementById('ed-label').value.trim();
+        function renderOpts() {
             const type = document.getElementById('ed-type').value;
-            const origId = document.getElementById('ed-orig-id').value;
-
-            if(!newId || !label) { showMsg('error', '錯誤', '請輸入 ID 與名稱'); return; }
-            if(!/^[a-zA-Z0-9_]+$/.test(newId)) { showMsg('error', '錯誤', 'ID 格式錯誤 (僅限英數底線)'); return; }
+            const container = document.getElementById('ed-opts-container');
+            const f = JSON.parse(document.getElementById('editor-modal').dataset.curr || '{}');
             
-            if (targetList === 'global') {
-                const exists = configData.globalFields.some(c => c.id === newId);
-                if ((!isEditMode && exists) || (isEditMode && newId !== origId && exists)) { showMsg('error', '錯誤', 'ID 已存在'); return; }
-            }
+            const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields;
+            const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join('');
 
-            let f = {};
-            if (isEditMode) {
-                if (targetList === 'global') f = configData.globalFields.find(c => c.id === origId);
-                else f = yearTemplateData.fields.find(c => c.id === origId);
-            }
-
-            f.id = newId; f.label = label; f.type = type;
-            f.required = document.getElementById('ed-required').checked;
-            f.isSystem = document.getElementById('ed-system').checked;
-            // 修正：儲存分類
-            f.category = document.getElementById('ed-category').value;
-
+            let html = '';
             if(type === 'single_select') {
-                f.options = document.getElementById('ed-opt-list').value.split(',').map(x=>x.trim()).filter(x=>x);
-                const d=document.getElementById('ed-dep').value, v=document.getElementById('ed-val').value, l=document.getElementById('ed-lim').value;
-                if(d&&v&&l) f.filterRule = {dep:d, val:v, limitTo:l.split(',').map(x=>x.trim())}; else delete f.filterRule;
-            }
-            if(type === 'number') { f.calcMode = document.getElementById('ed-mode').value; f.decimal = parseInt(document.getElementById('ed-dec').value)||0; f.keepZero = document.getElementById('ed-keepZero').checked; }
-            if(type === 'date') f.dateFormat = document.getElementById('ed-fmt').value;
+                const optsText = f.options ? f.options.join(',') : '';
+                let rules = [];
+                if(f.filterRules) rules = f.filterRules;
+                else if(f.filterRule) rules = [f.filterRule]; // Backward compatibility
 
-            if (targetList === 'global' && !isEditMode) { 
-                f.order = configData.globalFields.length + 1; 
-                configData.globalFields.push(f); 
+                html = `
+                <div class="space-y-6">
+                    <div>
+                        <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">1. 設定選項清單</h4>
+                        <textarea id="ed-opt-list" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary outline-none" rows="3" placeholder="例如: 是,否,不確定" oninput="updateRuleCheckboxes()">${optsText}</textarea>
+                        <p class="text-[10px] text-slate-400 mt-1">選項間請用半形逗號分隔。</p>
+                    </div>
+                    
+                    <div class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-random"></i> 2. 選項連動邏輯 (Logic Rules)</h4>
+                            <button onclick="addRule()" class="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1 rounded hover:bg-indigo-50 transition font-bold">+ 新增規則</button>
+                        </div>
+                        <p class="text-[11px] text-slate-500 mb-4">設定當其他欄位的值改變時，此欄位應該顯示哪些選項。</p>
+                        
+                        <div id="rule-list" class="space-y-3"></div>
+                    </div>
+                </div>
+                `;
+                
+                setTimeout(() => {
+                    renderRules(rules, depOpts);
+                    window.currentRules = rules; 
+                }, 0);
+
+            } else if (type === 'number') {
+                html = `
+                <div class="grid grid-cols-2 gap-4">
+                    <div><label class="text-sm font-bold text-slate-700 mb-1 block">數值模式</label><select id="ed-mode" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="copy">一般/複製</option><option value="average" ${f.calcMode==='average'?'selected':''}>自動平均</option></select></div>
+                    <div><label class="text-sm font-bold text-slate-700 mb-1 block">小數位數</label><input type="number" id="ed-dec" class="w-full border border-slate-300 rounded p-2 text-sm" value="${f.decimal||0}"></div>
+                </div>
+                <div class="mt-3"><label class="flex items-center text-sm font-bold text-slate-700 cursor-pointer"><input type="checkbox" id="ed-keepZero" ${f.keepZero?'checked':''} class="custom-checkbox mr-2"> 保留前導零 (00123)</label></div>`;
+            } else if (type === 'date') {
+                html = `<div><label class="text-sm font-bold text-slate-700 mb-1 block">日期格式</label><select id="ed-fmt" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="ROC" ${f.dateFormat==='ROC'?'selected':''}>民國 (113/01/01)</option><option value="West" ${f.dateFormat==='West'?'selected':''}>西元 (2024-01-01)</option></select></div>`;
+            } else {
+                html = '<div class="text-center text-sm text-slate-400 py-10">此類型無需額外設定</div>';
             }
-            
-            setUnsaved(true);
-            document.getElementById('editor-modal').classList.add('hidden');
-            if (targetList === 'global') renderGlobalList(); else renderYearFields();
-            showMsg('info', '暫存成功', '設定已暫存，請記得按「儲存設定」發布。');
+            container.innerHTML = html;
         }
 
-        function delGlobalField(id) {
-            showMsg('confirm', '刪除模板？', '確定刪除此模板？', null, () => {
-                configData.globalFields = configData.globalFields.filter(f => f.id !== id);
-                renderGlobalList(); setUnsaved(true); showMsg('success', '成功', '模板已刪除');
+        // Logic Builder Helpers
+        function renderRules(rules, depOpts) {
+            const list = document.getElementById('rule-list');
+            list.innerHTML = '';
+            if(rules.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-400 py-2 border border-dashed border-slate-300 rounded">尚無規則，請點擊新增。</div>'; return; }
+            
+            rules.forEach((r, idx) => {
+                const row = document.createElement('div');
+                row.className = 'logic-card p-4 relative bg-white';
+                row.innerHTML = `
+                    <button onclick="removeRule(${idx})" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">當欄位 (Monitor)</label><select onchange="updateRule(${idx}, 'dep', this.value)" class="w-full border border-slate-300 rounded p-1.5 text-xs bg-slate-50"><option value="">請選擇...</option>${depOpts}</select></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">值等於 (Value)</label><input oninput="updateRule(${idx}, 'val', this.value)" class="w-full border border-slate-300 rounded p-1.5 text-xs" placeholder="輸入觸發值" value="${r.val||''}"></div>
+                    </div>
+                    <div><label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">僅顯示下列選項 (Check to Show)</label><div class="flex flex-wrap gap-2" id="chk-container-${idx}"></div></div>
+                `;
+                list.appendChild(row);
+                row.querySelector('select').value = r.dep || '';
+                updateRuleCheckboxes(idx, r.limitTo);
             });
         }
 
-        function moveField(idx, dir, type) {
-            let list = type === 'global' ? configData.globalFields : yearTemplateData.fields;
-            if(idx+dir < 0 || idx+dir >= list.length) return;
-            [list[idx], list[idx+dir]] = [list[idx+dir], list[idx]];
-            if (type === 'global') { list.forEach((f, i) => f.order = i+1); renderGlobalList(); } else renderYearFields();
-            setUnsaved(true); showMsg('success', '成功', '排序已更新');
-        }
-
-        function openMoveModal(idx, type) {
-            moveSrcIndex = idx; moveType = type; const select = document.getElementById('move-select'); select.innerHTML = '';
-            let list = type === 'global' ? configData.globalFields : yearTemplateData.fields;
-            document.getElementById('move-target-name').innerText = list[idx].label;
-            list.forEach((item, i) => { select.innerHTML += `<option value="${i}" ${i===idx?'selected':''}>${i+1}. ${item.label} ${i===idx?'(目前)':''}</option>`; });
-            document.getElementById('move-modal').classList.remove('hidden');
-        }
-
-        function saveMove() {
-            const targetIdx = parseInt(document.getElementById('move-select').value);
-            if (targetIdx !== moveSrcIndex) {
-                if (moveType === 'global') {
-                    const item = configData.globalFields.splice(moveSrcIndex, 1)[0];
-                    configData.globalFields.splice(targetIdx, 0, item);
-                    configData.globalFields.forEach((f, i) => f.order = i + 1);
-                    renderGlobalList();
-                } else {
-                    const item = yearTemplateData.fields.splice(moveSrcIndex, 1)[0];
-                    yearTemplateData.fields.splice(targetIdx, 0, item);
-                    renderYearFields();
+        function updateRuleCheckboxes(ruleIdx = null, selected = []) {
+            const raw = document.getElementById('ed-opt-list').value;
+            const opts = raw.split(',').map(s=>s.trim()).filter(s=>s);
+            const renderSet = (containerId, currentSel) => {
+                const c = document.getElementById(containerId);
+                if(!c) return;
+                c.innerHTML = opts.map(o => {
+                    const isChecked = currentSel.includes(o) ? 'checked' : '';
+                    return `<label class="inline-flex items-center bg-slate-50 px-2 py-1 rounded border border-slate-200 text-xs cursor-pointer select-none hover:border-primary"><input type="checkbox" class="mr-1 accent-primary" ${isChecked} onchange="updateRuleLimit(${ruleIdx}, '${o}', this.checked)"> ${o}</label>`;
+                }).join('');
+            };
+            if(ruleIdx !== null) {
+                renderSet(`chk-container-${ruleIdx}`, selected);
+            } else {
+                const list = document.getElementById('rule-list');
+                if(list && window.currentRules) {
+                    window.currentRules.forEach((r, i) => renderSet(`chk-container-${i}`, r.limitTo || []));
                 }
-                setUnsaved(true); showMsg('success', '成功', '排序已更新');
             }
-            document.getElementById('move-modal').classList.add('hidden');
         }
 
-        // --- Picker ---
+        window.addRule = function() {
+            window.currentRules.push({ dep: "", val: "", limitTo: [] });
+            const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields;
+            const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join('');
+            renderRules(window.currentRules, depOpts);
+        };
+
+        window.removeRule = function(idx) {
+            window.currentRules.splice(idx, 1);
+            const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields;
+            const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join('');
+            renderRules(window.currentRules, depOpts);
+        };
+
+        window.updateRule = function(idx, key, val) { window.currentRules[idx][key] = val; };
+        window.updateRuleLimit = function(idx, opt, checked) {
+            let arr = window.currentRules[idx].limitTo || [];
+            if(checked) { if(!arr.includes(opt)) arr.push(opt); }
+            else { arr = arr.filter(x => x !== opt); }
+            window.currentRules[idx].limitTo = arr;
+        };
+
+        function saveField() {
+            const id = document.getElementById('ed-field-id').value.trim();
+            const label = document.getElementById('ed-label').value.trim();
+            if(!id || !label) return showMsg('error','錯誤','ID 與名稱為必填');
+            
+            let f = {};
+            if(isEditMode) f = (targetList==='global'?configData.globalFields:yearTemplateData.fields).find(x=>x.id===document.getElementById('ed-orig-id').value);
+            
+            f.id = id; f.label = label; f.type = document.getElementById('ed-type').value; f.category = document.getElementById('ed-category').value;
+            f.required = document.getElementById('ed-required').checked; f.isSystem = document.getElementById('ed-system').checked;
+
+            const vDep = document.getElementById('ed-vis-dep').value;
+            if(vDep) f.visibilityRule = { dep: vDep, val: document.getElementById('ed-vis-val').value };
+            else delete f.visibilityRule;
+
+            if(f.type === 'single_select') {
+                f.options = document.getElementById('ed-opt-list').value.split(',').map(s=>s.trim()).filter(s=>s);
+                if(window.currentRules && window.currentRules.length > 0) {
+                    const validRules = window.currentRules.filter(r => r.dep && r.val);
+                    if(validRules.length === 1) { f.filterRule = validRules[0]; delete f.filterRules; } 
+                    else if(validRules.length > 1) { f.filterRules = validRules; delete f.filterRule; } 
+                    else { delete f.filterRule; delete f.filterRules; }
+                } else { delete f.filterRule; delete f.filterRules; }
+            }
+            if(f.type === 'number') { f.calcMode=document.getElementById('ed-mode').value; f.decimal=parseInt(document.getElementById('ed-dec').value)||0; f.keepZero=document.getElementById('ed-keepZero').checked; }
+            if(f.type === 'date') { f.dateFormat=document.getElementById('ed-fmt').value; }
+
+            if(!isEditMode && targetList==='global') { f.order = configData.globalFields.length+1; configData.globalFields.push(f); }
+
+            document.getElementById('editor-modal').classList.add('hidden');
+            targetList==='global'?renderGlobalList():renderYearFields(); setUnsaved(true);
+            showMsg('info','暫存成功','記得按儲存設定');
+        }
+
+        // --- Picker, Types, Save Config (Standard v4.0 Logic) ---
         function openFieldPicker() {
-            const list = document.getElementById('picker-list'); list.innerHTML = '';
-            document.getElementById('picker-select-all').checked = false;
+            const list = document.getElementById('picker-list'); list.innerHTML = ''; document.getElementById('picker-select-all').checked=false;
             const activeIds = new Set(yearTemplateData.fields.map(f => f.id));
             configData.globalFields.sort((a,b) => a.order - b.order);
             const available = configData.globalFields.filter(f => !activeIds.has(f.id));
@@ -979,109 +810,34 @@
             else available.forEach(f => list.innerHTML += `<label class="flex items-center p-3 border rounded-lg hover:border-primary cursor-pointer hover:bg-indigo-50 mb-2"><input type="checkbox" value="${f.id}" class="picker-checkbox custom-checkbox mr-3"><div class="flex-grow flex justify-between"><span class="font-bold text-sm text-slate-700">${f.label}</span><span class="text-xs text-slate-400 font-mono">${f.id}</span></div></label>`);
             document.getElementById('picker-modal').classList.remove('hidden');
         }
-        function togglePickerAll(cb) { document.querySelectorAll('.picker-checkbox').forEach(el => el.checked = cb.checked); }
-        
+        function togglePickerAll(cb) { document.querySelectorAll('.picker-checkbox').forEach(c => c.checked = cb.checked); }
         function addSelectedFields() {
-            const checkboxes = document.querySelectorAll('.picker-checkbox:checked');
-            if (checkboxes.length === 0) { document.getElementById('picker-modal').classList.add('hidden'); return; }
-            const selectedIds = Array.from(checkboxes).map(cb => cb.value);
-            const orderMap = {}; configData.globalFields.forEach(f => orderMap[f.id] = f.order);
-            selectedIds.sort((a, b) => orderMap[a] - orderMap[b]);
-            
-            selectedIds.forEach(id => { 
-                const t = configData.globalFields.find(gf => gf.id === id); 
-                if (t) yearTemplateData.fields.push(JSON.parse(JSON.stringify(t))); 
-            });
-            
-            renderYearFields(); 
-            setUnsaved(true);
-            document.getElementById('picker-modal').classList.add('hidden');
-            showMsg('success', '成功', '欄位已加入');
-        }
-
-        function renderOpts() {
-            const type = document.getElementById('ed-type').value; const container = document.getElementById('ed-opts');
-            const f = JSON.parse(document.getElementById('editor-modal').dataset.curr || '{}');
-            let html = '';
-            if(type === 'single_select') html = `<div><label class="text-xs font-bold text-slate-500 uppercase">選項</label><textarea id="ed-opt-list" class="w-full border border-slate-300 rounded p-2 text-sm mt-1" rows="3">${f.options?.join(',')||''}</textarea></div><div class="mt-2 pt-2 border-t"><label class="text-xs text-indigo-500 font-bold">連動</label><div class="grid grid-cols-2 gap-2 mt-1"><input id="ed-dep" placeholder="依賴ID" class="w-full border p-2 rounded text-xs" value="${f.filterRule?.dep||''}"><input id="ed-val" placeholder="值" class="w-full border p-2 rounded text-xs" value="${f.filterRule?.val||''}"></div><input id="ed-lim" placeholder="限制選項" class="w-full border p-2 rounded text-xs mt-1" value="${f.filterRule?.limitTo?.join(',')||''}"></div>`;
-            else if(type === 'number') html = `<div class="grid grid-cols-2 gap-2"><div><label class="text-xs font-bold text-slate-500">模式</label><select id="ed-mode" class="w-full border rounded p-2 bg-white text-sm"><option value="copy">複製</option><option value="average" ${f.calcMode==='average'?'selected':''}>平均</option></select></div><div><label class="text-xs font-bold text-slate-500">小數</label><input type="number" id="ed-dec" class="w-full border rounded p-2 text-sm" value="${f.decimal||0}"></div></div><div class="mt-2"><label class="flex items-center text-sm"><input type="checkbox" id="ed-keepZero" ${f.keepZero?'checked':''} class="mr-2 custom-checkbox"> 保留0</label></div>`;
-            else if(type === 'date') html = `<div><label class="text-xs font-bold text-slate-500">格式</label><select id="ed-fmt" class="w-full border rounded p-2 bg-white text-sm"><option value="ROC" ${f.dateFormat==='ROC'?'selected':''}>民國</option><option value="West" ${f.dateFormat==='West'?'selected':''}>西元</option></select></div>`;
-            container.innerHTML = html || '<div class="text-center text-xs text-slate-400">無額外設定</div>';
-        }
-
-        async function saveConfig() {
-            const newSha = await uploadFile(ghConfig.path, configData, configSha);
-            configSha = newSha;
-        }
-
-        async function saveAll() {
-            const btn = document.getElementById('btn-save'); btn.disabled = true; btn.innerHTML = '<div class="spinner"></div>';
-            try {
-                await saveConfig();
-                
-                if(activeYearId) {
-                    const path = `hedb/year_templates/year_${activeYearId}_templates.json`;
-                    const check = await apiFetch(path);
-                    const sha = check.status === 200 ? check.sha : null;
-                    await uploadFile(path, yearTemplateData, sha);
-                }
-                
-                setUnsaved(false); showMsg('success', '儲存成功', '所有設定已更新至 GitHub');
-            } catch(e) { showMsg('error', '儲存失敗', e.message); }
-            finally { btn.disabled = false; btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 儲存設定'; }
-        }
-
-        async function apiFetch(path) { 
-            const url = `https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}?t=${new Date().getTime()}`;
-            const res = await fetch(url, { headers: { 'Authorization': `token ${ghConfig.token}`, 'Accept': 'application/vnd.github.v3+json' } }); 
-            if(res.status === 404) return { status: 404 }; 
-            const data = await res.json(); 
-            if (Array.isArray(data)) {
-                return { status: 200, data: data, sha: null };
-            }
-            const content = decodeURIComponent(escape(window.atob(data.content.replace(/\n/g, "")))); 
-            return { status: 200, data: JSON.parse(content), sha: data.sha }; 
-        }
-
-        async function uploadFile(path, contentObj, sha = null) { 
-            const body = { 
-                message: "Update config via Admin Panel", 
-                content: btoa(unescape(encodeURIComponent(JSON.stringify(contentObj, null, 2)))) 
-            };
-            if (sha) body.sha = sha; 
-            const res = await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`, { 
-                method: 'PUT', 
-                headers: { 'Authorization': `token ${ghConfig.token}`, 'Content-Type': 'application/json' }, 
-                body: JSON.stringify(body) 
-            }); 
-            if(!res.ok) throw new Error("Upload failed: " + res.status + " " + res.statusText); 
-            
-            const data = await res.json();
-            return data.content ? data.content.sha : null;
-        }
-
-        async function deleteFile(path, sha) { 
-            if (!sha) { try { const check = await apiFetch(path); if(check.status===200) sha = check.sha; } catch(e){} }
-            if(!sha) return; 
-            await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`, { method: 'DELETE', headers: { 'Authorization': `token ${ghConfig.token}`, 'Content-Type': 'application/json' }, body: JSON.stringify({ message: "Delete file", sha: sha }) }); 
+            const ids = Array.from(document.querySelectorAll('.picker-checkbox:checked')).map(c=>c.value);
+            const map = {}; configData.globalFields.forEach(f=>map[f.id]=f.order); ids.sort((a,b)=>map[a]-map[b]);
+            ids.forEach(id=>{ const t=configData.globalFields.find(x=>x.id===id); if(t) yearTemplateData.fields.push(JSON.parse(JSON.stringify(t))); });
+            renderYearFields(); setUnsaved(true); document.getElementById('picker-modal').classList.add('hidden');
         }
         
-        function switchView(view) {
-            document.getElementById('view-years').classList.toggle('hidden', view !== 'years');
-            document.getElementById('view-fields').classList.toggle('hidden', view !== 'fields');
-            document.getElementById('view-types').classList.toggle('hidden', view !== 'types');
-            
-            document.getElementById('view-fields').classList.toggle('flex', view === 'fields');
-            document.getElementById('view-types').classList.toggle('flex', view === 'types');
+        function openTypeManager(){switchView('types');renderTypeManagerPage();}
+        function renderTypeManagerPage(){const el=document.getElementById('type-list-page');el.innerHTML='';configData.fieldTypes.forEach(t=>el.innerHTML+=`<tr class="hover:bg-slate-50"><td class="px-6 py-3 font-mono text-xs text-primary font-bold">${t.key}</td><td class="px-6 py-3 text-xs font-bold">${t.label}</td><td class="px-6 py-3 text-right"><button onclick="delCustomTypePage('${t.key}')" class="text-slate-300 hover:text-danger"><i class="fas fa-trash-alt"></i></button></td></tr>`);}
+        function addCustomTypePage(){const k=document.getElementById('new-type-key-page').value.trim(),l=document.getElementById('new-type-label-page').value.trim();if(!k||!l)return;if(configData.fieldTypes.some(t=>t.key===k))return showMsg('error','錯誤','Key exists');configData.fieldTypes.push({key:k,label:l});setUnsaved(true);renderTypeManagerPage();}
+        function delCustomTypePage(k){showMsg('confirm','刪除？','',null,()=>{configData.fieldTypes=configData.fieldTypes.filter(t=>t.key!==k);setUnsaved(true);renderTypeManagerPage();});}
 
-            document.getElementById('nav-years').className = `nav-btn py-3 px-2 text-sm font-medium flex items-center gap-2 ${view==='years'?'active':''}`;
-            document.getElementById('nav-fields').className = `nav-btn py-3 px-2 text-sm font-medium flex items-center gap-2 ${view==='fields'?'active':''}`;
-            document.getElementById('nav-types').className = `nav-btn py-3 px-2 text-sm font-medium flex items-center gap-2 ${view==='types'?'active':''}`;
-            
-            if(view === 'fields') renderGlobalList();
-            if(view === 'types') renderTypeManagerPage();
+        async function saveConfig() { configSha = await uploadFile(ghConfig.path, configData, configSha); }
+        async function saveAll() {
+            const btn=document.getElementById('btn-save');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+            try { await saveConfig(); if(activeYearId){const p=`hedb/year_templates/year_${activeYearId}_templates.json`;const c=await apiFetch(p);await uploadFile(p,yearTemplateData,c.status===200?c.sha:null);} setUnsaved(false); showMsg('success','儲存成功',''); }
+            catch(e){showMsg('error','失敗',e.message);} finally{btn.disabled=false;btn.innerHTML='儲存設定';}
         }
 
+        async function apiFetch(path){const r=await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}?t=${Date.now()}`,{headers:{'Authorization':`token ${ghConfig.token}`,'Accept':'application/vnd.github.v3+json'}});if(r.status===404)return{status:404};const d=await r.json();if(Array.isArray(d))return{status:200,data:d};const c=decodeURIComponent(escape(window.atob(d.content.replace(/\n/g,""))));return{status:200,data:JSON.parse(c),sha:d.sha};}
+        async function uploadFile(path,data,sha){const r=await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`,{method:'PUT',headers:{'Authorization':`token ${ghConfig.token}`,'Content-Type':'application/json'},body:JSON.stringify({message:'Update',content:btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2)))),sha:sha})});if(!r.ok)throw new Error(r.status);const d=await r.json();return d.content.sha;}
+        async function deleteFile(path,sha){await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`,{method:'DELETE',headers:{'Authorization':`token ${ghConfig.token}`,'Content-Type':'application/json'},body:JSON.stringify({message:'Del',sha:sha})});}
+
+        function switchView(v) {
+            ['years','fields','types'].forEach(x => { document.getElementById(`view-${x}`).classList.toggle('hidden', v!==x); document.getElementById(`view-${x}`).classList.toggle(x==='types'||x==='fields'?'flex':'flex', v===x); document.getElementById(`nav-${x}`).classList.toggle('active', v===x); });
+            if(v==='fields')renderGlobalList(); if(v==='types')renderTypeManagerPage();
+        }
         window.onload = init;
     </script>
 </body>
