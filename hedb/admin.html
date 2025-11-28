@@ -1,1 +1,592 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系統管理後台 (GitHub API)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#4f46e5', // Indigo 600
+                        primaryHover: '#4338ca', // Indigo 700
+                        surface: '#ffffff',
+                        background: '#f1f5f9', // Slate 100
+                    },
+                    fontFamily: {
+                        sans: ['"Noto Sans TC"', 'sans-serif'],
+                    },
+                    animation: {
+                        'fade-in-up': 'fadeInUp 0.6s ease-out forwards',
+                        'fade-out': 'fadeOut 0.5s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeInUp: {
+                            '0%': { opacity: '0', transform: 'translateY(20px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        },
+                        fadeOut: {
+                            '0%': { opacity: '1' },
+                            '100%': { opacity: '0', pointerEvents: 'none' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        /* 新版登入背景：清新晨霧風格 (淺灰藍漸層) */
+        .login-bg {
+            background: linear-gradient(135deg, #e0e7ff 0%, #f3f4f6 100%);
+            position: relative;
+            overflow: hidden;
+        }
+        /* 背景裝飾紋路 */
+        .login-bg::before {
+            content: '';
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: 
+                radial-gradient(#cbd5e1 1px, transparent 1px), 
+                radial-gradient(#cbd5e1 1px, transparent 1px);
+            background-position: 0 0, 20px 20px;
+            background-size: 40px 40px;
+            opacity: 0.4;
+            z-index: 0;
+        }
+        
+        /* 玻璃擬態面板 (更通透的白色) */
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.6);
+            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+        }
 
+        /* 輸入框樣式優化 */
+        .input-stylish {
+            width: 100%;
+            background-color: rgba(255, 255, 255, 0.9);
+            border: 1px solid #cbd5e1;
+            color: #334155;
+            border-radius: 0.5rem;
+            padding: 0.75rem 1rem;
+            padding-left: 2.5rem; /* Icon space */
+            transition: all 0.2s;
+            font-size: 0.95rem;
+        }
+        .input-stylish:focus {
+            border-color: #6366f1;
+            outline: none;
+            box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+            background-color: #ffffff;
+        }
+        .input-icon {
+            position: absolute;
+            left: 1rem;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #94a3b8;
+            transition: color 0.2s;
+        }
+        .input-group:focus-within .input-icon {
+            color: #6366f1;
+        }
+
+        /* 按鈕樣式 */
+        .btn-login {
+            background: linear-gradient(to right, #4f46e5, #6366f1);
+            color: white;
+            font-weight: 600;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(79, 70, 229, 0.3);
+            transition: all 0.2s;
+        }
+        .btn-login:hover {
+            box-shadow: 0 10px 15px -3px rgba(79, 70, 229, 0.4);
+            transform: translateY(-1px);
+        }
+        .btn-login:active {
+            transform: translateY(0);
+        }
+
+        /* 載入動畫 */
+        .spinner { border: 3px solid rgba(255,255,255,0.3); border-radius: 50%; border-top: 3px solid #fff; width: 20px; height: 20px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        
+        .custom-scroll::-webkit-scrollbar { width: 8px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #f1f5f9; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+    </style>
+</head>
+<body class="h-screen flex flex-col overflow-hidden text-slate-700 bg-slate-50">
+
+    <!-- 1. 登入介面 (Login Screen) -->
+    <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
+        <div class="glass-panel w-full max-w-md p-10 rounded-2xl shadow-2xl relative z-10 animate-fade-in-up">
+            
+            <div class="text-center mb-8">
+                <div class="w-16 h-16 bg-gradient-to-br from-indigo-500 to-purple-600 text-white rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg transform rotate-3">
+                    <i class="fas fa-sliders-h"></i>
+                </div>
+                <h1 class="text-2xl font-bold text-slate-800 tracking-wide">後台管理系統</h1>
+                <p class="text-slate-500 text-sm mt-2">東海大學實習協作平台</p>
+            </div>
+
+            <div class="space-y-5">
+                <div class="input-group relative">
+                    <i class="fas fa-user input-icon"></i>
+                    <input type="text" id="gh-user" class="input-stylish" placeholder="GitHub Username">
+                </div>
+                
+                <div class="input-group relative">
+                    <i class="fas fa-folder-open input-icon"></i>
+                    <input type="text" id="gh-repo" class="input-stylish" placeholder="Repository Name">
+                </div>
+                
+                <div class="input-group relative">
+                    <i class="fas fa-key input-icon"></i>
+                    <input type="password" id="gh-token" class="input-stylish" placeholder="Access Token (ghp_...)">
+                    <button onclick="toggleTokenVisibility()" class="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-indigo-600 focus:outline-none p-1">
+                        <i class="fas fa-eye" id="token-eye-icon"></i>
+                    </button>
+                </div>
+
+                <!-- 隱藏的路徑設定，固定為 hedb/config.json -->
+                <input type="hidden" id="gh-path" value="hedb/config.json">
+
+                <div class="pt-4">
+                    <button onclick="connectGitHub()" id="btn-connect" class="w-full btn-login flex justify-center items-center gap-2 group">
+                        <span>登入系統</span>
+                        <i class="fas fa-arrow-right group-hover:translate-x-1 transition-transform"></i>
+                    </button>
+                    <div id="login-msg" class="text-center mt-4 h-5 text-sm font-medium text-red-500 transition-all opacity-0"></div>
+                </div>
+            </div>
+            
+            <div class="mt-8 text-center">
+                <p class="text-slate-400 text-xs">Protected by GitHub API Authentication</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- 2. 主控台介面 (Dashboard) -->
+    <div id="admin-interface" class="hidden h-full flex flex-col bg-slate-50 opacity-0 transition-opacity duration-500">
+        <header class="h-16 flex-shrink-0 border-b border-slate-200 flex items-center justify-between px-6 bg-white shadow-sm z-20">
+            <div class="flex items-center gap-4">
+                <div class="w-8 h-8 bg-indigo-600 text-white rounded flex items-center justify-center text-sm shadow"><i class="fas fa-tools"></i></div>
+                <div>
+                    <h1 class="font-bold text-lg tracking-wide text-slate-800">欄位配置管理</h1>
+                    <div id="repo-badge" class="text-[10px] text-slate-400 font-mono -mt-0.5">Not Connected</div>
+                </div>
+            </div>
+            <div class="flex items-center gap-3">
+                <span id="status-msg" class="text-sm text-emerald-600 font-medium hidden animate-fade-in-up bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                    <i class="fas fa-check-circle mr-1"></i> 儲存成功
+                </span>
+                <button onclick="saveToGitHub()" id="btn-save" class="bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg shadow-md hover:shadow-lg transition-all transform active:scale-95 flex items-center gap-2 text-sm">
+                    <i class="fas fa-cloud-upload-alt"></i> 儲存至 GitHub
+                </button>
+                <div class="w-px h-6 bg-slate-200 mx-2"></div>
+                <button onclick="logout()" class="text-sm text-slate-500 hover:text-red-600 transition flex items-center gap-1">
+                    <i class="fas fa-sign-out-alt"></i> 登出
+                </button>
+            </div>
+        </header>
+
+        <div class="flex-grow p-6 overflow-y-auto custom-scroll">
+            <div class="max-w-6xl mx-auto">
+                <div class="flex justify-between items-center mb-6">
+                    <div>
+                        <h2 class="text-xl font-bold text-slate-800">目前欄位列表</h2>
+                        <p class="text-sm text-slate-500 mt-1">拖曳欄位可調整順序</p>
+                    </div>
+                    <button onclick="addNewField()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-4 py-2.5 rounded-lg font-bold shadow hover:shadow-md transition flex items-center gap-2 text-sm">
+                        <i class="fas fa-plus"></i> 新增欄位
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-xl border border-slate-200 overflow-hidden shadow-sm">
+                    <div class="grid grid-cols-12 bg-slate-50 p-3 text-xs font-bold text-slate-500 border-b border-slate-200 uppercase tracking-wider">
+                        <div class="col-span-1 text-center">順序</div>
+                        <div class="col-span-4">欄位名稱 (ID)</div>
+                        <div class="col-span-2">類型</div>
+                        <div class="col-span-3">屬性</div>
+                        <div class="col-span-2 text-right">操作</div>
+                    </div>
+                    <div id="field-list" class="divide-y divide-slate-100 min-h-[150px]">
+                        <!-- JS Generated -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 3. 編輯 Modal -->
+    <div id="editor-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center bg-slate-900/60 backdrop-blur-sm p-4 opacity-0 transition-opacity duration-300">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-6 border-b border-slate-100 pb-4">
+                <h3 class="text-xl font-bold text-slate-800"><i class="fas fa-edit text-indigo-500 mr-2"></i>編輯欄位屬性</h3>
+                <button onclick="closeModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            
+            <input type="hidden" id="ed-id">
+            <div class="space-y-5 max-h-[70vh] overflow-y-auto custom-scroll pr-2">
+                <div>
+                    <label class="text-xs font-bold text-slate-500 uppercase block mb-1.5">欄位顯示名稱 (Label)</label>
+                    <input type="text" id="ed-label" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none transition">
+                </div>
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 uppercase block mb-1.5">資料類型 (Type)</label>
+                        <select id="ed-type" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-indigo-500 outline-none" onchange="renderOpts()">
+                            <option value="text">文字 (Text)</option>
+                            <option value="number">數字 (Number)</option>
+                            <option value="date">日期 (Date)</option>
+                            <option value="single_select">單選 (Select)</option>
+                            <option value="list">條列式 (List)</option>
+                        </select>
+                    </div>
+                    <div class="space-y-2 pt-6">
+                        <label class="flex items-center text-sm cursor-pointer select-none">
+                            <input type="checkbox" id="ed-required" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 mr-2"> 
+                            <span class="text-slate-700 font-medium">必填 (Required)</span>
+                        </label>
+                        <label class="flex items-center text-sm cursor-pointer select-none">
+                            <input type="checkbox" id="ed-system" class="w-4 h-4 text-indigo-600 rounded border-slate-300 focus:ring-indigo-500 mr-2"> 
+                            <span class="text-slate-700 font-medium">系統預設 (唯讀)</span>
+                        </label>
+                    </div>
+                </div>
+                <!-- 動態選項區 -->
+                <div id="ed-opts" class="bg-slate-50 p-4 rounded-xl border border-slate-200 text-sm space-y-3"></div>
+            </div>
+            
+            <div class="mt-8 flex justify-end gap-3 pt-4 border-t border-slate-100">
+                <button onclick="closeModal()" class="px-5 py-2.5 text-slate-500 font-bold hover:bg-slate-100 rounded-lg transition text-sm">取消</button>
+                <button onclick="saveFieldLocal()" class="px-5 py-2.5 bg-indigo-600 text-white rounded-lg font-bold hover:bg-indigo-700 shadow-md hover:shadow-lg transition text-sm flex items-center gap-2">
+                    <i class="fas fa-check"></i> 暫存設定
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- GitHub API State ---
+        let ghConfig = { user: '', repo: '', path: 'hedb/config.json', token: '', sha: null };
+        let configData = [];
+
+        // 1. 初始化與登入
+        function init() {
+            const savedGh = localStorage.getItem('gh_creds_v2');
+            if(savedGh) {
+                const creds = JSON.parse(savedGh);
+                document.getElementById('gh-user').value = creds.user;
+                document.getElementById('gh-repo').value = creds.repo;
+                document.getElementById('gh-token').value = creds.token;
+                // 自動填入後不自動登入，讓使用者確認
+            }
+        }
+
+        async function connectGitHub() {
+            const btn = document.getElementById('btn-connect');
+            const msg = document.getElementById('login-msg');
+            const user = document.getElementById('gh-user').value.trim();
+            const repo = document.getElementById('gh-repo').value.trim();
+            const path = document.getElementById('gh-path').value.trim(); // Fixed Path
+            const token = document.getElementById('gh-token').value.trim();
+
+            if(!user || !repo || !token) {
+                showError('請填寫完整的 GitHub 資訊');
+                return;
+            }
+
+            btn.innerHTML = '<div class="spinner"></div> 連線中...';
+            btn.disabled = true;
+            msg.style.opacity = '0';
+
+            ghConfig = { user, repo, path, token };
+            
+            try {
+                // GET Config
+                const url = `https://api.github.com/repos/${user}/${repo}/contents/${path}`;
+                const res = await fetch(url, {
+                    headers: { 
+                        'Authorization': `token ${token}`,
+                        'Accept': 'application/vnd.github.v3+json'
+                    }
+                });
+
+                if(res.status === 404) {
+                    configData = [];
+                    ghConfig.sha = null; 
+                    console.log('Config not found, starting new.');
+                } else if(res.ok) {
+                    const data = await res.json();
+                    ghConfig.sha = data.sha;
+                    const content = decodeURIComponent(escape(window.atob(data.content.replace(/\n/g, ""))));
+                    configData = JSON.parse(content);
+                } else {
+                    throw new Error(`GitHub Error: ${res.status}`);
+                }
+
+                // Success Transition
+                localStorage.setItem('gh_creds_v2', JSON.stringify(ghConfig));
+                
+                const loginScreen = document.getElementById('login-screen');
+                const adminInterface = document.getElementById('admin-interface');
+                
+                loginScreen.classList.add('animate-fade-out');
+                setTimeout(() => {
+                    loginScreen.classList.add('hidden');
+                    adminInterface.classList.remove('hidden');
+                    // Trigger reflow
+                    void adminInterface.offsetWidth;
+                    adminInterface.style.opacity = '1';
+                }, 450);
+
+                document.getElementById('repo-badge').textContent = `${user}/${repo}/${path}`;
+                renderList();
+
+            } catch (err) {
+                console.error(err);
+                showError('連線失敗: ' + err.message);
+            } finally {
+                btn.innerHTML = '<span>登入系統</span><i class="fas fa-arrow-right"></i>';
+                btn.disabled = false;
+            }
+        }
+
+        function showError(text) {
+            const msg = document.getElementById('login-msg');
+            msg.innerHTML = `<i class="fas fa-exclamation-circle mr-1"></i> ${text}`;
+            msg.style.opacity = '1';
+        }
+
+        function toggleTokenVisibility() {
+            const input = document.getElementById('gh-token');
+            const icon = document.getElementById('token-eye-icon');
+            if (input.type === "password") {
+                input.type = "text";
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                input.type = "password";
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        }
+
+        function logout() {
+            localStorage.removeItem('gh_creds_v2');
+            location.reload();
+        }
+
+        // --- 2. 欄位管理 UI ---
+        function renderList() {
+            const el = document.getElementById('field-list');
+            configData.sort((a,b) => a.order - b.order);
+            
+            if(configData.length === 0) {
+                el.innerHTML = '<div class="p-10 text-center text-slate-400 flex flex-col items-center"><div class="w-12 h-12 bg-slate-100 rounded-full flex items-center justify-center mb-3 text-slate-300"><i class="fas fa-box-open text-xl"></i></div><p>目前沒有設定任何欄位</p><p class="text-xs mt-1">請點擊右上角「新增欄位」開始設定</p></div>';
+                return;
+            }
+
+            el.innerHTML = configData.map((f, i) => `
+                <div class="grid grid-cols-12 p-4 items-center hover:bg-slate-50 transition border-b border-slate-100 last:border-0 group">
+                    <div class="col-span-1 text-center font-mono text-sm text-slate-400">${i+1}</div>
+                    <div class="col-span-4">
+                        <div class="font-bold text-slate-700 text-sm">${f.label}</div>
+                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">${f.id}</div>
+                    </div>
+                    <div class="col-span-2">
+                        <span class="text-xs font-mono bg-slate-100 text-slate-600 px-2 py-1 rounded border border-slate-200">${f.type}</span>
+                    </div>
+                    <div class="col-span-3 text-xs flex flex-wrap gap-1.5">
+                        ${f.required ? '<span class="bg-red-50 text-red-500 px-2 py-0.5 rounded border border-red-100 font-medium">必填</span>' : ''}
+                        ${f.isSystem ? '<span class="bg-blue-50 text-blue-500 px-2 py-0.5 rounded border border-blue-100 font-medium">系統</span>' : ''}
+                        ${f.calcMode === 'average' ? '<span class="bg-amber-50 text-amber-500 px-2 py-0.5 rounded border border-amber-100 font-medium">平均</span>' : ''}
+                    </div>
+                    <div class="col-span-2 text-right flex justify-end gap-1 opacity-60 group-hover:opacity-100 transition-opacity">
+                        <button onclick="moveField(${i}, -1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition" title="上移"><i class="fas fa-arrow-up"></i></button>
+                        <button onclick="moveField(${i}, 1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-slate-600 transition" title="下移"><i class="fas fa-arrow-down"></i></button>
+                        <button onclick="editField('${f.id}')" class="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-indigo-300 hover:text-indigo-600 text-xs rounded-lg text-slate-500 ml-2 transition shadow-sm font-medium"><i class="fas fa-pen"></i></button>
+                        <button onclick="delField('${f.id}')" class="px-2.5 py-1.5 bg-white border border-slate-200 hover:border-red-300 hover:text-red-600 text-xs rounded-lg text-slate-500 ml-1 transition shadow-sm"><i class="fas fa-trash"></i></button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        // --- 3. 編輯器邏輯 ---
+        function addNewField() {
+            const id = 'f_' + Date.now();
+            configData.push({ id, label: '新欄位', type: 'text', order: configData.length + 1, required: false });
+            renderList();
+            editField(id);
+        }
+
+        function editField(id) {
+            const f = configData.find(c => c.id === id);
+            document.getElementById('ed-id').value = f.id;
+            document.getElementById('ed-label').value = f.label;
+            document.getElementById('ed-type').value = f.type;
+            document.getElementById('ed-required').checked = f.required || false;
+            document.getElementById('ed-system').checked = f.isSystem || false;
+            
+            document.getElementById('editor-modal').dataset.curr = JSON.stringify(f);
+            renderOpts();
+            
+            const modal = document.getElementById('editor-modal');
+            modal.classList.remove('hidden');
+            // Trigger animation
+            setTimeout(() => {
+                modal.classList.remove('opacity-0');
+                modal.querySelector('div').classList.remove('scale-95');
+                modal.querySelector('div').classList.add('scale-100');
+            }, 10);
+        }
+
+        function renderOpts() {
+            const type = document.getElementById('ed-type').value;
+            const container = document.getElementById('ed-opts');
+            const f = JSON.parse(document.getElementById('editor-modal').dataset.curr || '{}');
+            let html = '';
+
+            if(type === 'single_select') {
+                html = `
+                    <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">選項清單 (用逗號分隔)</label>
+                    <textarea id="ed-opt-list" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 outline-none" rows="3" placeholder="例如: 國內, 國外, 校內">${f.options?.join(',')||''}</textarea></div>
+                    <div class="mt-4 pt-4 border-t border-slate-200">
+                        <label class="text-xs font-bold text-indigo-600 block mb-2"><i class="fas fa-link mr-1"></i> 選項連動 (進階)</label>
+                        <div class="grid grid-cols-2 gap-3 mb-2">
+                            <input id="ed-dep" placeholder="依賴欄位 ID (如: f_123)" class="w-full border border-slate-300 rounded p-2 text-xs" value="${f.filterRule?.dep||''}">
+                            <input id="ed-val" placeholder="當值為... (如: 國外)" class="w-full border border-slate-300 rounded p-2 text-xs" value="${f.filterRule?.val||''}">
+                        </div>
+                        <input id="ed-lim" placeholder="只顯示這些選項 (逗號分隔)" class="w-full border border-slate-300 rounded p-2 text-xs" value="${f.filterRule?.limitTo?.join(',')||''}">
+                    </div>`;
+            } else if(type === 'number') {
+                html = `
+                    <div class="grid grid-cols-2 gap-4">
+                        <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">分攤模式</label>
+                        <select id="ed-mode" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white">
+                            <option value="copy" ${f.calcMode!=='average'?'selected':''}>複製 (各填一份)</option>
+                            <option value="average" ${f.calcMode==='average'?'selected':''}>平均 (總數分攤)</option>
+                        </select></div>
+                        <div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">小數位數</label>
+                        <input type="number" id="ed-dec" class="w-full border border-slate-300 rounded-lg p-2 text-sm" value="${f.decimal||0}"></div>
+                    </div>
+                    <div class="mt-3"><label class="flex items-center text-sm text-slate-600 cursor-pointer"><input type="checkbox" id="ed-keepZero" ${f.keepZero?'checked':''} class="mr-2 rounded border-slate-300 text-indigo-600"> 保留開頭 0 (如統編)</label></div>`;
+            } else if(type === 'date') {
+                html = `<div><label class="text-xs font-bold text-slate-500 uppercase block mb-1">輸出格式</label>
+                    <select id="ed-fmt" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white">
+                        <option value="ROC" ${f.dateFormat==='ROC'?'selected':''}>民國年 (113/05/20)</option>
+                        <option value="West" ${f.dateFormat==='West'?'selected':''}>西元年 (2024/05/20)</option>
+                    </select></div>`;
+            }
+            container.innerHTML = html || '<div class="text-slate-400 text-center text-xs py-2"><i class="fas fa-info-circle mr-1"></i> 此類型無額外設定</div>';
+        }
+
+        function saveFieldLocal() {
+            const id = document.getElementById('ed-id').value;
+            const f = configData.find(c => c.id === id);
+            
+            f.label = document.getElementById('ed-label').value;
+            f.type = document.getElementById('ed-type').value;
+            f.required = document.getElementById('ed-required').checked;
+            f.isSystem = document.getElementById('ed-system').checked;
+
+            if(f.type === 'single_select') {
+                f.options = document.getElementById('ed-opt-list').value.split(',').map(x=>x.trim()).filter(x=>x);
+                const d=document.getElementById('ed-dep').value, v=document.getElementById('ed-val').value, l=document.getElementById('ed-lim').value;
+                if(d&&v&&l) f.filterRule = {dep:d, val:v, limitTo:l.split(',').map(x=>x.trim())}; else delete f.filterRule;
+            }
+            if(f.type === 'number') {
+                f.calcMode = document.getElementById('ed-mode').value;
+                f.decimal = parseInt(document.getElementById('ed-dec').value)||0;
+                f.keepZero = document.getElementById('ed-keepZero').checked;
+            }
+            if(f.type === 'date') f.dateFormat = document.getElementById('ed-fmt').value;
+
+            closeModal();
+            renderList();
+        }
+
+        function moveField(idx, dir) {
+            if(idx+dir < 0 || idx+dir >= configData.length) return;
+            [configData[idx], configData[idx+dir]] = [configData[idx+dir], configData[idx]];
+            configData.forEach((f, i) => f.order = i+1);
+            renderList();
+        }
+
+        function delField(id) {
+            if(confirm('確定刪除此欄位？')) {
+                configData = configData.filter(c => c.id !== id);
+                renderList();
+            }
+        }
+
+        function closeModal() {
+            const modal = document.getElementById('editor-modal');
+            modal.classList.add('opacity-0');
+            modal.querySelector('div').classList.remove('scale-100');
+            modal.querySelector('div').classList.add('scale-95');
+            setTimeout(() => modal.classList.add('hidden'), 300);
+        }
+
+        // --- 4. 儲存至 GitHub ---
+        async function saveToGitHub() {
+            const btn = document.getElementById('btn-save');
+            const status = document.getElementById('status-msg');
+            const originalHtml = btn.innerHTML;
+            
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner w-4 h-4 border-2 border-white/30 border-t-white mr-2"></div> 儲存中...';
+
+            try {
+                const contentStr = JSON.stringify(configData, null, 2);
+                const contentBase64 = window.btoa(unescape(encodeURIComponent(contentStr)));
+
+                const url = `https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${ghConfig.path}`;
+                const body = {
+                    message: "Update field config via Admin Panel",
+                    content: contentBase64,
+                    sha: ghConfig.sha 
+                };
+
+                const res = await fetch(url, {
+                    method: 'PUT',
+                    headers: {
+                        'Authorization': `token ${ghConfig.token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify(body)
+                });
+
+                if(!res.ok) throw new Error(`GitHub API Error: ${res.status}`);
+                
+                const data = await res.json();
+                ghConfig.sha = data.content.sha;
+                
+                status.classList.remove('hidden');
+                setTimeout(() => status.classList.add('hidden'), 3000);
+
+            } catch (err) {
+                alert('儲存失敗: ' + err.message);
+                console.error(err);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalHtml;
+            }
+        }
+
+        window.onload = init;
+    </script>
+</body>
+</html>
