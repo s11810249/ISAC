@@ -37,7 +37,6 @@
         .nav-btn { border-bottom: 3px solid transparent; color: #64748b; transition: all 0.2s; }
         .nav-btn:hover:not(.active) { color: #002E5D; background: #f8fafc; }
 
-        /* v4.0 Style */
         .year-add-btn { border: 2px dashed #bbf7d0; color: #219653; background-color: #f0fdf4; transition: all 0.2s; border-radius: 0.75rem; text-align: center; padding: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.875rem; }
         .year-add-btn:hover { border-color: #219653; background-color: #dcfce7; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
@@ -66,6 +65,15 @@
         .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
         .logic-card { background: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 0.75rem; transition: all 0.2s; }
         .logic-card:hover { border-color: #CBD5E1; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05); }
+        
+        .toggle-checkbox:checked { right: 0; border-color: #68D391; }
+        .toggle-checkbox:checked + .toggle-label { background-color: #68D391; }
+        
+        .opt-table th { background-color: #f1f5f9; padding: 8px; font-size: 12px; color: #64748b; font-weight: bold; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        .opt-table td { padding: 8px; font-size: 13px; border-bottom: 1px solid #f8fafc; vertical-align: middle; }
+        .opt-table tr:last-child td { border-bottom: none; }
+        .opt-table tr:hover td { background-color: #f8fafc; }
+        .sortable-ghost { opacity: 0.4; background-color: #e2e8f0; }
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-slate-700 bg-background">
@@ -111,7 +119,7 @@
                 <aside class="w-72 bg-white border-r border-slate-200 flex flex-col z-10 flex-shrink-0">
                     <div class="p-5 border-b border-slate-100 bg-white"><div onclick="openYearModal()" class="year-add-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success"><i class="fas fa-plus text-lg"></i> 新增學年度</div></div>
                     <div class="p-2 bg-slate-50 text-xs font-bold text-slate-400 uppercase tracking-wider pl-5 py-2">學年度列表</div>
-                    <div id="year-list" class="flex-grow overflow-y-auto p-3 space-y-2 custom-scroll"></div>
+                    <div id="year-list" class="flex-grow overflow-y-auto p-3 space-y-2 custom-scroll list-none"></div>
                 </aside>
                 <section class="flex-grow flex flex-col">
                     <div id="year-config-panel" class="hidden flex-col h-full">
@@ -143,7 +151,7 @@
             <div id="view-fields" class="w-full h-full hidden flex">
                 <aside class="w-72 bg-white border-r border-slate-200 flex flex-col z-10 flex-shrink-0">
                     <div class="p-5 border-b border-slate-100 bg-white"><div onclick="openCategoryModal()" class="year-add-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success"><i class="fas fa-folder-plus text-lg"></i> 新增模板分類</div></div>
-                    <div id="template-cat-list" class="flex-grow overflow-y-auto p-3 space-y-1 custom-scroll bg-slate-50"></div>
+                    <div id="template-cat-list" class="flex-grow overflow-y-auto p-3 space-y-1 custom-scroll bg-slate-50 list-none"></div>
                 </aside>
                 <section class="flex-grow flex flex-col">
                     <div class="bg-white px-8 py-5 border-b border-slate-200 shadow-sm flex justify-between items-center">
@@ -185,10 +193,21 @@
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">基本設定</h4>
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位 ID <span class="text-red-500">*</span></label><input type="text" id="ed-field-id" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono text-blue-600 focus:ring-primary outline-none" placeholder="e.g. f_name"></div>
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">顯示名稱 <span class="text-red-500">*</span></label><input type="text" id="ed-label" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none" placeholder="e.g. 學生姓名"></div>
+                    
+                    <div>
+                        <label class="text-xs font-bold text-slate-600 mb-1 block">欄位說明 (Help Text)</label>
+                        <textarea id="ed-desc" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none resize-none h-20" placeholder="例如: 請填寫學生所屬學院..."></textarea>
+                        <p class="text-[10px] text-slate-400 mt-1">此說明僅顯示於填報介面提示，不會匯出至 Excel。</p>
+                    </div>
+
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">所屬分類</label><select id="ed-category" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none"></select></div>
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位類型</label><select id="ed-type" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none" onchange="renderOpts()"></select></div>
+                    
                     <div class="pt-2 space-y-3">
-                        <div><label class="flex items-center text-sm cursor-pointer mb-1"><input type="checkbox" id="ed-system" class="custom-checkbox mr-2" onchange="toggleSystemHint(this.checked)"> <span class="font-bold text-slate-700">🚫 系統自動帶入 (唯讀/匯入)</span></label><p id="sys-hint" class="hidden text-[10px] text-amber-600 pl-6 leading-tight">此欄位對應匯入檔案，使用者無法編輯。建議勾選『必填』確保資料完整。</p></div>
+                        <div>
+                            <label class="flex items-center text-sm cursor-pointer mb-1"><input type="checkbox" id="ed-system" class="custom-checkbox mr-2" onchange="toggleSystemHint(this.checked)"> <span class="font-bold text-slate-700">系統自動帶入 (唯讀/匯入)</span></label>
+                            <p class="text-[10px] text-amber-600 pl-6 leading-tight">此欄位對應匯入檔案，使用者無法編輯。建議勾選『必填』確保資料完整。</p>
+                        </div>
                         <label class="flex items-center text-sm cursor-pointer"><input type="checkbox" id="ed-required" class="custom-checkbox mr-2"> <span class="font-bold text-slate-700">必填項目</span></label>
                     </div>
                 </div>
@@ -199,8 +218,12 @@
                             <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="vis-toggle" class="sr-only peer" onchange="toggleVisSettings(this.checked)"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#002E5D]"></div><span class="ml-3 text-xs font-medium text-slate-600" id="vis-label">總是顯示</span></label>
                         </div>
                         <div id="vis-settings" class="hidden bg-white border border-indigo-100 rounded-lg p-4 shadow-sm animate-fade-in">
-                            <div class="flex items-center gap-2 text-xs text-slate-500 mb-2"><i class="fas fa-info-circle"></i> 當以下條件成立時，顯示此欄位：</div>
-                            <div class="grid grid-cols-2 gap-4"><div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">依賴對象 (決定者)</label><select id="ed-vis-dep" class="w-full border border-slate-300 rounded p-2 text-sm bg-white"></select></div><div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">當內容是 (條件值)</label><input id="ed-vis-val" class="w-full border border-slate-300 rounded p-2 text-sm" placeholder="輸入觸發值"></div></div>
+                            <div class="flex items-center gap-2 text-xs text-slate-500 mb-2"><i class="fas fa-info-circle"></i> 當以下條件成立時，執行動作：</div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">依賴對象 (決定者)</label><select id="ed-vis-dep" class="w-full border border-slate-300 rounded p-2 text-sm bg-white"></select></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">當內容是 (條件值)</label><input id="ed-vis-val" class="w-full border border-slate-300 rounded p-2 text-sm" placeholder="輸入觸發值"></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">動作 (Action)</label><select id="ed-vis-action" class="w-full border border-slate-300 rounded p-2 text-sm bg-white"><option value="show">顯示 (Show)</option><option value="hide">隱藏 (Hide)</option></select></div>
+                            </div>
                         </div>
                     </div>
                     <div id="ed-opts-container" class="p-8"></div>
@@ -221,7 +244,7 @@
             </div>
             <div class="flex-grow overflow-y-auto custom-scroll p-6 bg-slate-50">
                 <div id="logic-conflicts" class="hidden mb-6 p-4 bg-red-50 border border-red-200 rounded-lg"><h4 class="text-red-700 font-bold flex items-center gap-2 mb-2"><i class="fas fa-exclamation-triangle"></i> 發現邏輯問題</h4><ul id="conflict-list" class="list-disc list-inside text-sm text-red-600 space-y-2"></ul></div>
-                <div class="space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-4 border-b pb-2 flex items-center justify-between"><span><i class="fas fa-eye text-indigo-500 mr-2"></i> 顯示條件 (Visibility)</span><span id="vis-count" class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">0</span></h4><div id="vis-list" class="space-y-3"></div></div>
                     <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-4 border-b pb-2 flex items-center justify-between"><span><i class="fas fa-list-ul text-emerald-500 mr-2"></i> 選項連動 (Option Logic)</span><span id="opt-count" class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">0</span></h4><div id="opt-list" class="space-y-3"></div></div>
                 </div>
@@ -230,35 +253,19 @@
         </div>
     </div>
 
-    <div id="choice-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center modal-overlay p-4">
-        <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6 text-center transform scale-95 transition-transform duration-300">
-            <div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl"><i class="fas fa-tools"></i></div>
-            <h3 class="text-lg font-bold text-slate-800 mb-2">請選擇修正方式</h3><p class="text-sm text-slate-500 mb-6">您想要修改目前的「規則設定」，還是補齊「源頭選項」？</p>
-            <div class="flex flex-col gap-3">
-                <button id="btn-edit-self" class="w-full py-3 rounded-lg border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-50 transition flex items-center justify-center gap-2"><i class="fas fa-sliders-h"></i> 修改規則設定</button>
-                <button id="btn-fix-source" class="w-full py-3 rounded-lg border border-emerald-200 text-emerald-700 font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-2"><i class="fas fa-plus-circle"></i> 補齊源頭選項 (自動修復)</button>
-            </div>
-            <button onclick="document.getElementById('choice-modal').classList.add('hidden')" class="mt-4 text-xs text-slate-400 hover:text-slate-600 underline">取消</button>
-        </div>
-    </div>
-
-    <div id="impact-modal" class="fixed inset-0 z-[90] hidden flex items-center justify-center modal-overlay p-4">
-        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300">
-            <div class="flex items-center gap-3 mb-4 text-amber-600"><i class="fas fa-exclamation-triangle text-2xl"></i><h3 class="text-lg font-bold text-slate-800">確認變更源頭結構</h3></div>
-            <p class="text-sm text-slate-600 mb-4 leading-relaxed">您即將在源頭欄位 <span id="imp-dep-name" class="font-bold text-primary"></span> 中新增選項 <span id="imp-val" class="font-bold text-emerald-600 bg-emerald-50 px-1 rounded"></span>。</p>
-            <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-500 mb-6"><p class="font-bold mb-1">影響範圍評估：</p><p>此欄位目前被 <span id="imp-count" class="font-bold text-primary">0</span> 個規則引用。新增選項通常是安全的，但請確保這符合您的資料定義。</p></div>
-            <div class="flex justify-end gap-3"><button onclick="document.getElementById('impact-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button><button id="btn-confirm-fix" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 text-sm">確認新增並修復</button></div>
-        </div>
-    </div>
+    <div id="choice-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6 text-center transform scale-95 transition-transform duration-300"><div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl"><i class="fas fa-tools"></i></div><h3 class="text-lg font-bold text-slate-800 mb-2">請選擇修正方式</h3><p class="text-sm text-slate-500 mb-6">您想要修改目前的「規則設定」，還是補齊「源頭選項」？</p><div class="flex flex-col gap-3"><button id="btn-edit-self" class="w-full py-3 rounded-lg border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-50 transition flex items-center justify-center gap-2"><i class="fas fa-sliders-h"></i> 修改規則設定</button><button id="btn-fix-source" class="w-full py-3 rounded-lg border border-emerald-200 text-emerald-700 font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-2"><i class="fas fa-plus-circle"></i> 補齊源頭選項 (自動修復)</button></div><button onclick="document.getElementById('choice-modal').classList.add('hidden')" class="mt-4 text-xs text-slate-400 hover:text-slate-600 underline">取消</button></div></div>
+    <div id="impact-modal" class="fixed inset-0 z-[90] hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300"><div class="flex items-center gap-3 mb-4 text-amber-600"><i class="fas fa-exclamation-triangle text-2xl"></i><h3 class="text-lg font-bold text-slate-800">確認變更源頭結構</h3></div><p class="text-sm text-slate-600 mb-4 leading-relaxed">您即將在源頭欄位 <span id="imp-dep-name" class="font-bold text-primary"></span> 中新增選項 <span id="imp-val" class="font-bold text-emerald-600 bg-emerald-50 px-1 rounded"></span>。</p><div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-500 mb-6"><p class="font-bold mb-1">影響範圍評估：</p><p>此欄位目前被 <span id="imp-count" class="font-bold text-primary">0</span> 個規則引用。新增選項通常是安全的，但請確保這符合您的資料定義。</p></div><div class="flex justify-end gap-3"><button onclick="document.getElementById('impact-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button><button id="btn-confirm-fix" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 text-sm">確認新增並修復</button></div></div></div>
 
     <div id="picker-modal" class="fixed inset-0 z-[55] hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col max-h-[80vh]"><div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2"><h3 class="text-lg font-bold text-slate-800">從模板複製欄位</h3><button onclick="document.getElementById('picker-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button></div><div class="bg-slate-50 p-2 rounded mb-2 border border-slate-200"><label class="flex items-center text-sm font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="picker-select-all" class="custom-checkbox mr-2" onchange="togglePickerAll(this)"> 全選 / 取消全選</label></div><div id="picker-list" class="flex-grow overflow-y-auto custom-scroll space-y-2 p-1"></div><div class="mt-4 pt-2 border-t border-slate-100 flex justify-end"><button onclick="addSelectedFields()" class="w-full btn-create font-bold py-2.5 rounded-lg shadow">確認複製選取欄位</button></div></div></div>
-    <div id="move-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300"><div class="mb-4"><h3 class="text-lg font-bold text-slate-800"><i class="fas fa-exchange-alt text-primary mr-2"></i>移動順序</h3><p class="text-sm text-slate-500 mt-1">將 <span id="move-target-name" class="font-bold text-primary"></span> 移動至：</p></div><div class="mb-6"><select id="move-select" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none max-h-60 overflow-y-auto custom-scroll"></select></div><div class="flex justify-end gap-3"><button onclick="document.getElementById('move-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button><button onclick="saveMove()" class="px-4 py-2 btn-manage rounded-lg font-bold shadow-md text-sm">確認移動</button></div></div></div>
+    <div id="move-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300"><div class="mb-4"><h3 class="text-lg font-bold text-slate-800">移動順序</h3><p class="text-sm text-slate-500 mt-1">將 <span id="move-target-name" class="font-bold text-primary"></span> 移動至：</p></div><div class="mb-6"><select id="move-select" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none max-h-60 overflow-y-auto custom-scroll"></select></div><div class="flex justify-end gap-3"><button onclick="document.getElementById('move-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button><button onclick="saveMove()" class="px-4 py-2 btn-manage rounded-lg font-bold shadow-md text-sm">確認移動</button></div></div></div>
 
     <script>
         let ghConfig = { user: '', repo: '', path: 'hedb/config.json', token: '' };
         let configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [] }; 
         let yearTemplateData = { fields: [] }; 
         let activeYearId = null, activeCatId = 'all', isEditMode = false, moveSrcIndex = -1, moveType = '', targetList = 'global', unsavedChanges = false, configSha = null, activeLogicEdit = null;
+        let currentOptions = [], currentRules = [];
+        let editingOptionIdx = -1; 
 
         const SYSTEM_DEFAULT_TYPES = [
             {key:'text', label:'文字'}, {key:'number', label:'數字'}, {key:'date', label:'日期'}, {key:'single_select', label:'單選'}, {key:'list', label:'條列式'}
@@ -283,10 +290,18 @@
                 localStorage.setItem('gh_creds_safe', JSON.stringify({ user, repo })); sessionStorage.setItem('gh_token', token);
                 document.getElementById('login-screen').classList.add('hidden'); document.getElementById('admin-interface').classList.remove('hidden'); document.getElementById('admin-interface').style.opacity = '1';
                 await syncYearsFromFiles(); renderYearList(); if(configData.academicYears.length > 0) selectYear(configData.academicYears[0].year); renderTemplateCats(); renderTypeManagerPage(); 
-            } catch (err) { console.error(err); msg.style.opacity='1'; msg.innerText='連線失敗: ' + err.message; } finally { btn.innerHTML = '登入系統'; btn.disabled = false; }
+            } catch (err) { 
+                console.error(err); 
+                let info = '連線失敗: ' + err.message;
+                if(err.message.includes('401') || err.message.includes('Bad credentials')) info = '登入失敗：Access Token 有誤或已過期，請重新輸入。';
+                else if(err.message.includes('404')) info = '找不到儲存庫：請確認帳號與 Repository 名稱是否正確。';
+                else if(err.message.includes('403')) info = '存取被拒：權限不足或請求過於頻繁。';
+                else if(err.message.includes('Failed to fetch')) info = '無法連線：請檢查您的網路連線。';
+                msg.style.opacity='1'; msg.innerText = info; 
+            } finally { btn.innerHTML = '登入系統'; btn.disabled = false; }
         }
 
-        async function syncYearsFromFiles() { try { const dirRes = await apiFetch('hedb/year_templates'); if(dirRes.status !== 200 || !Array.isArray(dirRes.data)) return; const fileYears = dirRes.data.filter(f => f.name.match(/^year_(.+)_templates\.json$/)).map(f => f.name.match(/^year_(.+)_templates\.json$/)[1]); let changed = false; fileYears.forEach(y => { if(!configData.academicYears.some(cy => cy.year === y)) { configData.academicYears.push({ year: y, isDefault: false }); changed = true; } }); if(changed) { configData.academicYears.sort((a,b) => b.year.localeCompare(a.year)); setUnsaved(true); showMsg('info', '同步完成', '系統已自動偵測到檔案庫中的學年度模組並加入列表，請記得儲存設定。'); } } catch(e) {} }
+        async function syncYearsFromFiles() { try { const dirRes = await apiFetch('hedb/year_templates'); if(dirRes.status !== 200 || !Array.isArray(dirRes.data)) return; const fileYears = dirRes.data.filter(f => f.name.match(/^year_(.+)_templates\.json$/)).map(f => f.name.match(/^year_(.+)_templates\.json$/)[1]); let changed = false; fileYears.forEach(y => { if(!configData.academicYears.some(cy => cy.year === y)) { configData.academicYears.push({ year: y, isDefault: false }); changed = true; } }); if(changed) { configData.academicYears.sort((a,b) => b.year.localeCompare(a.year)); setUnsaved(true); showMsg('info', '同步完成', '系統已自動偵測到檔案庫中的學年度模組。'); } } catch(e) {} }
         function toggleToken() { const t = document.getElementById('gh-token'), i = document.getElementById('token-eye'); t.type = t.type === 'password' ? 'text' : 'password'; i.className = t.type === 'password' ? 'fas fa-eye' : 'fas fa-eye-slash'; }
         function logout() { showMsg('confirm', '確定登出？', '未儲存的變更將會遺失。', null, () => { localStorage.removeItem('gh_creds_safe'); sessionStorage.removeItem('gh_token'); location.reload(); }); }
 
@@ -314,7 +329,9 @@
         async function selectYear(year) { activeYearId = year; renderYearList(); document.getElementById('current-year-title').innerText = `${year} 學年度`; const yConf = configData.academicYears.find(y => y.year === year); document.getElementById('is-default-year').checked = yConf.isDefault || false; document.getElementById('default-badge').classList.toggle('hidden', !yConf.isDefault); document.getElementById('year-empty-state').classList.add('hidden'); document.getElementById('year-config-panel').classList.remove('hidden'); document.getElementById('year-config-panel').classList.add('flex'); updateYearFilterOptions(); document.getElementById('year-filter-cat').value = 'all'; document.getElementById('year-field-list').innerHTML = `<tr><td colspan="6" class="p-8 text-center text-slate-400"><div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>讀取設定中...</td></tr>`; try { const res = await apiFetch(`hedb/year_templates/year_${year}_templates.json`); yearTemplateData = res.status===404?{fields:[]}:res.data; renderYearFields(); } catch(e) { document.getElementById('year-field-list').innerHTML = `<tr><td colspan="6" class="p-4 text-red-500 text-center">讀取失敗: ${e.message}</td></tr>`; } }
         function updateYearFilterOptions() { const sel = document.getElementById('year-filter-cat'), val = sel.value; sel.innerHTML = '<option value="all">所有分類</option>'; configData.templateCategories.forEach(c => sel.innerHTML += `<option value="${c.id}">${c.name}</option>`); sel.innerHTML += '<option value="uncategorized">未分類</option>'; sel.value = val; }
         function deleteCurrentYear() { showMsg('confirm', '確認刪除學年度？', `這將會刪除 ${activeYearId} 學年度，無法復原。`, null, async () => { try { const path = `hedb/year_templates/year_${activeYearId}_templates.json`; const check = await apiFetch(path); if(check.status===200) await deleteFile(path, check.sha); configData.academicYears = configData.academicYears.filter(y => y.year !== activeYearId); await saveConfig(); activeYearId = null; setUnsaved(false); document.getElementById('year-config-panel').classList.add('hidden'); document.getElementById('year-empty-state').classList.remove('hidden'); renderYearList(); showMsg('success','成功','學年度已刪除'); } catch(e) { showMsg('error','失敗',e.message); } }); }
-        function renderYearFields() { const listEl = document.getElementById('year-field-list'), filter = document.getElementById('year-filter-cat')?.value || 'all'; listEl.innerHTML = ''; yearTemplateData.fields.forEach((f, idx) => { if(filter !== 'all' && ((filter==='uncategorized'&&f.category) || (filter!=='uncategorized'&&f.category!==filter))) return; const catName = configData.templateCategories.find(c => c.id === f.category)?.name || '未分類'; const typeName = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type; const btns = filter === 'all' ? `<button onclick="moveField(${idx},-1,'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-up"></i></button><button onclick="moveField(${idx},1,'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-down"></i></button><button onclick="openMoveModal(${idx},'year')" class="p-1.5 hover:bg-indigo-100 rounded text-slate-400 hover:text-primary transition mr-1"><i class="fas fa-exchange-alt"></i></button>` : ''; listEl.innerHTML += `<tr class="hover:bg-slate-50 border-b border-slate-100 transition"><td class="text-center py-3"><input type="checkbox" class="year-check custom-checkbox" value="${idx}"></td><td class="text-center font-mono text-xs text-slate-400">${idx+1}</td><td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td><td class="text-xs text-slate-500">${catName}</td><td class="text-xs text-slate-500">${typeName}</td><td class="text-right py-3 pr-4"><div class="flex justify-end gap-1">${btns}<button onclick="editField('${f.id}','year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-primary transition"><i class="fas fa-pen"></i></button><button onclick="removeYearField(${idx})" class="p-1.5 hover:bg-red-100 rounded text-slate-400 hover:text-danger transition"><i class="fas fa-trash-alt"></i></button></div></td></tr>`; }); if(listEl.innerHTML==='') listEl.innerHTML = '<tr><td colspan="6" class="p-8 text-center text-slate-400">尚未加入欄位</td></tr>'; }
+        function renderYearFields() { const listEl = document.getElementById('year-field-list'), filter = document.getElementById('year-filter-cat')?.value || 'all'; listEl.innerHTML = ''; yearTemplateData.fields.forEach((f, idx) => { if(filter !== 'all' && ((filter==='uncategorized'&&f.category) || (filter!=='uncategorized'&&f.category!==filter))) return; const catName = configData.templateCategories.find(c => c.id === f.category)?.name || '未分類'; const typeName = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type; const btns = filter === 'all' ? `<button onclick="moveField(${idx},-1,'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-up"></i></button><button onclick="moveField(${idx},1,'year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-down"></i></button><button onclick="openMoveModal(${idx},'year')" class="p-1.5 hover:bg-indigo-100 rounded text-slate-400 text-primary mr-1"><i class="fas fa-exchange-alt"></i></button>` : ''; listEl.innerHTML += `<tr class="hover:bg-slate-50 border-b border-slate-100 transition"><td class="text-center py-3"><input type="checkbox" class="year-check custom-checkbox" value="${idx}"></td><td class="text-center font-mono text-xs text-slate-400">${idx+1}</td><td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td><td class="text-xs text-slate-500">${catName}</td><td class="text-xs text-slate-500">${typeName}</td>
+        <td class="text-center">${f.description ? `<i class="fas fa-info-circle text-slate-300 hover:text-primary" title="${f.description}"></i>` : ''}</td>
+        <td class="text-right py-3 pr-4"><div class="flex justify-end gap-1">${btns}<button onclick="editField('${f.id}','year')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-pen"></i></button><button onclick="removeYearField(${idx})" class="p-1.5 hover:bg-red-100 rounded text-slate-400 text-danger"><i class="fas fa-trash-alt"></i></button></div></td></tr>`; }); if(listEl.innerHTML==='') listEl.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">尚未加入欄位</td></tr>'; }
         function removeYearField(idx) { showMsg('confirm', '移除欄位？', '確定要從此學年度移除此欄位？', null, () => { yearTemplateData.fields.splice(idx, 1); renderYearFields(); setUnsaved(true); showMsg('success', '成功', '欄位已移除'); }); }
         function toggleYearAll(el) { document.querySelectorAll('.year-check').forEach(c => c.checked = el.checked); }
         function deleteSelectedYearFields() { const chk = Array.from(document.querySelectorAll('.year-check:checked')).map(c=>parseInt(c.value)); if(chk.length) showMsg('confirm', '批次刪除', `確定移除選取的 ${chk.length} 個欄位？`, null, () => { chk.sort((a,b)=>b-a).forEach(i => yearTemplateData.fields.splice(i,1)); renderYearFields(); setUnsaved(true); showMsg('success', '成功', '已移除選取項目'); }); }
@@ -325,7 +342,7 @@
         function renameCurrentCat() { const c=configData.templateCategories.find(x=>x.id===activeCatId); if(c) showMsg('prompt', '重新命名分類', '請輸入新名稱', {label: '名稱',value:c.name},(v)=>{if(v){c.name=v;renderTemplateCats();setUnsaved(true);document.getElementById('current-cat-title').innerText=v; showMsg('success', '成功', '分類已重新命名'); }}); }
         function deleteCurrentCat() { showMsg('confirm', '刪除分類？', '分類下的欄位將變為「未分類」。', null,()=>{ configData.templateCategories=configData.templateCategories.filter(c=>c.id!==activeCatId); configData.globalFields.forEach(f=>{if(f.category===activeCatId)delete f.category}); selectCat('all'); setUnsaved(true); showMsg('success', '成功', '分類已刪除'); }); }
         function selectCat(id) { activeCatId=id; renderTemplateCats(); document.getElementById('current-cat-title').innerText=id==='all'?'全部欄位':id==='uncategorized'?'未分類':configData.templateCategories.find(c=>c.id===id).name; document.getElementById('cat-actions').classList.toggle('hidden', id==='all'||id==='uncategorized'); renderGlobalList(); }
-        function renderGlobalList() { const el = document.getElementById('global-field-list'); let list = configData.globalFields; if(activeCatId==='uncategorized') list=list.filter(f=>!f.category); else if(activeCatId!=='all') list=list.filter(f=>f.category===activeCatId); list.sort((a,b)=>a.order-b.order); el.innerHTML = list.map((f,i)=> { const typeName = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type; return `<tr class="hover:bg-slate-50 border-b border-slate-100 transition"><td class="text-center font-mono text-xs text-slate-400 py-3">${i+1}</td><td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td><td class="text-xs text-primary font-mono">${typeName}</td><td class="text-xs text-slate-400">${f.required?'<span class="text-red-500 bg-red-50 px-1 rounded">必填</span>':''}</td><td class="text-right flex justify-end gap-1 py-3 pr-4"><button onclick="moveField(${i},-1,'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-up"></i></button><button onclick="moveField(${i},1,'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-down"></i></button><button onclick="editField('${f.id}','global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400 hover:text-primary transition mr-1"><i class="fas fa-pen"></i></button><button onclick="delGlobalField('${f.id}')" class="p-1.5 hover:bg-red-100 rounded text-slate-400 hover:text-danger transition"><i class="fas fa-trash-alt"></i></button></td></tr>`; }).join(''); }
+        function renderGlobalList() { const el = document.getElementById('global-field-list'); let list = configData.globalFields; if(activeCatId==='uncategorized') list=list.filter(f=>!f.category); else if(activeCatId!=='all') list=list.filter(f=>f.category===activeCatId); list.sort((a,b)=>a.order-b.order); el.innerHTML = list.map((f,i)=> { const typeName = configData.fieldTypes.find(t=>t.key===f.type)?.label || f.type; return `<tr class="hover:bg-slate-50 border-b border-slate-100 transition"><td class="text-center font-mono text-xs text-slate-400 py-3">${i+1}</td><td class="font-bold text-slate-700 text-sm">${f.label}<br><span class="text-[10px] text-slate-400 font-mono">${f.id}</span></td><td class="text-xs text-primary font-mono">${typeName}</td><td class="text-xs text-slate-400">${f.required?'<span class="text-red-500 bg-red-50 px-1 rounded">必填</span>':''}</td><td class="text-right flex justify-end gap-1 py-3 pr-4"><button onclick="moveField(${i},-1,'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-up"></i></button><button onclick="moveField(${i},1,'global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-arrow-down"></i></button><button onclick="editField('${f.id}','global')" class="p-1.5 hover:bg-slate-200 rounded text-slate-400"><i class="fas fa-pen"></i></button><button onclick="delGlobalField('${f.id}')" class="p-1.5 hover:bg-red-100 rounded text-slate-400 text-danger"><i class="fas fa-trash-alt"></i></button></td></tr>`; }).join(''); }
         function addNewGlobalField() { isEditMode=false;targetList='global';prepEditor(); }
         function editField(id, type) { isEditMode=true;targetList=type;const list=type==='global'?configData.globalFields:yearTemplateData.fields; prepEditor(list.find(f=>f.id===id)); }
         function delGlobalField(id) { showMsg('confirm', '刪除模板？', '確定刪除此模板？', null,()=>{configData.globalFields=configData.globalFields.filter(f=>f.id!==id);renderGlobalList();setUnsaved(true); showMsg('success', '成功', '模板已刪除'); }); }
@@ -349,7 +366,7 @@
             const checkDep = (fId, depId, ruleType, triggerVal) => {
                 if(!depId) return false;
                 let isValid = true;
-                if(fId === depId) { conflicts.push(`🔴 <b>鬼打牆設定 (循環)</b>：欄位 [${fieldMap.get(fId)}] 不能依賴自己，這會造成當機。`); isValid = false; }
+                if(fId === depId) { conflicts.push(`🔴 <b>鬼打牆</b>：欄位 [${fieldMap.get(fId)}] 不能依賴自己，這會造成當機。`); isValid = false; }
                 else if(!fieldMap.has(depId)) { conflicts.push(`🔴 <b>找不到源頭</b>：規則依賴 [${depId}]，但該欄位已消失。`); isValid = false; }
                 else if(triggerVal && fieldOptions.has(depId)) {
                     if(!fieldOptions.get(depId).includes(triggerVal)) { conflicts.push(`🟠 <b>條件無效</b>：[${fieldMap.get(depId)}] 沒有選項 '${triggerVal}'，規則永遠不會觸發。`); isValid = false; }
@@ -359,7 +376,7 @@
 
             const visited = new Set(); const recursionStack = new Set();
             const detectCycle = (currId, startId, path) => {
-                if(recursionStack.has(currId)) { if(currId === startId) conflicts.push(`🔴 <b>鬼打牆設定 (循環)</b>：${path.join(' -> ')} -> ${startId}，會導致系統崩潰。`); return; }
+                if(recursionStack.has(currId)) { if(currId === startId) conflicts.push(`🔴 <b>邏輯死結</b>：${path.join(' -> ')} -> ${startId}，會導致系統崩潰。`); return; }
                 if(visited.has(currId)) return; visited.add(currId); recursionStack.add(currId);
                 const f = list.find(x => x.id === currId);
                 if(f && f.visibilityRule && f.visibilityRule.dep) detectCycle(f.visibilityRule.dep, startId, [...path, f.visibilityRule.dep]);
@@ -397,7 +414,7 @@
         function renderLogicRow(field, rule, type, fIdx, listType, fieldMap, fieldOptions, ruleIdx = null, isValid = true) {
             const isEditing = activeLogicEdit && activeLogicEdit.id === field.id && activeLogicEdit.type === type && activeLogicEdit.ruleIdx === ruleIdx;
             
-            let statusHtml = '<span class="text-green-600 font-bold text-xs"><i class="fas fa-check-circle"></i> 檢測通過：設定正確</span>';
+            let statusHtml = '<span class="text-green-600 font-bold text-xs"><i class="fas fa-check-circle"></i> 邏輯檢測通過</span>';
             const depName = fieldMap.get(rule.dep) || rule.dep;
             const depValid = fieldMap.has(rule.dep);
             const valValid = !depValid || !fieldOptions.has(rule.dep) || fieldOptions.get(rule.dep).includes(rule.val);
@@ -410,13 +427,19 @@
                 fieldMap.forEach((label, id) => { if(id !== field.id) depOpts += `<option value="${id}" ${id===rule.dep?'selected':''}>${label} (${id})</option>`; });
                 let valInput = fieldOptions.has(rule.dep) ? `<select id="edit-val" class="w-full border border-slate-300 rounded p-1.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none"><option value="">請選擇...</option>` + fieldOptions.get(rule.dep).map(o => `<option value="${o}" ${o===rule.val?'selected':''}>${o}</option>`).join('') + `</select>` : `<input id="edit-val" value="${rule.val}" class="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-primary outline-none" placeholder="輸入值">`;
 
+                let actionSelect = '';
+                if(type === 'vis') {
+                    actionSelect = `<div><label class="text-[10px] text-slate-500 font-bold block mb-1">動作 (Action)</label><select id="edit-action" class="w-full border border-slate-300 rounded p-1.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none"><option value="show" ${rule.action!=='hide'?'selected':''}>顯示 (Show)</option><option value="hide" ${rule.action==='hide'?'selected':''}>隱藏 (Hide)</option></select></div>`;
+                }
+
                 return `<div class="bg-white border border-slate-200 border-l-4 border-l-primary rounded-lg p-4 mb-3 shadow-sm">
                     <div class="flex justify-between items-center mb-4"><span class="font-bold text-slate-800">編輯規則 (${field.label})</span><div class="text-right">${statusHtml}</div></div>
-                    <div class="grid grid-cols-2 gap-4 mb-4"><div><label class="text-[10px] text-slate-500 font-bold block mb-1">依賴對象 (決定者)</label><select id="edit-dep" class="w-full border border-slate-300 rounded p-1.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none" onchange="updateLogicEditState('${field.id}','${type}',${fIdx},'${listType}',${ruleIdx}, this.value)">${depOpts}</select></div><div><label class="text-[10px] text-slate-500 font-bold block mb-1">當內容是 (條件值)</label>${valInput}</div></div>
+                    <div class="grid grid-cols-2 gap-4 mb-4"><div><label class="text-[10px] text-slate-500 font-bold block mb-1">依賴對象 (決定者)</label><select id="edit-dep" class="w-full border border-slate-300 rounded p-1.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none" onchange="updateLogicEditState('${field.id}','${type}',${fIdx},'${listType}',${ruleIdx}, this.value)">${depOpts}</select></div><div><label class="text-[10px] text-slate-500 font-bold block mb-1">當內容是 (條件值)</label>${valInput}</div>${actionSelect}</div>
                     <div class="flex justify-end gap-2"><button onclick="cancelLogicEdit('${listType}')" class="px-3 py-1.5 bg-white border border-slate-300 rounded text-xs hover:bg-slate-50 font-bold text-slate-600 transition">取消</button><button onclick="saveLogicEdit('${field.id}', '${type}', ${fIdx}, '${listType}', ${ruleIdx})" class="px-3 py-1.5 bg-primary text-white rounded text-xs hover:bg-[#001e3d] shadow-sm font-bold transition">確認變更</button></div></div>`;
             } else {
                 const displayVal = `<span class="bg-slate-100 px-1.5 py-0.5 rounded text-slate-600 font-mono text-xs font-bold">${rule.val}</span>`;
-                const content = type === 'vis' ? `<span class="font-bold text-primary">${field.label}</span> 顯示條件：當 <span class="font-bold text-slate-700">${depName}</span> 是 ${displayVal}` : `<span class="font-bold text-emerald-600">${field.label}</span> 連動規則：當 <span class="font-bold text-slate-700">${depName}</span> 是 ${displayVal}，顯示 [${rule.limitTo?.join(', ')}]`;
+                const actionText = (type === 'vis' && rule.action === 'hide') ? '<span class="text-red-600 font-bold">隱藏</span>' : '<span class="text-primary font-bold">顯示</span>';
+                const content = type === 'vis' ? `<span class="font-bold text-primary">${field.label}</span>：當 <span class="font-bold text-slate-700">${depName}</span> 是 ${displayVal} 時 ${actionText}` : `<span class="font-bold text-emerald-600">${field.label}</span> 連動規則：當 <span class="font-bold text-slate-700">${depName}</span> 是 ${displayVal}，顯示 [${rule.limitTo?.join(', ')}]`;
                 
                 const actionBtn = isValid ? '' : `<button onclick="promptEditChoice('${field.id}', '${rule.dep}', '${listType}', '${rule.val}')" class="text-slate-300 hover:text-primary transition p-1.5 rounded-full hover:bg-slate-100" title="修正設定"><i class="fas fa-pencil-alt"></i></button>`;
                 
@@ -435,6 +458,7 @@
             const list = listType === 'global' ? configData.globalFields : yearTemplateData.fields; const f = list[fIdx];
             const rule = type === 'vis' ? f.visibilityRule : (f.filterRules ? f.filterRules[ruleIdx] : f.filterRule);
             rule.dep = document.getElementById('edit-dep').value; rule.val = document.getElementById('edit-val').value;
+            if(type === 'vis') rule.action = document.getElementById('edit-action').value;
             setUnsaved(true); activeLogicEdit = null; renderLogicList(listType);
         }
 
@@ -442,47 +466,31 @@
             const list = type === 'global' ? configData.globalFields : yearTemplateData.fields;
             const f = list.find(x => x.id === fId);
             const dep = list.find(x => x.id === depId);
-            
             document.getElementById('btn-edit-self').onclick = () => { document.getElementById('choice-modal').classList.add('hidden'); startLogicEdit(fId, f.visibilityRule?.dep === depId ? 'vis' : 'opt', null, type); };
-            
             const btnFix = document.getElementById('btn-fix-source');
-            if(dep && missingVal) {
-                btnFix.classList.remove('hidden');
-                btnFix.onclick = () => { document.getElementById('choice-modal').classList.add('hidden'); showImpactModal(dep, missingVal, list); };
-            } else { btnFix.classList.add('hidden'); }
-
+            if(dep && missingVal) { btnFix.classList.remove('hidden'); btnFix.onclick = () => { document.getElementById('choice-modal').classList.add('hidden'); showImpactModal(dep, missingVal, list); }; } else { btnFix.classList.add('hidden'); }
             document.getElementById('choice-modal').classList.remove('hidden');
         }
 
         function showImpactModal(depField, newVal, contextList) {
-            document.getElementById('imp-dep-name').innerText = depField.label;
-            document.getElementById('imp-val').innerText = newVal;
-            
+            document.getElementById('imp-dep-name').innerText = depField.label; document.getElementById('imp-val').innerText = newVal;
             let count = 0;
-            contextList.forEach(f => {
-                if(f.visibilityRule?.dep === depField.id) count++;
-                if(f.filterRules) f.filterRules.forEach(r => { if(r.dep === depField.id) count++; });
-                else if(f.filterRule?.dep === depField.id) count++;
-            });
+            contextList.forEach(f => { if(f.visibilityRule?.dep === depField.id) count++; if(f.filterRules) f.filterRules.forEach(r => { if(r.dep === depField.id) count++; }); else if(f.filterRule?.dep === depField.id) count++; });
             document.getElementById('imp-count').innerText = count;
-
             document.getElementById('btn-confirm-fix').onclick = () => {
-                if(!depField.options) depField.options = [];
-                if(!depField.options.includes(newVal)) depField.options.push(newVal);
-                document.getElementById('impact-modal').classList.add('hidden');
-                setUnsaved(true);
-                renderLogicList(targetList); 
-                showMsg('success', '修復成功', `已將 '${newVal}' 加入 [${depField.label}] 的選項中。`);
+                if(!depField.options) depField.options = []; if(!depField.options.includes(newVal)) depField.options.push(newVal);
+                document.getElementById('impact-modal').classList.add('hidden'); setUnsaved(true); renderLogicList(targetList); showMsg('success', '修復成功', `已將 '${newVal}' 加入 [${depField.label}] 的選項中。`);
             };
             document.getElementById('impact-modal').classList.remove('hidden');
         }
 
-        // --- Editor Logic ---
+        // --- Editor Logic (v19.0) ---
         function prepEditor(f = {}) {
             document.getElementById('editor-title').innerText = isEditMode ? '編輯欄位' : '建立新欄位';
             document.getElementById('ed-orig-id').value = f.id || '';
             document.getElementById('ed-field-id').value = f.id || ''; document.getElementById('ed-field-id').readOnly = isEditMode && targetList !== 'global';
             document.getElementById('ed-label').value = f.label || '';
+            document.getElementById('ed-desc').value = f.description || ''; // v19.0 Load Description
             document.getElementById('ed-required').checked = f.required || false;
             document.getElementById('ed-system').checked = f.isSystem || false; toggleSystemHint(f.isSystem);
 
@@ -507,6 +515,7 @@
             const visDepSel = document.getElementById('ed-vis-dep'); visDepSel.innerHTML = '<option value="">請選擇...</option>';
             allFields.filter(x => x.id !== f.id).forEach(x => visDepSel.innerHTML += `<option value="${x.id}" ${f.visibilityRule?.dep===x.id?'selected':''}>${x.label} (${x.id})</option>`);
             document.getElementById('ed-vis-val').value = f.visibilityRule?.val || '';
+            document.getElementById('ed-vis-action').value = f.visibilityRule?.action || 'show';
 
             document.getElementById('editor-modal').dataset.curr = JSON.stringify(f);
             document.getElementById('editor-modal').classList.remove('hidden');
@@ -519,7 +528,22 @@
             else { el.classList.add('hidden'); lbl.innerText="總是顯示 (預設)"; lbl.className="ml-3 text-xs font-medium text-slate-600"; }
         }
 
-        function toggleSystemHint(checked) { document.getElementById('sys-hint').classList.toggle('hidden', !checked); }
+        function toggleSystemHint(checked) { 
+            const req = document.getElementById('ed-required');
+            if(checked) { req.checked = true; req.disabled = true; } else { req.disabled = false; }
+        }
+
+        function toggleAdvanced(id, checked) {
+            const el = document.getElementById(id);
+            if(checked) { el.classList.remove('hidden'); }
+            else {
+                if(el.querySelectorAll('input').length > 0 && !confirm("關閉後將清除此區塊的設定，確定嗎？")) {
+                    document.getElementById(id.replace('panel','toggle')).checked = true;
+                    return;
+                }
+                el.classList.add('hidden'); 
+            }
+        }
 
         function renderOpts() {
             const type = document.getElementById('ed-type').value;
@@ -529,45 +553,125 @@
             const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join('');
 
             let html = '';
+            
             if(type === 'single_select') {
-                const optsText = f.options ? f.options.join(',') : '';
+                const hasRules = (f.filterRules && f.filterRules.length > 0) || !!f.filterRule;
                 html = `
                 <div class="space-y-6">
-                    <div><h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">1. 設定選項清單</h4><textarea id="ed-opt-list" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary outline-none" rows="3" placeholder="例如: 是,否,不確定" oninput="updateRuleCheckboxes()">${optsText}</textarea><p class="text-[10px] text-slate-400 mt-1">選項間請用半形逗號分隔。</p></div>
-                    <div class="bg-indigo-50/50 rounded-xl p-5 border border-indigo-100"><div class="flex justify-between items-center mb-4"><h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-random"></i> 2. 選項連動邏輯 (Logic Rules)</h4><button onclick="addRule()" class="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1 rounded hover:bg-indigo-50 transition font-bold">+ 新增規則</button></div><p class="text-[11px] text-slate-500 mb-4">設定當其他欄位的值改變時，此欄位應該顯示哪些選項。</p><div id="rule-list" class="space-y-3"></div></div>
+                    <div>
+                        <div class="bg-white border border-slate-200 rounded-lg overflow-hidden shadow-sm">
+                            <div class="p-3 bg-slate-50 border-b border-slate-100 flex justify-between items-center">
+                                <h4 class="text-xs font-bold text-slate-500 uppercase">選項管理</h4>
+                                <div class="flex gap-2">
+                                    <input id="ed-new-opt" class="border border-slate-300 rounded px-2 py-1 text-sm focus:ring-2 focus:ring-primary outline-none w-48" placeholder="輸入新選項..." onkeydown="if(event.key==='Enter') addOption()">
+                                    <button onclick="addOption()" class="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded text-xs font-bold transition"><i class="fas fa-plus"></i> 新增</button>
+                                </div>
+                            </div>
+                            <table class="w-full opt-table">
+                                <thead><tr><th class="w-12 text-center">序</th><th>選項內容</th><th class="w-32 text-right">操作</th></tr></thead>
+                                <tbody id="ed-opt-list-body"></tbody>
+                            </table>
+                        </div>
+                    </div>
+                    
+                    <div class="p-6 border border-slate-100 bg-slate-50/30 rounded-lg">
+                        <div class="flex justify-between items-start mb-3">
+                            <div><h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-random"></i> 進階屬性設定 (Advanced)</h4><p class="text-[11px] text-slate-400 mt-1">設定連動邏輯與其他進階選項。</p></div>
+                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="adv-logic-toggle" class="sr-only peer" ${hasRules?'checked':''} onchange="toggleAdvanced('adv-logic-panel', this.checked)"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#002E5D]"></div><span class="ml-3 text-xs font-medium text-slate-600">啟用設定</span></label>
+                        </div>
+                        <div id="adv-logic-panel" class="${hasRules?'':'hidden'} bg-white border border-indigo-100 rounded-lg p-4 shadow-sm animate-fade-in">
+                            <div class="flex justify-between items-center mb-4"><h4 class="text-sm font-bold text-slate-700 flex items-center gap-2">連動規則設定</h4><button onclick="addRule()" class="text-xs bg-white border border-indigo-200 text-indigo-600 px-3 py-1 rounded hover:bg-indigo-50 transition font-bold">+ 新增規則</button></div>
+                            <div id="rule-list" class="space-y-3"></div>
+                        </div>
+                    </div>
                 </div>`;
-                
                 let rules = f.filterRules || (f.filterRule ? [f.filterRule] : []);
-                setTimeout(() => { renderRules(rules, depOpts); window.currentRules = rules; }, 0);
+                setTimeout(() => { window.currentOptions = f.options || []; window.currentRules = rules; renderOptionList(); initSortable(); renderRules(rules, depOpts); }, 0);
+
+            } else if (type === 'text') {
+                const hasMaxLen = !!f.maxLen;
+                html = `
+                <div class="p-6 border-b border-slate-100 bg-slate-50/30 rounded-lg mt-4 border">
+                    <div class="flex justify-between items-start mb-3">
+                        <div><h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-sliders-h"></i> 進階屬性設定</h4></div>
+                        <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="adv-text-toggle" class="sr-only peer" ${hasMaxLen?'checked':''} onchange="toggleAdvanced('adv-text-panel', this.checked)"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#002E5D]"></div><span class="ml-3 text-xs font-medium text-slate-600">啟用設定</span></label>
+                    </div>
+                    <div id="adv-text-panel" class="${hasMaxLen?'':'hidden'} p-4 bg-white rounded-lg border border-slate-200">
+                        <label class="text-sm font-bold text-slate-700 mb-1 block">字元上限 (Max Length)</label>
+                        <input type="number" id="ed-maxlen" class="w-full border border-slate-300 rounded p-2 text-sm" value="${f.maxLen||''}" placeholder="例如: 20">
+                        <p class="text-[10px] text-slate-400 mt-1">(中英數符號皆算 1 字)</p>
+                    </div>
+                </div>`;
 
             } else if (type === 'number') {
-                html = `<div class="grid grid-cols-2 gap-4"><div><label class="text-sm font-bold text-slate-700 mb-1 block">數值模式</label><select id="ed-mode" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="copy">一般/複製</option><option value="average" ${f.calcMode==='average'?'selected':''}>自動平均</option></select></div><div><label class="text-sm font-bold text-slate-700 mb-1 block">小數位數</label><input type="number" id="ed-dec" class="w-full border border-slate-300 rounded p-2 text-sm" value="${f.decimal||0}"></div></div><div class="mt-3"><label class="flex items-center text-sm font-bold text-slate-700 cursor-pointer"><input type="checkbox" id="ed-keepZero" ${f.keepZero?'checked':''} class="custom-checkbox mr-2"> 保留前導零 (00123)</label></div>`;
+                const hasNumSet = f.calcMode === 'average' || f.decimal > 0 || f.keepZero;
+                html = `
+                <div class="p-6 border-b border-slate-100 bg-slate-50/30 rounded-lg mt-4 border">
+                    <div class="flex justify-between items-start mb-3">
+                        <div><h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-calculator"></i> 進階屬性設定</h4></div>
+                        <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="adv-num-toggle" class="sr-only peer" ${hasNumSet?'checked':''} onchange="toggleAdvanced('adv-num-panel', this.checked)"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#002E5D]"></div><span class="ml-3 text-xs font-medium text-slate-600">啟用設定</span></label>
+                    </div>
+                    <div id="adv-num-panel" class="${hasNumSet?'':'hidden'} p-4 bg-white rounded-lg border border-slate-200 space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div><label class="text-sm font-bold text-slate-700 mb-1 block">數值模式</label><select id="ed-mode" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="copy">一般/複製</option><option value="average" ${f.calcMode==='average'?'selected':''}>自動平均</option></select></div>
+                            <div><label class="text-sm font-bold text-slate-700 mb-1 block">小數位數</label><input type="number" id="ed-dec" class="w-full border border-slate-300 rounded p-2 text-sm" value="${f.decimal||0}"></div>
+                        </div>
+                        <div><label class="flex items-center text-sm font-bold text-slate-700 cursor-pointer"><input type="checkbox" id="ed-keepZero" ${f.keepZero?'checked':''} class="custom-checkbox mr-2"> 保留前導零 (00123)</label></div>
+                    </div>
+                </div>`;
+
             } else if (type === 'date') {
-                html = `<div><label class="text-sm font-bold text-slate-700 mb-1 block">日期格式</label><select id="ed-fmt" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="ROC" ${f.dateFormat==='ROC'?'selected':''}>民國 (113/01/01)</option><option value="West" ${f.dateFormat==='West'?'selected':''}>西元 (2024-01-01)</option></select></div>`;
+                const hasDateSet = f.inputFormat || f.outputFormat || f.precision;
+                html = `
+                <div class="p-6 border-b border-slate-100 bg-slate-50/30 rounded-lg mt-4 border">
+                    <div class="flex justify-between items-start mb-3">
+                        <div><h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-calendar-alt"></i> 進階屬性設定</h4></div>
+                        <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="adv-date-toggle" class="sr-only peer" ${hasDateSet?'checked':''} onchange="toggleAdvanced('adv-date-panel', this.checked)"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#002E5D]"></div><span class="ml-3 text-xs font-medium text-slate-600">啟用設定</span></label>
+                    </div>
+                    <div id="adv-date-panel" class="${hasDateSet?'':'hidden'} p-4 bg-white rounded-lg border border-slate-200 grid grid-cols-3 gap-4">
+                        <div><label class="text-[10px] font-bold text-slate-500 block mb-1">填報顯示</label><select id="ed-date-in" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="ROC" ${f.inputFormat==='ROC'?'selected':''}>民國</option><option value="West" ${f.inputFormat==='West'?'selected':''}>西元</option></select></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 block mb-1">檔案輸出</label><select id="ed-date-out" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="ROC" ${f.outputFormat==='ROC'?'selected':''}>民國</option><option value="West" ${f.outputFormat==='West'?'selected':''}>西元</option></select></div>
+                        <div><label class="text-[10px] font-bold text-slate-500 block mb-1">日期精度</label><select id="ed-date-prec" class="w-full border border-slate-300 rounded p-2 text-sm"><option value="YMD" ${f.precision==='YMD'?'selected':''}>年/月/日 (完整)</option><option value="YM" ${f.precision==='YM'?'selected':''}>年/月</option><option value="Y" ${f.precision==='Y'?'selected':''}>僅年份</option><option value="M" ${f.precision==='M'?'selected':''}>僅月份</option><option value="D" ${f.precision==='D'?'selected':''}>僅日期</option></select></div>
+                    </div>
+                </div>`;
             } else {
                 html = '<div class="text-center text-sm text-slate-400 py-10">此類型無需額外設定</div>';
             }
             container.innerHTML = html;
         }
 
+        function renderOptionList() {
+            const tbody = document.getElementById('ed-opt-list-body'); if(!tbody) return;
+            tbody.innerHTML = window.currentOptions.map((opt, idx) => {
+                const isEditing = editingOptionIdx === idx;
+                const valHtml = isEditing ? `<input id="edit-opt-${idx}" value="${opt}" class="w-full border border-indigo-300 rounded px-2 py-1 text-sm outline-none focus:ring-2 focus:ring-indigo-200">` : `<span class="text-slate-700 font-medium">${opt}</span>`;
+                const actions = isEditing 
+                    ? `<button onclick="saveOption(${idx})" class="text-success hover:text-emerald-600 mr-2"><i class="fas fa-check"></i></button><button onclick="cancelEditOption()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>`
+                    : `<button onclick="moveOption(${idx},-1)" class="text-slate-300 hover:text-primary mr-1" title="上移"><i class="fas fa-arrow-up"></i></button><button onclick="moveOption(${idx},1)" class="text-slate-300 hover:text-primary mr-2" title="下移"><i class="fas fa-arrow-down"></i></button><button onclick="editOption(${idx})" class="text-slate-300 hover:text-primary mr-2"><i class="fas fa-pencil-alt"></i></button><button onclick="removeOption(${idx})" class="text-slate-300 hover:text-danger"><i class="fas fa-trash-alt"></i></button>`;
+                return `<tr><td class="text-center text-slate-400 font-mono text-xs">${idx+1}</td><td>${valHtml}</td><td class="text-right">${actions}</td></tr>`;
+            }).join('');
+            updateRuleCheckboxes(); 
+        }
+        function addOption() { const inp = document.getElementById('ed-new-opt'); const val = inp.value.trim(); if(val) { window.currentOptions.push(val); renderOptionList(); inp.value = ''; inp.focus(); } }
+        function removeOption(idx) { window.currentOptions.splice(idx, 1); renderOptionList(); }
+        function moveOption(idx, dir) { if(idx+dir < 0 || idx+dir >= window.currentOptions.length) return; [window.currentOptions[idx], window.currentOptions[idx+dir]] = [window.currentOptions[idx+dir], window.currentOptions[idx]]; renderOptionList(); }
+        function editOption(idx) { editingOptionIdx = idx; renderOptionList(); setTimeout(() => document.getElementById(`edit-opt-${idx}`).focus(), 50); }
+        function saveOption(idx) { const val = document.getElementById(`edit-opt-${idx}`).value.trim(); if(val) window.currentOptions[idx] = val; editingOptionIdx = -1; renderOptionList(); }
+        function cancelEditOption() { editingOptionIdx = -1; renderOptionList(); }
+        function initSortable() { /* Not needed for table based */ }
+
         function renderRules(rules, depOpts) {
             const list = document.getElementById('rule-list'); list.innerHTML = '';
             if(rules.length === 0) { list.innerHTML = '<div class="text-center text-xs text-slate-400 py-2 border border-dashed border-slate-300 rounded">尚無規則，請點擊新增。</div>'; return; }
             rules.forEach((r, idx) => {
                 const row = document.createElement('div'); row.className = 'logic-card p-4 relative bg-white';
-                row.innerHTML = `
-                    <button onclick="removeRule(${idx})" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition"><i class="fas fa-times"></i></button>
-                    <div class="grid grid-cols-2 gap-3 mb-3">
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">依賴對象 (決定者)</label><select onchange="updateRule(${idx}, 'dep', this.value)" class="w-full border border-slate-300 rounded p-1.5 text-xs bg-slate-50"><option value="">請選擇...</option>${depOpts}</select></div>
-                        <div><label class="text-[10px] font-bold text-slate-500 uppercase">當內容是 (條件值)</label><input oninput="updateRule(${idx}, 'val', this.value)" class="w-full border border-slate-300 rounded p-1.5 text-xs" placeholder="輸入觸發值" value="${r.val||''}"></div>
-                    </div>
-                    <div><label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">僅顯示下列選項 (Check to Show)</label><div class="flex flex-wrap gap-2" id="chk-container-${idx}"></div></div>`;
+                row.innerHTML = `<button onclick="removeRule(${idx})" class="absolute top-2 right-2 text-slate-300 hover:text-red-500 transition"><i class="fas fa-times"></i></button><div class="grid grid-cols-2 gap-3 mb-3"><div><label class="text-[10px] font-bold text-slate-500 uppercase">依賴對象 (決定者)</label><select onchange="updateRule(${idx}, 'dep', this.value)" class="w-full border border-slate-300 rounded p-1.5 text-xs bg-slate-50"><option value="">請選擇...</option>${depOpts}</select></div><div><label class="text-[10px] font-bold text-slate-500 uppercase">當內容是 (條件值)</label><input oninput="updateRule(${idx}, 'val', this.value)" class="w-full border border-slate-300 rounded p-1.5 text-xs" placeholder="輸入觸發值" value="${r.val||''}"></div></div><div><label class="text-[10px] font-bold text-slate-500 uppercase mb-1 block">僅顯示下列選項 (Check to Show)</label><div class="flex flex-wrap gap-2" id="chk-container-${idx}"></div></div>`;
                 list.appendChild(row); row.querySelector('select').value = r.dep || ''; updateRuleCheckboxes(idx, r.limitTo);
             });
         }
 
         function updateRuleCheckboxes(ruleIdx = null, selected = []) {
-            const raw = document.getElementById('ed-opt-list').value; const opts = raw.split(',').map(s=>s.trim()).filter(s=>s);
+            const opts = window.currentOptions || [];
             const renderSet = (containerId, currentSel) => {
                 const c = document.getElementById(containerId); if(!c) return;
                 c.innerHTML = opts.map(o => `<label class="inline-flex items-center bg-slate-50 px-2 py-1 rounded border border-slate-200 text-xs cursor-pointer select-none hover:border-primary"><input type="checkbox" class="mr-1 accent-primary" ${currentSel.includes(o)?'checked':''} onchange="updateRuleLimit(${ruleIdx}, '${o}', this.checked)"> ${o}</label>`).join('');
@@ -576,50 +680,37 @@
             else { const list = document.getElementById('rule-list'); if(list && window.currentRules) window.currentRules.forEach((r, i) => renderSet(`chk-container-${i}`, r.limitTo || [])); }
         }
 
-        window.addRule = function() {
-            window.currentRules.push({ dep: "", val: "", limitTo: [] });
-            const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields;
-            const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join('');
-            renderRules(window.currentRules, depOpts);
-        };
-        window.removeRule = function(idx) {
-            window.currentRules.splice(idx, 1);
-            const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields;
-            const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join('');
-            renderRules(window.currentRules, depOpts);
-        };
+        window.addRule = function() { window.currentRules.push({ dep: "", val: "", limitTo: [] }); const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields; const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join(''); renderRules(window.currentRules, depOpts); };
+        window.removeRule = function(idx) { window.currentRules.splice(idx, 1); const allFields = targetList==='global' ? configData.globalFields : yearTemplateData.fields; const depOpts = allFields.filter(x => x.id !== document.getElementById('ed-field-id').value).map(x => `<option value="${x.id}">${x.label} (${x.id})</option>`).join(''); renderRules(window.currentRules, depOpts); };
         window.updateRule = function(idx, key, val) { window.currentRules[idx][key] = val; };
-        window.updateRuleLimit = function(idx, opt, checked) {
-            let arr = window.currentRules[idx].limitTo || [];
-            if(checked) { if(!arr.includes(opt)) arr.push(opt); } else { arr = arr.filter(x => x !== opt); }
-            window.currentRules[idx].limitTo = arr;
-        };
+        window.updateRuleLimit = function(idx, opt, checked) { let arr = window.currentRules[idx].limitTo || []; if(checked) { if(!arr.includes(opt)) arr.push(opt); } else { arr = arr.filter(x => x !== opt); } window.currentRules[idx].limitTo = arr; };
 
         function saveField() {
             const id = document.getElementById('ed-field-id').value.trim(); const label = document.getElementById('ed-label').value.trim();
-            if(!id || !label) return showMsg('error','錯誤','請輸入 ID 與名稱');
+            if(!id || !label) return showMsg('error','錯誤','ID 與名稱為必填');
             
             let f = {};
             if(isEditMode) f = (targetList==='global'?configData.globalFields:yearTemplateData.fields).find(x=>x.id===document.getElementById('ed-orig-id').value);
             
             f.id = id; f.label = label; f.type = document.getElementById('ed-type').value; f.category = document.getElementById('ed-category').value;
+            f.description = document.getElementById('ed-desc').value.trim(); // v19.0 Save Description
             f.required = document.getElementById('ed-required').checked; f.isSystem = document.getElementById('ed-system').checked;
 
-            if(document.getElementById('vis-toggle').checked) {
-                f.visibilityRule = { dep: document.getElementById('ed-vis-dep').value, val: document.getElementById('ed-vis-val').value };
-            } else { delete f.visibilityRule; }
+            if(document.getElementById('vis-toggle').checked) { f.visibilityRule = { dep: document.getElementById('ed-vis-dep').value, val: document.getElementById('ed-vis-val').value, action: document.getElementById('ed-vis-action').value }; } else { delete f.visibilityRule; }
 
             if(f.type === 'single_select') {
-                f.options = document.getElementById('ed-opt-list').value.split(',').map(s=>s.trim()).filter(s=>s);
-                if(window.currentRules && window.currentRules.length > 0) {
+                f.options = window.currentOptions; 
+                if(document.getElementById('adv-logic-toggle').checked && window.currentRules.length > 0) {
                     const validRules = window.currentRules.filter(r => r.dep && r.val);
                     if(validRules.length === 1) { f.filterRule = validRules[0]; delete f.filterRules; } 
                     else if(validRules.length > 1) { f.filterRules = validRules; delete f.filterRule; } 
                     else { delete f.filterRule; delete f.filterRules; }
                 } else { delete f.filterRule; delete f.filterRules; }
             }
-            if(f.type === 'number') { f.calcMode=document.getElementById('ed-mode').value; f.decimal=parseInt(document.getElementById('ed-dec').value)||0; f.keepZero=document.getElementById('ed-keepZero').checked; }
-            if(f.type === 'date') { f.dateFormat=document.getElementById('ed-fmt').value; }
+            
+            if(f.type === 'number') { if(document.getElementById('adv-num-toggle').checked) { f.calcMode=document.getElementById('ed-mode').value; f.decimal=parseInt(document.getElementById('ed-dec').value)||0; f.keepZero=document.getElementById('ed-keepZero').checked; } else { delete f.calcMode; delete f.decimal; delete f.keepZero; } }
+            if(f.type === 'date') { if(document.getElementById('adv-date-toggle').checked) { f.inputFormat = document.getElementById('ed-date-in').value; f.outputFormat = document.getElementById('ed-date-out').value; f.precision = document.getElementById('ed-date-prec').value; } else { delete f.inputFormat; delete f.outputFormat; delete f.precision; } delete f.dateFormat; }
+            if(f.type === 'text') { if(document.getElementById('adv-text-toggle').checked) { f.maxLen = parseInt(document.getElementById('ed-maxlen').value) || 0; } else { delete f.maxLen; } }
 
             if(!isEditMode && targetList==='global') { f.order = configData.globalFields.length+1; configData.globalFields.push(f); }
 
@@ -628,6 +719,7 @@
             showMsg('info', '暫存成功', '設定已暫存，請記得按「儲存設定」發布。');
         }
 
+        // --- Picker, Types, Save Config ---
         function openFieldPicker() {
             const list = document.getElementById('picker-list'); list.innerHTML = ''; document.getElementById('picker-select-all').checked=false;
             const activeIds = new Set(yearTemplateData.fields.map(f => f.id));
