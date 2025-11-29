@@ -300,6 +300,34 @@
       "description": ""
     },
     {
+      "id": "document_type",
+      "label": "證明文件類型",
+      "type": "single_select",
+      "category": "cat_1764407526226",
+      "description": "",
+      "required": true,
+      "isSystem": false,
+      "options": [
+        "合約",
+        "公函",
+        "其他證明文件"
+      ],
+      "order": 21
+    },
+    {
+      "id": "internship_hours",
+      "label": "實習時數",
+      "type": "number",
+      "category": "cat_1764407526226",
+      "description": "",
+      "required": true,
+      "isSystem": false,
+      "calcMode": "average",
+      "decimal": 2,
+      "keepZero": false,
+      "order": 22
+    },
+    {
       "id": "internship_location",
       "label": "實習場所",
       "type": "single_select",
@@ -313,34 +341,6 @@
         "其他機構",
         "就讀學校附屬機構實習"
       ],
-      "order": 21
-    },
-    {
-      "id": "document_type",
-      "label": "證明文件類型",
-      "type": "single_select",
-      "category": "cat_1764407526226",
-      "description": "",
-      "required": true,
-      "isSystem": false,
-      "options": [
-        "合約",
-        "公函",
-        "其他證明文件"
-      ],
-      "order": 22
-    },
-    {
-      "id": "internship_hours",
-      "label": "實習時數",
-      "type": "number",
-      "category": "cat_1764407526226",
-      "description": "",
-      "required": true,
-      "isSystem": false,
-      "calcMode": "average",
-      "decimal": 2,
-      "keepZero": false,
       "order": 23
     },
     {
@@ -358,6 +358,69 @@
         "兩者皆無"
       ],
       "order": 24
+    },
+    {
+      "id": "internship_salary",
+      "label": "實習待遇",
+      "type": "single_select",
+      "category": "cat_1764407526226",
+      "description": "",
+      "required": true,
+      "isSystem": true,
+      "options": [
+        "工資",
+        "獎學金",
+        "津貼",
+        "無",
+        "津"
+      ],
+      "order": 25
+    },
+    {
+      "id": "payment_type",
+      "label": "給付類型",
+      "type": "single_select",
+      "category": "cat_1764407526226",
+      "description": "",
+      "required": true,
+      "isSystem": true,
+      "options": [
+        "月薪",
+        "時薪",
+        "月給",
+        "一次性",
+        "其他"
+      ],
+      "order": 26,
+      "filterRules": [
+        {
+          "dep": "internship_salary",
+          "val": "工資",
+          "limitTo": [
+            "月薪",
+            "時薪",
+            "其他"
+          ]
+        },
+        {
+          "dep": "internship_salary",
+          "val": "獎學金",
+          "limitTo": [
+            "月給",
+            "一次性",
+            "其他"
+          ]
+        },
+        {
+          "dep": "internship_salary",
+          "val": "津",
+          "limitTo": [
+            "月給",
+            "一次性",
+            "其他"
+          ]
+        }
+      ]
     }
   ],
   "academicYears": [
