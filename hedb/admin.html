@@ -74,7 +74,6 @@
         .opt-table tr:hover td { background-color: #f8fafc; }
         .sortable-ghost { opacity: 0.4; background-color: #e2e8f0; }
         
-        /* v28.0 Badge Style */
         .badge-warning { display: inline-block; padding: 2px 8px; background-color: #f1f5f9; border: 1px solid #cbd5e1; border-radius: 9999px; color: #94a3b8; font-size: 11px; font-weight: bold; white-space: nowrap; }
     </style>
 </head>
@@ -169,7 +168,16 @@
             </div>
 
             <div id="view-types" class="w-full h-full hidden flex-col p-8 bg-slate-50 overflow-y-auto custom-scroll">
-                <div class="max-w-4xl mx-auto w-full"><div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8"><div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100"><div><h2 class="text-2xl font-bold text-slate-800">欄位類型管理</h2><p class="text-sm text-slate-500 mt-1">定義系統支援的輸入類型 (如 Text, Number...)</p></div></div><div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden mb-6"><table class="w-full text-sm text-left"><thead class="bg-slate-100 text-slate-500 font-bold text-xs uppercase"><tr><th class="px-6 py-3">代碼 (Key)</th><th class="px-6 py-3">顯示名稱 (Label)</th><th class="px-6 py-3 text-right">操作</th></tr></thead><tbody id="type-list-page" class="divide-y divide-slate-200 bg-white"></tbody></table></div><div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-sm"><h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2"><i class="fas fa-plus-circle"></i> 新增自訂類型</h4><div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end"><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">代碼 (HTML Type)</label><input id="new-type-key-page" placeholder="e.g. email" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">顯示名稱</label><input id="new-type-label-page" placeholder="e.g. Email Address" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-1"><button onclick="addCustomTypePage()" class="w-full btn-create py-2.5 rounded-lg font-bold text-sm shadow-sm">新增</button></div></div></div></div></div>
+                <div class="max-w-4xl mx-auto w-full">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                            <div><h2 class="text-2xl font-bold text-slate-800">欄位類型管理</h2><p class="text-sm text-slate-500 mt-1">定義系統支援的輸入類型 (如 Text, Number...)</p></div>
+                            <button onclick="openAddrRules()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2"><i class="fas fa-cog"></i> 設定地址正規化規則</button>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden mb-6"><table class="w-full text-sm text-left"><thead class="bg-slate-100 text-slate-500 font-bold text-xs uppercase"><tr><th class="px-6 py-3">代碼 (Key)</th><th class="px-6 py-3">顯示名稱 (Label)</th><th class="px-6 py-3 text-right">操作</th></tr></thead><tbody id="type-list-page" class="divide-y divide-slate-200 bg-white"></tbody></table></div>
+                        <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-sm"><h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2"><i class="fas fa-plus-circle"></i> 新增自訂類型</h4><div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end"><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">代碼 (HTML Type)</label><input id="new-type-key-page" placeholder="e.g. email" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">顯示名稱</label><input id="new-type-label-page" placeholder="e.g. Email Address" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-1"><button onclick="addCustomTypePage()" class="w-full btn-create py-2.5 rounded-lg font-bold text-sm shadow-sm">新增</button></div></div></div>
+                    </div>
+                </div>
             </div>
         </main>
     </div>
@@ -265,6 +273,11 @@
                     <p class="text-xs text-slate-500 mb-2">當中文數字出現在這些字之前，將強制轉為阿拉伯數字 (例如：五段 -> 5段)。</p>
                     <textarea id="addr-keywords" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-primary outline-none h-24 resize-none"></textarea>
                 </div>
+                <div>
+                    <label class="text-sm font-bold text-slate-700 mb-1 block">特定路名模式 (Specific Patterns)</label>
+                    <p class="text-xs text-slate-500 mb-2">遇到這些詞（如：東南西北、區、道）開頭或接續的數字，將強制轉為阿拉伯數字。</p>
+                    <textarea id="addr-specials" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-primary outline-none h-24 resize-none"></textarea>
+                </div>
             </div>
             <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
                 <button onclick="saveAddrRules()" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow">儲存規則</button>
@@ -279,7 +292,7 @@
 
     <script>
         let ghConfig = { user: '', repo: '', path: 'hedb/config.json', token: '' };
-        let configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [], addressRules: { protected: [], keywords: [] } }; 
+        let configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [], addressRules: { protected: [], keywords: [], specials: [] } }; 
         let yearTemplateData = { fields: [] }; 
         let activeYearId = null, activeCatId = 'all', isEditMode = false, moveSrcIndex = -1, moveType = '', targetList = 'global', unsavedChanges = false, configSha = null, activeLogicEdit = null;
         let currentOptions = [], currentRules = [], currentOptionDescs = {};
@@ -304,13 +317,15 @@
             btn.innerHTML = '<div class="spinner"></div> 連線中...'; btn.disabled = true; ghConfig = { user, repo, path: 'hedb/config.json', token };
             try {
                 const res = await apiFetch(ghConfig.path);
-                if(res.status === 404) { configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [], addressRules: { protected: [], keywords: [] } }; configSha = null; } 
+                if(res.status === 404) { configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [], addressRules: { protected: [], keywords: [], specials: [] } }; configSha = null; } 
                 else { 
                     configData = res.data; configSha = res.sha; 
                     if(!configData.templateCategories) configData.templateCategories = []; 
                     if(!configData.fieldTypes) configData.fieldTypes = []; 
                     // v30.0 Init Rules
-                    if(!configData.addressRules) configData.addressRules = { protected: ['五權', '三民', '三多', '一心', '二聖', '七賢', '八德', '九如', '十全'], keywords: ['段', '路', '街', '巷', '弄', '號', '樓', '鄰', '之'] };
+                    if(!configData.addressRules) configData.addressRules = { protected: ['五權', '三民', '三多', '一心', '二聖', '七賢', '八德', '九如', '十全'], keywords: ['段', '路', '街', '巷', '弄', '號', '樓', '鄰', '之'], specials: ['東', '南', '西', '北', '區', '道'] };
+                    // v31.0: Ensure specials exist
+                    if(!configData.addressRules.specials) configData.addressRules.specials = ['東', '南', '西', '北', '區', '道'];
                     
                     const uniqueTypes = new Map(); [...SYSTEM_DEFAULT_TYPES, ...configData.fieldTypes].forEach(t => uniqueTypes.set(t.key, t)); configData.fieldTypes = Array.from(uniqueTypes.values()); 
                 }
@@ -502,12 +517,14 @@
         function openAddrRules() {
             document.getElementById('addr-protected').value = configData.addressRules?.protected?.join(', ') || '';
             document.getElementById('addr-keywords').value = configData.addressRules?.keywords?.join(', ') || '';
+            document.getElementById('addr-specials').value = configData.addressRules?.specials?.join(', ') || '';
             document.getElementById('addr-rules-modal').classList.remove('hidden');
         }
         function saveAddrRules() {
             configData.addressRules = {
                 protected: document.getElementById('addr-protected').value.split(/[,，\n]+/).map(x=>x.trim()).filter(x=>x),
-                keywords: document.getElementById('addr-keywords').value.split(/[,，\n]+/).map(x=>x.trim()).filter(x=>x)
+                keywords: document.getElementById('addr-keywords').value.split(/[,，\n]+/).map(x=>x.trim()).filter(x=>x),
+                specials: document.getElementById('addr-specials').value.split(/[,，\n]+/).map(x=>x.trim()).filter(x=>x)
             };
             setUnsaved(true); document.getElementById('addr-rules-modal').classList.add('hidden'); showMsg('success', '成功', '地址規則已更新');
         }
@@ -677,8 +694,8 @@
                     </div>
                 </div>`;
 
-            } else if (type === 'address') { // v30.0: Address Type UI
-                const hasAddrSet = f.blockJa || f.toHalf || f.forceTai || f.smartFormat;
+            } else if (type === 'address') { // v30.0: Address Type UI (Refined)
+                const hasAddrSet = f.latinToEng || f.toHalf || f.forceTai || f.smartFormat;
                 html = `
                 <div class="p-6 border-b border-slate-100 bg-slate-50/30 rounded-lg mt-4 border">
                     <div class="flex justify-between items-start mb-3">
@@ -687,12 +704,11 @@
                     </div>
                     <div id="adv-addr-panel" class="${hasAddrSet?'':'hidden'} p-5 bg-white rounded-lg border border-slate-200 space-y-4">
                         <div class="grid grid-cols-2 gap-4">
-                            <label class="flex items-center cursor-pointer p-2 border rounded hover:bg-slate-50"><input type="checkbox" id="ed-block-ja" ${f.blockJa?'checked':''} class="custom-checkbox mr-3"><span class="text-sm font-bold text-slate-700">🚫 阻擋日文輸入</span></label>
+                            <label class="flex items-center cursor-pointer p-2 border rounded hover:bg-slate-50"><input type="checkbox" id="ed-latin-to-eng" ${f.latinToEng?'checked':''} class="custom-checkbox mr-3"><span class="text-sm font-bold text-slate-700">🔠 拉丁文轉英文 (é->e)</span></label>
                             <label class="flex items-center cursor-pointer p-2 border rounded hover:bg-slate-50"><input type="checkbox" id="ed-to-half" ${f.toHalf?'checked':''} class="custom-checkbox mr-3"><span class="text-sm font-bold text-slate-700">🔠 自動全形轉半形 (Ａ->A)</span></label>
                             <label class="flex items-center cursor-pointer p-2 border rounded hover:bg-slate-50"><input type="checkbox" id="ed-force-tai" ${f.forceTai?'checked':''} class="custom-checkbox mr-3"><span class="text-sm font-bold text-slate-700">🇹🇼 強制「台」轉「臺」</span></label>
                             <label class="flex items-center cursor-pointer p-2 border rounded hover:bg-slate-50"><input type="checkbox" id="ed-smart-fmt" ${f.smartFormat?'checked':''} class="custom-checkbox mr-3"><span class="text-sm font-bold text-slate-700">🔢 智慧路名數字轉換</span></label>
                         </div>
-                        <div class="pt-2 text-right"><button onclick="openAddrRules()" class="text-xs text-primary hover:underline font-bold"><i class="fas fa-cog"></i> 管理正規化規則</button></div>
                     </div>
                 </div>`;
 
@@ -837,13 +853,14 @@
                     f.forceTai = document.getElementById('ed-force-tai').checked;
                 } else { delete f.maxLen; delete f.forceTai; } 
             }
-            if(f.type === 'address') { // v30.0 Address
+            if(f.type === 'address') { // v30.0 Address (Refined)
                 if(document.getElementById('adv-addr-toggle').checked) {
-                    f.blockJa = document.getElementById('ed-block-ja').checked;
+                    f.latinToEng = document.getElementById('ed-latin-to-eng').checked; // Renamed from blockJa
+                    delete f.blockJa; // Ensure removed
                     f.toHalf = document.getElementById('ed-to-half').checked;
                     f.forceTai = document.getElementById('ed-force-tai').checked;
                     f.smartFormat = document.getElementById('ed-smart-fmt').checked;
-                } else { delete f.blockJa; delete f.toHalf; delete f.forceTai; delete f.smartFormat; }
+                } else { delete f.latinToEng; delete f.blockJa; delete f.toHalf; delete f.forceTai; delete f.smartFormat; }
             }
 
             if(!isEditMode && targetList==='global') { f.order = configData.globalFields.length+1; configData.globalFields.push(f); }
