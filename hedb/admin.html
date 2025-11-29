@@ -7,6 +7,9 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
         tailwind.config = {
@@ -127,6 +130,7 @@
                 <button onclick="switchView('years')" id="nav-years" class="nav-btn py-3 px-2 text-sm font-medium flex items-center gap-2 active"><i class="fas fa-calendar-alt"></i> 學年度模組配置</button>
                 <button onclick="switchView('fields')" id="nav-fields" class="nav-btn py-3 px-2 text-sm font-medium flex items-center gap-2"><i class="fas fa-layer-group"></i> 欄位模板庫</button>
                 <button onclick="switchView('types')" id="nav-types" class="nav-btn py-3 px-2 text-sm font-medium flex items-center gap-2"><i class="fas fa-tags"></i> 欄位類型管理</button>
+                <button onclick="switchView('internship')" id="nav-internship" class="nav-btn py-3 px-2 text-sm font-medium flex items-center gap-2"><i class="fas fa-users"></i> 實習學生名單彙整</button>
             </div>
         </nav>
 
@@ -187,6 +191,58 @@
                 </section>
             </div>
 
+            <div id="view-types" class="w-full h-full hidden flex-col p-8 bg-slate-50 overflow-y-auto custom-scroll">
+                <div class="max-w-4xl mx-auto w-full">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                            <div><h2 class="text-2xl font-bold text-slate-800">欄位類型管理</h2><p class="text-sm text-slate-500 mt-1">定義系統支援的輸入類型 (如 Text, Number...)</p></div>
+                            <button onclick="openAddrRules()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2"><i class="fas fa-cog"></i> 設定地址正規化規則</button>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden mb-6"><table class="w-full text-sm text-left"><thead class="bg-slate-100 text-slate-500 font-bold text-xs uppercase"><tr><th class="px-6 py-3">代碼 (Key)</th><th class="px-6 py-3">顯示名稱 (Label)</th><th class="px-6 py-3 text-right">操作</th></tr></thead><tbody id="type-list-page" class="divide-y divide-slate-200 bg-white"></tbody></table></div>
+                        <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-sm"><h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2"><i class="fas fa-plus-circle"></i> 新增自訂類型</h4><div class="grid grid-cols-1 md:grid-cols-5 gap-4 items-end"><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">代碼 (HTML Type)</label><input id="new-type-key-page" placeholder="e.g. email" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">顯示名稱</label><input id="new-type-label-page" placeholder="e.g. Email Address" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-1"><button onclick="addCustomTypePage()" class="w-full btn-create py-2.5 rounded-lg font-bold text-sm shadow-sm">新增</button></div></div></div>
+                    </div>
+                </div>
+            </div>
+
+            <section id="view-internship" class="w-full h-full flex-col p-8 bg-slate-50 overflow-y-auto custom-scroll">
+                <div class="max-w-7xl mx-auto w-full">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                        <h2 class="text-2xl font-bold text-slate-800 mb-6 pb-4 border-b border-slate-100">實習學生名單彙整中心</h2>
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                            <div class="md:col-span-1">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">① 選擇學年度模組</label> <select id="consolidation-year-select" onchange="renderInternshipView()" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none"></select>
+                            </div>
+                            <div class="md:col-span-1">
+                                <label class="block text-sm font-bold text-slate-700 mb-2">② 上傳註課組清單 (.xlsx/.csv)</label>
+                                <input type="file" id="student-list-file" onchange="handleFileUpload(event)" class="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-primary file:text-white hover:file:bg-[#001e3d] file:cursor-pointer transition duration-150">
+                                <p id="file-status" class="text-xs text-slate-400 mt-1">請上傳包含學號、課程資訊的清單</p>
+                            </div>
+                            <div class="md:col-span-1 flex items-end">
+                                <button onclick="openAllianceModal()" id="btn-alliance-config" disabled class="w-full bg-slate-100 border border-slate-300 text-slate-400 py-2.5 rounded-lg text-sm font-bold shadow-sm transition flex items-center justify-center gap-2"><i class="fas fa-sitemap"></i> 設定系所分組/聯盟</button>
+                            </div>
+                        </div>
+                        
+                        <div id="mapping-panel" class="hidden bg-white rounded-xl border border-slate-200 shadow-sm p-6 mb-8">
+                            <h4 class="text-base font-bold text-slate-800 mb-4 pb-2 border-b border-slate-100 flex items-center gap-2"><i class="fas fa-link text-primary"></i> ③ 欄位匹配設定 (系統欄位 → 上傳清單欄位)</h4>
+                            <p class="text-xs text-slate-500 mb-4">請確保所有**必填**系統欄位皆匹配到上傳清單中的正確 Excel 欄位名稱。</p>
+                            <div id="mapping-fields-container" class="space-y-3 grid grid-cols-2 gap-x-6 gap-y-3 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                                </div>
+                            <div class="mt-6 flex justify-end"> <button onclick="processUploadedFile()" id="btn-process-list" class="btn-create py-2.5 px-6 rounded-lg font-bold text-sm shadow-sm flex items-center gap-2"><i class="fas fa-cogs"></i> 開始彙整名單</button>
+                            </div>
+                        </div>
+
+                        <div id="results-panel" class="hidden">
+                            <h4 class="text-xl font-bold text-slate-800 mb-4 flex items-center gap-2 border-b pb-2"><i class="fas fa-table text-emerald-600"></i> 彙整結果 (<span id="total-records">0</span> 筆資料)</h4>
+                            <div class="flex justify-end mb-4">
+                                <button onclick="downloadAllGroupsZip()" id="btn-batch-download-all-results" class="btn-manage py-2 px-4 rounded-lg font-bold text-sm shadow-md flex items-center gap-2"><i class="fas fa-file-archive"></i> 全系批次下載 (打包ZIP)</button>
+                            </div>
+                            <div id="results-accordion" class="space-y-4 overflow-x-auto"> </div>
+                        </div>
+
+                    </div>
+                </div>
+            </section>
             <div id="view-types" class="w-full h-full hidden flex-col p-8 bg-slate-50 overflow-y-auto custom-scroll">
                 <div class="max-w-4xl mx-auto w-full">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
@@ -338,19 +394,78 @@
                 </div>
             </div>
             <div class="mt-6 pt-3 border-t border-slate-100 flex justify-end gap-3">
-                <button onclick="document.getElementById('batch-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm transition">取消</button>
                 <button onclick="executeBatchAction()" id="btn-execute-batch" class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 text-sm flex items-center gap-2" disabled><i class="fas fa-check"></i> 確認執行</button>
+            </div>
+        </div>
+    </div>
+    <div id="alliance-modal" class="fixed inset-0 z-[85] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-sitemap text-primary"></i> 系所分組/聯盟設定</h3>
+                <button onclick="document.getElementById('alliance-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="flex-grow overflow-y-auto custom-scroll space-y-4 p-1">
+                <p class="text-sm text-slate-600">請勾選哪些「**開課學系**」要啟用特殊分組模式。在特殊模式下，系統會優先依**學生所屬學系**進行分組，以實現系所間的聯盟彙整。**未勾選的開課學系將一律依其開課學系名稱獨立分組。**</p>
+                <div id="alliance-rules-container" class="space-y-4">
+                    </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="saveAllianceRules()" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow">儲存聯盟設定</button>
             </div>
         </div>
     </div>
     <script>
         let ghConfig = { user: '', repo: '', path: 'hedb/config.json', token: '' };
-        let configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [], addressRules: { protected: [], keywords: [], specials: [] } }; 
+        let configData = { 
+            globalFields: [], 
+            academicYears: [], 
+            templateCategories: [], 
+            fieldTypes: [], 
+            addressRules: { protected: [], keywords: [], specials: [] },
+            allianceModeDepts: []
+        }; 
         let yearTemplateData = { fields: [] }; 
         let activeYearId = null, activeCatId = 'all', isEditMode = false, moveSrcIndex = -1, moveType = '', targetList = 'global', unsavedChanges = false, configSha = null, activeLogicEdit = null;
         let currentOptions = [], currentRules = [], currentOptionDescs = {};
         let editingOptionIdx = -1; let isOptionBatchMode = false;
         let activeBatchListType = '';
+
+        // NEW: Internship Consolidation Data
+        let currentConsolidationYear = null;
+        let currentFileHeaders = [];
+        let currentMapping = {};
+        let currentStudentData = null; 
+        let currentConsolidatedResults = null;
+        let uniqueCourseDepts = []; 
+        let currentTemplateFields = [];
+        
+        // R3: Define SYSTEM_FIELDS and their output order
+        const SYSTEM_FIELDS = [
+            { id: 'school_year', label: '學年', required: true, example: '114' },
+            { id: 'semester', label: '學期', required: true, example: '1' },
+            { id: 'student_id', label: '學號', required: true, example: '12345678' },
+            { id: 'student_name', label: '姓名', required: true, example: '王小明' },
+            { id: 'student_college', label: '學院', required: true, example: '管理學院' }, // R1: Changed label to '學院', R3: Changed to required: true
+            { id: 'student_dept', label: '學系', required: true, example: '資管系' },      // R1: Changed label to '學系', R3: Changed to required: true
+            { id: 'course_id', label: '選課代號', required: true, example: '8099' },
+            { id: 'course_name', label: '課程名稱', required: true, example: '校外實習' }, // R3: Changed to required: true
+            { id: 'internship_attr', label: '實習課程屬性', required: false, example: '必選' },
+            { id: 'internship_credit', label: '實習學分數', required: true, example: '3' }, // R3: Changed to required: true
+            { id: 'course_system', label: '開課學制', required: true, example: '日間部' }, // R3: Changed to required: true
+            { id: 'course_college', label: '開課學院', required: true, example: '管理學院' }, // R3: Changed to required: true
+            { id: 'course_dept', label: '開課學系', required: true, example: '國貿系' },
+            { id: 'student_grade', label: '學生年級', required: true, example: '四年級' },
+            { id: 'student_gender', label: '性別', required: false, example: '男' },
+            { id: 'student_nationality', label: '實習生國籍', required: false, example: '中華民國' }
+        ];
+
+        // R3: Define preview field display order
+        // 修正預覽欄位順序為: 學期 開課學院 開課學系 選課代號 課程名稱 實習課程屬性 實習學分數 學號 姓名 學院 學生學系
+        const PREVIEW_FIELD_IDS = ['semester', 'course_college', 'course_dept', 'course_id', 'course_name', 'internship_attr', 'internship_credit', 'student_id', 'student_name', 'student_college', 'student_dept'];
+        
+        const REQUIRED_FIELD_IDS = SYSTEM_FIELDS.filter(f => f.required).map(f => f.id);
+        
+        // END NEW: Internship Consolidation Data
 
         const SYSTEM_DEFAULT_TYPES = [
             {key:'text', label:'文字'}, {key:'number', label:'數字'}, {key:'date', label:'日期'}, {key:'single_select', label:'單選'}, {key:'list', label:'條列式'},
@@ -362,6 +477,7 @@
             const saved = localStorage.getItem('gh_creds_safe');
             if(saved) { const c = JSON.parse(saved); document.getElementById('gh-user').value = c.user || ''; document.getElementById('gh-repo').value = c.repo || ''; }
             window.addEventListener('beforeunload', (e) => { if (unsavedChanges) { e.preventDefault(); e.returnValue = ''; } });
+            document.getElementById('student-list-file').addEventListener('change', handleFileUpload);
         }
         function setUnsaved(val) { unsavedChanges = val; document.getElementById('unsaved-badge').classList.toggle('hidden', !val); }
 
@@ -371,13 +487,14 @@
             btn.innerHTML = '<div class="spinner"></div> 連線中...'; btn.disabled = true; ghConfig = { user, repo, path: 'hedb/config.json', token };
             try {
                 const res = await apiFetch(ghConfig.path);
-                if(res.status === 404) { configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [], addressRules: { protected: [], keywords: [], specials: [] } }; configSha = null; } 
+                if(res.status === 404) { configData = { globalFields: [], academicYears: [], templateCategories: [], fieldTypes: [], addressRules: { protected: [], keywords: [], specials: [] }, allianceModeDepts: [] }; configSha = null; } 
                 else { 
                     configData = res.data; configSha = res.sha; 
                     if(!configData.templateCategories) configData.templateCategories = []; 
                     if(!configData.fieldTypes) configData.fieldTypes = []; 
                     if(!configData.addressRules) configData.addressRules = { protected: ['五權', '三民', '三多', '一心', '二聖', '七賢', '八德', '九如', '十全'], keywords: ['段', '路', '街', '巷', '弄', '號', '樓', '鄰', '之'], specials: ['東', '南', '西', '北', '區', '道'] };
                     if(!configData.addressRules.specials) configData.addressRules.specials = ['東', '南', '西', '北', '區', '道'];
+                    if(!configData.allianceModeDepts) configData.allianceModeDepts = []; 
                     
                     const uniqueTypes = new Map(); [...SYSTEM_DEFAULT_TYPES, ...configData.fieldTypes].forEach(t => uniqueTypes.set(t.key, t)); configData.fieldTypes = Array.from(uniqueTypes.values()); 
                 }
@@ -386,7 +503,7 @@
 
                 localStorage.setItem('gh_creds_safe', JSON.stringify({ user, repo })); sessionStorage.setItem('gh_token', token);
                 document.getElementById('login-screen').classList.add('hidden'); document.getElementById('admin-interface').classList.remove('hidden'); document.getElementById('admin-interface').style.opacity = '1';
-                await syncYearsFromFiles(); renderYearList(); if(configData.academicYears.length > 0) selectYear(configData.academicYears[0].year); renderTemplateCats(); renderTypeManagerPage(); 
+                await syncYearsFromFiles(); renderYearList(); if(configData.academicYears.length > 0) selectYear(configData.academicYears[0].year); renderTemplateCats(); renderTypeManagerPage(); renderInternshipView(); 
             } catch (err) { 
                 console.error(err); msg.style.opacity='1'; msg.innerText = err.message.includes('401') ? '登入失敗：Access Token 錯誤' : '連線失敗'; 
             } finally { btn.innerHTML = '登入系統'; btn.disabled = false; }
@@ -478,7 +595,7 @@
             if(listEl.innerHTML==='') listEl.innerHTML = '<tr><td colspan="7" class="p-8 text-center text-slate-400">尚未加入欄位</td></tr>'; 
             const emptyRow = document.querySelector('#year-field-list tr td[colspan]');
             if (emptyRow) emptyRow.setAttribute('colspan', '7');
-            updateBatchControlVisibility('year'); // Update visibility after rendering
+            updateBatchControlVisibility('year'); 
         }
         function removeYearField(idx) { showMsg('confirm', '移除欄位？', '確定要從此學年度移除此欄位？', null, () => { yearTemplateData.fields.splice(idx, 1); renderYearFields(); setUnsaved(true); showMsg('success', '成功', '欄位已移除'); }); }
         function toggleYearAll(el) { document.querySelectorAll('.year-check').forEach(c => c.checked = el.checked); }
@@ -506,8 +623,8 @@
             
             configData.templateCategories.forEach(c => {
                 const isActive = activeCatId===c.id;
-                const upBtn = `<button onclick="moveCategory('${c.id}', -1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-400" title="上移"><i class="fas fa-arrow-up text-xs"></i></button>`;
-                const downBtn = `<button onclick="moveCategory('${c.id}', 1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-400" title="下移"><i class="fas fa-arrow-down text-xs"></i></button>`;
+                const upBtn = `<button onclick="moveCategory('${c.id}', -1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-400" title="上移"><i class="fas fa-arrow-up"></i></button>`;
+                const downBtn = `<button onclick="moveCategory('${c.id}', 1)" class="p-1.5 hover:bg-slate-200 rounded text-slate-400" title="下移"><i class="fas fa-arrow-down"></i></button>`;
                 
                 const itemHtml = `
                     <div class="flex items-center justify-between w-full">
@@ -574,20 +691,17 @@
                     </td>
                 </tr>`; 
             }).join(''); 
-            updateBatchControlVisibility('global'); // Update visibility after rendering
+            updateBatchControlVisibility('global'); 
         }
         function addNewGlobalField() { isEditMode=false;targetList='global';prepEditor(); }
         function editField(id, type) { isEditMode=true;targetList=type;const list=type==='global'?configData.globalFields:yearTemplateData.fields; prepEditor(list.find(f=>f.id===id)); }
         function delGlobalField(id) { showMsg('confirm', '刪除模板？', '確定刪除此模板？', null,()=>{configData.globalFields=configData.globalFields.filter(f=>f.id!==id);renderGlobalList();setUnsaved(true); showMsg('success', '成功', '模板已刪除'); }); }
         
-        function deleteSelectedGlobalFields() { /* REMOVED - Handled by executeBatchAction */ }
-
         function moveField(idx,dir,type) { const list=type==='global'?configData.globalFields:yearTemplateData.fields; if(list[idx+dir]){[list[idx],list[idx+dir]]=[list[idx+dir],list[idx]]; if(type==='global')list.forEach((f,i)=>f.order=i); type==='global'?renderGlobalList():renderYearFields(); setUnsaved(true); /* Silent Sort */ } }
         function openMoveModal(idx,type) { moveSrcIndex=idx;moveType=type;const list=type==='global'?configData.globalFields:yearTemplateData.fields; const sel=document.getElementById('move-select'); sel.innerHTML=''; list.forEach((f,i)=>sel.innerHTML+=`<option value="${i}" ${i===idx?'selected':''}>${i+1}. ${f.label}</option>`); document.getElementById('move-target-name').innerText=list[idx].label; document.getElementById('move-modal').classList.remove('hidden'); }
         function saveMove() { const t=parseInt(document.getElementById('move-select').value); if(t!==moveSrcIndex){ const list=moveType==='global'?configData.globalFields:yearTemplateData.fields; list.splice(t,0,list.splice(moveSrcIndex,1)[0]); if(moveType==='global')list.forEach((f,i)=>f.order=i); moveType==='global'?renderGlobalList():renderYearFields(); setUnsaved(true); /* Silent Sort */ } document.getElementById('move-modal').classList.add('hidden'); }
 
         // --- Batch Modal Logic ---
-        
         function toggleGlobalAll(el) { document.querySelectorAll('.global-check').forEach(c => c.checked = el.checked); }
         
         function openBatchModal(type) {
@@ -621,11 +735,9 @@
 
             if (action === 'category') {
                 catGroup.classList.remove('hidden');
-                // Enable button if a category other than the placeholder is selected
                 document.getElementById('batch-category-select').onchange = (e) => {
                     executeBtn.disabled = !e.target.value;
                 };
-                // Initial check on change to update button state
                 document.getElementById('batch-category-select').onchange();
             } else if (action === 'delete') {
                 deleteConfirm.classList.remove('hidden');
@@ -638,7 +750,7 @@
             const list = activeBatchListType === 'global' ? configData.globalFields : yearTemplateData.fields;
             const checkboxClass = activeBatchListType === 'global' ? '.global-check' : '.year-check';
             const checkedElements = Array.from(document.querySelectorAll(checkboxClass + ':checked'));
-            const checkedValues = checkedElements.map(c => activeBatchListType === 'global' ? c.value : parseInt(c.value)); // Global uses ID, Year uses index
+            const checkedValues = checkedElements.map(c => activeBatchListType === 'global' ? c.value : parseInt(c.value)); 
 
             if (checkedElements.length === 0 || !action || (action === 'category' && !document.getElementById('batch-category-select').value)) {
                 document.getElementById('batch-modal').classList.add('hidden');
@@ -659,7 +771,7 @@
                     if (item) {
                         if (newCatId === 'uncategorized') {
                             delete item.category;
-                        } else if (newCatId) { // Only update if a valid category is chosen (not the "keep current" option which has value="")
+                        } else if (newCatId) { 
                             item.category = newCatId;
                         }
                     }
@@ -679,7 +791,6 @@
                 successMsg = `已成功刪除選取的 ${checkedElements.length} 個欄位。`;
             }
 
-            // Deselect all checkboxes
             document.querySelectorAll(checkboxClass).forEach(c => c.checked = false);
             
             setUnsaved(true);
@@ -688,6 +799,449 @@
             
             document.getElementById('batch-modal').classList.add('hidden');
             showMsg('success', action === 'delete' ? '刪除成功' : '批次成功', successMsg);
+        }
+
+        // --- Internship Consolidation Logic (Updated) ---
+        
+        async function fetchCurrentTemplateFields() {
+            if (!currentConsolidationYear) return;
+            const res = await apiFetch(`hedb/year_templates/year_${currentConsolidationYear}_templates.json`);
+            currentTemplateFields = res.status === 200 ? res.data.fields : [];
+        }
+
+        function renderInternshipView() {
+            const selectEl = document.getElementById('consolidation-year-select');
+            selectEl.innerHTML = configData.academicYears.map(y => `<option value="${y.year}">${y.year} 學年度模組</option>`).join(''); // R1: Renamed UI
+            
+            if (configData.academicYears.length > 0) {
+                currentConsolidationYear = selectEl.value;
+                fetchCurrentTemplateFields(); 
+            } else {
+                 currentTemplateFields = [];
+            }
+
+            // Reset other panels/controls
+            document.getElementById('mapping-panel').classList.add('hidden');
+            document.getElementById('results-panel').classList.add('hidden');
+            document.getElementById('file-status').innerText = '請上傳包含學號、課程資訊的清單';
+            document.getElementById('btn-alliance-config').disabled = true;
+            document.getElementById('btn-alliance-config').className = "w-full bg-slate-100 border border-slate-300 text-slate-400 py-2.5 rounded-lg text-sm font-bold shadow-sm transition flex items-center justify-center gap-2";
+        }
+
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            document.getElementById('file-status').innerText = '檔案讀取中...';
+            document.getElementById('mapping-fields-container').innerHTML = '';
+            document.getElementById('mapping-panel').classList.add('hidden');
+            document.getElementById('results-panel').classList.add('hidden');
+            currentStudentData = null;
+            currentFileHeaders = [];
+            uniqueCourseDepts = [];
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    // FIX: Use readAsArrayBuffer and explicitly set type: 'array' for robustness
+                    const data = e.target.result;
+                    if (typeof XLSX === 'undefined') throw new Error("XLSX 函式庫未定義。"); // Sanity check
+                    const workbook = XLSX.read(data, { type: 'array' }); 
+                    
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    
+                    // Read data with header:1 to get clean headers (array of strings)
+                    const sheetData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: false, defval: "" });
+                    if (sheetData.length === 0) throw new Error("檔案內容為空");
+                    
+                    currentFileHeaders = sheetData[0].filter(h => h !== undefined && h !== null && h.toString().trim() !== ""); 
+
+                    // Read student data as array of objects, using the derived headers
+                    currentStudentData = XLSX.utils.sheet_to_json(worksheet, { raw: true, defval: "" });
+                    currentStudentData = currentStudentData.filter(row => Object.keys(row).length > 0); 
+                    
+                    // --- Extract Unique Course Departments for Alliance Rule Selection ---
+                    const courseDeptLabel = SYSTEM_FIELDS.find(f => f.id === 'course_dept').label;
+                    const courseDeptHeaderKey = currentFileHeaders.find(h => h && h.toString().includes(courseDeptLabel));
+
+                    if (courseDeptHeaderKey) {
+                        const departments = currentStudentData.map(row => (row[courseDeptHeaderKey] || '').toString().trim()).filter(d => d);
+                        uniqueCourseDepts = [...new Set(departments)].sort();
+                    } 
+
+                    document.getElementById('file-status').innerText = `已讀取檔案: ${file.name} (${currentFileHeaders.length} 欄, ${currentStudentData.length} 筆資料). 可設定欄位匹配。`;
+                    
+                    document.getElementById('btn-alliance-config').disabled = false;
+                    document.getElementById('btn-alliance-config').className = "w-full bg-slate-100 border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-4 py-2.5 rounded-lg text-sm font-bold shadow-sm transition flex items-center justify-center gap-2";
+
+                    renderMappingPanel();
+
+                } catch (e) {
+                    showMsg('error', '檔案讀取失敗', `請確認檔案格式為有效的 XLSX/CSV。錯誤: ${e.message}`);
+                    
+                    document.getElementById('student-list-file').value = null; 
+                    document.getElementById('btn-alliance-config').disabled = true;
+                    document.getElementById('btn-alliance-config').className = "w-full bg-slate-100 border border-slate-300 text-slate-400 py-2.5 rounded-lg text-sm font-bold shadow-sm transition flex items-center justify-center gap-2";
+                }
+            };
+            reader.onerror = function(e) {
+                 showMsg('error', '檔案讀取錯誤', '無法讀取檔案內容。');
+            };
+            reader.readAsArrayBuffer(file);
+        }
+        
+        // Request 4: New Matching UI Logic
+        function renderMappingPanel() {
+            if (!currentFileHeaders || currentFileHeaders.length === 0) return;
+
+            const container = document.getElementById('mapping-fields-container');
+            container.innerHTML = '';
+            currentMapping = {};
+            
+            // Empty option plus the actual headers
+            const excelHeaderOptions = ['<option value="">-- 請選擇 Excel 欄位 --</option>', ...currentFileHeaders.map(h => `<option value="${h}">${h}</option>`)].join('');
+
+            SYSTEM_FIELDS.forEach(sysField => {
+                const isRequired = sysField.required ? '<span class="text-red-500">*</span>' : '';
+                const sysLabel = sysField.label;
+                
+                // Auto-match logic based on full label text in Excel headers
+                const autoMatchedHeader = currentFileHeaders.find(h => h && h.toString().includes(sysLabel));
+                
+                if (autoMatchedHeader) {
+                    currentMapping[sysField.id] = autoMatchedHeader;
+                } else {
+                    currentMapping[sysField.id] = '';
+                }
+
+                container.innerHTML += `
+                    <div class="flex items-center gap-4">
+                        <span class="w-1/2 font-bold text-slate-800 text-sm truncate" title="${sysLabel} (${sysField.id})">${sysLabel} ${isRequired}</span>
+                        <i class="fas fa-arrow-right text-slate-400 text-xs flex-shrink-0"></i>
+                        <select data-field-id="${sysField.id}" onchange="updateMapping(this.dataset.fieldId, this.value)" class="w-1/2 border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-2 focus:ring-primary outline-none">
+                            ${excelHeaderOptions}
+                        </select>
+                    </div>
+                `;
+            });
+            
+            setTimeout(() => {
+                document.querySelectorAll('#mapping-fields-container select').forEach(select => {
+                    const fieldId = select.dataset.fieldId;
+                    if (currentMapping[fieldId]) {
+                         select.value = currentMapping[fieldId];
+                    }
+                });
+            }, 0);
+
+            document.getElementById('mapping-panel').classList.remove('hidden');
+        }
+
+        // Request 4: Update mapping function for the new UI direction
+        function updateMapping(fieldId, excelHeader) {
+            currentMapping[fieldId] = excelHeader;
+        }
+
+        async function processUploadedFile() {
+            if (!currentStudentData) return showMsg('error', '錯誤', '請先上傳名單檔案。');
+            currentConsolidationYear = document.getElementById('consolidation-year-select').value;
+            if (!currentConsolidationYear) return showMsg('error', '錯誤', '請先選擇要套用的學年度模組。');
+            
+            await fetchCurrentTemplateFields();
+
+            const mappedKeys = Object.keys(currentMapping).filter(k => currentMapping[k]);
+            
+            const missingRequired = REQUIRED_FIELD_IDS.filter(id => !mappedKeys.includes(id));
+            if (missingRequired.length > 0) {
+                const missingLabels = missingRequired.map(id => SYSTEM_FIELDS.find(f => f.id === id).label);
+                return showMsg('error', '錯誤', `請匹配以下必填系統欄位：${missingLabels.join('、')}。`);
+            }
+
+            const mappedData = currentStudentData.map(row => {
+                const newRow = {};
+                
+                // 1. Process Mapped Fields (Registration data)
+                SYSTEM_FIELDS.forEach(sysField => {
+                    const fileHeader = currentMapping[sysField.id];
+                    if (fileHeader) { 
+                        newRow[sysField.id] = (row[fileHeader] || '').toString().trim();
+                    } else if (SYSTEM_FIELDS.find(f => f.id === sysField.id)) {
+                        newRow[sysField.id] = '';
+                    }
+                });
+                
+                // 2. R2: Add blank values for all template fields
+                currentTemplateFields.forEach(tf => {
+                    if (!newRow[tf.id]) { 
+                         newRow[tf.id] = '';
+                    }
+                });
+
+                return newRow;
+            }).filter(row => row.student_id && row.course_dept); // Basic filter for clean records
+
+            if (mappedData.length === 0) {
+                return showMsg('info', '無有效資料', '檔案中沒有符合條件的有效記錄。請檢查欄位和資料。');
+            }
+            
+            // 3. Apply Grouping Logic (Updated Complex Rule)
+            const groupedData = {};
+            const allianceModeDepts = new Set(configData.allianceModeDepts || []);
+
+            mappedData.forEach(record => {
+                const courseDept = record.course_dept;
+                const studentDept = record.student_dept;
+
+                let finalGroupingKey;
+
+                if (allianceModeDepts.has(courseDept)) {
+                    if (allianceModeDepts.has(studentDept)) {
+                        finalGroupingKey = studentDept;
+                    } else {
+                        finalGroupingKey = courseDept;
+                    }
+                } else {
+                    finalGroupingKey = courseDept;
+                }
+                
+                // R1: Final output grouping should be the determined finalGroupingKey (e.g. 資管系 or 國貿系)
+                if (!groupedData[finalGroupingKey]) {
+                    groupedData[finalGroupingKey] = [];
+                }
+                groupedData[finalGroupingKey].push(record);
+            });
+
+            // 4. Sorting (學號, 學期, 選課代號)
+            currentConsolidatedResults = {};
+            for (const groupName in groupedData) {
+                groupedData[groupName].sort((a, b) => {
+                    if (a.student_id !== b.student_id) return a.student_id.localeCompare(b.student_id);
+                    if (a.semester !== b.semester) return a.semester.localeCompare(b.semester);
+                    return a.course_id.localeCompare(b.course_id); 
+                });
+                currentConsolidatedResults[groupName] = groupedData[groupName];
+            }
+
+            document.getElementById('total-records').innerText = mappedData.length;
+            renderConsolidatedLists();
+            showMsg('success', '彙整完成', '名單已成功分組與排序，請查看下方結果。');
+        }
+
+        // R3: Single record download removed.
+        
+        function renderConsolidatedLists() {
+            const resultsPanel = document.getElementById('results-panel');
+            const accordion = document.getElementById('results-accordion');
+            accordion.innerHTML = '';
+
+            if (!currentConsolidatedResults || Object.keys(currentConsolidatedResults).length === 0) {
+                accordion.innerHTML = '<p class="text-center text-slate-400 py-4">無資料可供顯示</p>';
+                resultsPanel.classList.remove('hidden');
+                return;
+            }
+            
+            // R2: Combined set of fields for final output
+            const allOutputFieldsMap = new Map();
+            SYSTEM_FIELDS.forEach(f => allOutputFieldsMap.set(f.id, f));
+            currentTemplateFields.forEach(f => allOutputFieldsMap.set(f.id, f));
+            const allOutputFields = Array.from(allOutputFieldsMap.values());
+
+            // R3: Define display fields based on PREVIEW_FIELD_IDS
+            const displayFields = PREVIEW_FIELD_IDS.map(id => allOutputFields.find(f => f.id === id)).filter(f => f); 
+
+            for (const groupName in currentConsolidatedResults) {
+                const groupData = currentConsolidatedResults[groupName];
+                
+                const headers = displayFields.map(f => `<th class="text-center">${f.label.replace(/\s*\(必填\)/g, '')}</th>`).join('');
+                
+                const rows = groupData.map((row, idx) => {
+                    const cells = displayFields.map(f => `
+                        <td class="text-center py-2 text-xs">
+                            ${row[f.id] || '<span class="text-slate-300">-</span>'}
+                        </td>
+                    `).join('');
+                    
+                    return `
+                        <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
+                            <td class="w-12 text-center py-3 text-xs font-mono text-slate-400">${idx + 1}</td>
+                            ${cells}
+                        </tr>
+                    `;
+                }).join('');
+                
+                // Accordion Item
+                accordion.innerHTML += `
+                    <div class="bg-white border border-slate-200 rounded-xl shadow-sm overflow-hidden">
+                        <input type="checkbox" id="acc-${groupName.replace(/\s/g, '_').replace(/[\(\)]/g, '')}" class="peer sr-only" checked>
+                        <label for="acc-${groupName.replace(/\s/g, '_').replace(/[\(\)]/g, '')}" class="flex justify-between items-center px-4 py-3 cursor-pointer bg-slate-50 hover:bg-slate-100 transition border-b border-slate-200">
+                            <span class="text-base font-bold text-slate-800">【${groupName}】名單 (${groupData.length} 筆)</span>
+                            <div class="flex items-center gap-3">
+                                <button onclick="downloadBatch('${groupName}')" class="btn-create py-1.5 px-4 rounded-lg text-xs font-bold shadow-sm" title="下載 ${groupName} 完整名單" style="pointer-events: auto;"><i class="fas fa-file-excel mr-1"></i> 下載名單</button>
+                                <i class="fas fa-chevron-down text-slate-400 peer-checked:rotate-180 transition"></i>
+                            </div>
+                        </label>
+                        <div class="max-h-0 peer-checked:max-h-[500px] overflow-y-auto transition-max-height duration-500 ease-in-out">
+                            <div class="overflow-x-auto custom-scroll">
+                                <table class="w-full data-table">
+                                    <thead class="sticky top-0 bg-white">
+                                        <tr>
+                                            <th class="w-12 text-center">#</th>
+                                            ${headers}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        ${rows}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            resultsPanel.classList.remove('hidden');
+        }
+
+        // R2, R3: Updated Download Batch (single department file)
+        function downloadBatch(groupName) {
+            const groupData = currentConsolidatedResults[groupName];
+            if (!groupData || groupData.length === 0) return;
+
+            // R2: Include ALL fields from System + Template
+            const allOutputFieldsMap = new Map();
+            // 1. Add SYSTEM_FIELDS in their defined order
+            SYSTEM_FIELDS.forEach(f => allOutputFieldsMap.set(f.id, f));
+            // 2. Add Template fields in their defined order
+            currentTemplateFields.sort((a, b) => a.order - b.order).forEach(f => allOutputFieldsMap.set(f.id, f));
+            const allOutputFields = Array.from(allOutputFieldsMap.values());
+            
+            const headers = allOutputFields.map(f => f.id);
+            const headerLabels = allOutputFields.map(f => f.label.replace(/\s*\(必填\)/g, ''));
+            
+            const data = groupData.map(row => headers.map(header => row[header] || ''));
+            
+            const wsData = [headerLabels, ...data];
+            const ws = XLSX.utils.aoa_to_sheet(wsData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, groupName);
+            
+            // R4: Filename format: "【XXX學年度修課】校庫填報清單-XX系"
+            const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName}.xlsx`;
+            XLSX.writeFile(wb, filename);
+        }
+        
+        // R4: Implement Download All Groups (ZIP)
+        function downloadAllGroupsZip() {
+            if (!currentConsolidatedResults || Object.keys(currentConsolidatedResults).length === 0) {
+                 return showMsg('info', '無資料', '目前沒有可供下載的彙整名單。');
+            }
+
+            const btn = document.getElementById('btn-batch-download-all-results');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner border-slate-500 border-t-white"></div> 打包中...';
+
+            const zip = new JSZip();
+            const allOutputFieldsMap = new Map();
+            SYSTEM_FIELDS.forEach(f => allOutputFieldsMap.set(f.id, f));
+            // R2: Sort Template fields by their defined order
+            currentTemplateFields.sort((a, b) => a.order - b.order).forEach(f => allOutputFieldsMap.set(f.id, f));
+            const allOutputFields = Array.from(allOutputFieldsMap.values());
+            
+            const headers = allOutputFields.map(f => f.id);
+            const headerLabels = allOutputFields.map(f => f.label.replace(/\s*\(必填\)/g, ''));
+
+            for (const groupName in currentConsolidatedResults) {
+                const groupData = currentConsolidatedResults[groupName];
+                
+                const data = groupData.map(row => headers.map(header => row[header] || ''));
+                const wsData = [headerLabels, ...data];
+                
+                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                const wb = XLSX.utils.book_new();
+                XLSX.utils.book_append_sheet(wb, ws, groupName);
+                
+                // Generate XLSX binary string (s2ab)
+                const wopts = { bookType: 'xlsx', type: 'binary' };
+                const wbout = XLSX.write(wb, wopts);
+                const s2ab = (s) => {
+                    const buf = new ArrayBuffer(s.length);
+                    const view = new Uint8Array(buf);
+                    for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
+                    return view; // Return Uint8Array
+                };
+                
+                // R4: Filename format: "【XXX學年度修課】校庫填報清單-XX系"
+                const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName}.xlsx`;
+                zip.file(filename, s2ab(wbout), { binary: true });
+            }
+            
+            // Generate the final ZIP file and download it
+            zip.generateAsync({ type: "blob" })
+               .then(function(content) {
+                   saveAs(content, `${currentConsolidationYear}_全系實習彙整名單.zip`);
+                   showMsg('success', '打包完成', '全系實習名單已打包成 ZIP 檔案開始下載。');
+               })
+               .catch(err => {
+                   showMsg('error', '打包失敗', `建立 ZIP 檔案時發生錯誤：${err.message}`);
+               })
+               .finally(() => {
+                   btn.disabled = false;
+                   btn.innerHTML = '<i class="fas fa-file-archive"></i> 全系批次下載 (打包ZIP)';
+               });
+        }
+
+        // --- Alliance Modal Logic (Updated) ---
+        function openAllianceModal() {
+            const requiredDeptFieldsMapped = REQUIRED_FIELD_IDS.filter(id => id === 'course_dept' || id === 'student_dept').every(id => currentMapping[id]);
+            
+            if (!requiredDeptFieldsMapped || !uniqueCourseDepts || uniqueCourseDepts.length === 0) {
+                return showMsg('info', '請先完成匹配', '請先上傳註課組清單並將**學系**與**開課學系**欄位匹配完畢，才能從中提取學系清單以供設定分組。');
+            }
+            renderAllianceRules();
+            document.getElementById('alliance-modal').classList.remove('hidden');
+        }
+
+        function renderAllianceRules() {
+            const container = document.getElementById('alliance-rules-container');
+            const currentAllianceDepts = configData.allianceModeDepts || [];
+            
+            const deptCheckboxes = uniqueCourseDepts.map(dept => {
+                const isChecked = currentAllianceDepts.includes(dept);
+                return `
+                    <label class="flex items-center p-2 bg-slate-50 border border-slate-200 rounded-lg cursor-pointer hover:border-primary transition">
+                        <input type="checkbox" data-dept="${dept}" ${isChecked ? 'checked' : ''} class="custom-checkbox mr-3 alliance-dept-check">
+                        <span class="text-sm font-bold text-slate-700">${dept}</span>
+                    </label>
+                `;
+            }).join('');
+
+
+            container.innerHTML = `
+                <div class="logic-card p-4 relative bg-white space-y-4">
+                    <p class="text-sm text-primary font-bold">請勾選哪些「開課學系」要啟用特殊分組模式：</p>
+                    <div class="grid grid-cols-2 gap-3" id="alliance-checkboxes">
+                        ${deptCheckboxes}
+                    </div>
+                </div>
+            `;
+        }
+        
+        function addAllianceRule() {
+             // Not used in the new design.
+        }
+
+        function removeAllianceRule(index) {
+             // Not used in the new design.
+        }
+
+        function saveAllianceRules() {
+            const checkedDepts = Array.from(document.querySelectorAll('.alliance-dept-check:checked')).map(cb => cb.dataset.dept);
+            
+            configData.allianceModeDepts = checkedDepts;
+            setUnsaved(true);
+            document.getElementById('alliance-modal').classList.add('hidden');
+            showMsg('success', '儲存成功', `已設定 ${checkedDepts.length} 個開課學系進入特殊分組模式。`);
         }
 
         // --- Logic Summary & Conflict Detection ---
@@ -757,7 +1311,7 @@
             let statusHtml = '<span class="text-green-600 font-bold text-xs"><i class="fas fa-check-circle"></i> 邏輯檢測通過</span>';
             const depName = fieldMap.get(rule.dep) || rule.dep;
             const depValid = fieldMap.has(rule.dep);
-            const valValid = !depValid || !fieldOptions.has(rule.dep) || fieldOptions.get(rule.dep).includes(rule.val);
+            const valValid = !depValid || !fieldOptions.has(depId) || fieldOptions.get(depId).includes(rule.val);
             
             if(!depValid) statusHtml = '<span class="text-red-600 font-bold text-xs"><i class="fas fa-exclamation-circle"></i> 錯誤：找不到依賴對象</span>';
             else if(!valValid) statusHtml = `<span class="text-red-600 font-bold text-xs"><i class="fas fa-exclamation-triangle"></i> 錯誤：[${depName}] 沒有選項 '${rule.val}'</span>`;
@@ -1221,7 +1775,7 @@
         async function deleteFile(path,sha){await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`,{method:'DELETE',headers:{'Authorization':`token ${ghConfig.token}`,'Content-Type':'application/json'},body:JSON.stringify({message:'Del',sha:sha})});}
 
         function switchView(v) {
-            ['years','fields','types'].forEach(x => { document.getElementById(`view-${x}`).classList.toggle('hidden', v!==x); document.getElementById(`view-${x}`).classList.toggle(x==='types'||x==='fields'?'flex':'flex', v===x); document.getElementById(`nav-${x}`).classList.toggle('active', v===x); });
+            ['years','fields','types','internship'].forEach(x => { document.getElementById(`view-${x}`).classList.toggle('hidden', v!==x); document.getElementById(`view-${x}`).classList.toggle(v!=='years'?'flex':'flex', v===x); document.getElementById(`nav-${x}`).classList.toggle('active', v===x); });
             if(v==='fields')renderGlobalList(); if(v==='types')renderTypeManagerPage();
         }
         window.onload = init;
