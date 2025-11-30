@@ -2933,8 +2933,7 @@
             }
         }
 
-        // ★★★ 核心引擎：使用 ExcelJS 產生檔案 (內嵌清單修復版) ★★★
-        // ★★★ 核心引擎：ExcelJS 產生檔案 (強力淨化版) ★★★
+        // ★★★ 核心引擎：ExcelJS 範圍批次設定版 (強制生效) ★★★
         async function createExcelBuffer(groupName, groupData, outputFields, outputYear) {
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet(groupName === 'all' ? '總表' : groupName);
@@ -2979,91 +2978,75 @@
             const thinBorder = { style: 'thin', color: { argb: 'FFB2B2B2' } };
             const borderStyle = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
             
-            // 4. 準備下拉選單邏輯
-            const validationRules = {}; // colIndex -> validation object
+            // 4. 設定所有儲存格樣式 (含標頭)
+            const safeEndRow = Math.max(rows.length + 100, 100); // 確保樣式涵蓋到下方空白區
 
-            outputFields.forEach((field, idx) => {
-                if ((field.type === 'single_select' || field.type === 'list') && 
-                    field.options && field.options.length > 0) {
-                    
-                    // ★★★ 強力淨化：移除換行符號、修剪空白、轉義雙引號 ★★★
-                    const safeOptions = field.options.map(o => {
-                        return o.toString()
-                                .replace(/[\r\n]+/g, '') // 移除換行
-                                .trim()                  // 移除前後空白
-                                .replace(/"/g, '""');    // 處理 Excel 雙引號轉義
-                    });
-                    
-                    const joinedOptions = safeOptions.join(',');
-
-                    // 檢查長度 (Excel 限制 255 字元)
-                    if (joinedOptions.length < 255) {
-                        // ★★★ 關鍵寫法：formulas 必須是 ['"選項1,選項2"'] ★★★
-                        // 注意：字串頭尾一定要各加一個雙引號
-                        validationRules[idx + 1] = {
-                            type: 'list',
-                            allowBlank: true,
-                            formulas: [`"${joinedOptions}"`], 
-                            showErrorMessage: true,
-                            errorTitle: '輸入限制',
-                            error: '請選擇有效選項'
-                        };
-                        console.log(`[Excel] 欄位 [${field.label}] 下拉設定成功: "${joinedOptions}"`);
-                    } else {
-                        console.warn(`[Excel] 欄位 [${field.label}] 選項過長，略過下拉`);
-                    }
-                }
-            });
-
-            // 5. 遍歷每一列 (含標頭) 套用樣式與驗證
-            worksheet.eachRow((row, rowNumber) => {
-                row.eachCell((cell, colNumber) => {
-                    const field = outputFields[colNumber - 1];
+            // 針對每一列、每一格設定基本樣式
+            for (let r = 1; r <= safeEndRow; r++) {
+                // 確保 Row 物件存在
+                const row = worksheet.getRow(r);
+                
+                outputFields.forEach((field, idx) => {
+                    const cell = row.getCell(idx + 1);
                     
                     cell.border = borderStyle;
                     cell.alignment = { vertical: 'middle', wrapText: true };
-
-                    if (rowNumber === 1) {
-                        // 標頭
+                    
+                    if (r === 1) {
                         cell.font = headerFont;
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + getCategoryColor(field.category) } };
                         cell.alignment = { vertical: 'middle', horizontal: 'center' };
                     } else {
-                        // 內容
                         cell.font = fontStyle;
-                        if (field._isMapped) {
+                        if (field._isMapped && r <= rows.length + 1) { // 只有資料區才顯示灰底
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
                         } else {
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
                         }
-
-                        // 套用下拉選單
-                        if (validationRules[colNumber]) {
-                            cell.dataValidation = validationRules[colNumber];
-                        }
-                    }
-                });
-            });
-
-            // 6. 補足空白列
-            const currentRows = rows.length;
-            const extraRows = 100; 
-            
-            for (let i = 1; i <= extraRows; i++) {
-                const r = worksheet.getRow(currentRows + 1 + i);
-                outputFields.forEach((field, idx) => {
-                    const colNumber = idx + 1;
-                    const cell = r.getCell(colNumber);
-                    
-                    cell.font = fontStyle;
-                    cell.border = borderStyle;
-                    cell.alignment = { vertical: 'middle', wrapText: true };
-                    
-                    if (validationRules[colNumber]) {
-                        cell.dataValidation = validationRules[colNumber];
                     }
                 });
             }
+
+            // 5. ★★★ 關鍵修正：使用 dataValidations.add 進行批次範圍設定 ★★★
+            // 這種寫法對應 Excel 內部的 <dataValidations> 標籤，比單一儲存格設定更穩定
+            
+            outputFields.forEach((field, idx) => {
+                if ((field.type === 'single_select' || field.type === 'list') && 
+                    field.options && field.options.length > 0) {
+                    
+                    // 1. 取得欄位英文字母 (例如 A, B, AA)
+                    const colLetter = worksheet.getColumn(idx + 1).letter;
+                    
+                    // 2. 定義套用範圍 (從第 2 列到 safeEndRow)
+                    const range = `${colLetter}2:${colLetter}${safeEndRow}`;
+                    
+                    // 3. 處理選項字串 (轉義雙引號)
+                    const safeOptions = field.options.map(o => o.toString().replace(/"/g, '""').trim()).join(',');
+                    
+                    if (safeOptions.length < 255) {
+                        // 4. 準備規則物件
+                        const rule = {
+                            type: 'list',
+                            allowBlank: true,
+                            showErrorMessage: true,
+                            errorTitle: '輸入限制',
+                            error: '請從下拉選單中選擇有效項目',
+                            formulas: [`"${safeOptions}"`] // 標準寫法: 雙引號包字串
+                        };
+
+                        // ★ 相容性修正：同時寫入 formulae 屬性 (針對部分舊版 ExcelJS 或特定環境)
+                        rule.formulae = rule.formulas;
+
+                        // 5. 加入驗證規則到 Worksheet
+                        worksheet.dataValidations.add(range, rule);
+                        
+                        console.log(`[Excel] 範圍下拉設定成功: ${range} => "${safeOptions}"`);
+                    } else {
+                        // 字串過長，略過 (改為提示)
+                        console.warn(`[Excel] 欄位 [${field.label}] 選項過長，略過下拉`);
+                    }
+                }
+            });
 
             // 產生 Buffer
             const buffer = await workbook.xlsx.writeBuffer();
@@ -3082,13 +3065,15 @@
             
             const outputYear = currentConsolidationYear || activeYearId || '';
 
-            // ★★★ 改用 ExcelJS 生成 ★★★
             try {
+                // 1. 呼叫新的核心引擎取得 Buffer (您的 Log 就是從這裡印出來的)
                 const buffer = await createExcelBuffer(groupName, groupData, allOutputFields, outputYear);
                 
-                // 使用 FileSaver 下載
+                // 2. ★★★ 關鍵：必須使用 Blob + saveAs 來下載，不能用 XLSX.writeFile ★★★
                 const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
                 const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName === 'all' ? '總表' : groupName}.xlsx`;
+                
+                // 使用 FileSaver.js 的 saveAs
                 saveAs(blob, filename);
                 
             } catch (e) {
@@ -3934,3 +3919,4 @@
     </script>
 </body>
 </html>
+    
