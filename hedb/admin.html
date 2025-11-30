@@ -2293,7 +2293,6 @@
             // Show processing status
             document.getElementById('group-list-empty-state').innerHTML = '<div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>彙整中...';
 
-            
             // 2. Data Mapping
             const mappedData = currentStudentData.map((row, rowIndex) => {
                 const newRow = {};
@@ -2304,37 +2303,43 @@
                     const fileHeader = mapping.excelHeader;
                     let value = '';
                     
-                    // The data key in newRow MUST be the module field ID
                     if (fileHeader) { 
                         value = (row[fileHeader] || '').toString().trim();
                     } 
                     
-                    // Q4: Option Conflict Check (Only for single_select and list)
+                    // Option Conflict Check
                     if ((modField.type === 'single_select' || modField.type === 'list') && modField.options && value) {
                         const moduleOptions = modField.options.map(String);
                         const isValueValid = moduleOptions.includes(value);
 
                         if (!isValueValid) {
                             console.warn(`[衝突警告] 紀錄 #${rowIndex + 1} 的欄位 ${modField.label} (${modField.id}) 值 "${value}" 不在模組選項中，將被清空。`);
-                            // Q4: 略過衝突值，讓該欄位變空白
                             value = ''; 
                         }
                     }
 
-
                     newRow[modField.id] = value;
                 });
                 
-                // --- MAP ALL OTHER FIELDS (NON-SYSTEM CATEGORIES) TO EMPTY STRING FOR EXPORT CONSISTENCY ---
+                // --- MAP ALL OTHER FIELDS (NON-SYSTEM CATEGORIES) ---
                 const allExportFields = getFieldsToExport();
                 const processedIds = new Set(fieldsToProcess.map(f => f.id));
                 
                 allExportFields.forEach(expField => {
                     if (!processedIds.has(expField.id) && !newRow.hasOwnProperty(expField.id)) {
-                         // Non-system field that was not in the matching panel, initialize to empty string for output
                          newRow[expField.id] = '';
                     }
                 });
+
+                // ★★★ 修正重點：處理 ID 不一致的問題 (Alias Mapping) ★★★
+                // 如果模組使用的是 offering_department，將其值複製給系統核心的 course_dept
+                if (!newRow.course_dept && newRow.offering_department) {
+                    newRow.course_dept = newRow.offering_department;
+                }
+                // 如果模組使用的是 student_department，將其值複製給系統核心的 student_dept
+                if (!newRow.student_dept && newRow.student_department) {
+                    newRow.student_dept = newRow.student_department;
+                }
 
                 // Ensure the core grouping keys exist for the next step.
                 newRow.course_dept = newRow.course_dept || '';
@@ -2348,45 +2353,36 @@
             const departments = mappedData.map(row => row.course_dept).filter(d => d);
             uniqueCourseDepts = [...new Set(departments)].sort();
 
-            // 4. Sorting and Grouping (Logic remains the same, but using flexible alliance config)
-            
-            // Get Alliance Configuration for the current year (Q2)
+            // 4. Sorting and Grouping
             const allianceConfig = yearTemplateData.allianceModeDepts || { groups: [], groupingBasis: 'course_dept', unmatchedHandling: 'use_primary' };
             const allianceGroups = allianceConfig.groups || [];
             const basis = allianceConfig.groupingBasis || 'course_dept';
             const unmatchedHandling = allianceConfig.unmatchedHandling || 'use_primary';
 
-            let groupedData = {}; // Must reset for each run
+            let groupedData = {}; 
             mappedData.forEach(record => {
-                const primaryDept = record[basis]; // e.g., 'course_dept' or 'student_dept'
+                // ... (後續分組邏輯保持不變) ...
+                const primaryDept = record[basis]; 
                 const secondaryKey = basis === 'course_dept' ? 'student_dept' : 'course_dept';
-                const secondaryDept = record[secondaryKey]; // The other department
+                const secondaryDept = record[secondaryKey];
 
                 let finalGroupingKey = primaryDept; 
 
-                // Find if the primary department belongs to an alliance
                 let foundAlliance = allianceGroups.find(group => group.depts.includes(primaryDept));
 
                 if (foundAlliance) {
-                    // Check if the secondary department is also in the same alliance
                     if (foundAlliance.depts.includes(secondaryDept)) {
-                        // Case 1: Both departments are in the same alliance -> Group by Alliance Name
                         finalGroupingKey = foundAlliance.name;
                     } else {
-                        // Case 2: Primary is in alliance, Secondary is outside (The "遺珠" case)
                         if (unmatchedHandling === 'use_primary') {
-                            // Default: Retain original key (primary dept)
                             finalGroupingKey = primaryDept;
                         } else if (unmatchedHandling === 'use_secondary') {
-                            // Group by Secondary Dept 
                             finalGroupingKey = secondaryDept; 
                         } else if (unmatchedHandling === 'use_alliance_only') {
-                             // Only form alliance group if both are matched, otherwise fall back to primary dept (original key)
                              finalGroupingKey = primaryDept; 
                         }
                     }
                 }
-                // If foundAlliance is null, finalGroupingKey remains primaryDept.
 
                 if (!groupedData[finalGroupingKey]) {
                     groupedData[finalGroupingKey] = [];
@@ -2396,14 +2392,13 @@
 
             currentConsolidatedResults = {};
             for (const groupName in groupedData) {
-                // Re-sort grouped data for stability
                 groupedData[groupName].sort((a, b) => {
                     const idA = a.student_id || '';
                     const idB = b.student_id || '';
                     const nameA = a.student_name || '';
                     const nameB = a.student_name || '';
-                    const courseIdA = a.course_id || '';
-                    const courseIdB = b.course_id || '';
+                    const courseIdA = a.course_code || a.course_id || ''; // 增加 course_code 支援
+                    const courseIdB = b.course_code || b.course_id || '';
                     
                     if (idA !== idB) return idA.localeCompare(idB);
                     if (nameA !== nameB) return nameA.localeCompare(nameB);
@@ -2415,13 +2410,10 @@
             document.getElementById('btn-batch-download-all-results-main').classList.remove('hidden');
             document.getElementById('btn-reopen-mapping').classList.remove('hidden');
             renderInternshipSidebar();
-            
-            // Auto select "All"
             selectConsolidatedGroup('all'); 
 
             showMsg('success', '彙整完成', '名單已成功分組與排序，請查看側邊欄結果。');
         }
-
         function renderInternshipSidebar() {
             const el = document.getElementById('internship-group-list');
             el.innerHTML = ''; // 清除現有內容
