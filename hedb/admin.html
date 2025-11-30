@@ -134,13 +134,18 @@
             gap: 1rem;
             align-items: center;
             padding: 0.5rem 0;
+            /* Q2 Fix: Apply to direct items, not the container */
+            border: 1px solid #e2e8f0; 
+            border-radius: 0.5rem; 
+            padding: 1rem;
+            margin-bottom: 0.5rem;
+            background-color: #f9fafb;
         }
 
     </style>
 </head>
 <body class="h-screen flex flex-col overflow-hidden text-slate-700 bg-background">
 
-    <!-- 登入畫面 -->
     <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-md p-10 rounded-2xl shadow-2xl relative z-10 animate-fade-in">
             <div class="text-center mb-8">
@@ -157,7 +162,6 @@
         </div>
     </div>
 
-    <!-- 主介面 -->
     <div id="admin-interface" class="hidden h-full flex flex-col bg-slate-50 opacity-0 transition-opacity duration-500">
         <header class="h-16 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-30">
             <div class="flex items-center gap-3"><div class="w-8 h-8 bg-primary text-white rounded flex items-center justify-center text-sm shadow"><i class="fas fa-tools"></i></div><h1 class="font-bold text-lg tracking-wide text-primary">系統配置中心</h1></div>
@@ -240,7 +244,7 @@
             </div>
 
             <!-- 系所清單管理 (New View) -->
-            <div id="view-departments" class="w-full h-full hidden flex">
+            <div id="view-departments" class="w-full h-full flex">
                 <aside class="w-72 bg-white border-r border-slate-200 flex flex-col z-10 flex-shrink-0">
                     <div class="p-5 border-b border-slate-100 bg-white"><div onclick="openCollegeConfigModal()" class="year-add-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success"><i class="fas fa-plus-square text-lg"></i> 新增學院</div></div>
                     <div id="college-list" class="flex-grow overflow-y-auto p-3 space-y-1 custom-scroll bg-slate-50 list-none"></div>
@@ -326,7 +330,7 @@
                             <div class="flex items-center gap-3">
                                 <button onclick="reopenMappingModal()" id="btn-reopen-mapping" class="btn-warning font-bold py-2 px-4 rounded-lg shadow-md flex items-center gap-2 text-sm transform active:scale-95 transition-all hidden"><i class="fas fa-wrench"></i> 重新匹配欄位</button>
                                 <button onclick="downloadAllGroupsZip()" id="btn-batch-download-all-results-main" class="btn-manage font-bold py-2 px-4 rounded-lg shadow-md flex items-center gap-2 text-sm transform active:scale-95 transition-all hidden"><i class="fas fa-file-archive"></i> 全系批次下載 (打包ZIP)</button>
-                                <button onclick="openAllianceModal()" id="btn-alliance-config" class="btn-create px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2"><i class="fas fa-sitemap"></i> 設定系所分組/聯盟</button>
+                                <button onclick="openAllianceModal()" id="btn-alliance-config" disabled class="btn-create px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2"><i class="fas fa-sitemap"></i> 設定系所分組/聯盟</button>
                             </div>
                         </div>
                         <div class="flex-grow p-8 overflow-hidden flex flex-col">
@@ -353,61 +357,245 @@
                     </div>
                 </section>
             </div>
-            <!-- 欄位類型管理... (省略，不影響主要拆分邏輯) -->
+            <div id="view-types" class="w-full h-full hidden flex-col p-8 bg-slate-50 overflow-y-auto custom-scroll">
+                <div class="max-w-4xl mx-auto w-full">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-8">
+                        <div class="flex justify-between items-center mb-6 pb-4 border-b border-slate-100">
+                            <div><h2 class="text-2xl font-bold text-slate-800">欄位類型管理</h2><p class="text-sm text-slate-500 mt-1">定義系統支援的輸入類型 (如 Text, Number...)</p></div>
+                            <button onclick="openAddrRules()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2"><i class="fas fa-cog"></i> 設定地址正規化規則</button>
+                        </div>
+                        <div class="bg-slate-50 rounded-xl border border-slate-200 overflow-hidden mb-6"><table class="w-full text-sm text-left"><thead class="bg-slate-100 text-slate-500 font-bold text-xs uppercase"><tr><th class="px-6 py-3">代碼 (Key)</th><th class="px-6 py-3">顯示名稱 (Label)</th><th class="px-6 py-3 text-right">操作</th></tr></thead><tbody id="type-list-page" class="divide-y divide-slate-200 bg-white"></tbody></table></div>
+                        <div class="bg-indigo-50 p-6 rounded-xl border border-indigo-100 shadow-sm"><h4 class="text-sm font-bold text-primary mb-4 flex items-center gap-2"><i class="fas fa-plus-circle"></i> 新增自訂類型</h4><div class="grid grid-cols-1 md:col-cols-5 gap-4 items-end"><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">代碼 (HTML Type)</label><input id="new-type-key-page" placeholder="e.g. email" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-2"><label class="block text-xs font-bold text-indigo-600 mb-1">顯示名稱</label><input id="new-type-label-page" placeholder="e.g. Email Address" class="w-full border border-indigo-200 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-primary outline-none"></div><div class="md:col-span-1"><button onclick="addCustomTypePage()" class="w-full btn-create py-2.5 rounded-lg font-bold text-sm shadow-sm">新增</button></div></div></div>
+                    </div>
+                </div>
+            </div>
         </main>
     </div>
 
-    <!-- 匹配彈窗 (Mapping Modal) (省略，不影響主要拆分邏輯) -->
-    
-    <!-- 泛用訊息/提示彈窗 (Msg Modal) (省略，不影響主要拆分邏輯) -->
-
-    <!-- 欄位編輯彈窗 (Editor Modal) (省略，不影響主要拆分邏輯) -->
-
-    <!-- College/Department Master Editor Modal (Q1, Q2, Q3) -->
-    <div id="dept-editor-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center modal-overlay p-4">
-        <div class="bg-white w-full max-w-6xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[90vh]">
+    <div id="mapping-modal" class="fixed inset-0 z-[90] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-3xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[85vh]">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-primary/5 flex-shrink-0">
-                <h3 class="text-lg font-bold text-primary flex items-center gap-2"><i class="fas fa-university text-primary"></i> <span id="dept-editor-title">編輯學院/系所屬性</span></h3>
-                <button onclick="document.getElementById('dept-editor-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                <h3 class="text-lg font-bold text-primary flex items-center gap-2"><i class="fas fa-random text-primary"></i> 欄位匹配與匯出清單設定</h3>
+                <button onclick="closeMappingModal(true)" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
             </div>
-            <div class="flex flex-grow overflow-hidden">
-                <!-- Left Panel: Master Data (Short Name, Code, ID) -->
-                <div class="w-80 bg-slate-50 border-r border-slate-200 flex-shrink-0 overflow-y-auto custom-scroll p-6 space-y-5">
-                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-4 border-b pb-2">基礎識別設定</h4>
-                    <input type="hidden" id="ed-dept-entity-type"> <!-- 'college' or 'department' -->
-                    <input type="hidden" id="ed-dept-id">
-                    
-                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">ID (唯一識別碼)</label><input type="text" id="ed-dept-id-display" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono text-red-600 bg-slate-100" readonly></div>
-                    
-                    <div><label class="text-xs font-bold text-slate-600 mb-1 block" id="ed-code-label">代碼 (Code)</label><input type="text" id="ed-dept-code" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono focus:ring-primary outline-none"></div>
+            <div class="flex-grow overflow-y-auto custom-scroll p-8 bg-white flex flex-col">
+                <div class="mb-6 bg-white rounded-xl shadow-md border border-slate-200 p-6 flex-shrink-0">
+                    <label class="block text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fas fa-calendar-alt text-primary"></i> 選擇學年度模組</label> 
+                    <select id="consolidation-year-select" onchange="fetchCurrentTemplateFields(true)" class="w-full border border-slate-300 rounded-lg p-3 text-sm bg-white focus:ring-2 focus:ring-primary outline-none"></select>
+                </div>
+                
+                <div class="mb-6 p-4 bg-blue-50 border border-blue-200 rounded-xl flex-shrink-0">
+                    <h4 class="text-sm font-bold text-blue-700 flex items-center gap-2 mb-2"><i class="fas fa-info-circle"></i> 彙整欄位與匹配原則</h4>
+                    <p class="text-xs text-blue-600 leading-relaxed">
+                        系統將自動納入學年度模組中【系統】開課資訊與【系統】學生資訊兩分類下的所有欄位進行彙整。您只需在下方將**模組欄位**對應到上傳清單中的**正確 Excel 欄位**即可。
+                        <span class="font-bold text-red-700">（注意：匹配設定為非必填，但若未匹配，該欄位資料將為空白。）</span>
+                    </p>
+                </div>
 
-                    <div><label class="text-xs font-bold text-slate-600 mb-1 block" id="ed-shortname-label">簡稱 (介面顯示)</label><input type="text" id="ed-dept-shortname" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none"></div>
-                    
-                    <div id="ed-affiliated-college-box" class="pt-4 border-t border-slate-200 hidden">
-                        <label class="text-xs font-bold text-slate-600 mb-1 block">目前所屬學院</label>
-                        <input type="text" id="ed-dept-college-name" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono text-primary bg-white" readonly>
-                    </div>
-                </div>
-                <!-- Right Panel: Historical Name Editing (Q1, Q2) -->
-                <div id="dept-year-name-panel" class="flex-grow overflow-y-auto custom-scroll bg-white">
-                    <div class="p-6 border-b border-slate-100 bg-gray-50/50 flex justify-between items-center sticky top-0 z-10">
-                        <h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-history"></i> 學年度名稱歷史紀錄 (全稱)</h4>
-                        <button onclick="copyAllYearNames()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-full shadow-sm transition flex items-center gap-1 font-bold"><i class="fas fa-copy"></i> 複製當前名稱至所有學年</button>
-                    </div>
-                    
-                    <div id="year-name-list" class="p-6 space-y-4">
-                        <!-- Academic Year Name Inputs Rendered Here -->
+                <div class="flex gap-6 mt-6 flex-grow overflow-hidden h-full">
+                    <!-- NEW SINGLE PANEL STRUCTURE: Tighter UI -->
+                    <div id="excel-mapping-panel" class="w-full p-4 bg-white border border-slate-200 rounded-xl shadow-lg flex flex-col overflow-hidden h-full">
+                        <div class="flex-shrink-0 mb-3 border-b border-slate-200 pb-2 flex items-center justify-between">
+                            <span class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-map-marked-alt text-primary"></i> 欄位匹配設定區 (<span id="total-module-fields">0</span> 個系統欄位)</span>
+                            <span class="text-xs text-slate-500 font-normal">已匹配 <span id="selected-mapping-count" class="font-bold text-primary">0</span> 個 Excel 欄位</span>
+                        </div>
+                        <!-- UI Redesign: Horizontal two-column grid -->
+                        <div id="mapping-dropdown-container" class="mapping-container overflow-y-auto custom-scroll p-1 flex-grow">
+                            <!-- Dropdowns render here -->
+                        </div>
+                        <div id="mapping-panel-empty-state" class="text-center text-slate-400 text-xs py-12 hidden flex-grow justify-center items-center">請先選定學年度模組</div>
                     </div>
                 </div>
             </div>
-            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
-                <button onclick="document.getElementById('dept-editor-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm transition">取消</button>
-                <button onclick="saveDeptMasterFromModal()" id="btn-save-dept-master" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow hover:shadow-lg transition">確認保存</button>
+            <div class="px-6 py-4 border-t border-slate-100 bg-primary/5 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="closeMappingModal(true)" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm transition">取消</button>
+                <button onclick="processUploadedFile()" id="btn-process-list" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow hover:shadow-lg transition flex items-center gap-2"><i class="fas fa-cogs"></i> 開始彙整名單</button>
             </div>
         </div>
     </div>
 
+    <div id="msg-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center modal-overlay p-4 transition-opacity opacity-0">
+        <div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6 text-center transform scale-95 transition-transform duration-300" id="msg-panel">
+            <div class="w-14 h-14 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl shadow-sm" id="msg-icon"></div>
+            <h3 class="text-xl font-bold text-slate-800 mb-2" id="msg-title"></h3><p class="text-sm text-slate-500 mb-6 leading-relaxed" id="msg-desc"></p>
+            <div id="msg-input-area" class="hidden mb-6 text-left"><label class="block text-xs font-bold text-slate-400 uppercase mb-1" id="msg-input-label"></label><input type="text" id="msg-input" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm font-mono focus:ring-2 focus:ring-primary outline-none text-slate-700"><div id="msg-select-area" class="hidden mt-3"><label class="block text-xs font-bold text-slate-400 uppercase mb-1">複製來源</label><select id="msg-select" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none"></select></div></div>
+            <div class="flex gap-3 justify-center" id="msg-btns"></div>
+        </div>
+    </div>
 
+    <div id="editor-modal" class="fixed inset-0 z-[60] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-5xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[85vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-sliders-h text-primary"></i> <span id="editor-title">編輯欄位屬性</span></h3>
+                <button onclick="document.getElementById('editor-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            <input type="hidden" id="ed-id"> <input type="hidden" id="ed-orig-id">
+            <div class="flex flex-grow overflow-hidden">
+                <div class="w-80 bg-slate-50 border-r border-slate-200 flex-shrink-0 overflow-y-auto custom-scroll p-6 space-y-5">
+                    <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">基本設定</h4>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位 ID <span class="text-red-500">*</span></label><input type="text" id="ed-field-id" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono text-blue-600 focus:ring-primary outline-none" placeholder="e.g. f_name"></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">顯示名稱 <span class="text-red-500">*</span></label><input type="text" id="ed-label" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none" placeholder="e.g. 學生姓名"></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位說明 (Help Text)</label><textarea id="ed-desc" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none resize-none h-20" placeholder="例如: 請填寫學生所屬學院..."></textarea><p class="text-[10px] text-slate-400 mt-1">此說明僅顯示於填報介面提示，不會匯出至 Excel。</p></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">所屬分類</label><select id="ed-category" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none"></select></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位類型</label><select id="ed-type" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none" onchange="renderOpts()"></select></div>
+                    <div class="pt-2 space-y-3">
+                        <div>
+                            <label class="flex items-center text-sm cursor-pointer mb-1"><input type="checkbox" id="ed-system" class="custom-checkbox mr-2" onchange="toggleSystemHint(this.checked)"> <span class="font-bold text-slate-700">系統自動帶入 (唯讀/匯入)</span></label>
+                            <p id="sys-hint" class="text-[10px] text-amber-600 pl-6 leading-tight">此欄位對應匯入檔案，使用者無法編輯。建議勾選『必填』確保資料完整。</p>
+                        </div>
+                        <label class="flex items-center text-sm cursor-pointer"><input type="checkbox" id="ed-required" class="custom-checkbox mr-2"> <span class="font-bold text-slate-700">必填項目</span></label>
+                    </div>
+                </div>
+                <div class="flex-grow overflow-y-auto custom-scroll bg-white">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/30">
+                        <div class="flex justify-between items-start mb-3">
+                            <div><h4 class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-eye"></i> 欄位顯示控制 (Visibility)</h4><p class="text-[11px] text-slate-400 mt-1">控制此欄位在什麼情況下才顯示。</p></div>
+                            <label class="relative inline-flex items-center cursor-pointer"><input type="checkbox" id="vis-toggle" class="sr-only peer" onchange="toggleVisSettings(this.checked)"><div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#002E5D]"></div><span class="ml-3 text-xs font-medium text-slate-600" id="vis-label">總是顯示</span></label>
+                        </div>
+                        <div id="vis-settings" class="hidden bg-white border border-indigo-100 rounded-lg p-4 shadow-sm animate-fade-in">
+                            <div class="flex items-center gap-2 text-xs text-slate-500 mb-2"><i class="fas fa-info-circle"></i> 當以下條件成立時，執行動作：</div>
+                            <div class="grid grid-cols-3 gap-4">
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">依賴對象 (決定者)</label><select id="ed-vis-dep" class="w-full border border-slate-300 rounded p-2 text-sm bg-white"></select></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">當內容是 (條件值)</label><input id="ed-vis-val" class="w-full border border-slate-300 rounded p-2 text-sm" placeholder="輸入觸發值"></div>
+                                <div><label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">動作 (Action)</label><select id="ed-vis-action" class="w-full border border-slate-300 rounded p-2 text-sm bg-white"><option value="show">顯示 (Show)</option><option value="hide">隱藏 (Hide)</option></select></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="ed-opts-container" class="p-8"></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="document.getElementById('editor-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm transition">取消</button>
+                <button onclick="saveField()" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow hover:shadow-lg transition">確認暫存</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="logic-modal" class="fixed inset-0 z-[70] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-7xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[80vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-project-diagram text-primary"></i> 邏輯總覽與衝突檢測</h3>
+                <button onclick="document.getElementById('logic-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-grow overflow-y-auto custom-scroll p-8 bg-slate-50">
+                <div id="logic-conflicts" class="hidden mb-8 p-4 bg-red-50 border border-red-200 rounded-lg"><h4 class="text-red-700 font-bold flex items-center gap-2 mb-2"><i class="fas fa-exclamation-triangle"></i> 發現邏輯問題</h4><ul id="conflict-list" class="list-disc list-inside text-sm text-red-600 space-y-2"></ul></div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8">
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-4 border-b pb-2 flex items-center justify-between"><span><i class="fas fa-eye text-indigo-500 mr-2"></i> 顯示條件 (Visibility)</span><span id="vis-count" class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">0</span></h4><div id="vis-list" class="space-y-4"></div></div>
+                    <div class="bg-white p-5 rounded-xl border border-slate-200 shadow-sm"><h4 class="font-bold text-slate-700 mb-4 border-b pb-2 flex items-center justify-between"><span><i class="fas fa-list-ul text-emerald-500 mr-2"></i> 選項連動 (Option Logic)</span><span id="opt-count" class="text-xs bg-slate-100 px-2 py-0.5 rounded text-slate-500">0</span></h4><div id="opt-list" class="space-y-4"></div></div>
+                </div>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end"><button onclick="document.getElementById('logic-modal').classList.add('hidden')" class="px-5 py-2 btn-manage rounded-lg font-bold text-sm shadow">關閉視窗</button></div>
+        </div>
+    </div>
+
+    <div id="addr-rules-modal" class="fixed inset-0 z-[85] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-map-marker-alt text-primary"></i> 地址正規化規則設定</h3>
+                <button onclick="document.getElementById('addr-rules-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="flex-grow overflow-y-auto custom-scroll space-y-4 p-1">
+                <div>
+                    <label class="text-sm font-bold text-slate-700 mb-1 block">保護名單 (Whitelist)</label>
+                    <p class="text-xs text-slate-500 mb-2">下列詞彙中的中文數字不會被轉換 (例如：五權路)。請用逗號分隔。</p>
+                    <textarea id="addr-protected" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-primary outline-none h-24 resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="text-sm font-bold text-slate-700 mb-1 block">識別關鍵字 (Keywords)</label>
+                    <p class="text-xs text-slate-500 mb-2">當中文數字出現在這些字之前，將強制轉為阿拉伯數字 (例如：五段 -> 5段)。</p>
+                    <textarea id="addr-keywords" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-primary outline-none h-24 resize-none"></textarea>
+                </div>
+                <div>
+                    <label class="text-sm font-bold text-slate-700 mb-1 block">特定路名模式 (Specific Patterns)</label>
+                    <p class="text-xs text-slate-500 mb-2">遇到這些詞（如：東南西北、區、道）開頭或接續的數字，將強制轉為阿拉伯數字。</p>
+                    <textarea id="addr-specials" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-primary outline-none h-24 resize-none"></textarea>
+                </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="saveAddrRules()" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow">儲存規則</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="choice-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-sm rounded-xl shadow-2xl p-6 text-center transform scale-95 transition-transform duration-300"><div class="w-12 h-12 bg-indigo-100 text-indigo-600 rounded-full flex items-center justify-center mx-auto mb-4 text-xl"><i class="fas fa-tools"></i></div><h3 class="text-lg font-bold text-slate-800 mb-2">請選擇修正方式</h3><p class="text-sm text-slate-500 mb-6">您想要修改目前的「規則設定」，還是補齊「源頭選項」？</p><div class="flex flex-col gap-3"><button id="btn-edit-self" class="w-full py-3 rounded-lg border border-indigo-200 text-indigo-700 font-bold hover:bg-indigo-50 transition flex items-center justify-center gap-2"><i class="fas fa-sliders-h"></i> 修改規則設定</button><button id="btn-fix-source" class="w-full py-3 rounded-lg border border-emerald-200 text-emerald-700 font-bold hover:bg-emerald-50 transition flex items-center justify-center gap-2"><i class="fas fa-plus-circle"></i> 補齊源頭選項 (自動修復)</button></div><button onclick="document.getElementById('choice-modal').classList.add('hidden')" class="mt-4 text-xs text-slate-400 hover:text-slate-600 underline">取消</button></div></div>
+    <div id="impact-modal" class="fixed inset-0 z-[90] hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300"><div class="flex items-center gap-3 mb-4 text-amber-600"><i class="fas fa-exclamation-triangle text-2xl"></i><h3 class="text-lg font-bold text-slate-800">確認變更源頭結構</h3></div><p class="text-sm text-slate-600 mb-4 leading-relaxed">您即將在源頭欄位 <span id="imp-dep-name" class="font-bold text-primary"></span> 中新增選項 <span id="imp-val" class="font-bold text-emerald-600 bg-emerald-50 px-1 rounded"></span>。</p><div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-500 mb-6"><p class="font-bold mb-1">影響範圍評估：</p><p>此欄位目前被 <span id="imp-count" class="font-bold text-primary">0</span> 個規則引用。新增選項通常是安全的，但請確保這符合您的資料定義。</p></div><div class="flex justify-end gap-3"><button onclick="document.getElementById('impact-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button><button id="btn-confirm-fix" class="px-4 py-2 bg-emerald-600 text-white rounded-lg font-bold shadow-md hover:bg-emerald-700 text-sm">確認新增並修復</button></div></div></div>
+    <div id="picker-modal" class="fixed inset-0 z-[55] hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-lg rounded-2xl shadow-2xl p-6 flex flex-col max-h-[80vh]"><div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2"><h3 class="text-lg font-bold text-slate-800">從模板複製欄位</h3><button onclick="document.getElementById('picker-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button></div><div class="bg-slate-50 p-2 rounded mb-2 border border-slate-200"><label class="flex items-center text-sm font-bold text-slate-600 cursor-pointer"><input type="checkbox" id="picker-select-all" class="custom-checkbox mr-2" onchange="togglePickerAll(this)"> 全選 / 取消全選</label></div><div id="picker-list" class="flex-grow overflow-y-auto custom-scroll space-y-2 p-1"></div><div class="mt-4 pt-2 border-t border-slate-100 flex justify-end"><button onclick="addSelectedFields()" class="w-full btn-create font-bold py-2.5 rounded-lg shadow">確認複製選取欄位</button></div></div></div>
+    <div id="move-modal" class="fixed inset-0 z-50 hidden flex items-center justify-center modal-overlay p-4"><div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300"><div class="mb-4"><h3 class="text-lg font-bold text-slate-800">移動順序</h3><p class="text-sm text-slate-500 mt-1">將 <span id="move-target-name" class="font-bold text-primary"></span> 移動至：</p></div><div class="mb-6"><select id="move-select" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none max-h-60 overflow-y-auto custom-scroll"></select></div><div class="flex justify-end gap-3"><button onclick="document.getElementById('move-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm">取消</button><button onclick="saveMove()" class="px-4 py-2 btn-manage rounded-lg font-bold shadow-md text-sm">確認移動</button></div></div></div>
+    <div id="batch-modal" class="fixed inset-0 z-[80] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-md rounded-2xl shadow-2xl p-6 transform scale-95 transition-transform duration-300">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-tasks text-indigo-600"></i> 欄位批次處理</h3>
+                <button onclick="document.getElementById('batch-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="space-y-4">
+                <p class="text-sm text-slate-600">您已選取 <span id="batch-count" class="font-bold text-primary">0</span> 個欄位進行批次處理。</p>
+                
+                <div class="space-y-3">
+                    <label class="text-sm font-bold text-slate-700 mb-1 block">請選擇要執行的動作</label>
+                    <select id="batch-action-select" onchange="toggleBatchActionSettings(this.value)" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none">
+                        <option value="">請選擇...</option>
+                        <option value="category">變更所屬分類</option>
+                        <option value="delete">刪除選取項目</option>
+                    </select>
+                </div>
+                
+                <div id="batch-category-group" class="hidden space-y-3">
+                    <label class="text-sm font-bold text-slate-700 block">新分類</label>
+                    <select id="batch-category-select" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none"></select>
+                </div>
+                
+                <div id="batch-delete-confirm" class="hidden p-4 bg-red-50 border border-red-200 rounded-lg">
+                    <p class="text-sm text-red-700 font-bold flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> 確認刪除</p>
+                    <p class="text-xs text-red-600 mt-1">此操作不可復原，請謹慎確認。</p>
+                </div>
+            </div>
+            <div class="mt-6 pt-3 border-t border-slate-100 flex justify-end gap-3">
+                <button onclick="executeBatchAction()" id="btn-execute-batch" class="px-6 py-2 bg-indigo-600 text-white rounded-lg font-bold shadow-md hover:bg-indigo-700 text-sm flex items-center gap-2" disabled><i class="fas fa-check"></i> 確認執行</button>
+            </div>
+        </div>
+    </div>
+    <div id="alliance-modal" class="fixed inset-0 z-[85] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-2xl rounded-2xl shadow-2xl p-6 flex flex-col max-h-[85vh]">
+            <div class="flex justify-between items-center mb-4 border-b border-slate-100 pb-2">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-sitemap text-primary"></i> 系所分組/聯盟設定</h3>
+                <button onclick="document.getElementById('alliance-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times text-lg"></i></button>
+            </div>
+            <div class="flex-grow overflow-y-auto custom-scroll space-y-4 p-1">
+                
+                <!-- ALLIANCE CONTROL PANEL -->
+                <div class="p-4 bg-primary/5 border border-primary/20 rounded-xl space-y-4">
+                    <p class="text-sm text-slate-600 font-bold mb-2 flex items-center gap-2"><i class="fas fa-sliders-h text-primary"></i> 聯盟邏輯設定</p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">主要分組依據 (Primary Basis)</label>
+                            <select id="alliance-grouping-basis" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                                <option value="course_dept">依開課學系 (course_dept)</option>
+                                <option value="student_dept">依學生所屬學系 (student_dept)</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">聯盟判斷與預設分組的首要依據。</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-bold text-slate-700 mb-1">遺珠處理方式 (Unmatched Handling)</label>
+                            <select id="alliance-unmatched-handling" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm">
+                                <option value="use_primary">保留原始分組依據 (預設: course_dept 或 student_dept)</option>
+                                <option value="use_secondary">使用次要系所分組 (如：學生所屬學系)</option>
+                                <option value="use_alliance_only">僅聯盟內系所可結盟分組，其餘皆獨立分組</option>
+                            </select>
+                            <p class="text-xs text-slate-500 mt-1">當兩方系所不完全在同一個聯盟時的最終分組策略。</p>
+                        </div>
+                    </div>
+                </div>
+                <!-- END ALLIANCE CONTROL PANEL -->
+
+                <div id="alliance-rules-container" class="space-y-4">
+                    <p class="text-sm text-slate-600 mt-4">在此定義多組聯盟。聯盟間的系所不應重複。</p>
+                    </div>
+            </div>
+            <div class="mt-4 pt-3 border-t border-slate-100 flex justify-end">
+                <button onclick="saveAllianceRules()" class="px-6 py-2 btn-manage rounded-lg font-bold text-sm shadow">儲存聯盟設定</button>
+            </div>
+        </div>
+    </div>
     <script type="module" src="./core/constants.js"></script>
     <script type="module" src="./core/api.js"></script>
     <script type="module" src="./core/utils.js"></script>
