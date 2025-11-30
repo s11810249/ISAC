@@ -7,7 +7,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -507,6 +507,26 @@
                             </div>
                         </div>
                     </div>
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/30">
+                        <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><i class="fas fa-file-export text-emerald-600"></i> Excel 匯出設定 (Export Settings)</h4>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">預設欄寬 (Width)</label>
+                                <input type="number" id="ed-excel-width" class="w-full border border-slate-300 rounded p-2 text-sm" placeholder="自動 (Auto)">
+                                <p class="text-[10px] text-slate-400 mt-1">留空為自動調整。數值 20 約可顯示 10 個中文字。</p>
+                            </div>
+                            <div class="flex items-center mt-6">
+                                <label class="flex items-center cursor-pointer p-2 border border-slate-200 rounded-lg hover:bg-white transition bg-slate-50 w-full">
+                                    <input type="checkbox" id="ed-excel-locked" class="custom-checkbox mr-3">
+                                    <div>
+                                        <span class="text-sm font-bold text-slate-700 block">鎖定欄位 (唯讀)</span>
+                                        <span class="text-[10px] text-slate-400">匯出後使用者無法修改此欄</span>
+                                    </div>
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+                    ```
                     <div id="ed-opts-container" class="p-8"></div>
                 </div>
             </div>
@@ -642,6 +662,33 @@
             </div>
         </div>
     </div>
+
+    <div id="conflict-modal" class="fixed inset-0 z-[95] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-4xl rounded-2xl shadow-2xl flex flex-col max-h-[85vh] overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-amber-50">
+                <h3 class="text-lg font-bold text-amber-800 flex items-center gap-2"><i class="fas fa-exclamation-triangle"></i> 資料選項衝突檢測</h3>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scroll flex-grow">
+                <p class="text-sm text-slate-600 mb-4">以下欄位的資料內容不在系統設定的選項清單中，請選擇處理方式：</p>
+                <table class="w-full text-sm text-left border border-slate-200 rounded-lg overflow-hidden">
+                    <thead class="bg-slate-100 text-slate-700 font-bold">
+                        <tr>
+                            <th class="p-3 border-b">欄位名稱</th>
+                            <th class="p-3 border-b">衝突數值</th>
+                            <th class="p-3 border-b">影響筆數</th>
+                            <th class="p-3 border-b">處理方式</th>
+                        </tr>
+                    </thead>
+                    <tbody id="conflict-list-body"></tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button onclick="cancelProcessing()" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-200 rounded-lg text-sm">取消彙整</button>
+                <button onclick="resolveConflictsAndContinue()" class="px-6 py-2 bg-amber-600 text-white rounded-lg font-bold text-sm shadow hover:bg-amber-700">確認並繼續</button>
+            </div>
+        </div>
+    </div>
+
     <script>
         let ghConfig = { user: '', repo: '', path: 'hedb/config.json', token: '' };
         let configData = { 
@@ -714,17 +761,16 @@
 
         // Fields used for the display table columns (UI/Aesthetics requirement)
         const OUTPUT_DISPLAY_FIELDS = [
-            { id: 'student_id', label: '學號' },
-            { id: 'student_name', label: '姓名' },
             { id: 'semester', label: '學期' },
-            { id: 'course_college', label: '開課學院' },
-            { id: 'course_dept', label: '開課學系' },
-            { id: 'course_id', label: '選課代號' },
-            { id: 'course_name', label: '課程名稱' },
-            { id: 'internship_attr', label: '實習課程屬性' },
-            { id: 'internship_credit', label: '實習學分數' },
-            { id: 'student_college', label: '學院' },
-            { id: 'student_dept', label: '學生所屬學系' }
+                { id: 'course_dept', label: '開課學系' }, // 注意：若模組用 offering_department，系統會自動 mapping
+                { id: 'course_id', label: '選課代號' },   // 注意：若模組用 course_code，系統會自動 mapping
+                { id: 'course_name', label: '課程名稱' },
+                { id: 'internship_attr', label: '實習課程屬性' },
+                { id: 'internship_credit', label: '實習學分數' },
+                { id: 'student_dept', label: '學系' },
+                { id: 'student_id', label: '學號' },
+                { id: 'student_name', label: '姓名' },
+                { id: 'student_grade', label: '學生年級' }
         ];
         
         // END NEW: Internship Consolidation Data
@@ -2177,8 +2223,6 @@
             const container = document.getElementById('mapping-dropdown-container');
             const emptyState = document.getElementById('mapping-panel-empty-state');
             const selectedCountEl = document.getElementById('selected-mapping-count');
-            
-            // Get the comprehensive list of fields to process/display
             const fieldsToMap = getFieldsToProcess(); 
 
             if (fieldsToMap.length === 0) {
@@ -2187,22 +2231,30 @@
                  selectedCountEl.innerText = 0;
                  return;
             }
-
             emptyState.classList.add('hidden');
             
-            // 1. Identify currently selected headers to disable repeats
+            // 1. 識別已選取的 Headers
             const selectedHeaders = new Map();
-            for (const f of fieldsToMap) {
-                const mapState = currentMapping[f.id];
-                if (mapState && mapState.excelHeader) {
-                    selectedHeaders.set(f.id, mapState.excelHeader); // Map fieldId -> header
+            // 自動匹配邏輯 (Auto-Mapping)
+            fieldsToMap.forEach(f => {
+                if (!currentMapping[f.id]) currentMapping[f.id] = { excelHeader: '', isSelected: true };
+                
+                // 如果尚未設定 header，嘗試自動匹配名稱完全相同的
+                if (!currentMapping[f.id].excelHeader) {
+                    const exactMatch = currentFileHeaders.find(h => h.trim() === f.label.trim());
+                    if (exactMatch) {
+                        currentMapping[f.id].excelHeader = exactMatch;
+                    }
                 }
-            }
-            
+                
+                if (currentMapping[f.id].excelHeader) {
+                    selectedHeaders.set(f.id, currentMapping[f.id].excelHeader);
+                }
+            });
+
             let dropdownsHtml = '';
             let matchedCount = 0;
             
-            // Use the two-column grid structure
             fieldsToMap.forEach(modField => {
                 const mapState = currentMapping[modField.id];
                 const isCoreLogic = modField.isMandatoryLogic;
@@ -2210,17 +2262,14 @@
                 
                 if (mapState.excelHeader) matchedCount++;
 
-                // 2. Generate Excel Options
+                // 2. Generate Options
                 const baseExcelHeaderOptions = ['<option value="">-- 請選擇 Excel 欄位 --</option>', ...currentFileHeaders.map(h => `<option value="${h}">${h}</option>`)];
-
                 const optionsHtml = baseExcelHeaderOptions.map(optHtml => {
                     const valueMatch = optHtml.match(/value="([^"]*)"/);
                     const headerValue = valueMatch ? valueMatch[1] : '';
-                    
                     let attributes = '';
-                    
                     if (headerValue) {
-                         // Check if this header is selected by another field (excluding the current one)
+                        // 檢查是否被其他欄位選用
                         for (const [fieldId, header] of selectedHeaders) {
                              if (header === headerValue && fieldId !== modField.id) {
                                 attributes += ' disabled class="text-slate-400"';
@@ -2228,17 +2277,10 @@
                              }
                         }
                     }
-                    
-                    // Set current selection
-                    if (headerValue === mapState.excelHeader) {
-                        attributes += ' selected';
-                    }
-                    
-                    // Rebuild the option tag
+                    if (headerValue === mapState.excelHeader) attributes += ' selected';
                     return `<option value="${headerValue}"${attributes}>${headerValue || baseExcelHeaderOptions[0].replace(/.*>(.*)<.*/, '$1')}</option>`;
                 }).join('');
 
-                // 3. Render Simplified Row (Compact, two-column item)
                 dropdownsHtml += `
                     <div class="mapping-group">
                         <div class="flex flex-col mb-1.5">
@@ -2286,69 +2328,203 @@
             await executeFileProcessing(fieldsToProcess);
         }
 
+        // 全域變數暫存衝突狀態
+        let pendingConflicts = [];
+        let pendingFieldsToProcess = [];
+
+        // 步驟 1: 觸發處理，先進行檢測
         async function executeFileProcessing(fieldsToProcess) {
-            // Close the mapping modal
             document.getElementById('mapping-modal').classList.add('hidden');
+            document.getElementById('group-list-empty-state').innerHTML = '<div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>檢查資料中...';
             
-            // Show processing status
-            document.getElementById('group-list-empty-state').innerHTML = '<div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>彙整中...';
+            pendingFieldsToProcess = fieldsToProcess;
+            const conflicts = checkDataConflicts(fieldsToProcess);
+            
+            if (conflicts.length > 0) {
+                pendingConflicts = conflicts;
+                showConflictModal(conflicts);
+            } else {
+                finalizeProcessing(fieldsToProcess, []);
+            }
+        }
 
-            // 2. Data Mapping
-            const mappedData = currentStudentData.map((row, rowIndex) => {
-                const newRow = {};
-                
-                // --- MAP FIELDS SELECTED FOR MATCHING (SYSTEM CATEGORIES) ---
+        // 檢測資料衝突 (Single Select / List)
+        function checkDataConflicts(fieldsToProcess) {
+            const conflictMap = new Map(); // Key: fieldId_value
+
+            currentStudentData.forEach(row => {
                 fieldsToProcess.forEach(modField => {
-                    const mapping = currentMapping[modField.id];
-                    const fileHeader = mapping.excelHeader;
-                    let value = '';
-                    
-                    if (fileHeader) { 
-                        value = (row[fileHeader] || '').toString().trim();
-                    } 
-                    
-                    // Option Conflict Check
-                    if ((modField.type === 'single_select' || modField.type === 'list') && modField.options && value) {
-                        const moduleOptions = modField.options.map(String);
-                        const isValueValid = moduleOptions.includes(value);
+                    if (modField.type !== 'single_select' && modField.type !== 'list') return;
+                    if (!modField.options || modField.options.length === 0) return;
 
-                        if (!isValueValid) {
-                            console.warn(`[衝突警告] 紀錄 #${rowIndex + 1} 的欄位 ${modField.label} (${modField.id}) 值 "${value}" 不在模組選項中，將被清空。`);
-                            value = ''; 
+                    const mapping = currentMapping[modField.id];
+                    if (!mapping || !mapping.excelHeader) return;
+
+                    const val = (row[mapping.excelHeader] || '').toString().trim();
+                    if (!val) return;
+
+                    // 檢查是否存在於選項中
+                    if (!modField.options.includes(val)) {
+                        const key = `${modField.id}:::${val}`;
+                        if (!conflictMap.has(key)) {
+                            conflictMap.set(key, {
+                                fieldId: modField.id,
+                                fieldLabel: modField.label,
+                                value: val,
+                                count: 0
+                            });
+                        }
+                        conflictMap.get(key).count++;
+                    }
+                });
+            });
+            return Array.from(conflictMap.values());
+        }
+
+        // 顯示衝突視窗
+        function showConflictModal(conflicts) {
+            const tbody = document.getElementById('conflict-list-body');
+            tbody.innerHTML = '';
+            
+            conflicts.forEach((c, idx) => {
+                const tr = document.createElement('tr');
+                tr.className = 'border-b border-slate-100 hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="p-3 font-bold text-slate-700">${c.fieldLabel}</td>
+                    <td class="p-3"><span class="bg-red-50 text-red-600 px-2 py-1 rounded font-mono text-xs">${c.value}</span></td>
+                    <td class="p-3 text-slate-500">${c.count}</td>
+                    <td class="p-3">
+                        <select id="conflict-action-${idx}" class="border border-slate-300 rounded p-1 text-sm outline-none focus:ring-2 focus:ring-amber-500">
+                            <option value="skip">略過含此值的資料 (Skip)</option>
+                            <option value="clear">保留資料但清空此欄 (Clear)</option>
+                            <option value="add">新增選項並保留 (Add Option)</option>
+                        </select>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+            
+            document.getElementById('conflict-modal').classList.remove('hidden');
+        }
+
+        function cancelProcessing() {
+            document.getElementById('conflict-modal').classList.add('hidden');
+            document.getElementById('mapping-modal').classList.remove('hidden'); // 回到匹配
+            showMsg('info', '已取消', '請重新確認匹配或資料。');
+        }
+
+        // 解決衝突並繼續
+        async function resolveConflictsAndContinue() {
+            const resolutions = [];
+            let optionsUpdated = false;
+
+            pendingConflicts.forEach((c, idx) => {
+                const action = document.getElementById(`conflict-action-${idx}`).value;
+                resolutions.push({ ...c, action });
+
+                if (action === 'add') {
+                    // 更新模組設定 (記憶體中)
+                    const field = yearTemplateData.fields.find(f => f.id === c.fieldId);
+                    if (field) {
+                        if (!field.options) field.options = [];
+                        if (!field.options.includes(c.value)) {
+                            field.options.push(c.value);
+                            optionsUpdated = true;
                         }
                     }
+                }
+            });
 
+            if (optionsUpdated) {
+                setUnsaved(true); // 標記為未儲存，提示使用者記得存檔
+                // 這裡選擇不立即存到 GitHub，避免誤操作，讓使用者最後統一存
+                showMsg('info', '選項已更新', '新增的選項已暫存，請記得稍後點擊右上角「儲存設定」。');
+            }
+
+            document.getElementById('conflict-modal').classList.add('hidden');
+            finalizeProcessing(pendingFieldsToProcess, resolutions);
+        }
+
+        // 步驟 2: 最終執行資料處理 (包含排序、分組)
+        async function finalizeProcessing(fieldsToProcess, resolutions) {
+            document.getElementById('group-list-empty-state').innerHTML = '<div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>彙整中...';
+
+            const mappedData = [];
+            
+            // 建立快速查詢衝突處理方式的 Map
+            const resolutionMap = new Map(); // Key: fieldId_value -> action
+            resolutions.forEach(r => resolutionMap.set(`${r.fieldId}:::${r.value}`, r.action));
+
+            // Data Mapping Loop
+            for (let i = 0; i < currentStudentData.length; i++) {
+                const row = currentStudentData[i];
+                const newRow = {};
+                let skipRow = false;
+
+                // Map Selected Fields
+                fieldsToProcess.forEach(modField => {
+                    if (skipRow) return;
+
+                    const mapping = currentMapping[modField.id];
+                    const fileHeader = mapping.excelHeader;
+                    let value = fileHeader ? (row[fileHeader] || '').toString().trim() : '';
+
+                    // 應用衝突解決策略
+                    if ((modField.type === 'single_select' || modField.type === 'list') && modField.options && value) {
+                        if (!modField.options.includes(value)) {
+                            const action = resolutionMap.get(`${modField.id}:::${value}`);
+                            if (action === 'skip') {
+                                skipRow = true;
+                            } else if (action === 'clear') {
+                                value = '';
+                            }
+                            // action === 'add'，值保留
+                        }
+                    }
                     newRow[modField.id] = value;
                 });
+
+                if (skipRow) continue;
+
+                // Alias Mapping (解決 ID 不一致)
+                // offering_department -> course_dept
+                // course_code -> course_id
+                // internship_course_type -> internship_attr
+                // internship_credits -> internship_credit
+                // student_department -> student_dept
+                const aliases = [
+                    { sys: 'course_dept', alt: 'offering_department' },
+                    { sys: 'course_id', alt: 'course_code' },
+                    { sys: 'internship_attr', alt: 'internship_course_type' },
+                    { sys: 'internship_credit', alt: 'internship_credits' },
+                    { sys: 'student_dept', alt: 'student_department' }
+                ];
                 
-                // --- MAP ALL OTHER FIELDS (NON-SYSTEM CATEGORIES) ---
+                aliases.forEach(pair => {
+                    if (!newRow[pair.sys] && newRow[pair.alt]) {
+                        newRow[pair.sys] = newRow[pair.alt];
+                    }
+                });
+
+                // 補齊其他未匹配欄位 (Export 需求)
                 const allExportFields = getFieldsToExport();
-                const processedIds = new Set(fieldsToProcess.map(f => f.id));
-                
                 allExportFields.forEach(expField => {
-                    if (!processedIds.has(expField.id) && !newRow.hasOwnProperty(expField.id)) {
+                    if (!newRow.hasOwnProperty(expField.id)) {
                          newRow[expField.id] = '';
                     }
                 });
 
-                // ★★★ 修正重點：處理 ID 不一致的問題 (Alias Mapping) ★★★
-                // 如果模組使用的是 offering_department，將其值複製給系統核心的 course_dept
-                if (!newRow.course_dept && newRow.offering_department) {
-                    newRow.course_dept = newRow.offering_department;
-                }
-                // 如果模組使用的是 student_department，將其值複製給系統核心的 student_dept
-                if (!newRow.student_dept && newRow.student_department) {
-                    newRow.student_dept = newRow.student_department;
-                }
-
-                // Ensure the core grouping keys exist for the next step.
+                // 核心資料檢查
                 newRow.course_dept = newRow.course_dept || '';
                 newRow.student_dept = newRow.student_dept || '';
                 newRow.student_id = newRow.student_id || '';
-                
-                return newRow;
-            }).filter(row => row.student_id && row.course_dept); // Filter out records with missing core data
 
+                if (newRow.student_id && newRow.course_dept) {
+                    mappedData.push(newRow);
+                }
+            }
+
+            // ... (Alliance Grouping 邏輯保持不變) ...
             // 3. Department uniqueness check (for Alliance modal rendering)
             const departments = mappedData.map(row => row.course_dept).filter(d => d);
             uniqueCourseDepts = [...new Set(departments)].sort();
@@ -2361,7 +2537,6 @@
 
             let groupedData = {}; 
             mappedData.forEach(record => {
-                // ... (後續分組邏輯保持不變) ...
                 const primaryDept = record[basis]; 
                 const secondaryKey = basis === 'course_dept' ? 'student_dept' : 'course_dept';
                 const secondaryDept = record[secondaryKey];
@@ -2374,35 +2549,31 @@
                     if (foundAlliance.depts.includes(secondaryDept)) {
                         finalGroupingKey = foundAlliance.name;
                     } else {
-                        if (unmatchedHandling === 'use_primary') {
-                            finalGroupingKey = primaryDept;
-                        } else if (unmatchedHandling === 'use_secondary') {
-                            finalGroupingKey = secondaryDept; 
-                        } else if (unmatchedHandling === 'use_alliance_only') {
-                             finalGroupingKey = primaryDept; 
-                        }
+                        if (unmatchedHandling === 'use_primary') finalGroupingKey = primaryDept;
+                        else if (unmatchedHandling === 'use_secondary') finalGroupingKey = secondaryDept; 
+                        else if (unmatchedHandling === 'use_alliance_only') finalGroupingKey = primaryDept; 
                     }
                 }
 
-                if (!groupedData[finalGroupingKey]) {
-                    groupedData[finalGroupingKey] = [];
-                }
+                if (!groupedData[finalGroupingKey]) groupedData[finalGroupingKey] = [];
                 groupedData[finalGroupingKey].push(record);
             });
 
             currentConsolidatedResults = {};
             for (const groupName in groupedData) {
+                // 排序邏輯修正：學號 -> 學期 -> 開課系 -> 選課代號
                 groupedData[groupName].sort((a, b) => {
-                    const idA = a.student_id || '';
-                    const idB = b.student_id || '';
-                    const nameA = a.student_name || '';
-                    const nameB = a.student_name || '';
-                    const courseIdA = a.course_code || a.course_id || ''; // 增加 course_code 支援
-                    const courseIdB = b.course_code || b.course_id || '';
-                    
+                    const idA = a.student_id || ''; const idB = b.student_id || '';
                     if (idA !== idB) return idA.localeCompare(idB);
-                    if (nameA !== nameB) return nameA.localeCompare(nameB);
-                    return courseIdA.localeCompare(courseIdB); 
+                    
+                    const semA = a.semester || ''; const semB = b.semester || '';
+                    if (semA !== semB) return semA.localeCompare(semB);
+                    
+                    const deptA = a.course_dept || ''; const deptB = b.course_dept || '';
+                    if (deptA !== deptB) return deptA.localeCompare(deptB);
+                    
+                    const cidA = a.course_id || ''; const cidB = b.course_id || '';
+                    return cidA.localeCompare(cidB);
                 });
                 currentConsolidatedResults[groupName] = groupedData[groupName];
             }
@@ -2414,6 +2585,7 @@
 
             showMsg('success', '彙整完成', '名單已成功分組與排序，請查看側邊欄結果。');
         }
+        
         function renderInternshipSidebar() {
             const el = document.getElementById('internship-group-list');
             el.innerHTML = ''; // 清除現有內容
@@ -2564,47 +2736,158 @@
             tbody.innerHTML = rows;
         }
 
+        // --- Excel 美化與驗證共用函式 ---
+        // 輔助：根據分類 ID 取得背景顏色
+        function getCategoryColor(catId) {
+            const colors = {
+                'sys_course_info': '002E5D',   // 東海深藍 (系統-課程)
+                'sys_student_info': '2a9d8f',  // 藍綠色 (系統-學生)
+                'cat_1764407526226': 'e76f51', // 範例：可為特定分類指定顏色 (橘紅)
+                'uncategorized': '6c757d'      // 灰色
+            };
+            
+            if (colors[catId]) return colors[catId];
+            
+            // 若無設定，則自動產生一個固定的顏色 (避免每次隨機)
+            let hash = 0;
+            const str = catId || 'default';
+            for (let i = 0; i < str.length; i++) {
+                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+            }
+            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
+            return "00000".substring(0, 6 - c.length) + c;
+        }
+
+        // Excel 美化與驗證共用函式 (強化版)
+        function enhanceWorksheet(ws, outputFields, rowCount) {
+            // 1. 設定欄寬 (優先使用系統設定值，否則自動計算)
+            const colWidths = outputFields.map(f => {
+                if (f.excelWidth && parseInt(f.excelWidth) > 0) {
+                    return { wch: parseInt(f.excelWidth) };
+                }
+                // 自動計算寬度
+                let len = 0;
+                for (let i = 0; i < f.label.length; i++) {
+                    len += (f.label.charCodeAt(i) > 255) ? 2 : 1;
+                }
+                return { wch: Math.min(Math.max(len + 5, 15), 60) };
+            });
+            ws['!cols'] = colWidths;
+
+            // 2. 設定標題列樣式 (依分類變色 + 微軟正黑體)
+            const range = XLSX.utils.decode_range(ws['!ref']);
+            for (let C = range.s.c; C <= range.e.c; ++C) {
+                const address = XLSX.utils.encode_cell({ r: 0, c: C });
+                if (!ws[address]) continue;
+                
+                const field = outputFields[C]; 
+                const catColor = getCategoryColor(field.category);
+
+                ws[address].s = {
+                    font: { bold: true, color: { rgb: "FFFFFF" }, name: "Microsoft JhengHei", sz: 12 },
+                    fill: { fgColor: { rgb: catColor } },
+                    alignment: { horizontal: "center", vertical: "center" },
+                    border: { 
+                        bottom: { style: "medium", color: { rgb: "000000" } },
+                        right: { style: "thin", color: { rgb: "FFFFFF" } }
+                    }
+                };
+            }
+
+            // 3. 設定資料列樣式與鎖定 (Cell Locking)
+            for (let R = 1; R <= range.e.r; ++R) {
+                for (let C = range.s.c; C <= range.e.c; ++C) {
+                    const address = XLSX.utils.encode_cell({ r: R, c: C });
+                    
+                    // 若儲存格為空，需初始化才能設定樣式
+                    if (!ws[address]) {
+                         XLSX.utils.sheet_add_aoa(ws, [['']], { origin: address });
+                    }
+                    
+                    const field = outputFields[C];
+                    // 讀取該欄位的鎖定設定 (若為 true 則鎖定，否則解鎖)
+                    const isLocked = field.excelLocked === true;
+
+                    if (!ws[address].s) ws[address].s = {};
+                    ws[address].s.font = { name: "Microsoft JhengHei", sz: 11 };
+                    ws[address].s.alignment = { vertical: "center", wrapText: true }; // 自動換行
+                    
+                    // 設定鎖定屬性
+                    ws[address].s.protection = { locked: isLocked };
+                    
+                    // 若被鎖定，改變背景色提示 (淺灰)
+                    if (isLocked) {
+                        ws[address].s.fill = { fgColor: { rgb: "F3F4F6" } };
+                    }
+                }
+            }
+            
+            // 4. 啟用工作表保護 (Sheet Protection)
+            // 只有啟用這個，上述的 locked: true 才會生效
+            ws['!protect'] = {
+                selectLockedCells: true,   // 允許選取鎖定儲存格 (方便複製)
+                selectUnlockedCells: true, // 允許選取一般儲存格
+                formatColumns: true,       // 允許調整欄寬
+                formatRows: true           // 允許調整列高
+                // 未列出的操作 (如 insertRows, deleteColumns) 將被禁止
+            };
+
+            // 5. 資料驗證 (下拉選單)
+            const validations = [];
+            const endRow = Math.max(rowCount + 100, 500);
+            outputFields.forEach((field, colIdx) => {
+                if ((field.type === 'single_select' || field.type === 'list') && field.options && field.options.length > 0) {
+                    const colLetter = XLSX.utils.encode_col(colIdx);
+                    const optionsStr = field.options.join(',');
+                    if (optionsStr.length < 255) {
+                        validations.push({
+                            sqref: `${colLetter}2:${colLetter}${endRow}`,
+                            type: 'list',
+                            allowBlank: true,
+                            formula1: `"${optionsStr}"`,
+                            showDropDown: true
+                        });
+                    }
+                }
+            });
+            if (validations.length > 0) ws['!dataValidation'] = validations;
+        }
+
         // --- Download Logic (with Field Order) (Q3: Use Full Name for Export) ---
         function downloadBatch(groupName) {
             const groupData = groupName === 'all' ? Object.values(currentConsolidatedResults).flat() : currentConsolidatedResults[groupName];
             if (!groupData || groupData.length === 0) return;
 
-            // Use ALL ordered fields that were explicitly selected for export (SOURCE OF TRUTH)
+            // Use ALL ordered fields that were explicitly selected for export
             const allOutputFields = getFieldsToExport(); 
 
-            // Headers for export MUST use the field's label
+            // Headers for export
             const headerLabels = allOutputFields.map(f => f.label.replace(/\s*\(必填\)/g, ''));
-            // Data lookup MUST use the dataKey (module field ID)
             const dataKeys = allOutputFields.map(f => f.dataKey); 
             
-            // Determine the output year once
             const outputYear = currentConsolidationYear || activeYearId || '';
 
             const data = groupData.map(row => dataKeys.map(dataKey => {
                 let cellValue = row[dataKey] || '';
-                
                 const fieldDef = allOutputFields.find(f => f.dataKey === dataKey);
                 
-                // Q3: Use Full Name for Export (useShort = false)
                 if (fieldDef && fieldDef.type === 'department') {
                     const deptId = row[dataKey];
-                    if (deptId) {
-                        cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
-                    }
+                    if (deptId) cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
                 } else if (fieldDef && fieldDef.type === 'college') {
                      const collegeId = row[dataKey];
-                     if (collegeId) {
-                        cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
-                     }
+                     if (collegeId) cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
                 }
-                
                 return cellValue;
             }));
             
             const wsData = [headerLabels, ...data];
             const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+            // ★★★ 新增這行：呼叫美化函式 ★★★
+            enhanceWorksheet(ws, allOutputFields, data.length);
+
             const wb = XLSX.utils.book_new();
-            // Issue 1 fix for title in filename
             XLSX.utils.book_append_sheet(wb, ws, groupName === 'all' ? '總表' : groupName);
             
             const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName === 'all' ? '總表' : groupName}.xlsx`;
@@ -2621,16 +2904,9 @@
             btn.innerHTML = '<div class="spinner border-slate-500 border-t-white"></div> 打包中...';
 
             const zip = new JSZip();
-            
-            // Use ALL ordered fields that were explicitly selected for export (SOURCE OF TRUTH)
             const allOutputFields = getFieldsToExport(); 
-            
-            // Headers for export MUST use the field's label
             const headerLabels = allOutputFields.map(f => f.label.replace(/\s*\(必填\)/g, ''));
-            // Data lookup MUST use the dataKey (module field ID)
             const dataKeys = allOutputFields.map(f => f.dataKey);
-
-            // Determine the output year once
             const outputYear = currentConsolidationYear || activeYearId || '';
 
             for (const groupName in currentConsolidatedResults) {
@@ -2638,28 +2914,24 @@
                 
                 const data = groupData.map(row => dataKeys.map(dataKey => {
                     let cellValue = row[dataKey] || '';
-                    
                     const fieldDef = allOutputFields.find(f => f.dataKey === dataKey);
                     
-                    // Q3: Use Full Name for Export (useShort = false)
                     if (fieldDef && fieldDef.type === 'department') {
                         const deptId = row[dataKey];
-                        if (deptId) {
-                            cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
-                        }
+                        if (deptId) cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
                     } else if (fieldDef && fieldDef.type === 'college') {
                          const collegeId = row[dataKey];
-                         if (collegeId) {
-                            cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
-                         }
+                         if (collegeId) cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
                     }
-                    
                     return cellValue;
                 }));
                 
                 const wsData = [headerLabels, ...data];
-                
                 const ws = XLSX.utils.aoa_to_sheet(wsData);
+
+                // ★★★ 新增這行：呼叫美化函式 ★★★
+                enhanceWorksheet(ws, allOutputFields, data.length);
+
                 const wb = XLSX.utils.book_new();
                 XLSX.utils.book_append_sheet(wb, ws, groupName);
                 
@@ -3041,6 +3313,10 @@
             allFields.filter(x => x.id !== f.id).forEach(x => visDepSel.innerHTML += `<option value="${x.id}" ${f.visibilityRule?.dep===x.id?'selected':''}>${x.label} (${x.id})</option>`);
             document.getElementById('ed-vis-val').value = f.visibilityRule?.val || '';
             document.getElementById('ed-vis-action').value = f.visibilityRule?.action || 'show';
+            
+            // ★★★ 新增這兩行：讀取 Excel 設定 ★★★
+            document.getElementById('ed-excel-width').value = f.excelWidth || '';
+            document.getElementById('ed-excel-locked').checked = f.excelLocked || false;
 
             document.getElementById('editor-modal').dataset.curr = JSON.stringify(f);
             document.getElementById('editor-modal').classList.remove('hidden');
@@ -3308,7 +3584,8 @@
             f.required = document.getElementById('ed-required').checked; f.isSystem = document.getElementById('ed-system').checked;
 
             if(document.getElementById('vis-toggle').checked) { f.visibilityRule = { dep: document.getElementById('ed-vis-dep').value, val: document.getElementById('ed-vis-val').value, action: document.getElementById('ed-vis-action').value }; } else { delete f.visibilityRule; }
-
+            
+            
             // Handle special types: college and department should not have manual options/rules
             if (f.type === 'college' || f.type === 'department') {
                 delete f.options;
