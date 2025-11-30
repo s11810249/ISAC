@@ -7,7 +7,8 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
@@ -318,6 +319,7 @@
                                 <button onclick="reopenMappingModal()" id="btn-reopen-mapping" class="btn-warning font-bold py-2 px-4 rounded-lg shadow-md flex items-center gap-2 text-sm transform active:scale-95 transition-all hidden"><i class="fas fa-wrench"></i> 重新匹配欄位</button>
                                 <button onclick="downloadAllGroupsZip()" id="btn-batch-download-all-results-main" class="btn-manage font-bold py-2 px-4 rounded-lg shadow-md flex items-center gap-2 text-sm transform active:scale-95 transition-all hidden"><i class="fas fa-file-archive"></i> 全系批次下載 (打包ZIP)</button>
                                 <button onclick="openAllianceModal()" id="btn-alliance-config" class="btn-create px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2"><i class="fas fa-sitemap"></i> 設定系所分組/聯盟</button>
+                                <button onclick="openExportConfigModal()" id="btn-export-config" class="hidden bg-teal-600 hover:bg-teal-700 text-white px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2 transition"><i class="fas fa-file-excel"></i> 設定匯出樣式</button>
                             </div>
                         </div>
                         <div class="flex-grow p-8 overflow-hidden flex flex-col">
@@ -507,26 +509,7 @@
                             </div>
                         </div>
                     </div>
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/30">
-                        <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2 mb-3"><i class="fas fa-file-export text-emerald-600"></i> Excel 匯出設定 (Export Settings)</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="text-[10px] font-bold text-slate-500 uppercase block mb-1">預設欄寬 (Width)</label>
-                                <input type="number" id="ed-excel-width" class="w-full border border-slate-300 rounded p-2 text-sm" placeholder="自動 (Auto)">
-                                <p class="text-[10px] text-slate-400 mt-1">留空為自動調整。數值 20 約可顯示 10 個中文字。</p>
-                            </div>
-                            <div class="flex items-center mt-6">
-                                <label class="flex items-center cursor-pointer p-2 border border-slate-200 rounded-lg hover:bg-white transition bg-slate-50 w-full">
-                                    <input type="checkbox" id="ed-excel-locked" class="custom-checkbox mr-3">
-                                    <div>
-                                        <span class="text-sm font-bold text-slate-700 block">鎖定欄位 (唯讀)</span>
-                                        <span class="text-[10px] text-slate-400">匯出後使用者無法修改此欄</span>
-                                    </div>
-                                </label>
-                            </div>
-                        </div>
-                    </div>
-                    ```
+                  
                     <div id="ed-opts-container" class="p-8"></div>
                 </div>
             </div>
@@ -688,6 +671,54 @@
             </div>
         </div>
     </div>
+    
+    <div id="export-config-modal" class="fixed inset-0 z-[100] hidden" aria-labelledby="modal-title" role="dialog" aria-modal="true">
+    <div class="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity"></div>
+
+    <div class="fixed inset-0 z-10 w-screen overflow-y-auto">
+        <div class="flex min-h-full items-center justify-center p-4 text-center sm:p-0">
+            <div class="relative transform overflow-hidden rounded-2xl bg-white text-left shadow-2xl transition-all sm:my-8 w-full max-w-4xl flex flex-col max-h-[85vh]">
+                
+                <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-teal-50 flex-shrink-0">
+                    <h3 class="text-lg font-bold text-teal-800 flex items-center gap-2">
+                        <i class="fas fa-sliders-h"></i> Excel 匯出欄位屬性設定
+                    </h3>
+                    <button onclick="document.getElementById('export-config-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 flex items-center justify-center rounded-full hover:bg-teal-100/50 transition">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+
+                <div class="px-6 py-3 bg-slate-50 border-b border-slate-100 flex-shrink-0">
+                    <p class="text-sm text-slate-600 flex items-center gap-2">
+                        <i class="fas fa-info-circle text-teal-500"></i>
+                        在此設定匯出 Excel 時的欄位表現。設定將儲存於學年度模組中。
+                    </p>
+                </div>
+
+                <div class="flex-grow overflow-y-auto custom-scroll p-0 bg-white">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-100 text-slate-700 font-bold sticky top-0 z-10 shadow-sm">
+                            <tr>
+                                <th class="px-6 py-3 border-b w-16 text-center">序</th>
+                                <th class="px-6 py-3 border-b">欄位名稱 (ID)</th>
+                                <th class="px-6 py-3 border-b w-48">分類</th>
+                                <th class="px-6 py-3 border-b w-40">預設欄寬</th>
+                                <th class="px-6 py-3 border-b w-24 text-center">鎖定(唯讀)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="export-config-list" class="divide-y divide-slate-100">
+                            </tbody>
+                    </table>
+                </div>
+
+                <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
+                    <button onclick="document.getElementById('export-config-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-200 rounded-lg text-sm transition">取消</button>
+                    <button onclick="saveExportConfig()" class="px-6 py-2 bg-teal-600 text-white rounded-lg font-bold text-sm shadow hover:bg-teal-700 transition">儲存設定</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
 
     <script>
         let ghConfig = { user: '', repo: '', path: 'hedb/config.json', token: '' };
@@ -1988,6 +2019,38 @@
             }
         }
         
+        // ★★★ 補上遺漏的函式：取得需要匹配的欄位 (含排序與核心檢查) ★★★
+        function getFieldsToProcess() {
+            const fieldsToMap = new Map();
+            
+            // 1. 篩選模組欄位
+            currentTemplateFields.sort((a, b) => {
+                // 強制將「學年」相關欄位排在最前面，方便匹配
+                const isYearA = a.label.includes('學年') || a.id === 'school_year' || a.id === 'academic_year';
+                const isYearB = b.label.includes('學年') || b.id === 'school_year' || b.id === 'academic_year';
+                
+                if (isYearA && !isYearB) return -1;
+                if (!isYearA && isYearB) return 1;
+                
+                return (a.order || 999) - (b.order || 999);
+            }).forEach(f => {
+                // 判斷是否為「系統」分類 (開課資訊/學生資訊)
+                const isSystemCat = ALLOWED_MAPPING_CATEGORY_IDS.includes(f.category);
+                // 判斷是否為「強制核心邏輯」欄位 (如 student_id, course_dept)
+                const isMandatory = MANDATORY_LOGIC_IDS.includes(f.id);
+
+                // 只要符合其中一個條件，就加入匹配清單
+                if (isSystemCat || isMandatory) {
+                    fieldsToMap.set(f.id, {
+                        ...f,
+                        isMandatoryLogic: isMandatory
+                    });
+                }
+            });
+            
+            return Array.from(fieldsToMap.values());
+        }
+
         // Function to re-open mapping modal when data is loaded
         function reopenMappingModal() {
             if (!currentStudentData) {
@@ -2015,9 +2078,24 @@
             yearTemplateData = res.status===404 ? {fields:[]} : res.data;
             currentTemplateFields = yearTemplateData.fields || [];
 
+            // ★★★ 新增：確保顏色設定物件存在 ★★★
+            if (!yearTemplateData.categoryColors) {
+                yearTemplateData.categoryColors = {};
+            }
+
             // Ensure alliance data exists for the selected module (Q2)
             if (!yearTemplateData.allianceModeDepts) { yearTemplateData.allianceModeDepts = { groups: [], groupingBasis: 'course_dept', unmatchedHandling: 'use_primary' }; }
             
+            // ★★★ 修改：嚴格遵守邏輯 —— 只有在「已上傳檔案 (currentStudentData 存在)」時才顯示按鈕 ★★★
+            const btnExport = document.getElementById('btn-export-config');
+            if (btnExport) {
+                if (currentStudentData) {
+                    btnExport.classList.remove('hidden');
+                } else {
+                    btnExport.classList.add('hidden');
+                }
+            }
+
             // If the modal is open or requested, re-render the dynamic mapping panel
             if (shouldRenderMapping) {
                 // **NEW: Reset mapping state when template changes**
@@ -2034,7 +2112,8 @@
 
             if (configData.academicYears.length > 0) {
                 currentConsolidationYear = selectEl.value;
-                fetchCurrentTemplateFields(); 
+                // ★★★ 修改：移除這裡的自動 Fetch，避免一進來就載入設定與顯示按鈕 ★★★
+                // fetchCurrentTemplateFields(); 
             } 
 
             document.getElementById('current-internship-group-title').innerText = '實習學生名單彙整';
@@ -2044,9 +2123,132 @@
             document.getElementById('btn-batch-download-all-results-main').classList.add('hidden');
             document.getElementById('btn-reopen-mapping').classList.add('hidden');
             
+            // ★★★ 新增：進入此頁面時，強制隱藏匯出設定按鈕 (確保乾淨的初始狀態) ★★★
+            document.getElementById('btn-export-config').classList.add('hidden');
+            
             document.getElementById('internship-group-list').innerHTML = '<div class="list-item active" id="group-all-item" onclick="selectConsolidatedGroup(\'all\')"><span class="font-bold text-sm">全部</span></div>' + 
                                                                          '<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state">無可彙整名單</div>';
             document.getElementById('group-all-item').classList.add('active');
+        }
+        
+        // 開啟匯出設定視窗
+        // 開啟匯出設定視窗 (含顏色選擇器)
+        // 開啟匯出設定視窗 (修正變數 field -> f 以及顏色邏輯)
+        function openExportConfigModal() {
+            if (!yearTemplateData || !yearTemplateData.fields) return showMsg('error', '錯誤', '請先選擇學年度模組');
+            
+            const tbody = document.getElementById('export-config-list');
+            tbody.innerHTML = '';
+            
+            // ★★★ 修正排序邏輯：學年優先 ★★★
+            yearTemplateData.fields.sort((a,b) => {
+                const isYearA = a.label.includes('學年') || a.id === 'school_year' || a.id === 'academic_year';
+                const isYearB = b.label.includes('學年') || b.id === 'school_year' || b.id === 'academic_year';
+                
+                if (isYearA && !isYearB) return -1;
+                if (!isYearA && isYearB) return 1;
+
+                const orderA = (a.order !== undefined && a.order !== null) ? a.order : 999;
+                const orderB = (b.order !== undefined && b.order !== null) ? b.order : 999;
+                
+                return orderA - orderB;
+            }).forEach((f, idx) => {
+                const catId = f.category || 'uncategorized';
+                const catName = configData.templateCategories.find(c => c.id === catId)?.name || '未分類';
+                const isLocked = f.excelLocked ? 'checked' : '';
+                const widthVal = f.excelWidth || '';
+                
+                // ★★★ 修正點：使用 f.category (原本誤寫為 field.category) ★★★
+                const rawColor = getCategoryColor(f.category);
+                const hashColor = '#' + rawColor; 
+                
+                tbody.innerHTML += `
+                    <tr class="border-b border-slate-100 hover:bg-slate-50 transition">
+                        <td class="p-3 text-center text-slate-400 font-mono text-xs">${idx + 1}</td>
+                        <td class="p-3">
+                            <div class="font-bold text-slate-700">${f.label}</div>
+                            <div class="text-[10px] text-slate-400 font-mono">${f.id}</div>
+                        </td>
+                        <td class="p-3">
+                            <div class="flex items-center gap-2">
+                                <input type="color" 
+                                       value="${hashColor}" 
+                                       class="w-6 h-6 p-0 border-0 rounded cursor-pointer cat-color-picker" 
+                                       data-cat-id="${catId}"
+                                       onchange="updateCategoryColorBatch('${catId}', this.value)"
+                                       title="點擊修改此分類的背景色">
+                                <span class="text-xs text-slate-500 bg-slate-100 px-2 py-1 rounded truncate max-w-[10rem]">${catName}</span>
+                            </div>
+                        </td>
+                        <td class="p-3">
+                            <div class="flex items-center gap-1">
+                                <input type="number" id="exp-w-${f.id}" value="${widthVal}" class="w-full border border-slate-300 rounded p-1.5 text-sm focus:ring-2 focus:ring-teal-500 outline-none" placeholder="Auto">
+                            </div>
+                        </td>
+                        <td class="p-3 text-center">
+                            <label class="inline-flex items-center cursor-pointer">
+                                <input type="checkbox" id="exp-l-${f.id}" class="w-5 h-5 text-teal-600 rounded border-gray-300 focus:ring-teal-500 transition" ${isLocked}>
+                            </label>
+                        </td>
+                    </tr>
+                `;
+            });
+            
+            document.getElementById('export-config-modal').classList.remove('hidden');
+        }
+
+        // 新增：連動更新所有相同分類的顏色選擇器 (UI UX 優化)
+        function updateCategoryColorBatch(catId, newColor) {
+            // 找出所有屬於此分類的選擇器並同步更新顏色
+            const pickers = document.querySelectorAll(`.cat-color-picker[data-cat-id="${catId}"]`);
+            pickers.forEach(p => p.value = newColor);
+        }
+
+        // 儲存匯出設定
+        function saveExportConfig() {
+            let changed = false;
+            
+            // 1. 儲存欄寬與鎖定狀態
+            yearTemplateData.fields.forEach(f => {
+                const wInput = document.getElementById(`exp-w-${f.id}`);
+                const lInput = document.getElementById(`exp-l-${f.id}`);
+                
+                if (wInput && lInput) {
+                    const newW = parseInt(wInput.value);
+                    const newL = lInput.checked;
+                    
+                    if (f.excelWidth !== newW || f.excelLocked !== newL) {
+                        if (newW > 0) f.excelWidth = newW; else delete f.excelWidth;
+                        f.excelLocked = newL;
+                        changed = true;
+                    }
+                }
+            });
+
+            // 2. ★★★ 新增：儲存分類顏色 ★★★
+            // 遍歷所有分類選擇器 (使用 Map 去重)
+            const colorPickers = document.querySelectorAll('.cat-color-picker');
+            const newColors = yearTemplateData.categoryColors || {};
+            
+            colorPickers.forEach(picker => {
+                const catId = picker.dataset.catId;
+                const color = picker.value; // e.g. #002E5D
+                
+                // 如果顏色跟預設不同，或原本就有設定，則更新
+                if (newColors[catId] !== color) {
+                    newColors[catId] = color;
+                    changed = true;
+                }
+            });
+            yearTemplateData.categoryColors = newColors;
+            
+            if (changed) {
+                setUnsaved(true);
+                showMsg('success', '設定已更新', 'Excel 匯出屬性與分類顏色已更新，請記得點擊右上角「儲存設定」以永久保存。');
+            } else {
+                showMsg('info', '無變更', '設定未發生變化。');
+            }
+            document.getElementById('export-config-modal').classList.add('hidden');
         }
 
         async function handleFileUpload(event) {
@@ -2148,74 +2350,53 @@
             renderMappingDropdowns(); // Rerender to disable selected option in other dropdowns
         }
 
-        // Returns all fields that need to be processed/matched (system categories + core logic if missing)
-        function getFieldsToProcess() {
-            const fieldsToMap = new Map();
-            
-            // 1. Filter fields from the module
-            // Include fields that are in system categories OR are mandatory logic fields (even if uncategorized)
-            currentTemplateFields.sort((a, b) => (a.order || 999) - (b.order || 999)).forEach(f => {
-                // 判斷是否為系統分類 (既有邏輯)
-                const isSystemCat = ALLOWED_MAPPING_CATEGORY_IDS.includes(f.category);
-                
-                // 新增：判斷是否為強制核心欄位 (如: student_id, course_dept)
-                const isMandatory = MANDATORY_LOGIC_IDS.includes(f.id);
-
-                // 只要符合其中一個條件，就加入匹配清單
-                if (isSystemCat || isMandatory) {
-                    fieldsToMap.set(f.id, {
-                        ...f,
-                        // Mark as mandatory logic field if ID matches a core ID (UI 會顯示星號)
-                        isMandatoryLogic: isMandatory
-                    });
-                }
-            });
-            
-            // 2. Return fields, already sorted by module order in the loop above
-            return Array.from(fieldsToMap.values());
+        // ★★★ 補上遺失的顏色取得函式 ★★★
+        function getCategoryColor(catId) {
+            // 1. 優先使用學年度模組內儲存的顏色
+            if (yearTemplateData.categoryColors && yearTemplateData.categoryColors[catId]) {
+                return yearTemplateData.categoryColors[catId].replace('#', '');
+            }
+            // 2. 系統預設顏色對照表 (不含 #)
+            const defaults = {
+                'sys_course_info': '4F46E5', // Indigo
+                'sys_student_info': '219653', // Success Green
+                'uncategorized': '94A3B8'     // Slate
+            };
+            // 3. 回傳預設值或深灰色
+            return defaults[catId] || '64748B'; 
         }
-        
+
         // The list of all fields to be exported (which is now the entire module template)
         function getFieldsToExport() {
-            // For export, we use ALL fields from the module, not just the system ones.
+            // 複製一份欄位設定
             const allModuleFields = currentTemplateFields.map(f => ({
                 ...f,
                 dataKey: f.id 
             }));
-            
-            // Return all module fields sorted by their original order in the module
-            return allModuleFields.sort((a, b) => (a.order || 999) - (b.order || 999)).map(f => ({
-                ...f,
-                dataKey: f.id 
-            }));
+
+            // 排序邏輯
+            return allModuleFields.sort((a, b) => {
+                // 1. 強制將「學年」、「學期」相關欄位排在最前面
+                const isYearA = a.label.includes('學年') || a.id === 'school_year' || a.id === 'academic_year';
+                const isYearB = b.label.includes('學年') || b.id === 'school_year' || b.id === 'academic_year';
+                const isSemA = a.label.includes('學期') || a.id === 'semester';
+                const isSemB = b.label.includes('學期') || b.id === 'semester';
+
+                if (isYearA && !isYearB) return -1;
+                if (!isYearA && isYearB) return 1;
+                if (isSemA && !isSemB) return -1;
+                if (!isSemA && isSemB) return 1;
+
+                // 2. Order 排序
+                const orderA = (a.order !== undefined && a.order !== null) ? a.order : 999;
+                const orderB = (b.order !== undefined && b.order !== null) ? b.order : 999;
+                
+                return orderA - orderB;
+            });
         }
 
+        // ★★★ 補上遺失的 renderMappingPanel 函式 (作為 renderMappingDropdowns 的別名) ★★★
         function renderMappingPanel() {
-            if (!currentFileHeaders || currentFileHeaders.length === 0) return;
-            if (!currentTemplateFields || currentTemplateFields.length === 0) {
-                 document.getElementById('mapping-dropdown-container').innerHTML = '<div class="p-4 text-center text-slate-500">請確認選定的學年度模組已定義欄位。</div>';
-                 document.getElementById('total-module-fields').innerText = 0;
-                 return;
-            }
-
-            const fieldsToMap = getFieldsToProcess();
-            
-            let totalFields = 0;
-            
-            fieldsToMap.forEach(modField => {
-                totalFields++;
-                // Initialize mapping state if missing: ALWAYS set isSelected to TRUE
-                if (!currentMapping[modField.id]) {
-                    currentMapping[modField.id] = { 
-                        excelHeader: '', 
-                        isSelected: true // Always selected for processing/export in this new flow
-                    };
-                }
-            });
-            
-            document.getElementById('total-module-fields').innerText = totalFields;
-            
-            // Render the full-width dropdown list
             renderMappingDropdowns();
         }
 
@@ -2652,7 +2833,7 @@
             renderConsolidatedTable(dataToShow);
         }
         
-        // Q3: Updated to show Short Name in Preview
+        // Q3: Updated to show Short Name in Preview (Fixed: Strict Column Limit)
         function renderConsolidatedTable(dataToShow) {
             const tableContainer = document.getElementById('results-table-container');
             const emptyState = document.getElementById('results-empty-state');
@@ -2669,232 +2850,254 @@
             emptyState.classList.add('hidden');
             tableContainer.classList.remove('hidden');
             
+            // 1. 取得完整的欄位定義
             const allOutputFields = getFieldsToExport(); 
             const fieldMap = new Map(allOutputFields.map(f => [f.id, f]));
             
-            const outputFieldIds = OUTPUT_DISPLAY_FIELDS.map(f => f.id);
-            const allSelectedIds = allOutputFields.map(f => f.id);
-            const combinedIds = [...new Set([...outputFieldIds, ...allSelectedIds])];
-            
-            const uiOutputFields = combinedIds.map(id => {
-                const def = fieldMap.get(id);
-                if (!def) return null;
-
-                const displayDef = OUTPUT_DISPLAY_FIELDS.find(f => f.id === id);
+            // 2. ★★★ 修正：嚴格依據 OUTPUT_DISPLAY_FIELDS 產生欄位 (只顯示這 10 個) ★★★
+            const uiOutputFields = OUTPUT_DISPLAY_FIELDS.map(displayDef => {
+                const moduleDef = fieldMap.get(displayDef.id) || {};
                 return {
-                    ...def,
-                    label: displayDef ? displayDef.label : def.label,
-                    dataKey: def.id
+                    ...moduleDef,       // 繼承模組屬性 (如 type)
+                    ...displayDef,      // 使用顯示設定的 label 與 id
+                    dataKey: displayDef.id 
                 };
-            }).filter(f => f).sort((a,b) => {
-                const aMandatory = MANDATORY_LOGIC_IDS.includes(a.id);
-                const bMandatory = MANDATORY_LOGIC_IDS.includes(b.id);
-                if (aMandatory && !bMandatory) return -1;
-                if (!aMandatory && bMandatory) return 1;
-                return (a.order || 999) - (b.order || 999);
             });
 
-            // 3. Generate headers based on this filtered list
-            const headers = uiOutputFields.map(f => `<th class="text-center">${f.label.replace(/\s*\(必填\)/g, '')}</th>`).join('');
-            
-            headersRow.innerHTML = `<th>#</th>${headers}`;
+            // 3. 產生標題
+            const headers = uiOutputFields.map(f => `<th class="text-center whitespace-nowrap">${f.label.replace(/\s*\(必填\)/g, '')}</th>`).join('');
+            headersRow.innerHTML = `<th class="w-12 text-center">#</th>${headers}`;
             document.getElementById('current-group-record-count').innerText = dataToShow.length;
             
-            // 4. Generate rows
+            // 4. 產生內容 (預覽強制使用簡稱)
             const rows = dataToShow.map((row, idx) => {
                 const cells = uiOutputFields.map(f => {
                     let displayValue = row[f.dataKey] || '<span class="text-slate-300">-</span>'; 
                     
-                    // Q3: Use Short Name for Preview (useShort = true)
+                    // 預覽時使用簡稱 (useShort = true)
                     if (f.type === 'department') {
                         const deptId = row[f.dataKey];
-                        if (deptId) {
-                            displayValue = getDeptDisplayName(deptId, true) || deptId;
-                        }
+                        if (deptId) displayValue = getDeptDisplayName(deptId, true) || deptId;
                     } else if (f.type === 'college') {
                          const collegeId = row[f.dataKey];
-                         if (collegeId) {
-                            displayValue = getCollegeDisplayName(collegeId, true) || collegeId;
-                         }
+                         if (collegeId) displayValue = getCollegeDisplayName(collegeId, true) || collegeId;
                     }
                     
-                    return `
-                        <td class="text-center py-2 text-xs">
-                            ${displayValue}
-                        </td>
-                    `;
+                    return `<td class="text-center py-2 text-xs border-b border-slate-50">${displayValue}</td>`;
                 }).join('');
                 
-                return `
-                    <tr class="hover:bg-slate-50 border-b border-slate-100 transition">
-                        <td class="w-12 text-center py-3 text-xs font-mono text-slate-400">${idx + 1}</td>
-                        ${cells}
-                    </tr>
-                `;
+                return `<tr class="hover:bg-slate-50 transition"><td class="text-center py-3 text-xs font-mono text-slate-400 border-b border-slate-50">${idx + 1}</td>${cells}</tr>`;
             }).join('');
             
             tbody.innerHTML = rows;
         }
 
-        // --- Excel 美化與驗證共用函式 ---
-        // 輔助：根據分類 ID 取得背景顏色
-        function getCategoryColor(catId) {
-            const colors = {
-                'sys_course_info': '002E5D',   // 東海深藍 (系統-課程)
-                'sys_student_info': '2a9d8f',  // 藍綠色 (系統-學生)
-                'cat_1764407526226': 'e76f51', // 範例：可為特定分類指定顏色 (橘紅)
-                'uncategorized': '6c757d'      // 灰色
-            };
-            
-            if (colors[catId]) return colors[catId];
-            
-            // 若無設定，則自動產生一個固定的顏色 (避免每次隨機)
-            let hash = 0;
-            const str = catId || 'default';
-            for (let i = 0; i < str.length; i++) {
-                hash = str.charCodeAt(i) + ((hash << 5) - hash);
+        // ✅ 獨立出來的 Dropdown 設定函式 (優先執行)
+        function applyDropdown(ws, outputFields, safeEndRow) {
+            const validations = [];
+
+            outputFields.forEach((field, colIdx) => {
+                // 支援 single_select 與 list 兩種類型
+                if ((field.type === "single_select" || field.type === "list") &&
+                    field.options && field.options.length) {
+
+                    const colLetter = XLSX.utils.encode_col(colIdx);
+                    
+                    // 處理選項字串: 轉字串 -> Escape 雙引號 -> 逗號連接
+                    const safeOptions = field.options
+                        .map(v => v.toString().replace(/"/g, '""'))
+                        .join(',');
+
+                    // Excel 限制內嵌清單不可超過 255 字元
+                    if (safeOptions.length >= 255) {
+                        console.warn("Dropdown too long (skip):", field.label);
+                        return;
+                    }
+
+                    validations.push({
+                        sqref: `${colLetter}2:${colLetter}${safeEndRow}`,
+                        type: "list",
+                        allowBlank: true,
+                        showErrorMessage: true, // 強制顯示錯誤訊息，有助於啟用驗證UI
+                        errorTitle: '輸入限制',
+                        error: '請從下拉選單中選擇有效的選項',
+                        formulas: [`"${safeOptions}"`]
+                    });
+
+                    console.log("✅ dropdown ready:", field.label);
+                }
+            });
+
+            if (validations.length) {
+                ws["!dataValidation"] = validations;
             }
-            const c = (hash & 0x00FFFFFF).toString(16).toUpperCase();
-            return "00000".substring(0, 6 - c.length) + c;
         }
 
-        // Excel 美化與驗證共用函式 (強化版)
-        function enhanceWorksheet(ws, outputFields, rowCount) {
-            // 1. 設定欄寬 (優先使用系統設定值，否則自動計算)
-            const colWidths = outputFields.map(f => {
-                if (f.excelWidth && parseInt(f.excelWidth) > 0) {
-                    return { wch: parseInt(f.excelWidth) };
-                }
-                // 自動計算寬度
+        // ★★★ 核心引擎：使用 ExcelJS 產生檔案 (內嵌清單修復版) ★★★
+        // ★★★ 核心引擎：ExcelJS 產生檔案 (強力淨化版) ★★★
+        async function createExcelBuffer(groupName, groupData, outputFields, outputYear) {
+            const workbook = new ExcelJS.Workbook();
+            const worksheet = workbook.addWorksheet(groupName === 'all' ? '總表' : groupName);
+
+            // 1. 設定欄位標頭 (Columns)
+            const columns = outputFields.map(f => {
                 let len = 0;
                 for (let i = 0; i < f.label.length; i++) {
                     len += (f.label.charCodeAt(i) > 255) ? 2 : 1;
                 }
-                return { wch: Math.min(Math.max(len + 5, 15), 60) };
-            });
-            ws['!cols'] = colWidths;
-
-            // 2. 設定標題列樣式 (依分類變色 + 微軟正黑體)
-            const range = XLSX.utils.decode_range(ws['!ref']);
-            for (let C = range.s.c; C <= range.e.c; ++C) {
-                const address = XLSX.utils.encode_cell({ r: 0, c: C });
-                if (!ws[address]) continue;
+                const width = f.excelWidth ? parseInt(f.excelWidth) : Math.min(Math.max(len + 2, 12), 50);
                 
-                const field = outputFields[C]; 
-                const catColor = getCategoryColor(field.category);
-
-                ws[address].s = {
-                    font: { bold: true, color: { rgb: "FFFFFF" }, name: "Microsoft JhengHei", sz: 12 },
-                    fill: { fgColor: { rgb: catColor } },
-                    alignment: { horizontal: "center", vertical: "center" },
-                    border: { 
-                        bottom: { style: "medium", color: { rgb: "000000" } },
-                        right: { style: "thin", color: { rgb: "FFFFFF" } }
-                    }
+                return {
+                    header: f.label.replace(/\s*\(必填\)/g, ''),
+                    key: f.dataKey,
+                    width: width
                 };
-            }
+            });
+            worksheet.columns = columns;
 
-            // 3. 設定資料列樣式與鎖定 (Cell Locking)
-            for (let R = 1; R <= range.e.r; ++R) {
-                for (let C = range.s.c; C <= range.e.c; ++C) {
-                    const address = XLSX.utils.encode_cell({ r: R, c: C });
-                    
-                    // 若儲存格為空，需初始化才能設定樣式
-                    if (!ws[address]) {
-                         XLSX.utils.sheet_add_aoa(ws, [['']], { origin: address });
+            // 2. 處理資料並填入
+            const rows = groupData.map(row => {
+                const rowObj = {};
+                outputFields.forEach(f => {
+                    let cellValue = row[f.dataKey] || '';
+                    if (f.type === 'department') {
+                        const deptId = row[f.dataKey];
+                        if (deptId) cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
+                    } else if (f.type === 'college') {
+                         const collegeId = row[f.dataKey];
+                         if (collegeId) cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
                     }
-                    
-                    const field = outputFields[C];
-                    // 讀取該欄位的鎖定設定 (若為 true 則鎖定，否則解鎖)
-                    const isLocked = field.excelLocked === true;
+                    rowObj[f.dataKey] = cellValue;
+                });
+                return rowObj;
+            });
+            worksheet.addRows(rows);
 
-                    if (!ws[address].s) ws[address].s = {};
-                    ws[address].s.font = { name: "Microsoft JhengHei", sz: 11 };
-                    ws[address].s.alignment = { vertical: "center", wrapText: true }; // 自動換行
-                    
-                    // 設定鎖定屬性
-                    ws[address].s.protection = { locked: isLocked };
-                    
-                    // 若被鎖定，改變背景色提示 (淺灰)
-                    if (isLocked) {
-                        ws[address].s.fill = { fgColor: { rgb: "F3F4F6" } };
-                    }
-                }
-            }
+            // 3. 定義樣式
+            const fontStyle = { name: 'Microsoft JhengHei', size: 11 };
+            const headerFont = { name: 'Microsoft JhengHei', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
+            const thinBorder = { style: 'thin', color: { argb: 'FFB2B2B2' } };
+            const borderStyle = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
             
-            // 4. 啟用工作表保護 (Sheet Protection)
-            // 只有啟用這個，上述的 locked: true 才會生效
-            ws['!protect'] = {
-                selectLockedCells: true,   // 允許選取鎖定儲存格 (方便複製)
-                selectUnlockedCells: true, // 允許選取一般儲存格
-                formatColumns: true,       // 允許調整欄寬
-                formatRows: true           // 允許調整列高
-                // 未列出的操作 (如 insertRows, deleteColumns) 將被禁止
-            };
+            // 4. 準備下拉選單邏輯
+            const validationRules = {}; // colIndex -> validation object
 
-            // 5. 資料驗證 (下拉選單)
-            const validations = [];
-            const endRow = Math.max(rowCount + 100, 500);
-            outputFields.forEach((field, colIdx) => {
-                if ((field.type === 'single_select' || field.type === 'list') && field.options && field.options.length > 0) {
-                    const colLetter = XLSX.utils.encode_col(colIdx);
-                    const optionsStr = field.options.join(',');
-                    if (optionsStr.length < 255) {
-                        validations.push({
-                            sqref: `${colLetter}2:${colLetter}${endRow}`,
+            outputFields.forEach((field, idx) => {
+                if ((field.type === 'single_select' || field.type === 'list') && 
+                    field.options && field.options.length > 0) {
+                    
+                    // ★★★ 強力淨化：移除換行符號、修剪空白、轉義雙引號 ★★★
+                    const safeOptions = field.options.map(o => {
+                        return o.toString()
+                                .replace(/[\r\n]+/g, '') // 移除換行
+                                .trim()                  // 移除前後空白
+                                .replace(/"/g, '""');    // 處理 Excel 雙引號轉義
+                    });
+                    
+                    const joinedOptions = safeOptions.join(',');
+
+                    // 檢查長度 (Excel 限制 255 字元)
+                    if (joinedOptions.length < 255) {
+                        // ★★★ 關鍵寫法：formulas 必須是 ['"選項1,選項2"'] ★★★
+                        // 注意：字串頭尾一定要各加一個雙引號
+                        validationRules[idx + 1] = {
                             type: 'list',
                             allowBlank: true,
-                            formula1: `"${optionsStr}"`,
-                            showDropDown: true
-                        });
+                            formulas: [`"${joinedOptions}"`], 
+                            showErrorMessage: true,
+                            errorTitle: '輸入限制',
+                            error: '請選擇有效選項'
+                        };
+                        console.log(`[Excel] 欄位 [${field.label}] 下拉設定成功: "${joinedOptions}"`);
+                    } else {
+                        console.warn(`[Excel] 欄位 [${field.label}] 選項過長，略過下拉`);
                     }
                 }
             });
-            if (validations.length > 0) ws['!dataValidation'] = validations;
+
+            // 5. 遍歷每一列 (含標頭) 套用樣式與驗證
+            worksheet.eachRow((row, rowNumber) => {
+                row.eachCell((cell, colNumber) => {
+                    const field = outputFields[colNumber - 1];
+                    
+                    cell.border = borderStyle;
+                    cell.alignment = { vertical: 'middle', wrapText: true };
+
+                    if (rowNumber === 1) {
+                        // 標頭
+                        cell.font = headerFont;
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + getCategoryColor(field.category) } };
+                        cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                    } else {
+                        // 內容
+                        cell.font = fontStyle;
+                        if (field._isMapped) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                        } else {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                        }
+
+                        // 套用下拉選單
+                        if (validationRules[colNumber]) {
+                            cell.dataValidation = validationRules[colNumber];
+                        }
+                    }
+                });
+            });
+
+            // 6. 補足空白列
+            const currentRows = rows.length;
+            const extraRows = 100; 
+            
+            for (let i = 1; i <= extraRows; i++) {
+                const r = worksheet.getRow(currentRows + 1 + i);
+                outputFields.forEach((field, idx) => {
+                    const colNumber = idx + 1;
+                    const cell = r.getCell(colNumber);
+                    
+                    cell.font = fontStyle;
+                    cell.border = borderStyle;
+                    cell.alignment = { vertical: 'middle', wrapText: true };
+                    
+                    if (validationRules[colNumber]) {
+                        cell.dataValidation = validationRules[colNumber];
+                    }
+                });
+            }
+
+            // 產生 Buffer
+            const buffer = await workbook.xlsx.writeBuffer();
+            return buffer;
         }
 
-        // --- Download Logic (with Field Order) (Q3: Use Full Name for Export) ---
-        function downloadBatch(groupName) {
+        async function downloadBatch(groupName) {
             const groupData = groupName === 'all' ? Object.values(currentConsolidatedResults).flat() : currentConsolidatedResults[groupName];
             if (!groupData || groupData.length === 0) return;
 
-            // Use ALL ordered fields that were explicitly selected for export
-            const allOutputFields = getFieldsToExport(); 
-
-            // Headers for export
-            const headerLabels = allOutputFields.map(f => f.label.replace(/\s*\(必填\)/g, ''));
-            const dataKeys = allOutputFields.map(f => f.dataKey); 
+            // 準備欄位設定
+            const allOutputFields = getFieldsToExport().map(f => ({
+                ...f,
+                _isMapped: !!(currentMapping[f.id] && currentMapping[f.id].excelHeader)
+            }));
             
             const outputYear = currentConsolidationYear || activeYearId || '';
 
-            const data = groupData.map(row => dataKeys.map(dataKey => {
-                let cellValue = row[dataKey] || '';
-                const fieldDef = allOutputFields.find(f => f.dataKey === dataKey);
+            // ★★★ 改用 ExcelJS 生成 ★★★
+            try {
+                const buffer = await createExcelBuffer(groupName, groupData, allOutputFields, outputYear);
                 
-                if (fieldDef && fieldDef.type === 'department') {
-                    const deptId = row[dataKey];
-                    if (deptId) cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
-                } else if (fieldDef && fieldDef.type === 'college') {
-                     const collegeId = row[dataKey];
-                     if (collegeId) cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
-                }
-                return cellValue;
-            }));
-            
-            const wsData = [headerLabels, ...data];
-            const ws = XLSX.utils.aoa_to_sheet(wsData);
-
-            // ★★★ 新增這行：呼叫美化函式 ★★★
-            enhanceWorksheet(ws, allOutputFields, data.length);
-
-            const wb = XLSX.utils.book_new();
-            XLSX.utils.book_append_sheet(wb, ws, groupName === 'all' ? '總表' : groupName);
-            
-            const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName === 'all' ? '總表' : groupName}.xlsx`;
-            XLSX.writeFile(wb, filename);
+                // 使用 FileSaver 下載
+                const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+                const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName === 'all' ? '總表' : groupName}.xlsx`;
+                saveAs(blob, filename);
+                
+            } catch (e) {
+                console.error(e);
+                showMsg('error', '匯出失敗', '產生 Excel 檔案時發生錯誤：' + e.message);
+            }
         }
         
-        function downloadAllGroupsZip() {
+        async function downloadAllGroupsZip() {
             if (!currentConsolidatedResults || Object.keys(currentConsolidatedResults).length === 0) {
                  return showMsg('info', '無資料', '目前沒有可供下載的彙整名單。');
             }
@@ -2904,62 +3107,36 @@
             btn.innerHTML = '<div class="spinner border-slate-500 border-t-white"></div> 打包中...';
 
             const zip = new JSZip();
-            const allOutputFields = getFieldsToExport(); 
-            const headerLabels = allOutputFields.map(f => f.label.replace(/\s*\(必填\)/g, ''));
-            const dataKeys = allOutputFields.map(f => f.dataKey);
+            
+            const allOutputFields = getFieldsToExport().map(f => ({
+                ...f,
+                _isMapped: !!(currentMapping[f.id] && currentMapping[f.id].excelHeader)
+            }));
             const outputYear = currentConsolidationYear || activeYearId || '';
 
-            for (const groupName in currentConsolidatedResults) {
-                const groupData = currentConsolidatedResults[groupName];
-                
-                const data = groupData.map(row => dataKeys.map(dataKey => {
-                    let cellValue = row[dataKey] || '';
-                    const fieldDef = allOutputFields.find(f => f.dataKey === dataKey);
+            try {
+                for (const groupName in currentConsolidatedResults) {
+                    const groupData = currentConsolidatedResults[groupName];
                     
-                    if (fieldDef && fieldDef.type === 'department') {
-                        const deptId = row[dataKey];
-                        if (deptId) cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
-                    } else if (fieldDef && fieldDef.type === 'college') {
-                         const collegeId = row[dataKey];
-                         if (collegeId) cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
-                    }
-                    return cellValue;
-                }));
+                    // ★★★ 改用 ExcelJS 生成 Buffer ★★★
+                    const buffer = await createExcelBuffer(groupName, groupData, allOutputFields, outputYear);
+                    
+                    const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName}.xlsx`;
+                    zip.file(filename, buffer, { binary: true });
+                }
                 
-                const wsData = [headerLabels, ...data];
-                const ws = XLSX.utils.aoa_to_sheet(wsData);
+                // 產生 ZIP
+                const content = await zip.generateAsync({ type: "blob" });
+                saveAs(content, `${currentConsolidationYear}_全系實習彙整名單.zip`);
+                showMsg('success', '打包完成', '全系實習名單已打包成 ZIP 檔案開始下載。');
 
-                // ★★★ 新增這行：呼叫美化函式 ★★★
-                enhanceWorksheet(ws, allOutputFields, data.length);
-
-                const wb = XLSX.utils.book_new();
-                XLSX.utils.book_append_sheet(wb, ws, groupName);
-                
-                const wopts = { bookType: 'xlsx', type: 'binary' };
-                const wbout = XLSX.write(wb, wopts);
-                const s2ab = (s) => {
-                    const buf = new ArrayBuffer(s.length);
-                    const view = new Uint8Array(buf);
-                    for (let i = 0; i < s.length; i++) view[i] = s.charCodeAt(i) & 0xFF;
-                    return view;
-                };
-                
-                const filename = `【${currentConsolidationYear}學年度修課】校庫填報清單-${groupName}.xlsx`;
-                zip.file(filename, s2ab(wbout), { binary: true });
+            } catch (e) {
+                console.error(e);
+                showMsg('error', '打包失敗', `建立 ZIP 檔案時發生錯誤：${e.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-file-archive"></i> 全系批次下載 (打包ZIP)';
             }
-            
-            zip.generateAsync({ type: "blob" })
-               .then(function(content) {
-                   saveAs(content, `${currentConsolidationYear}_全系實習彙整名單.zip`);
-                   showMsg('success', '打包完成', '全系實習名單已打包成 ZIP 檔案開始下載。');
-               })
-               .catch(err => {
-                   showMsg('error', '打包失敗', `建立 ZIP 檔案時發生錯誤：${err.message}`);
-               })
-               .finally(() => {
-                   btn.disabled = false;
-                   btn.innerHTML = '<i class="fas fa-file-archive"></i> 全系批次下載 (打包ZIP)';
-               });
         }
 
 
@@ -3312,11 +3489,7 @@
             const visDepSel = document.getElementById('ed-vis-dep'); visDepSel.innerHTML = '<option value="">請選擇...</option>';
             allFields.filter(x => x.id !== f.id).forEach(x => visDepSel.innerHTML += `<option value="${x.id}" ${f.visibilityRule?.dep===x.id?'selected':''}>${x.label} (${x.id})</option>`);
             document.getElementById('ed-vis-val').value = f.visibilityRule?.val || '';
-            document.getElementById('ed-vis-action').value = f.visibilityRule?.action || 'show';
-            
-            // ★★★ 新增這兩行：讀取 Excel 設定 ★★★
-            document.getElementById('ed-excel-width').value = f.excelWidth || '';
-            document.getElementById('ed-excel-locked').checked = f.excelLocked || false;
+            document.getElementById('ed-vis-action').value = f.visibilityRule?.action || 'show'
 
             document.getElementById('editor-modal').dataset.curr = JSON.stringify(f);
             document.getElementById('editor-modal').classList.remove('hidden');
