@@ -234,35 +234,39 @@
                 </aside>
                 <section class="flex-grow flex flex-col">
                     <div id="dept-config-panel" class="hidden flex-col h-full">
-                        <div class="bg-white px-8 py-5 border-b border-slate-200 shadow-sm flex justify-between items-center">
-                            <div><h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><span id="current-college-title">...</span></h2><p class="text-xs text-slate-400 mt-1">此學院下的所有系所清單。</p></div>
+                        <!-- 修正：將新增系所按鈕移到頂部標頭右側 -->
+                        <div class="bg-white px-8 py-5 border-b border-slate-200 shadow-sm flex justify-between items-center flex-shrink-0">
+                            <div>
+                                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><span id="current-college-title">...</span></h2>
+                                <p class="text-xs text-slate-400 mt-1">此學院下的所有系所清單。</p>
+                            </div>
                             <div class="flex items-center gap-3">
+                                <!-- 新增系所按鈕 -->
+                                <button onclick="openDeptModal()" class="btn-create px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2"><i class="fas fa-plus"></i> 新增系所</button>
                                 <button onclick="renameCurrentCollege()" class="text-slate-400 hover:text-primary hover:bg-blue-50 p-2.5 rounded-lg transition" title="編輯學院基本資訊"><i class="fas fa-pen"></i></button>
                                 <button onclick="deleteCurrentCollege()" class="text-slate-400 hover:text-danger hover:bg-red-50 p-2.5 rounded-lg transition" title="刪除學院"><i class="fas fa-trash-alt"></i></button>
                             </div>
                         </div>
+                        <!-- 修正：移除舊有的按鈕容器 -->
                         <div class="flex-grow p-8 overflow-hidden flex flex-col">
-                            <div class="flex justify-end items-center mb-4">
-                                <button onclick="openDeptModal()" class="btn-create px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2"><i class="fas fa-plus"></i> 新增系所</button>
-                            </div>
                             <div class="bg-white rounded-xl border border-slate-200 flex-grow overflow-hidden flex flex-col shadow-sm">
                                 <div class="overflow-y-auto custom-scroll flex-grow">
                                     <table class="w-full data-table">
                                         <thead class="sticky top-0 bg-slate-50 z-10 shadow-sm">
-                                            <tr>
-                                                <th class="w-16 text-center">排序</th>
-                                                <th class="w-1/2 text-left">系所名稱 (ID/CODE)</th>
-                                                <th class="w-40 text-center">操作</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody id="department-list-body">
-                                            <!-- Department items rendered here -->
-                                        </tbody>
-                                    </table>
-                                </div>
+                                         <tr>
+                                            <th class="w-16 text-center">排序</th>
+                                            <th class="w-1/2 text-left">系所名稱 (ID/CODE)</th>
+                                            <th class="w-40 text-center">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="department-list-body">
+                                        <!-- Department items rendered here -->
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
                     </div>
+                </div>
                     <div id="dept-empty-state" class="flex flex-col items-center justify-center h-full text-slate-400"><div class="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-4 text-3xl text-slate-400"><i class="fas fa-school"></i></div><p>請從左側選擇或新增一個學院</p></div>
                 </section>
             </div>
@@ -362,29 +366,49 @@
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-university text-primary"></i> <span id="dept-editor-title">編輯學院/系所屬性</span></h3>
                 <button onclick="document.getElementById('dept-editor-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
             </div>
-            <div class="flex flex-grow overflow-hidden">
+            <div class="flex flex-grow overflow-hidden relative"> <!-- <-- 新增 relative -->
                 <!-- Left Panel: General Info (Q1) -->
                 <div class="w-80 bg-slate-50 border-r border-slate-200 flex-shrink-0 overflow-y-auto custom-scroll p-6 space-y-5">
                     <h4 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-2">基本資訊</h4>
-                    <!-- General Name (Full Name/Year-Specific Name) -->
-                    <div><label class="text-xs font-bold text-slate-600 mb-1 block" id="ed-dept-name-label">全稱/當前學年名稱 <span class="text-red-500">*</span></label><input type="text" id="ed-dept-name" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none" placeholder="e.g. 資訊管理學系"></div>
-                    <!-- Short Name -->
-                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">簡稱 (介面顯示)</label><input type="text" id="ed-dept-shortname" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none" placeholder="e.g. 資管系"></div>
+                    
+                    <!-- 修正點 2: 學院/系所的主名稱/簡稱 (唯一保留的名稱欄位) -->
+                    <!-- 對於學院，這是簡稱。對於系所，這是簡稱。 -->
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block" id="ed-dept-name-label">簡稱 (介面顯示) <span class="text-red-500">*</span></label><input type="text" id="ed-dept-name" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none" placeholder="e.g. 資管系"></div>
+                    
+                    <!-- 修正點 1/2: 移除原來的 short_name / 預設全稱 欄位 -->
+                    <!-- 為了保留原始的 ID，我們將原來的 ed-dept-name 用於簡稱，並將ed-dept-shortname刪除 -->
+                    
                     <!-- ID -->
-                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">ID <span class="text-red-500">*</span></label><input type="text" id="ed-dept-id" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono text-blue-600 focus:ring-primary outline-none" placeholder="e.g. cis_dept" readonly></div>
+                    <div><label class="text-xs font-bold text-slate-600 mb-1 block">ID <span class="text-red-500">*</span></label><input type="text" id="ed-dept-id" class="w-full border border-slate-300 rounded-lg p-2 text-sm font-mono text-blue-600 focus:ring-primary outline-none" placeholder="e.g. cis_dept" oninput="validateDeptModalID()"></div>
                     <!-- Code -->
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">代碼 (Code)</label><input type="text" id="ed-dept-code" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none" placeholder="e.g. C0003"></div>
+                    
+                    <!-- 必須保留這個 hidden input，因為它被 saveDeptMasterFromModal 引用，用於儲存系所的 name (匯出全稱的 fallback) -->
+                    <input type="hidden" id="ed-dept-shortname" value="">
                 </div>
-                <!-- Right Panel: Historical Names (Q1, Q2) -->
-                <div id="dept-year-name-panel" class="flex-grow overflow-y-auto custom-scroll bg-white">
-                    <div class="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center sticky top-0 z-10">
+                <!-- Right Panel: Historical Names (New Table Structure for Q2) -->
+                <div id="dept-year-name-panel" class="flex-grow overflow-hidden bg-white flex flex-col">
+                    <div class="p-6 border-b border-slate-100 bg-slate-50/30 flex justify-between items-center flex-shrink-0 sticky top-0 z-10">
                         <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-history text-indigo-500"></i> 各學年度全稱設定 (歷史名稱)</h4>
-                        <button onclick="copyAllYearNames()" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-full shadow-sm transition flex items-center gap-1 font-bold"><i class="fas fa-copy"></i> 複製當前名稱至所有學年</button>
+                        <!-- 依據需求，移除「複製當前名稱至所有學年」按鈕 -->
                     </div>
-                    <div id="year-name-list" class="p-6 space-y-4">
-                        <!-- Academic Year Name Inputs Rendered Here -->
+                    <div class="flex-grow overflow-y-auto custom-scroll">
+                        <table class="w-full data-table">
+                            <thead class="sticky top-0 bg-white shadow-sm">
+                                <tr>
+                                    <th class="w-24 text-center">學年度</th>
+                                    <th class="w-1/2 text-left">系所全稱</th>
+                                    <th class="w-32 text-center">操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="year-name-list">
+                                <!-- Academic Year Name Table Rows Rendered Here -->
+                            </tbody>
+                        </table>
+                        <div id="year-name-empty-state" class="p-8 text-center text-slate-400 hidden">請先建立學年度模組</div>
                     </div>
                 </div>
+            </div>            </div>
             </div>
             <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
                 <button onclick="document.getElementById('dept-editor-modal').classList.add('hidden')" class="px-4 py-2 text-slate-500 font-bold hover:bg-slate-100 rounded-lg text-sm transition">取消</button>
@@ -626,7 +650,7 @@
             academicYears: [], 
             templateCategories: [], 
             fieldTypes: [], 
-            addressRules: { protected: [], keywords: [], specials: [] },
+            addressRules: { protected: [], keywords: [], specials: [] }, 
             // allianceModeDepts is now managed per year in year_templates/
             allianceModeDepts: {} // Global placeholder for easy access/initialization
         }; 
@@ -645,6 +669,7 @@
         let deptDataSha = null;
         let deptMasterSha = null;
         let editingDeptEntityType = null; 
+        let currentEditingMaster = null; // NEW GLOBAL STATE FOR DEPT MODAL (Fix 4)
 
 
         // NEW: Internship Consolidation Data
@@ -740,6 +765,13 @@
             // Remove the select box if present
             if (document.getElementById('msg-select-area')) {
                  document.getElementById('msg-select-area').classList.add('hidden');
+            }
+            // NEW: Remove custom temporary select area for historical name copy
+            const tempSelectArea = document.getElementById('temp-select-area');
+            if (tempSelectArea) {
+                 tempSelectArea.remove();
+                 // Restore default input area (just in case it was hidden)
+                 document.getElementById('msg-input-area').classList.remove('hidden');
             }
         }
         // --- END Utility ---
@@ -879,12 +911,21 @@
 
         function showMsg(type, title, desc, inputConfig = null, onConfirm = null) {
             const modal = document.getElementById('msg-modal'), icon = document.getElementById('msg-icon'), btns = document.getElementById('msg-btns'), inputArea = document.getElementById('msg-input-area');
+            const descEl = document.getElementById('msg-desc');
             
-            // --- FIX 3: Cleanup previous dynamic inputs ---
+            // --- FIX 3: Cleanup previous dynamic inputs (Crucial for copyYearNamePrompt) ---
             cleanupDynamicInputs();
             // --- END FIX 3 ---
             
-            document.getElementById('msg-title').innerText = title; document.getElementById('msg-desc').innerText = desc;
+            document.getElementById('msg-title').innerText = title; 
+            
+            // 修正點 8: 判斷 desc 是否為包含 HTML 的字串 (這裡我們假設如果字串開頭是 <，就是 HTML)
+            if (desc.trim().startsWith('<') || desc.includes('<strong>') || desc.includes('<b>')) {
+                 descEl.innerHTML = desc; // 渲染 HTML
+            } else {
+                 descEl.innerText = desc; // 渲染純文字
+            }
+
             inputArea.classList.add('hidden'); document.getElementById('msg-select-area').classList.add('hidden');
             let iconClass = '', iconHtml = '';
             if(type === 'success') { iconClass = 'bg-emerald-100 text-emerald-600'; iconHtml = '<i class="fas fa-check"></i>'; }
@@ -1294,13 +1335,14 @@
                     <td class="w-16 text-center font-mono text-xs text-slate-400 py-3">${idx+1}</td>
                     <td class="w-1/2 text-left font-bold text-slate-700 text-sm py-3">
                         <div class="flex flex-col items-start justify-center h-full gap-0.5">
-                            <span>${deptDisplayName} (${deptFullName})</span>
+                            <!-- FIX 1.1: 移除全稱顯示 -->
+                            <span>${deptDisplayName}</span>
                             <span class="text-[10px] text-slate-400 font-mono block">${deptId} / CODE: ${deptCode}</span>
                         </div>
                     </td>
                     <td class="w-40 text-center py-3">
-                        <!-- Point 4 (and 1) fix: Added opacity control to hide/show buttons on TR hover -->
-                        <div class="action-cell-content gap-1 opacity-0 group-hover:opacity-100 transition duration-150">${moveBtns}${actionBtns}</div>
+                        <!-- FIX 1.2: 移除 opacity 控制，保持按鈕常態顯示 -->
+                        <div class="action-cell-content gap-1">${moveBtns}${actionBtns}</div>
                     </td>
                 </tr>`;
             });
@@ -1325,32 +1367,44 @@
             setUnsaved(true);
         }
 
-        // Q1: Refactored openCollegeModal to use the new modal
+        // 修正點 2: 學院只保留簡稱，並啟用右側面板
+        // 修正點 3, 4: College - ID 留空，控制 ID 輸入框的唯讀屬性，並初始化驗證
         function openCollegeModal(id = null) {
             const isEdit = !!id;
-            const college = isEdit ? departmentData.find(c => c.id === id) : {};
+            const college = isEdit ? departmentData.find(c => c.id === id) : { historical_names: {} };
             editingDeptEntityType = 'college';
             
-            document.getElementById('dept-editor-title').innerText = isEdit ? '編輯學院基本資訊' : '新增學院';
+            // Set global master object reference (Fix 4)
+            currentEditingMaster = college; 
+
+            document.getElementById('dept-editor-title').innerText = isEdit ? '編輯學院詳細資訊' : '新增學院';
             
             // Left Panel Setup
-            document.getElementById('ed-dept-name-label').innerText = '學院名稱 (全稱) *';
-            document.getElementById('ed-dept-name').value = college.name || '';
-            document.getElementById('ed-dept-shortname').value = college.short_name || '';
-            
+            document.getElementById('ed-dept-name-label').innerText = '簡稱 (介面顯示) *'; 
+            document.getElementById('ed-dept-name').value = college.short_name || college.name || ''; 
+            document.getElementById('ed-dept-shortname').value = college.name || '';
+
             const idInput = document.getElementById('ed-dept-id');
-            idInput.value = college.id || ('col_' + Date.now());
+            // 修正點 3: 新增時 ID 留空
+            idInput.value = isEdit ? id : '';
+            // 修正點 4: 編輯時唯讀，新增時可輸入
             idInput.readOnly = isEdit; 
             
             document.getElementById('ed-dept-code').value = college.code || '';
             
-            // Right Panel Control (Q1/Q2): Colleges do not have year-specific names.
-            document.getElementById('dept-year-name-panel').classList.add('hidden');
+            // 學院也需要歷史名稱管理 (啟用右側面板)
+            document.getElementById('dept-year-name-panel').classList.remove('hidden');
+            
+            // 修正 4: 傳入當前編輯的物件
+            renderYearNameList(currentEditingMaster, 'college');
+
+            // 修正點 4: 初始化驗證 (新增時 ID 為空會禁用右側操作)
+            validateDeptModalID();
             
             document.getElementById('dept-editor-modal').classList.remove('hidden');
         }
         
-        // Q1, Q2: Refactored openDeptModal to use the new modal and render historical names
+        // 修正點 3, 4: Department - ID 留空，控制 ID 輸入框的唯讀屬性，並初始化驗證
         function openDeptModal(id = null) {
             const isEdit = !!id;
             const college = departmentData.find(c => c.id === activeCollegeId);
@@ -1359,131 +1413,356 @@
             const master = isEdit ? deptMasterData[id] || { historical_names: {} } : { historical_names: {} };
             editingDeptEntityType = 'department';
             
+            // Set global master object reference (Fix 4)
+            currentEditingMaster = master; 
+
             document.getElementById('dept-editor-title').innerText = isEdit ? '編輯系所詳細資訊' : '新增系所';
             
-            // Left Panel Setup
-            const currentYear = activeYearId || (configData.academicYears.find(y => y.isDefault)?.year || 'current');
-            const currentYearName = isEdit ? getDeptFullName(id, currentYear) : '';
-            
-            document.getElementById('ed-dept-name-label').innerText = `全稱 (${currentYear}學年名稱) *`;
-            document.getElementById('ed-dept-name').value = currentYearName || master.name || '';
-            document.getElementById('ed-dept-shortname').value = master.short_name || '';
-            
+            // --- Left Panel Setup (簡稱/ID/CODE) ---
+            document.getElementById('ed-dept-name-label').innerText = `簡稱 (介面顯示) *`;
+            document.getElementById('ed-dept-name').value = master.short_name || ''; 
+            document.getElementById('ed-dept-shortname').value = master.name || ''; 
+
             const idInput = document.getElementById('ed-dept-id');
-            idInput.value = isEdit ? id : ''; // Empty if new, user must input a unique ID
+            // 修正點 3: 新增時 ID 留空
+            idInput.value = isEdit ? id : '';
+            // 修正點 4: 編輯時唯讀，新增時可輸入
             idInput.readOnly = isEdit; 
             
             document.getElementById('ed-dept-code').value = master.code || '';
             
-            // Right Panel Control (Q1, Q2): Departments have year-specific names.
+            // --- Right Panel Control ---
             document.getElementById('dept-year-name-panel').classList.remove('hidden');
-            renderYearNameList(master);
             
+            // 修正 4: 傳入當前編輯的物件
+            renderYearNameList(currentEditingMaster, 'department');
+            
+            // 修正點 4: 初始化驗證 (新增時 ID 為空會禁用右側操作)
+            validateDeptModalID();
+
             document.getElementById('dept-editor-modal').classList.remove('hidden');
         }
 
-        // Q2: Renders the list of academic year inputs for historical names
-        function renderYearNameList(masterData) {
+        // 修正點 2: 歷史名稱面板樣式優化 (類似選項管理列表 - 灰色按鈕)
+        function renderYearNameList(masterData, entityType) {
             const yearListEl = document.getElementById('year-name-list');
+            const emptyStateEl = document.getElementById('year-name-empty-state');
             yearListEl.innerHTML = '';
             
-            const currentYear = activeYearId || (configData.academicYears.find(y => y.isDefault)?.year);
+            const defaultYear = configData.academicYears.find(y => y.isDefault)?.year;
             
             // Sort years descending
             configData.academicYears.sort((a,b) => b.year.localeCompare(a.year));
             
+            if (configData.academicYears.length === 0) {
+                emptyStateEl.classList.remove('hidden');
+                return;
+            } else {
+                emptyStateEl.classList.add('hidden');
+            }
+            
+            let listHtml = '';
             configData.academicYears.forEach(y => {
-                const historicalName = masterData.historical_names?.[y.year] || '';
-                const isCurrent = y.year === currentYear;
+                // Fix 4: Use the masterData object passed in (which is currentEditingMaster)
+                const historicalName = masterData.historical_names?.[y.year] || masterData.name || '';
                 
-                yearListEl.innerHTML += `
-                    <div class="p-4 border border-slate-200 rounded-lg bg-white shadow-sm flex flex-col gap-2">
-                        <div class="flex items-center justify-between">
-                            <span class="font-bold text-sm text-slate-700">${y.year} 學年度 ${isCurrent ? '<span class="text-xs bg-secondary text-white px-2 py-0.5 rounded shadow-sm">當前</span>' : ''}</span>
-                        </div>
-                        <input type="text" 
-                               data-year="${y.year}" 
-                               value="${historicalName}" 
-                               class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none" 
-                               placeholder="該學年度使用的全稱">
-                    </div>
+                const isDefault = y.year === defaultYear;
+                const yearStatus = isDefault ? '<span class="text-xs bg-secondary text-white px-2 py-0.5 rounded shadow-sm">當前</span>' : '';
+                
+                // FIX 2: 採用類似 Options List 的卡片風格
+                listHtml += `
+                    <tr data-year="${y.year}" class="hover:bg-slate-50 transition border-b border-slate-100 last:border-b-0">
+                        <td class="w-24 text-center font-bold text-sm py-3 px-2">
+                            <div class="flex flex-col items-center">
+                                ${y.year} 
+                                <div class="mt-1">${yearStatus}</div>
+                            </div>
+                        </td>
+                        <td class="w-1/2 text-left text-slate-700 text-sm py-3 px-2">
+                            <!-- FIX 2.3: Name Display (The "card" look) -->
+                            <div class="flex items-center justify-between p-2 bg-white border border-slate-200 rounded-lg shadow-sm">
+                                <span id="name-display-${y.year}" class="font-medium">${historicalName || '<span class="text-slate-400">未設定全稱</span>'}</span>
+                            </div>
+                        </td>
+                        <td class="w-32 text-center py-3 px-2">
+                            <div class="flex justify-center items-center gap-1">
+                                <!-- FIX 2.4: Gray Buttons -->
+                                <button onclick="copyYearNamePrompt('${y.year}', '${entityType}')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-200 rounded-full text-slate-500 hover:text-primary transition" title="複製至其他學年"><i class="fas fa-copy text-sm"></i></button>
+                                <button onclick="renameYearNamePrompt('${y.year}', '${entityType}')" class="w-8 h-8 flex items-center justify-center hover:bg-slate-200 rounded-full text-slate-500 hover:text-primary transition" title="變更名稱"><i class="fas fa-pen text-sm"></i></button>
+                            </div>
+                        </td>
+                    </tr>
                 `;
             });
             
+            yearListEl.innerHTML = listHtml;
+
             if (configData.academicYears.length === 0) {
-                yearListEl.innerHTML = '<div class="p-8 text-center text-slate-400">請先建立學年度模組</div>';
-            }
-        }
-        
-        // Q1: Function to copy the name of the general input to all year inputs
-        function copyAllYearNames() {
-            let sourceName = document.getElementById('ed-dept-name').value.trim();
-            if (!sourceName) {
-                 showMsg('info', '無來源名稱', '請先在左側填寫「全稱/當前學年名稱」作為複製來源。');
-                 return;
+                yearListEl.innerHTML = '<tr><td colspan="3" class="p-8 text-center text-slate-400">請先建立學年度模組</td></tr>';
             }
             
-            document.querySelectorAll('#year-name-list input[type="text"]').forEach(input => {
-                input.value = sourceName;
+            // 新增或編輯時，確保按鈕狀態正確
+            validateDeptModalID();
+        }
+        
+        // 修正點 3/4: 複製學年度名稱 (使用 currentEditingMaster)
+        function copyYearNamePrompt(sourceYear, entityType) {
+            // const id = document.getElementById('ed-dept-id').value.trim(); // 修正 4: 移除查找
+            const master = currentEditingMaster; // 修正 4: 使用全域暫存
+            if (!master) return showMsg('error', '錯誤', '找不到要編輯的資料。');
+            
+            const sourceName = master.historical_names?.[sourceYear] || master.name || '';
+            
+            // 修正點 7: 取得簡稱和 CODE 進行顯示，並簡化提示
+            const displayName = master.short_name || master.name || document.getElementById('ed-dept-id').value.trim(); // Fallback to current ID if names are empty
+            const displayCode = master.code ? ` (${master.code})` : '';
+            
+            // 修正點 7: 使用 HTML 粗體標籤，並將提示語簡化
+            const promptDesc = `
+                將 <strong>${displayName}${displayCode}</strong> 在 <strong>${sourceYear}</strong> 學年的全稱「<strong>${sourceName}</strong>」複製到：
+            `;
+
+            if (!sourceName) {
+                return showMsg('info', '無來源名稱', '該學年度尚未設定全稱，無法複製。');
+            }
+
+            const yearOptions = configData.academicYears
+                .filter(y => y.year !== sourceYear)
+                .sort((a,b) => b.year.localeCompare(a.year));
+                
+            if (yearOptions.length === 0) {
+                 return showMsg('info', '無可複製目標', '目前沒有其他學年度可以複製。');
+            }
+
+            let selectHtml = '<select id="msg-select-target" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm bg-white focus:ring-2 focus:ring-primary outline-none">';
+            yearOptions.forEach(y => {
+                const currentName = master.historical_names?.[y.year] || '';
+                selectHtml += `<option value="${y.year}">${y.year} (${currentName ? '已設定' : '未設定'})</option>`;
             });
-            showMsg('success', '複製成功', '當前名稱已複製到所有學年度輸入框。');
+            selectHtml += '</select>';
+
+            // 傳遞 HTML 提示
+            showMsg('prompt', '複製學年全稱', promptDesc, 
+                { 
+                    label: '複製目標學年 (請勿填寫)', 
+                }, 
+                async (input, secondary, tertiary, fourth, select) => {
+                    // 修正點 9 (關鍵): 在執行任何 DOM 清理之前，立即再次嘗試獲取目標學年。
+                    const targetYear = window.__copyTargetYear;
+                    
+                    if (!targetYear) {
+                         return showMsg('error', '複製失敗', '無法取得目標學年度，請重試。');
+                    }
+
+                    const targetMaster = currentEditingMaster; // 修正 4: 使用全域暫存
+                    
+                    if (!targetMaster.historical_names) targetMaster.historical_names = {};
+                    targetMaster.historical_names[targetYear] = sourceName;
+                    
+                    // Update the UI row for the target year
+                    const targetRow = document.querySelector(`#year-name-list tr[data-year="${targetYear}"] #name-display-${targetYear}`);
+                    if (targetRow) {
+                         targetRow.innerHTML = sourceName || `<span class="text-slate-400">未設定全稱</span>`;
+                    }
+                    
+                    setUnsaved(true);
+                    showMsg('success', '複製成功', `已將全稱複製到 ${targetYear} 學年度。`);
+                }
+            );
+            
+            // Custom logic to replace the generic prompt input with the year select
+            const msgInputArea = document.getElementById('msg-input-area');
+            msgInputArea.classList.add('hidden'); // Hide default input area
+
+            // 修正點 7: 移除來源全稱的顯示，只保留目標學年選單
+            msgInputArea.insertAdjacentHTML('beforebegin', `<div id="temp-select-area" class="mb-6 text-left p-4 bg-slate-100 rounded-lg border border-slate-200">
+                <label class="block text-xs font-bold text-slate-700 uppercase mb-1">請選擇目標學年</label>
+                ${selectHtml}
+            </div>`);
+            
+            // 修正點 9 (關鍵): 在 showMsg 執行後，但在用戶點擊確認之前，將選擇值暫存到全域變數
+            window.__copyTargetYear = document.getElementById('temp-select-area')?.querySelector('#msg-select-target')?.value;
+
+            // 監聽選擇變化，確保 __copyTargetYear 隨時更新
+            document.getElementById('temp-select-area')?.querySelector('#msg-select-target')?.addEventListener('change', function() {
+                window.__copyTargetYear = this.value;
+            });
+        }
+
+        // 修正點 3/4: 變更學年度名稱 (使用 currentEditingMaster)
+        function renameYearNamePrompt(targetYear, entityType) {
+            // const id = document.getElementById('ed-dept-id').value.trim(); // 修正 4: 移除查找
+            const master = currentEditingMaster; // 修正 4: 使用全域暫存
+            
+            if (!master) return showMsg('error', '錯誤', '找不到要編輯的資料。');
+
+            // 從 historical_names 獲取名稱，如果沒有則使用 master.name
+            const currentName = master.historical_names?.[targetYear] || master.name || '';
+
+            showMsg('prompt', `變更 ${targetYear} 學年全稱`, '請輸入該學年度系所使用的完整名稱。', 
+                {
+                    label: `${entityType === 'college' ? '學院' : '系所'}全稱 (${targetYear}學年) *`, 
+                    value: currentName 
+                }, 
+                async (newName) => {
+                    if (!newName) {
+                        return showMsg('error', '儲存失敗', '全稱不可為空白。');
+                    }
+                    
+                    saveNewYearName(document.getElementById('ed-dept-id').value.trim(), targetYear, newName, entityType);
+                }
+            );
+        }
+
+        // 實際儲存學年度名稱 (Helper) (使用 currentEditingMaster)
+        function saveNewYearName(entityId, year, newName, entityType) {
+             const master = currentEditingMaster; // 修正 4: 使用全域暫存
+             
+             if (!master) return;
+             
+             if (!master.historical_names) master.historical_names = {};
+             
+             // 儲存新的名稱
+             master.historical_names[year] = newName;
+             
+             // 更新 UI (因為是在 modal 裡操作，直接操作 DOM)
+             const displayEl = document.querySelector(`#year-name-list tr[data-year="${year}"] #name-display-${year}`);
+             if (displayEl) {
+                 displayEl.innerHTML = newName; // 使用 innerHTML 來處理可能被清空的 span
+             }
+
+             setUnsaved(true);
+             showMsg('success', '變更成功', `${year} 學年度全稱已更新。`);
+        }
+        
+        // 修正點 4: 驗證 ID 是否已輸入，並控制右側按鈕和保存按鈕狀態
+        function validateDeptModalID() {
+            const id = document.getElementById('ed-dept-id').value.trim();
+            // 修正點 3: 確保 ID 欄位的唯讀屬性在 openModal 中被正確設置
+            const idInput = document.getElementById('ed-dept-id');
+            const isEdit = idInput.readOnly; 
+            
+            let isValid = isEdit; // 編輯狀態下，ID 已經存在，視為有效
+
+            if (!isEdit) {
+                // 新增狀態下，ID 必須非空
+                isValid = id !== '';
+                if (id !== '') {
+                    // 檢查 ID 唯一性
+                    isValid = editingDeptEntityType === 'college' 
+                              ? !departmentData.some(c => c.id === id) 
+                              : !deptMasterData.hasOwnProperty(id);
+                }
+            }
+            
+            const saveBtn = document.getElementById('btn-save-dept-master');
+            // 只有 ID 有效且不重複，才能保存
+            saveBtn.disabled = !isValid;
+            saveBtn.classList.toggle('btn-manage', isValid);
+            saveBtn.classList.toggle('bg-slate-300', !isValid);
+
+            // 禁用右側所有操作按鈕 (鉛筆/複製)，直到 ID 有效
+            const rightPanelActionBtns = document.querySelectorAll('#dept-year-name-panel button');
+            rightPanelActionBtns.forEach(btn => {
+                btn.disabled = !isValid;
+            });
+            
+            // 顯示覆蓋層和提示 (Fix 3: Overlay adjustment)
+            const overlayContainer = document.querySelector('#dept-editor-modal .flex-grow.relative'); 
+            const overlayId = 'dept-id-lock-overlay';
+            let overlay = document.getElementById(overlayId);
+
+            if (!isValid) {
+                if (!overlay) {
+                    overlay = document.createElement('div');
+                    overlay.id = overlayId;
+                    // FIX 3: Overlay must cover the right panel only
+                    overlay.className = 'absolute inset-0 z-20 flex items-center justify-center pointer-events-none';
+                    
+                    let message = '請先在左側填寫 ID 以啟用右側操作。';
+                    if (id !== '' && !isEdit) {
+                         message = 'ID 重複或格式無效，請修正 ID 以啟用右側操作。';
+                    }
+
+                    // FIX 3: Use a message box positioned over the right panel's area
+                    // The left panel is w-80 (20rem), so the right panel starts at 20rem.
+                    overlay.innerHTML = `
+                         <div class="absolute inset-y-0 right-0 left-[20rem] bg-white/70 backdrop-blur-[1px] rounded-r-xl flex items-center justify-center">
+                             <div class="p-4 bg-amber-50 border border-amber-200 rounded-lg text-amber-700 font-bold text-sm shadow-md pointer-events-auto">${message}</div>
+                         </div>
+                    `;
+                    
+                    overlayContainer.appendChild(overlay);
+
+                } else {
+                    let message = '請先在左側填寫 ID 以啟用右側操作。';
+                    if (id !== '' && !isEdit) {
+                         message = 'ID 重複或格式無效，請修正 ID 以啟用右側操作。';
+                    }
+                    // Update message and show
+                    const msgBox = overlay.querySelector('div.bg-amber-50');
+                    if (msgBox) msgBox.innerText = message;
+                    overlay.classList.remove('hidden');
+                }
+            } else if (overlay) {
+                // 有效時隱藏覆蓋層
+                overlay.classList.add('hidden');
+            }
         }
 
         // Q1, Q2: Function to save data from the modal
+        // 修正點 1, 2: Function to save data from the modal (Updated field mapping)
         async function saveDeptMasterFromModal() {
             const isCollege = editingDeptEntityType === 'college';
             const id = document.getElementById('ed-dept-id').value.trim();
-            const name = document.getElementById('ed-dept-name').value.trim();
-            const shortName = document.getElementById('ed-dept-shortname').value.trim();
+            
+            // Primary Input (ed-dept-name) -> 統一作為 Short Name
+            const shortName = document.getElementById('ed-dept-name').value.trim(); 
+            
+            // Secondary Hidden Input (ed-dept-shortname) -> 用於暫存原有的 master.name
+            const originalName = document.getElementById('ed-dept-shortname').value.trim();
             const code = document.getElementById('ed-dept-code').value.trim();
             
-            if (!name || !id) {
-                 return showMsg('error', '儲存失敗', '全稱和 ID 為必填項目。');
+            if (!shortName || !id) {
+                 // 檢查主要必填欄位
+                 return showMsg('error', '儲存失敗', `簡稱和 ID 為必填項目。`);
             }
             
             const isNew = isCollege ? !departmentData.find(c => c.id === id) : !deptMasterData[id];
             
             if (isCollege) {
-                // --- COLLEGE Logic ---
+                // --- COLLEGE Logic (修正點 2) ---
+                // name 和 short_name 都使用主輸入框的值 (簡化學院設定)
                 if (isNew) {
                     if (departmentData.some(c => c.id === id)) return showMsg('error', '錯誤', '學院 ID 已存在');
-                    departmentData.push({ id, name, short_name: shortName, code, departments: [] });
+                    // Fix 4: Use the data from currentEditingMaster
+                    departmentData.push({ id, name: shortName, short_name: shortName, code, departments: [], historical_names: currentEditingMaster.historical_names || {} });
                 } else {
                     const existingCollege = departmentData.find(c => c.id === id);
                     if (existingCollege) {
-                        existingCollege.name = name;
+                        existingCollege.name = shortName;
                         existingCollege.short_name = shortName;
                         existingCollege.code = code;
+                        // historical_names 已經在 modal 中被 saveNewYearName 更新
                     }
                 }
             } else {
-                // --- DEPARTMENT Logic (Q1, Q2) ---
+                // --- DEPARTMENT Logic (修正點 1) ---
                 
-                // 1. Collect Historical Names
-                const historicalNames = {};
-                document.querySelectorAll('#year-name-list input[type="text"]').forEach(input => {
-                    const year = input.dataset.year;
-                    const yearName = input.value.trim();
-                    if (yearName) historicalNames[year] = yearName;
-                });
-                
-                // 2. Update Dept Master Data
-                const currentYear = activeYearId || (configData.academicYears.find(y => y.isDefault)?.year || 'current');
                 let newMasterEntry = deptMasterData[id] || { historical_names: {} };
                 
-                // Preserve existing historical names that weren't in the list
-                newMasterEntry.historical_names = { ...newMasterEntry.historical_names, ...historicalNames };
-
+                // 2. Update Dept Master Data
+                // master.name (預設全稱) 保持為原值 (匯出基準)，如果是新建則使用 ID 作為 fallback
+                // 這樣匯出時如果 historical_names 找不到對應學年，就會使用這個 name。
+                newMasterEntry.name = originalName || id; 
                 newMasterEntry.code = code || id;
-                newMasterEntry.short_name = shortName;
-                newMasterEntry.name = name; 
-                
-                // Ensure the current edited name is saved into the historical list (This is the one shown in the modal's left panel)
-                newMasterEntry.historical_names[currentYear] = name;
-                
+                newMasterEntry.short_name = shortName; // 簡稱
+                // Fix 4: Merge historical names from currentEditingMaster
+                newMasterEntry.historical_names = currentEditingMaster.historical_names || newMasterEntry.historical_names;
+
                 deptMasterData[id] = newMasterEntry;
                 
-                // 3. Update College Grouping Data (only if new)
+                // 3. Update College Grouping Data
                 if (isNew) {
                     const college = departmentData.find(c => c.id === activeCollegeId);
                     if (college && !college.departments.includes(id)) {
@@ -1500,6 +1779,7 @@
             renderCollegeList();
             if (!isCollege) renderDepartmentList();
             
+            currentEditingMaster = null; // Fix 4 Cleanup: Reset global state
             showMsg('success', '儲存成功', `${isCollege ? '學院' : '系所'}資訊已更新`);
         }
 
@@ -2070,6 +2350,7 @@
             const basis = allianceConfig.groupingBasis || 'course_dept';
             const unmatchedHandling = allianceConfig.unmatchedHandling || 'use_primary';
 
+            let groupedData = {}; // Must reset for each run
             mappedData.forEach(record => {
                 const primaryDept = record[basis]; // e.g., 'course_dept' or 'student_dept'
                 const secondaryKey = basis === 'course_dept' ? 'student_dept' : 'course_dept';
@@ -2114,7 +2395,7 @@
                     const idA = a.student_id || '';
                     const idB = b.student_id || '';
                     const nameA = a.student_name || '';
-                    const nameB = b.student_name || '';
+                    const nameB = a.student_name || '';
                     const courseIdA = a.course_id || '';
                     const courseIdB = b.course_id || '';
                     
