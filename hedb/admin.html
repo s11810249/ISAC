@@ -2106,14 +2106,21 @@
         function getFieldsToProcess() {
             const fieldsToMap = new Map();
             
-            // 1. Filter fields from the module that belong to the system categories AND sort by module order
+            // 1. Filter fields from the module
+            // Include fields that are in system categories OR are mandatory logic fields (even if uncategorized)
             currentTemplateFields.sort((a, b) => (a.order || 999) - (b.order || 999)).forEach(f => {
-                // Only include fields that are in the system categories
-                if (ALLOWED_MAPPING_CATEGORY_IDS.includes(f.category)) {
+                // 判斷是否為系統分類 (既有邏輯)
+                const isSystemCat = ALLOWED_MAPPING_CATEGORY_IDS.includes(f.category);
+                
+                // 新增：判斷是否為強制核心欄位 (如: student_id, course_dept)
+                const isMandatory = MANDATORY_LOGIC_IDS.includes(f.id);
+
+                // 只要符合其中一個條件，就加入匹配清單
+                if (isSystemCat || isMandatory) {
                     fieldsToMap.set(f.id, {
                         ...f,
-                        // Mark as mandatory logic field if ID matches a core ID
-                        isMandatoryLogic: MANDATORY_LOGIC_IDS.includes(f.id)
+                        // Mark as mandatory logic field if ID matches a core ID (UI 會顯示星號)
+                        isMandatoryLogic: isMandatory
                     });
                 }
             });
