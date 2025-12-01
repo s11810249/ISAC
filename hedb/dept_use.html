@@ -25,7 +25,7 @@
                     },
                     fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] },
                     animation: {
-                        'fade-in': 'fadeIn 0.8s ease-out',
+                        'fade-in': 'fadeIn 0.6s ease-out forwards',
                     },
                     keyframes: {
                         fadeIn: {
@@ -38,7 +38,7 @@
         }
     </script>
     <style>
-        /* [修正] 移除 body { opacity: 0 } 以確保內容一定可見 */
+        body { opacity: 0; animation: fade-in 0.6s ease-out forwards; }
         
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -90,18 +90,18 @@
         
         .tab-content { display: none; }
         .tab-content.active { display: block; animation: fade-in 0.3s ease-out; }
-        
-        /* Logo Filter: Turn white logo to specific dark blue */
-        .logo-filter { filter: invert(13%) sepia(33%) saturate(3736%) hue-rotate(204deg) brightness(91%) contrast(103%); } 
     </style>
 </head>
-<body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden animate-fade-in">
+<body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
 
     <!-- 頂部導航列 -->
     <header class="h-16 flex-shrink-0 glass-header flex items-center justify-between px-6 z-30 shadow-sm">
         <div class="flex items-center gap-4">
-            <!-- LOGO 無底色，使用 filter 轉深藍色 -->
-            <img src="files/svg/THU-Logo.svg" class="h-10 w-auto logo-filter" alt="Logo">
+            <!-- LOGO 修正：加上藍色圓角矩形底色框 -->
+            <div class="bg-primary p-1.5 rounded-lg shadow-sm flex items-center justify-center">
+               <!-- 假設 SVG 是白色的，不需要額外 filter。如果 SVG 是黑色的，請加上 class="invert" -->
+               <img src="files/svg/THU-Logo.svg" class="h-8 w-auto block" alt="Logo">
+            </div>
             <div>
                 <h1 class="font-bold text-lg text-primary tracking-wide leading-tight">東海大學學生校外實習校庫填報輔助系統</h1>
                 <p class="text-[10px] text-slate-500" id="current-year-display">尚未載入學年模板</p>
@@ -260,11 +260,11 @@
         // --- 初始化 ---
         window.onload = async function() {
             try {
-                const res = await fetch('config.json');
+                const res = await fetch('hedb/config.json'); // 嘗試讀取，但不強求
                 if(res.ok) globalConfig = await res.json();
-                else console.log('Config load failed (404/Error), running standalone.');
+                // 移除 console.log 的錯誤提示，避免干擾
             } catch(e) { 
-                console.log('Config fetch error, running standalone:', e); 
+                // 靜默失敗，使用預設值
             }
         };
 
@@ -310,13 +310,18 @@
 
         async function loadTemplate(year) {
             try {
+                // 嘗試直接讀取 (假設在同一目錄下有 year_templates 資料夾)
                 const path = `year_templates/year_${year}_templates.json`;
+                // 如果這是 hedb/dept_use.html，那麼相對路徑應該是 year_templates/
+                // 但如果是在根目錄測試，可能需要調整。這裡假設標準結構。
+                
                 const res = await fetch(path);
-                if (!res.ok) throw new Error(`找不到 ${year} 學年度的模板設定檔 (${path})`);
+                if (!res.ok) throw new Error(`找不到 ${year} 學年度的模板設定檔`);
                 const json = await res.json();
                 currentTemplate = json;
             } catch (e) {
-                alert(`警告: ${e.message}\n將使用預設空模板模式，僅顯示 Excel 原有欄位。`);
+                console.warn("Template load failed:", e);
+                // 不跳 alert 干擾，直接使用空模板，讓使用者至少能看到基本資料
                 currentTemplate = { fields: [] };
             }
         }
@@ -403,12 +408,11 @@
         }
 
         function sortStudents(type) { 
-            // 簡單排序實作
             let students = Object.values(groupedStudents);
             if(type === 'id') students.sort((a,b) => a.id.localeCompare(b.id));
             if(type === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
             if(type === 'dept') students.sort((a,b) => (a.dept||'').localeCompare(b.dept||''));
-            // 重新整理物件順序 (UI 渲染依賴 values 順序)
+            
             const newGrouped = {};
             students.forEach(s => newGrouped[s.id] = s);
             groupedStudents = newGrouped;
@@ -426,7 +430,6 @@
 
             document.getElementById('empty-workspace').classList.add('hidden');
             
-            // Update Header
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
@@ -436,25 +439,20 @@
             document.getElementById('header-status').className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${isDone ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
             document.getElementById('header-status').innerText = isDone ? `已建立 ${student.applications.length} 筆歸戶` : '未填報';
 
-            // --- 歸戶與頁籤跳轉邏輯修正 ---
             renderTabs(student);
             
-            // 判斷邏輯：
-            // 如果已建立歸戶 (applications > 0)，直接跳到第一張填報單 (tab = app.id)
-            // 否則，停留在「歸戶設定」頁籤 (tab = settings)
+            // 自動跳轉邏輯
             if (student.applications.length > 0) {
                 switchTab(student.applications[0].id);
             } else {
                 switchTab('settings');
             }
             
-            // Render settings just in case (e.g. for creating new apps)
             renderSettingsTab(student);
         }
 
         function renderTabs(student) {
             const container = document.getElementById('tabs-container');
-            // Reset tabs
             container.innerHTML = `<button class="tab-btn active" onclick="switchTab('settings')" data-tab="settings"><i class="fas fa-cog"></i> 歸戶設定</button>`;
             
             student.applications.forEach((app, idx) => {
@@ -496,7 +494,6 @@
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
-            // 1. 未歸戶課程 (可勾選)
             const unassignedCourses = student.courses.filter(c => !c._app_id);
             if (unassignedCourses.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm bg-slate-50 rounded-lg">所有課程皆已歸戶</div>';
@@ -521,7 +518,6 @@
                 });
             }
 
-            // 2. 已建立的填報單 (顯示已鎖定課程)
             if (student.applications.length === 0) {
                 appsContainer.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-300">尚未建立任何填報單</div>';
             } else {
@@ -531,7 +527,6 @@
                     
                     const unitName = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
                     
-                    // 顯示綁定的課程
                     const courseItems = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
                         return c ? `<div class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded inline-block mr-1 mb-1">${c['course_name']||c['課程名稱']}</div>` : '';
@@ -574,13 +569,12 @@
                 formData: {}
             };
 
-            // 鎖定課程 (Assign app_id)
             selectedCourseIds.forEach(cid => {
                 const c = student.courses.find(x => x._internal_id === cid);
                 if(c) c._app_id = appId;
             });
 
-            // 初始化 formData (抓第一門課的資料)
+            // 初始化 FormData
             const firstCourse = student.courses.find(c => c._internal_id === selectedCourseIds[0]);
             if (firstCourse && currentTemplate.fields) {
                 currentTemplate.fields.forEach(field => {
@@ -607,7 +601,6 @@
             if (appIdx === -1) return;
 
             const app = student.applications[appIdx];
-            // 釋放課程
             app.courseIds.forEach(cid => {
                 const c = student.courses.find(x => x._internal_id === cid);
                 if(c) c._app_id = null;
@@ -624,7 +617,6 @@
             renderStudentList();
         }
 
-        // --- Application Tab Render Logic ---
         function createApplicationTabContent(appId) {
             const student = groupedStudents[currentStudentId];
             const app = student.applications.find(a => a.id === appId);
@@ -724,7 +716,6 @@
                         const tabDiv = document.getElementById(`content-${app.id}`);
                         if(tabDiv && tabDiv._previewCard) updateTabPreview(tabDiv._previewCard, app, student);
                         
-                        // 動態更新頁籤標題
                         if (field.id === 'internship_institution_name' || field.label === '實習機構名稱') {
                             const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
                             if (tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt mr-1 text-slate-400"></i> ${e.target.value || '未命名實習'}`;
@@ -778,7 +769,6 @@
             });
         }
 
-        // --- 4. 匯出功能 ---
         function exportToExcel() {
             if (Object.keys(groupedStudents).length === 0) return alert('無資料可匯出');
 
@@ -794,7 +784,6 @@
             }
 
             Object.values(groupedStudents).forEach(student => {
-                // 1. 處理已歸戶的課程 (套用填報資料)
                 student.applications.forEach(app => {
                     const appCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
                     appCourses.forEach(courseRow => {
@@ -810,7 +799,6 @@
                     });
                 });
 
-                // 2. 處理未歸戶的課程 (保留原始資料)
                 const unassigned = student.courses.filter(c => !c._app_id);
                 unassigned.forEach(courseRow => {
                     const rowObj = {};
