@@ -28,7 +28,7 @@
         }
     </script>
     <style>
-        .login-bg { background: linear-gradient(135deg, #002E5D 0%, #0f172a 100%); }
+        .login-bg { background: linear-gradient(135deg, #F3E8FF 0%, #E0F2FE 100%); }
         .glass-panel { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(12px); border: 1px solid rgba(255, 255, 255, 0.2); box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
         .input-stylish { width: 100%; background: #f8fafc; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.75rem 1rem 0.75rem 2.5rem; transition: all 0.2s; font-size: 0.95rem; }
         .input-stylish:focus { border-color: #002E5D; outline: none; box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); background: #fff; }
@@ -133,28 +133,56 @@
     <div id="login-screen" class="fixed inset-0 z-[100] login-bg flex items-center justify-center p-4">
         <div class="glass-panel w-full max-w-md p-10 rounded-2xl shadow-2xl relative z-10 animate-fade-in">
             <div class="text-center mb-8">
-                <div class="w-16 h-16 bg-primary text-white rounded-2xl flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg"><i class="fas fa-university"></i></div>
-                <h1 class="text-2xl font-bold text-primary tracking-wide">東海大學實習平台</h1>
-                <p class="text-slate-500 text-sm mt-2 font-medium">系統管理後台 (System Admin)</p>
+                <div class="bg-primary p-4 rounded-xl mx-auto mb-6 w-fit shadow-lg">
+                    <img src="files/svg/THU-Logo.svg" class="h-16 w-auto block" alt="東海大學 Logo">
+                </div>
+                
+                <h1 class="text-2xl font-bold text-primary tracking-wide">東海大學<br>學生校外實習校庫填報輔助系統</h1>
             </div>
             <div class="space-y-5">
                 <div class="relative"><i class="fas fa-user input-icon"></i><input type="text" id="gh-user" class="input-stylish" placeholder="GitHub Username"></div>
                 <div class="relative"><i class="fas fa-folder-open input-icon"></i><input type="text" id="gh-repo" class="input-stylish" placeholder="Repository Name"></div>
-                <div class="relative"><i class="fas fa-key input-icon"></i><input type="password" id="gh-token" class="input-stylish" placeholder="Access Token"><button onclick="toggleToken()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary p-1"><i class="fas fa-eye" id="token-eye"></i></button></div>
+                
+                <div class="relative">
+                    <i class="fas fa-key input-icon"></i>
+                    <input type="password" id="gh-token" class="input-stylish pr-10" placeholder="Access Token">
+                    <button onclick="toggleToken()" class="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-primary p-1"><i class="fas fa-eye" id="token-eye"></i></button>
+                </div>
+                
                 <div class="pt-4"><button onclick="connectGitHub()" id="btn-connect" class="w-full btn-manage font-bold py-3 rounded-lg shadow-md transition flex justify-center items-center gap-2"><span>登入系統</span><i class="fas fa-arrow-right"></i></button><div id="login-msg" class="text-center mt-4 h-5 text-sm font-medium text-red-500 opacity-0 transition-opacity"></div></div>
             </div>
         </div>
     </div>
 
     <div id="admin-interface" class="hidden h-full flex flex-col bg-slate-50 opacity-0 transition-opacity duration-500">
-        <header class="h-16 flex-shrink-0 bg-white border-b border-slate-200 flex items-center justify-between px-6 shadow-sm z-30">
-            <div class="flex items-center gap-3"><div class="w-8 h-8 bg-primary text-white rounded flex items-center justify-center text-sm shadow"><i class="fas fa-tools"></i></div><h1 class="font-bold text-lg tracking-wide text-primary">系統配置中心</h1></div>
-            <div class="flex items-center gap-3">
-                <div id="unsaved-badge" class="hidden px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold border border-amber-200 flex items-center gap-1 animate-pulse"><i class="fas fa-pen"></i> 未儲存</div>
-                <span id="status-msg" class="text-sm text-emerald-600 font-medium hidden bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100"><i class="fas fa-check-circle mr-1"></i> 儲存成功</span>
-                <button onclick="saveAll()" id="btn-save" class="btn-manage font-bold py-2 px-4 rounded-lg shadow-md flex items-center gap-2 text-sm transform active:scale-95 transition-all"><i class="fas fa-cloud-upload-alt"></i> 儲存設定</button>
+        <header class="h-16 flex-shrink-0 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 gap-4">
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <div class="bg-primary p-1.5 rounded-lg shadow-sm">
+                    <img src="files/svg/THU-Logo.svg" class="h-8 w-auto block" alt="Logo">
+                </div>
+                
+                <h1 class="font-bold text-lg tracking-wide text-primary flex items-center gap-2">
+                    東海大學學生校外實習校庫填報輔助系統
+                    <span class="bg-sky-100 text-sky-700 px-3 py-1 rounded-lg text-sm border border-sky-200 shadow-sm">後台管理</span>
+                </h1>
+            </div>
+
+            <div class="flex-grow"></div>
+
+            <div class="flex items-center gap-3 flex-shrink-0">
+                <div id="unsaved-badge" class="hidden px-3 py-1 bg-amber-100 text-amber-700 rounded-full text-xs font-bold border border-amber-200 flex items-center gap-1 animate-pulse">
+                    <i class="fas fa-pen"></i> 未儲存
+                </div>
+                <span id="status-msg" class="text-sm text-emerald-600 font-medium hidden bg-emerald-50 px-3 py-1 rounded-full border border-emerald-100">
+                    <i class="fas fa-check-circle mr-1"></i> 儲存成功
+                </span>
+                <button onclick="saveAll()" id="btn-save" class="btn-manage font-bold py-2 px-4 rounded-lg shadow-md flex items-center gap-2 text-sm transform active:scale-95 transition-all">
+                    <i class="fas fa-cloud-upload-alt"></i> 儲存設定
+                </button>
                 <div class="w-px h-6 bg-slate-200 mx-2"></div>
-                <button onclick="logout()" class="text-sm text-slate-500 hover:text-red-600 transition flex items-center gap-1"><i class="fas fa-sign-out-alt"></i> 登出</button>
+                <button onclick="logout()" class="text-sm text-slate-500 hover:text-red-600 transition flex items-center gap-1">
+                    <i class="fas fa-sign-out-alt"></i> 登出
+                </button>
             </div>
         </header>
 
@@ -172,19 +200,27 @@
             <!-- 學年度模組配置 -->
             <div id="view-years" class="w-full h-full flex">
                 <aside class="w-72 bg-white border-r border-slate-200 flex flex-col z-10 flex-shrink-0">
-                    <div class="p-5 border-b border-slate-100 bg-white"><div onclick="openYearModal()" class="year-add-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success"><i class="fas fa-plus text-lg"></i> 新增學年度</div></div>
+                    <div class="p-5 border-b border-slate-100 bg-white"><div onclick="openYearModal()" class="year-add-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success"><i class="fas fa-calendar-plus text-lg"></i> 新增學年度</div></div>
                     <div class="p-2 bg-slate-50 text-xs font-bold text-slate-400 uppercase tracking-wider pl-5 py-2">學年度列表</div>
                     <div id="year-list" class="flex-grow overflow-y-auto p-3 space-y-2 custom-scroll list-none"></div>
                 </aside>
                 <section class="flex-grow flex flex-col">
                     <div id="year-config-panel" class="hidden flex-col h-full">
                         <div class="bg-white px-8 py-5 border-b border-slate-200 shadow-sm flex justify-between items-center">
-                            <div><h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><span id="current-year-title">...</span><span id="default-badge" class="hidden text-xs bg-secondary text-white px-2 py-0.5 rounded shadow-sm">預設年度</span></h2><p class="text-xs text-slate-400 mt-1">此學年度的欄位配置 (獨立模組)</p></div>
+                            <div>
+                                <div class="flex items-center gap-3">
+                                    <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3">
+                                        <span id="current-year-title">...</span>
+                                        <span id="default-badge" class="hidden text-xs bg-secondary text-white px-2 py-0.5 rounded shadow-sm">預設年度</span>
+                                    </h2>
+                                    <button onclick="renameCurrentYear()" class="text-slate-400 hover:text-primary hover:bg-slate-100 p-1.5 rounded-lg transition" title="重新命名"><i class="fas fa-pen text-sm"></i></button>
+                                    <button onclick="deleteCurrentYear()" class="text-slate-400 hover:text-danger hover:bg-red-50 p-1.5 rounded-lg transition" title="刪除學年度"><i class="fas fa-trash-alt text-sm"></i></button>
+                                </div>
+                                <p class="text-xs text-slate-400 mt-1">此學年度的欄位配置 (獨立模組)</p>
+                            </div>
                             <div class="flex items-center gap-2">
                                 <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded-lg border border-slate-200 hover:bg-white transition select-none mr-2"><input type="checkbox" id="is-default-year" class="custom-checkbox" onchange="toggleDefaultYear()"> 設為預設</label>
-                                <button onclick="renameCurrentYear()" class="text-slate-400 hover:text-primary hover:bg-blue-50 p-2.5 rounded-lg transition" title="重新命名"><i class="fas fa-pen"></i></button>
-                                <button onclick="deleteCurrentYear()" class="text-slate-400 hover:text-danger hover:bg-red-50 p-2.5 rounded-lg transition" title="刪除學年度"><i class="fas fa-trash-alt"></i></button>
-                            </div>
+                                </div>
                         </div>
                         <div class="flex-grow p-8 overflow-hidden flex flex-col">
                             <div class="flex justify-between items-center mb-4">
@@ -208,22 +244,53 @@
             <!-- 欄位模板庫 -->
             <div id="view-fields" class="w-full h-full hidden flex">
                 <aside class="w-72 bg-white border-r border-slate-200 flex flex-col z-10 flex-shrink-0">
-                    <div class="p-5 border-b border-slate-100 bg-white"><div onclick="openCategoryModal()" class="year-add-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success"><i class="fas fa-folder-plus text-lg"></i> 新增模板分類</div></div>
+                    <div class="p-5 border-b border-slate-100 bg-white">
+                        <div onclick="openCategoryModal()" class="year-add-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success">
+                            <i class="fas fa-folder-plus text-lg"></i> 新增模板分類
+                        </div>
+                    </div>
                     <div id="template-cat-list" class="flex-grow overflow-y-auto p-3 space-y-1 custom-scroll bg-slate-50 list-none"></div>
                 </aside>
                 <section class="flex-grow flex flex-col">
                     <div class="bg-white px-8 py-5 border-b border-slate-200 shadow-sm flex justify-between items-center">
-                        <div><h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><span id="current-cat-title">全部欄位</span></h2><p class="text-xs text-slate-400 mt-1">管理可供學年度引用的欄位原型。</p></div>
+                        <div>
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><span id="current-cat-title">全部欄位</span></h2>
+                                <div id="cat-actions" class="hidden flex gap-1">
+                                    <button onclick="renameCurrentCat()" class="text-slate-400 hover:text-primary hover:bg-slate-100 p-1.5 rounded-lg transition" title="重新命名"><i class="fas fa-pen text-sm"></i></button>
+                                    <button onclick="deleteCurrentCat()" class="text-slate-400 hover:text-danger hover:bg-red-50 p-1.5 rounded-lg transition" title="刪除"><i class="fas fa-trash-alt text-sm"></i></button>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-400 mt-1">管理可供學年度引用的欄位原型。</p>
+                        </div>
                         <div class="flex items-center gap-3">
                             <button onclick="openLogicSummary('global')" class="btn-warning text-white text-xs px-3 py-1.5 rounded-full shadow-sm transition flex items-center gap-1 font-bold mr-2"><i class="fas fa-project-diagram"></i> 邏輯總覽與衝突檢測</button>
                             <div id="global-batch-controls" class="hidden">
                                 <button onclick="openBatchModal('global')" class="bg-indigo-600 hover:bg-indigo-700 text-white text-xs px-3 py-1.5 rounded-full shadow-sm transition flex items-center gap-1 font-bold"><i class="fas fa-tasks"></i> 批次處理 (<span id="global-batch-count">0</span>)</button>
                             </div>
-                            <div id="cat-actions" class="hidden border-r border-slate-200 pr-3 mr-1 flex gap-1"><button onclick="renameCurrentCat()" class="text-slate-400 hover:text-primary hover:bg-blue-50 p-2 rounded-lg transition" title="重新命名"><i class="fas fa-pen"></i></button><button onclick="deleteCurrentCat()" class="text-slate-400 hover:text-danger hover:bg-red-50 p-2 rounded-lg transition" title="刪除"><i class="fas fa-trash-alt"></i></button></div>
                             <button onclick="addNewGlobalField()" class="btn-create px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2"><i class="fas fa-plus"></i> 建立新模板</button>
                         </div>
                     </div>
-                    <div class="flex-grow p-8 overflow-hidden flex flex-col"><div class="bg-white rounded-xl border border-slate-200 flex-grow overflow-hidden flex flex-col shadow-sm"><div class="overflow-y-auto custom-scroll flex-grow"><table class="w-full data-table"><thead class="sticky top-0 bg-slate-50 z-10 shadow-sm"><tr><th class="w-12 text-center"><input type="checkbox" onchange="toggleGlobalAll(this); updateBatchControlVisibility('global')" class="custom-checkbox"></th><th class="w-16 text-center">序號</th><th class="w-1/4 text-center">欄位名稱 (ID)</th><th class="w-24 text-center">類型</th><th class="w-48 text-center">屬性</th><th class="w-40 text-center">操作</th></tr></thead><tbody id="global-field-list"></tbody></table></div></div></div>
+                    
+                    <div class="flex-grow p-8 overflow-hidden flex flex-col">
+                        <div class="bg-white rounded-xl border border-slate-200 flex-grow overflow-hidden flex flex-col shadow-sm">
+                            <div class="overflow-y-auto custom-scroll flex-grow">
+                                <table class="w-full data-table">
+                                    <thead class="sticky top-0 bg-slate-50 z-10 shadow-sm">
+                                        <tr>
+                                            <th class="w-12 text-center"><input type="checkbox" onchange="toggleGlobalAll(this); updateBatchControlVisibility('global')" class="custom-checkbox"></th>
+                                            <th class="w-16 text-center">序號</th>
+                                            <th class="w-1/4 text-center">欄位名稱 (ID)</th>
+                                            <th class="w-24 text-center">類型</th>
+                                            <th class="w-48 text-center">屬性</th>
+                                            <th class="w-40 text-center">操作</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="global-field-list"></tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
                 </section>
             </div>
 
@@ -238,15 +305,16 @@
                     <!-- 修正：將新增系所按鈕移到頂部標頭右側 -->
                     <div class="bg-white px-8 py-5 border-b border-slate-200 shadow-sm flex justify-between items-center flex-shrink-0">
                         <div>
-                            <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><span id="current-college-title">...</span></h2>
+                            <div class="flex items-center gap-3">
+                                <h2 class="text-2xl font-bold text-slate-800 flex items-center gap-3"><span id="current-college-title">...</span></h2>
+                                <button onclick="renameCurrentCollege()" class="text-slate-400 hover:text-primary hover:bg-slate-100 p-1.5 rounded-lg transition" title="編輯學院基本資訊"><i class="fas fa-pen text-sm"></i></button>
+                                <button onclick="deleteCurrentCollege()" class="text-slate-400 hover:text-danger hover:bg-red-50 p-1.5 rounded-lg transition" title="刪除學院"><i class="fas fa-trash-alt text-sm"></i></button>
+                            </div>
                             <p class="text-xs text-slate-400 mt-1">此學院下的所有系所清單。</p>
                         </div>
                         <div class="flex items-center gap-3">
-                            <!-- 新增系所按鈕 -->
                             <button onclick="openDeptModal()" class="btn-create px-4 py-2 rounded-lg shadow font-bold text-sm flex items-center gap-2"><i class="fas fa-plus"></i> 新增系所</button>
-                            <button onclick="renameCurrentCollege()" class="text-slate-400 hover:text-primary hover:bg-blue-50 p-2.5 rounded-lg transition" title="編輯學院基本資訊"><i class="fas fa-pen"></i></button>
-                            <button onclick="deleteCurrentCollege()" class="text-slate-400 hover:text-danger hover:bg-red-50 p-2.5 rounded-lg transition" title="刪除學院"><i class="fas fa-trash-alt"></i></button>
-                        </div>
+                            </div>
                     </div>
                     <!-- 修正：移除舊有的按鈕容器 -->
                     <div class="flex-grow p-8 overflow-hidden flex flex-col">
@@ -297,7 +365,11 @@
                         <input type="file" id="student-list-file" onchange="handleFileUpload(event)" class="hidden">
                         <p id="file-status" class="text-xs text-slate-400 mt-2 text-center">請上傳 .xlsx 或 .csv</p>
                     </div>
-                    
+                    <div class="p-3 border-b border-slate-100 bg-slate-50/50">
+                        <select id="internship-sidebar-college-filter" onchange="renderInternshipSidebar()" class="w-full border border-slate-300 rounded-lg p-2 text-sm outline-none focus:ring-2 focus:ring-primary text-slate-700 font-bold">
+                            <option value="">全部學院</option>
+                        </select>
+                    </div>
                     <div class="p-2 bg-slate-50 text-xs font-bold text-slate-400 uppercase tracking-wider pl-5 py-2">名單分組列表</div>
                     <div id="internship-group-list" class="flex-grow overflow-y-auto p-3 space-y-2 custom-scroll list-none">
                          <div class="list-item active" id="group-all-item" onclick="selectConsolidatedGroup('all')"><span class="font-bold text-sm">全部</span></div>
@@ -359,6 +431,10 @@
                 </div>
             </div>
         </main>
+        <footer class="bg-white border-t border-slate-200 py-3 px-6 text-center text-[10px] text-slate-400 flex-shrink-0 z-20">
+            <p class="font-bold">Copyright © <span id="copyright-year">2025</span> 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p>
+            <p class="mt-0.5 font-medium opacity-80">網頁製作：張博堯 | Assisted by Google Gemini</p>
+        </footer>
     </div>
 
     <!-- Dept/College Editor Modal (Q1, Q2) -->
@@ -824,7 +900,19 @@
             if(saved) { const c = JSON.parse(saved); document.getElementById('gh-user').value = c.user || ''; document.getElementById('gh-repo').value = c.repo || ''; }
             window.addEventListener('beforeunload', (e) => { if (unsavedChanges) { e.preventDefault(); e.returnValue = ''; } });
             document.getElementById('student-list-file').addEventListener('change', handleFileUpload);
+            // [新增] 頁尾年份自動計算邏輯
+            updateFooterYear();
         }
+        
+        function updateFooterYear() {
+            const startYear = 2025;
+            const currentYear = new Date().getFullYear();
+            const yearSpan = document.getElementById('copyright-year');
+            if (yearSpan) {
+                yearSpan.innerText = currentYear > startYear ? `${startYear}-${currentYear}` : `${startYear}`;
+            }
+        }
+
         function setUnsaved(val) { unsavedChanges = val; document.getElementById('unsaved-badge').classList.toggle('hidden', !val); }
         
         // --- Utility to remove dynamically added inputs ---
@@ -1348,23 +1436,27 @@
                 
                 const displayName = getCollegeDisplayName(c.id, true);
                 const collegeCode = c.code || '-';
-                const idDisplay = `ID: ${c.id}`; 
-
-                // Q3: New Code Badge Style (Blue-on-blue)
-                const codeBadge = `<span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider">${collegeCode}</span>`;
                 
-                const moveControls = `<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition duration-150 ${isActive ? '!opacity-100' : ''}">
+                // [修改] 移除 "ID:" 字樣，只保留 ID 本身
+                const idDisplay = c.id; 
+
+                const codeBadge = `<span class="bg-primary/10 text-primary px-1.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider flex-shrink-0">${collegeCode}</span>`;
+                
+                const moveControls = `<div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition duration-150 ${isActive ? '!opacity-100' : ''} flex-shrink-0 ml-2">
                         <button onclick="moveCollege(${idx},-1); event.stopPropagation();" class="text-slate-400 hover:text-primary p-1.5 rounded-lg transition" title="上移"><i class="fas fa-arrow-up text-xs"></i></button>
                         <button onclick="moveCollege(${idx},1); event.stopPropagation();" class="text-slate-400 hover:text-primary p-1.5 rounded-lg transition" title="下移"><i class="fas fa-arrow-down text-xs"></i></button>
                     </div>`;
 
-                // Q3: New HTML structure to place codeBadge to the left of the name
-                div.innerHTML = `<div class="flex items-center justify-between w-full">
-                                    <div class="flex items-center gap-2">
+                // [修改] 優化排版結構以支援長字串截斷
+                // 1. 父容器加入 min-w-0 flex-1: 讓文字區塊能正確縮小
+                // 2. ID span 加入 truncate: 超出範圍顯示 ...
+                // 3. ID span 加入 title: 滑鼠懸停顯示完整 ID
+                div.innerHTML = `<div class="flex items-center justify-between w-full overflow-hidden">
+                                    <div class="flex items-center gap-2 min-w-0 flex-1">
                                         ${codeBadge}
-                                        <div class="flex flex-col items-start">
-                                            <span class="font-bold text-sm truncate">${displayName}</span>
-                                            <span class="text-[10px] text-slate-400 font-mono block">${idDisplay}</span>
+                                        <div class="flex flex-col items-start min-w-0 flex-1">
+                                            <span class="font-bold text-sm truncate w-full" title="${displayName}">${displayName}</span>
+                                            <span class="text-[10px] text-slate-400 font-mono block truncate w-full" title="${idDisplay}">${idDisplay}</span>
                                         </div>
                                     </div>
                                     ${moveControls}
@@ -2073,33 +2165,36 @@
             currentConsolidationYear = document.getElementById('consolidation-year-select').value;
             if (!currentConsolidationYear) return;
             
-            // Fetch the fields defined in the selected academic year module
             const res = await apiFetch(`hedb/year_templates/year_${currentConsolidationYear}_templates.json`);
             yearTemplateData = res.status===404 ? {fields:[]} : res.data;
             currentTemplateFields = yearTemplateData.fields || [];
 
-            // ★★★ 新增：確保顏色設定物件存在 ★★★
-            if (!yearTemplateData.categoryColors) {
-                yearTemplateData.categoryColors = {};
-            }
-
-            // Ensure alliance data exists for the selected module (Q2)
+            if (!yearTemplateData.categoryColors) yearTemplateData.categoryColors = {};
             if (!yearTemplateData.allianceModeDepts) { yearTemplateData.allianceModeDepts = { groups: [], groupingBasis: 'course_dept', unmatchedHandling: 'use_primary' }; }
             
-            // ★★★ 修改：嚴格遵守邏輯 —— 只有在「已上傳檔案 (currentStudentData 存在)」時才顯示按鈕 ★★★
             const btnExport = document.getElementById('btn-export-config');
             if (btnExport) {
-                if (currentStudentData) {
-                    btnExport.classList.remove('hidden');
-                } else {
-                    btnExport.classList.add('hidden');
-                }
+                if (currentStudentData) btnExport.classList.remove('hidden');
+                else btnExport.classList.add('hidden');
             }
 
-            // If the modal is open or requested, re-render the dynamic mapping panel
             if (shouldRenderMapping) {
-                // **NEW: Reset mapping state when template changes**
+                // [修改] 重置並執行「一次性」自動匹配
+                // 這樣之後使用者手動清除時，就不會被這裡的邏輯覆蓋
                 currentMapping = {};
+                
+                const fieldsToMap = getFieldsToProcess();
+                fieldsToMap.forEach(f => {
+                    // 初始化狀態
+                    currentMapping[f.id] = { excelHeader: '', isSelected: true };
+                    
+                    // 執行自動匹配 (僅限完全名稱相同)
+                    const exactMatch = currentFileHeaders.find(h => h.trim() === f.label.trim());
+                    if (exactMatch) {
+                        currentMapping[f.id].excelHeader = exactMatch;
+                    }
+                });
+
                 renderMappingPanel();
             }
         }
@@ -2112,9 +2207,18 @@
 
             if (configData.academicYears.length > 0) {
                 currentConsolidationYear = selectEl.value;
-                // ★★★ 修改：移除這裡的自動 Fetch，避免一進來就載入設定與顯示按鈕 ★★★
-                // fetchCurrentTemplateFields(); 
+                // fetchCurrentTemplateFields(); // 保持您註解掉的狀態
             } 
+
+            // [新增] 初始化側邊欄學院篩選
+            const colFilter = document.getElementById('internship-sidebar-college-filter');
+            if (colFilter) {
+                const collegeOptions = departmentData.map(c => 
+                    `<option value="${c.id}">${getCollegeDisplayName(c.id, true)}</option>`
+                ).join('');
+                colFilter.innerHTML = '<option value="">顯示所有學院</option>' + collegeOptions;
+            }
+            // [結束新增]
 
             document.getElementById('current-internship-group-title').innerText = '實習學生名單彙整';
             document.getElementById('group-detail-subtitle').innerText = '請上傳名單並進行匹配';
@@ -2404,7 +2508,12 @@
             const container = document.getElementById('mapping-dropdown-container');
             const emptyState = document.getElementById('mapping-panel-empty-state');
             const selectedCountEl = document.getElementById('selected-mapping-count');
+            const totalFieldsEl = document.getElementById('total-module-fields'); // [Fix] 取得計數元素
+            
             const fieldsToMap = getFieldsToProcess(); 
+
+            // [Fix] 更新系統欄位總數顯示
+            if (totalFieldsEl) totalFieldsEl.innerText = fieldsToMap.length;
 
             if (fieldsToMap.length === 0) {
                  container.innerHTML = '';
@@ -2414,18 +2523,13 @@
             }
             emptyState.classList.add('hidden');
             
-            // 1. 識別已選取的 Headers
+            // 1. 識別已選取的 Headers (用於 Disable 其他欄位已選的選項)
             const selectedHeaders = new Map();
-            // 自動匹配邏輯 (Auto-Mapping)
+            
             fieldsToMap.forEach(f => {
-                if (!currentMapping[f.id]) currentMapping[f.id] = { excelHeader: '', isSelected: true };
-                
-                // 如果尚未設定 header，嘗試自動匹配名稱完全相同的
-                if (!currentMapping[f.id].excelHeader) {
-                    const exactMatch = currentFileHeaders.find(h => h.trim() === f.label.trim());
-                    if (exactMatch) {
-                        currentMapping[f.id].excelHeader = exactMatch;
-                    }
+                // [Fix] 這裡不再執行自動匹配，僅讀取現有狀態
+                if (!currentMapping[f.id]) {
+                     currentMapping[f.id] = { excelHeader: '', isSelected: true };
                 }
                 
                 if (currentMapping[f.id].excelHeader) {
@@ -2449,6 +2553,7 @@
                     const valueMatch = optHtml.match(/value="([^"]*)"/);
                     const headerValue = valueMatch ? valueMatch[1] : '';
                     let attributes = '';
+                    
                     if (headerValue) {
                         // 檢查是否被其他欄位選用
                         for (const [fieldId, header] of selectedHeaders) {
@@ -2458,8 +2563,17 @@
                              }
                         }
                     }
+                    
                     if (headerValue === mapState.excelHeader) attributes += ' selected';
-                    return `<option value="${headerValue}"${attributes}>${headerValue || baseExcelHeaderOptions[0].replace(/.*>(.*)<.*/, '$1')}</option>`;
+                    
+                    // 取得選項文字 (處理第一個空選項的顯示文字)
+                    let label = headerValue;
+                    if (!label) {
+                        const textMatch = optHtml.match(/>(.*)</);
+                        label = textMatch ? textMatch[1] : '-- 請選擇 Excel 欄位 --';
+                    }
+                    
+                    return `<option value="${headerValue}"${attributes}>${label}</option>`;
                 }).join('');
 
                 dropdownsHtml += `
@@ -2632,105 +2746,83 @@
             finalizeProcessing(pendingFieldsToProcess, resolutions);
         }
 
-        // 步驟 2: 最終執行資料處理
+        // 步驟 2: 最終執行資料處理 (包含排序、分組)
         async function finalizeProcessing(fieldsToProcess, resolutions) {
-            // ==========================================
-            // [修正] 同樣改為操作父容器
-            // ==========================================
+            // 更新側邊欄狀態
             const sidebarList = document.getElementById('internship-group-list');
-            sidebarList.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state"><div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>彙整中...</div>';
-            // ==========================================
-        // [新增邏輯] 1. 建立「名稱 -> ID」的反向對照表
-        // ==========================================
-        const deptNameToIdMap = new Map();
-        const targetYear = currentConsolidationYear; // 使用當前選擇的彙整學年度 (例如 114)
-
-        // 遍歷所有系所主檔 (deptMasterData)
-        for (const [deptId, master] of Object.entries(deptMasterData)) {
-            // A. 抓取該學年度的歷史全稱
-            const yearFullName = master.historical_names?.[targetYear];
-            if (yearFullName) {
-                deptNameToIdMap.set(yearFullName.trim(), deptId);
+            if (sidebarList) {
+                sidebarList.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state"><div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>彙整中...</div>';
             }
-            // B. 也要抓取預設全稱 (fallback)
-            if (master.name) {
-            deptNameToIdMap.set(master.name.trim(), deptId);
+
+            // 1. 建立「名稱 -> ID」的反向對照表 (用於將 "外國語文學系" 轉為 "foreign_lang")
+            const deptNameToIdMap = new Map();
+            const targetYear = currentConsolidationYear || activeYearId; 
+
+            // 遍歷所有系所主檔
+            for (const [deptId, master] of Object.entries(deptMasterData)) {
+                if (master.historical_names?.[targetYear]) deptNameToIdMap.set(master.historical_names[targetYear].trim(), deptId);
+                if (master.name) deptNameToIdMap.set(master.name.trim(), deptId);
+                if (master.short_name) deptNameToIdMap.set(master.short_name.trim(), deptId);
+                if (master.code) deptNameToIdMap.set(master.code.trim(), deptId);
             }
-            // C. 甚至可以抓取代碼 (Code) 對應
-            if (master.code) {
-                deptNameToIdMap.set(master.code.trim(), deptId);
-            }
-        }
-    
-        // (選用) 同樣建立學院的對照表
-        const collegeNameToIdMap = new Map();
-        departmentData.forEach(col => {
-            const yearName = col.historical_names?.[targetYear] || col.name;
-            if (yearName) collegeNameToIdMap.set(yearName.trim(), col.id);
-            if (col.name) collegeNameToIdMap.set(col.name.trim(), col.id);
-        });
-        // ==========================================
-
-        const mappedData = [];
-        // ... (原本的 resolutionMap 建立邏輯) ...
-
-        // Data Mapping Loop
-        // Data Mapping Loop
-        for (let i = 0; i < currentStudentData.length; i++) {
-            const row = currentStudentData[i];
-            const newRow = {};
-            let skipRow = false;
-
-            fieldsToProcess.forEach(modField => {
-                if (skipRow) return;
-
-                // 1. 取得 Mapping 設定
-                const mapping = currentMapping[modField.id];
-                
-                // ★★★ 修正重點：明確定義 fileHeader ★★★
-                const fileHeader = mapping ? mapping.excelHeader : null;
-                
-                // 2. 從 Excel Row 取值
-                let value = fileHeader ? (row[fileHeader] || '').toString().trim() : '';
-
-                // 3. 衝突檢測處理 (依據之前使用者的選擇)
-                if ((modField.type === 'single_select' || modField.type === 'list') && modField.options && value) {
-                    if (!modField.options.includes(value)) {
-                        const action = resolutionMap.get(`${modField.id}:::${value}`);
-                        if (action === 'skip') {
-                            skipRow = true;
-                        } else if (action === 'clear') {
-                            value = '';
-                        }
-                        // action === 'add' 時，保留原值
-                    }
-                }
-
-                // ==========================================
-                // [新增邏輯] 4. 系所/學院 名稱轉 ID (Reverse Lookup)
-                // ==========================================
-                // 必須確認 deptNameToIdMap 已在迴圈外建立 (參考上一則回應)
-                if (modField.type === 'department' && value) {
-                    // 嘗試從對照表中找 ID (例如 "外國語文學系" -> "foreign_lang")
-                    const foundId = deptNameToIdMap.get(value);
-                    if (foundId) value = foundId; 
-                } else if (modField.type === 'college' && value) {
-                    const foundId = collegeNameToIdMap.get(value);
-                    if (foundId) value = foundId;
-                }
-                // ==========================================
-
-                newRow[modField.id] = value;
+            
+            const collegeNameToIdMap = new Map();
+            departmentData.forEach(col => {
+                const yearName = col.historical_names?.[targetYear] || col.name;
+                if (yearName) collegeNameToIdMap.set(yearName.trim(), col.id);
+                if (col.name) collegeNameToIdMap.set(col.name.trim(), col.id);
             });
 
-            if (skipRow) continue;
+            const mappedData = [];
+            
+            // ★★★★★ [修正重點：補上這兩行] ★★★★★
+            // 建立快速查詢衝突處理方式的 Map (解決 resolutionMap is not defined 錯誤)
+            const resolutionMap = new Map(); 
+            resolutions.forEach(r => resolutionMap.set(`${r.fieldId}:::${r.value}`, r.action));
+            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
-                // Alias Mapping (解決 ID 不一致)
-                // offering_department -> course_dept
-                // course_code -> course_id
-                // internship_course_type -> internship_attr
-                // internship_credits -> internship_credit
-                // student_department -> student_dept
+            // Data Mapping Loop
+            for (let i = 0; i < currentStudentData.length; i++) {
+                const row = currentStudentData[i];
+                const newRow = {};
+                let skipRow = false;
+
+                fieldsToProcess.forEach(modField => {
+                    if (skipRow) return;
+
+                    const mapping = currentMapping[modField.id];
+                    const fileHeader = mapping ? mapping.excelHeader : null;
+                    let value = fileHeader ? (row[fileHeader] || '').toString().trim() : '';
+
+                    // 衝突處理
+                    if ((modField.type === 'single_select' || modField.type === 'list') && modField.options && value) {
+                        if (!modField.options.includes(value)) {
+                            // 這裡會用到 resolutionMap
+                            const action = resolutionMap.get(`${modField.id}:::${value}`);
+                            if (action === 'skip') skipRow = true;
+                            else if (action === 'clear') value = '';
+                            // action === 'add' 時保留原值
+                        }
+                    }
+
+                    // 系所/學院 名稱轉 ID
+                    const isDeptField = modField.type === 'department' || ['student_dept', 'course_dept', 'student_department', 'offering_department'].includes(modField.id);
+                    const isCollegeField = !isDeptField && (modField.type === 'college' || ['student_college', 'course_college'].includes(modField.id));
+
+                    if (isDeptField && value) {
+                        const foundId = deptNameToIdMap.get(value);
+                        if (foundId) value = foundId; 
+                    } else if (isCollegeField && value) {
+                        const foundId = collegeNameToIdMap.get(value);
+                        if (foundId) value = foundId;
+                    }
+
+                    newRow[modField.id] = value;
+                });
+
+                if (skipRow) continue;
+
+                // Alias Mapping
                 const aliases = [
                     { sys: 'course_dept', alt: 'offering_department' },
                     { sys: 'course_id', alt: 'course_code' },
@@ -2745,15 +2837,12 @@
                     }
                 });
 
-                // 補齊其他未匹配欄位 (Export 需求)
-                const allExportFields = getFieldsToExport();
+                // 補齊欄位
+                const allExportFields = getFieldsToExport(); 
                 allExportFields.forEach(expField => {
-                    if (!newRow.hasOwnProperty(expField.id)) {
-                         newRow[expField.id] = '';
-                    }
+                    if (!newRow.hasOwnProperty(expField.id)) newRow[expField.id] = '';
                 });
 
-                // 核心資料檢查
                 newRow.course_dept = newRow.course_dept || '';
                 newRow.student_dept = newRow.student_dept || '';
                 newRow.student_id = newRow.student_id || '';
@@ -2762,9 +2851,9 @@
                     mappedData.push(newRow);
                 }
             }
-
-            // ... (Alliance Grouping 邏輯保持不變) ...
-            // 3. Department uniqueness check (for Alliance modal rendering)
+            
+            // ... (後續的分組與渲染邏輯保持不變) ...
+            // 3. Dept Uniqueness Check
             const departments = mappedData.map(row => row.course_dept).filter(d => d);
             uniqueCourseDepts = [...new Set(departments)].sort();
 
@@ -2781,7 +2870,6 @@
                 const secondaryDept = record[secondaryKey];
 
                 let finalGroupingKey = primaryDept; 
-
                 let foundAlliance = allianceGroups.find(group => group.depts.includes(primaryDept));
 
                 if (foundAlliance) {
@@ -2793,26 +2881,26 @@
                         else if (unmatchedHandling === 'use_alliance_only') finalGroupingKey = primaryDept; 
                     }
                 }
-
                 if (!groupedData[finalGroupingKey]) groupedData[finalGroupingKey] = [];
                 groupedData[finalGroupingKey].push(record);
             });
 
             currentConsolidatedResults = {};
             for (const groupName in groupedData) {
-                // 排序邏輯修正：學號 -> 學期 -> 開課系 -> 選課代號
+                // [排序邏輯] Code -> 學號 -> 學期
                 groupedData[groupName].sort((a, b) => {
+                    const deptIdA = a.course_dept || '';
+                    const deptIdB = b.course_dept || '';
+                    const codeA = deptMasterData[deptIdA]?.code || 'ZZZZ';
+                    const codeB = deptMasterData[deptIdB]?.code || 'ZZZZ';
+                    
+                    if (codeA !== codeB) return codeA.toString().localeCompare(codeB.toString());
+
                     const idA = a.student_id || ''; const idB = b.student_id || '';
                     if (idA !== idB) return idA.localeCompare(idB);
                     
                     const semA = a.semester || ''; const semB = b.semester || '';
-                    if (semA !== semB) return semA.localeCompare(semB);
-                    
-                    const deptA = a.course_dept || ''; const deptB = b.course_dept || '';
-                    if (deptA !== deptB) return deptA.localeCompare(deptB);
-                    
-                    const cidA = a.course_id || ''; const cidB = b.course_id || '';
-                    return cidA.localeCompare(cidB);
+                    return semA.localeCompare(semB);
                 });
                 currentConsolidatedResults[groupName] = groupedData[groupName];
             }
@@ -2827,89 +2915,143 @@
         
         function renderInternshipSidebar() {
             const el = document.getElementById('internship-group-list');
-            el.innerHTML = ''; // 清除現有內容
+            el.innerHTML = ''; 
             
-            const totalRecords = currentConsolidatedResults ? Object.values(currentConsolidatedResults).reduce((sum, group) => sum + group.length, 0) : 0;
-            const sortedGroupNames = currentConsolidatedResults ? Object.keys(currentConsolidatedResults).sort() : [];
-            
-            // Add 'All' item
-            el.innerHTML += `<div class="list-item" id="group-all-item" onclick="selectConsolidatedGroup('all')"><span class="font-bold text-sm">全部</span><span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-2">${totalRecords}</span></div>`;
-            
-            if (totalRecords === 0) {
-                 el.innerHTML += '<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state">無可彙整名單</div>';
-            }
-            
-            // Add group items
-            if (totalRecords > 0) {
-                 sortedGroupNames.forEach(groupName => {
-                    const count = currentConsolidatedResults[groupName].length;
-                    const isActive = currentSelectedGroup === groupName;
-                    
-                    // ==========================================
-                    // [新增邏輯] 嘗試將 ID (groupName) 轉為 簡稱 (Display Name)
-                    // ==========================================
-                    let displayName = groupName;
-                    
-                    // 1. 嘗試解釋為系所 ID，並取得簡稱 (true)
-                    const deptName = getDeptDisplayName(groupName, true); 
-                    if (deptName !== groupName) {
-                        displayName = deptName;
-                    } else {
-                        // 2. 如果不是系所，嘗試解釋為學院 ID
-                        const colName = getCollegeDisplayName(groupName, true);
-                        if (colName !== groupName) {
-                            displayName = colName;
-                        }
-                    }
-                    // 3. 如果都不是 (例如是聯盟名稱)，就維持原樣
-                    // ==========================================
+            if (!currentConsolidatedResults) return;
 
-                    const div = document.createElement('div');
-                    div.className = `list-item ${isActive ? 'active' : ''}`;
-                    div.onclick = () => selectConsolidatedGroup(groupName);
-                    
-                    // 顯示 displayName
-                    div.innerHTML = `<div class="flex items-center justify-between"><span class="font-bold text-sm truncate">${displayName}</span><span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">${count}</span></div>`;
-                    el.appendChild(div);
-                });
-            }
+            // 1. 取得目前的篩選值
+            const filterColId = document.getElementById('internship-sidebar-college-filter')?.value;
             
-            // Re-apply active state ... (維持原樣)
-            document.querySelectorAll('#internship-group-list .list-item').forEach(item => {
-                item.classList.remove('active');
-                if(item.id === 'group-all-item' && currentSelectedGroup === 'all') {
-                    item.classList.add('active');
-                } else if(item.querySelector('span')?.innerText.includes(currentSelectedGroup) && currentSelectedGroup !== 'all') {
-                    // 注意：這裡比對文字可能會因為簡稱轉換而失效，改用 index 或 dataset 會更穩，但為求簡便，
-                    // 建議直接依賴上方的 class 渲染，或是在這裡不做額外檢查
-                    if (currentSelectedGroup === item.dataset.groupId) item.classList.add('active'); // 需在上方加入 data-group-id
+            // 2. 取得所有分組名稱並先按 Code 排序 (修正：移除 window.)
+            let groupNames = Object.keys(currentConsolidatedResults).sort((a, b) => {
+                const codeA = (deptMasterData && deptMasterData[a]?.code) || 'ZZZZ'; 
+                const codeB = (deptMasterData && deptMasterData[b]?.code) || 'ZZZZ';
+                return codeA.toString().localeCompare(codeB.toString());
+            });
+
+            // 3. 執行篩選 (找出符合學院的分組)
+            let filteredGroupNames = groupNames;
+            if (filterColId) {
+                // (修正：移除 window.)
+                const col = departmentData.find(c => c.id === filterColId);
+                if (col) {
+                    filteredGroupNames = groupNames.filter(gName => {
+                        const gRows = currentConsolidatedResults[gName];
+                        const colDepts = col.departments || [];
+                        
+                        // 判斷依據 A: 分組 ID 本身就在該學院的 departments 清單中
+                        if (colDepts.includes(gName)) return true;
+                        // 判斷依據 B: 分組內的第一筆資料的 course_dept 屬於該學院 (針對聯盟分組)
+                        if (gRows && gRows.length > 0 && colDepts.includes(gRows[0].course_dept)) return true;
+                        
+                        return false;
+                    });
                 }
+            }
+
+            // 4. 計算篩選後的總筆數
+            const totalRecords = filteredGroupNames.reduce((sum, gName) => sum + (currentConsolidatedResults[gName]?.length || 0), 0);
+            
+            // 5. 渲染「全部」按鈕
+            const allLabel = filterColId ? '全部 (篩選後)' : '全部';
+            const allActive = currentSelectedGroup === 'all';
+            
+            el.innerHTML += `<div class="list-item ${allActive ? 'active' : ''}" id="group-all-item" onclick="selectConsolidatedGroup('all')">
+                <div class="flex items-center justify-between">
+                    <span class="font-bold text-sm">${allLabel}</span>
+                    <span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-2">${totalRecords}</span>
+                </div>
+            </div>`;
+            
+            // 空狀態處理
+            if (totalRecords === 0) {
+                 const msg = filterColId ? '此學院無相關資料' : '無可彙整名單';
+                 el.innerHTML += `<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state">${msg}</div>`;
+            }
+
+            // 6. 渲染分組列表
+            filteredGroupNames.forEach(groupName => {
+                const count = (currentConsolidatedResults[groupName] || []).length;
+                const isActive = currentSelectedGroup === groupName;
+                
+                let displayName = groupName;
+                const deptName = getDeptDisplayName(groupName, true); 
+                if (deptName !== groupName) displayName = deptName;
+                else {
+                    const colName = getCollegeDisplayName(groupName, true);
+                    if (colName !== groupName) displayName = colName;
+                }
+
+                const div = document.createElement('div');
+                div.className = `list-item ${isActive ? 'active' : ''}`;
+                div.onclick = () => selectConsolidatedGroup(groupName);
+                div.innerHTML = `<div class="flex items-center justify-between"><span class="font-bold text-sm truncate">${displayName}</span><span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">${count}</span></div>`;
+                el.appendChild(div);
             });
         }
         
         function selectConsolidatedGroup(groupName) {
             currentSelectedGroup = groupName;
-            renderInternshipSidebar();
+            renderInternshipSidebar(); // 更新側邊欄選取狀態
             
-            const isAll = groupName === 'all';
-            let dataToShow = isAll ? [] : currentConsolidatedResults[groupName];
-            
-            if (isAll) {
-                Object.values(currentConsolidatedResults).forEach(group => {
-                    dataToShow = dataToShow.concat(group);
+            const filterColId = document.getElementById('internship-sidebar-college-filter')?.value;
+            let dataToShow = [];
+
+            if (groupName === 'all') {
+                // 1. 取得排序後的分組清單 (修正：移除 window.)
+                const sortedKeys = Object.keys(currentConsolidatedResults || {}).sort((a, b) => {
+                    const codeA = (deptMasterData && deptMasterData[a]?.code) || 'ZZZZ'; 
+                    const codeB = (deptMasterData && deptMasterData[b]?.code) || 'ZZZZ';
+                    return codeA.toString().localeCompare(codeB.toString());
                 });
-            }
 
-            if (isAll) {
-                // Issue 1 fix for title
-                document.getElementById('current-internship-group-title').innerText = `實習學生名單彙整：【全部】`;
-                document.getElementById('group-detail-subtitle').innerText = `共 ${dataToShow.length} 筆紀錄`;
+                // 2. 遍歷並執行「篩選」
+                sortedKeys.forEach(gName => {
+                     let include = true;
+                     
+                     // 如果有設定學院篩選
+                     if (filterColId) {
+                        // (修正：移除 window.)
+                        const col = departmentData.find(c => c.id === filterColId);
+                        if (col) {
+                            const gRows = currentConsolidatedResults[gName] || [];
+                            const colDepts = col.departments || [];
+                            
+                            // 判斷依據：分組ID符合 OR 資料內容的開課系符合
+                            const belongs = colDepts.includes(gName) || 
+                                          (gRows.length > 0 && colDepts.includes(gRows[0].course_dept));
+                            
+                            if (!belongs) include = false;
+                        }
+                     }
+                     
+                     if (include) {
+                         dataToShow = dataToShow.concat(currentConsolidatedResults[gName] || []);
+                     }
+                });
+
+                // 更新標題
+                const titleSuffix = filterColId ? ' (篩選後)' : '';
+                document.getElementById('current-internship-group-title').innerText = `實習學生名單彙整：【全部${titleSuffix}】`;
+
             } else {
-                // Issue 1 fix for title
-                document.getElementById('current-internship-group-title').innerText = `實習學生名單彙整：【${groupName}】`;
-                document.getElementById('group-detail-subtitle').innerText = `共 ${dataToShow.length} 筆紀錄`;
+                // 單一分組顯示
+                dataToShow = currentConsolidatedResults[groupName] || [];
+                
+                // 嘗試轉全稱
+                let displayName = groupName;
+                const deptName = getDeptDisplayName(groupName, false); 
+                if (deptName !== groupName) displayName = deptName;
+                else {
+                    const colName = getCollegeDisplayName(groupName, false);
+                    if (colName !== groupName) displayName = colName;
+                }
+                document.getElementById('current-internship-group-title').innerText = `實習學生名單彙整：【${displayName}】`;
             }
-
+            
+            document.getElementById('group-detail-subtitle').innerText = `共 ${dataToShow.length} 筆紀錄`;
+            
+            // 呼叫渲染表格 (這裡會處理 0 筆資料時顯示 Empty State 的邏輯)
             renderConsolidatedTable(dataToShow);
         }
         
@@ -2924,6 +3066,24 @@
                  tableContainer.classList.add('hidden');
                  emptyState.classList.remove('hidden');
                  document.getElementById('current-group-record-count').innerText = 0;
+                 
+                 // 動態切換空狀態訊息
+                 if (currentStudentData && currentStudentData.length > 0) {
+                     emptyState.innerHTML = `
+                        <div class="w-16 h-16 bg-slate-100 text-slate-400 rounded-full flex items-center justify-center mb-4 text-2xl mx-auto">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-600 mb-1">查無符合資料</h4>
+                        <p class="text-xs text-slate-400">目前的篩選條件下沒有任何學生紀錄。</p>
+                     `;
+                 } else {
+                     emptyState.innerHTML = `
+                        <div class="w-16 h-16 bg-slate-200 rounded-full flex items-center justify-center mb-4 text-2xl mx-auto">
+                            <i class="fas fa-table"></i>
+                        </div>
+                        請上傳名單，並在彈出視窗中完成欄位匹配。
+                     `;
+                 }
                  return;
             }
 
@@ -2938,14 +3098,11 @@
             const uiOutputFields = OUTPUT_DISPLAY_FIELDS.map(displayDef => {
                 const moduleDef = fieldMap.get(displayDef.id) || {};
                 
-                // ==========================================
-                // [新增邏輯] 強制修正欄位類型 (Force Type)
-                // 確保即使模板設定錯誤，關鍵欄位也能正確轉譯名稱
-                // ==========================================
+                // ★★★ [修正重點] 強制指定類型，確保 ID 會被轉譯為簡稱 ★★★
                 let effectiveType = moduleDef.type;
                 if (['student_dept', 'course_dept'].includes(displayDef.id)) effectiveType = 'department';
                 if (['student_college', 'course_college'].includes(displayDef.id)) effectiveType = 'college';
-                // ==========================================
+                // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
 
                 return {
                     ...moduleDef,       
@@ -2955,12 +3112,12 @@
                 };
             });
 
-            // 3. 產生標題 (維持原樣)
+            // 3. 產生標題
             const headers = uiOutputFields.map(f => `<th class="text-center whitespace-nowrap">${f.label.replace(/\s*\(必填\)/g, '')}</th>`).join('');
             headersRow.innerHTML = `<th class="w-12 text-center">#</th>${headers}`;
             document.getElementById('current-group-record-count').innerText = dataToShow.length;
             
-            // 4. 產生內容 (預覽強制使用簡稱)
+            // 4. 產生內容
             const rows = dataToShow.map((row, idx) => {
                 const cells = uiOutputFields.map(f => {
                     let displayValue = row[f.dataKey] || '<span class="text-slate-300">-</span>'; 
@@ -2968,11 +3125,9 @@
                     // 預覽時使用簡稱 (useShort = true)
                     if (f.type === 'department') {
                         const deptId = row[f.dataKey];
-                        // 呼叫 getDeptDisplayName(id, true) 取得簡稱
                         if (deptId) displayValue = getDeptDisplayName(deptId, true) || deptId;
                     } else if (f.type === 'college') {
                          const collegeId = row[f.dataKey];
-                         // 呼叫 getCollegeDisplayName(id, true) 取得簡稱
                          if (collegeId) displayValue = getCollegeDisplayName(collegeId, true) || collegeId;
                     }
                     
@@ -4012,4 +4167,3 @@
     </script>
 </body>
 </html>
-    
