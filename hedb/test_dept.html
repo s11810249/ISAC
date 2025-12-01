@@ -1,0 +1,695 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>系所實習資料填報系統 | 東海大學</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- Excel 處理庫 -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: '#002E5D', 
+                        secondary: '#C6A87C',
+                        success: '#219653',
+                        warning: '#F59E0B',
+                        danger: '#DC2626',
+                        surface: '#ffffff',
+                        background: '#F1F5F9',
+                    },
+                    fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] }
+                }
+            }
+        }
+    </script>
+    <style>
+        body { font-family: 'Noto Sans TC', sans-serif; background-color: #F1F5F9; }
+        
+        /* 表格樣式優化 */
+        .data-grid-container {
+            overflow: auto;
+            height: calc(100vh - 180px); /* 動態高度 */
+            background: white;
+            border: 1px solid #E2E8F0;
+            border-radius: 0.5rem;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+
+        .data-grid {
+            border-collapse: separate;
+            border-spacing: 0;
+            width: max-content; /* 讓表格依內容寬度延伸 */
+            min-width: 100%;
+        }
+
+        .data-grid th {
+            position: sticky;
+            top: 0;
+            background-color: #F8FAFC;
+            color: #475569;
+            font-weight: 700;
+            font-size: 0.8rem;
+            padding: 0.75rem 1rem;
+            border-bottom: 2px solid #E2E8F0;
+            border-right: 1px solid #E2E8F0;
+            white-space: nowrap;
+            z-index: 10;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+        
+        /* 固定左側欄位 (姓名/學號) */
+        .col-fixed-left {
+            position: sticky;
+            left: 0;
+            z-index: 20;
+            background-color: white;
+            border-right: 2px solid #E2E8F0 !important;
+        }
+        .data-grid th.col-fixed-left { z-index: 30; background-color: #F1F5F9; }
+
+        .data-grid td {
+            border-bottom: 1px solid #E2E8F0;
+            border-right: 1px solid #F1F5F9;
+            padding: 0; /* padding 0 讓 input 填滿 */
+            vertical-align: middle;
+            transition: all 0.2s;
+        }
+
+        .data-grid tr:hover td { background-color: #F8FAFC; }
+        .data-grid tr:hover td.col-fixed-left { background-color: #F8FAFC; }
+
+        /* 儲存格輸入框 */
+        .cell-input {
+            width: 100%;
+            height: 100%;
+            border: 2px solid transparent;
+            padding: 0.5rem 0.75rem;
+            font-size: 0.9rem;
+            background: transparent;
+            outline: none;
+            transition: all 0.2s;
+            min-width: 120px;
+        }
+        .cell-input:focus {
+            background: white;
+            border-color: #002E5D;
+            box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1);
+            position: relative;
+            z-index: 5;
+        }
+        
+        /* 驗證狀態樣式 */
+        .cell-error input, .cell-error select { background-color: #FEF2F2; border-color: #FECACA; color: #DC2626; }
+        .cell-error::after { content: '!'; position: absolute; right: 5px; top: 50%; transform: translateY(-50%); color: #DC2626; font-weight: bold; font-size: 12px; pointer-events: none; }
+        
+        .cell-disabled { background-color: #F1F5F9; color: #94A3B8; cursor: not-allowed; }
+        .cell-disabled input { pointer-events: none; }
+
+        /* 側邊欄統計卡片 */
+        .stat-card {
+            background: white; border-radius: 0.5rem; padding: 1rem;
+            border: 1px solid #E2E8F0; transition: all 0.2s; cursor: pointer;
+        }
+        .stat-card:hover, .stat-card.active { border-color: #002E5D; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1); }
+        .stat-card.active { background-color: #F0F9FF; border-left: 4px solid #002E5D; }
+
+        /* 滾動條美化 */
+        ::-webkit-scrollbar { width: 8px; height: 8px; }
+        ::-webkit-scrollbar-track { background: #F1F5F9; }
+        ::-webkit-scrollbar-thumb { background: #CBD5E1; border-radius: 4px; }
+        ::-webkit-scrollbar-thumb:hover { background: #94A3B8; }
+
+        /* Loading Overlay */
+        #loading-overlay { background: rgba(255,255,255,0.8); backdrop-filter: blur(4px); z-index: 50; }
+    </style>
+</head>
+<body class="flex flex-col h-screen overflow-hidden">
+
+    <!-- 頂部導航 -->
+    <header class="bg-white border-b border-slate-200 h-16 flex items-center justify-between px-6 flex-shrink-0 z-40">
+        <div class="flex items-center gap-4">
+            <div class="bg-primary p-1.5 rounded-lg">
+                <img src="files/svg/THU-Logo.svg" class="h-8 w-auto block" alt="Logo">
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-primary tracking-wide">系所實習資料填報系統</h1>
+                <div class="flex items-center gap-2 text-xs text-slate-500">
+                    <span id="current-year-display" class="bg-slate-100 px-2 py-0.5 rounded">載入中...</span>
+                    <span id="save-status" class="hidden text-emerald-600"><i class="fas fa-check-circle"></i> 所有變更已暫存</span>
+                </div>
+            </div>
+        </div>
+        <div class="flex items-center gap-3">
+            <div class="flex bg-slate-100 p-1 rounded-lg">
+                <button onclick="setViewMode('grid')" id="btn-view-grid" class="px-3 py-1.5 rounded-md text-sm font-bold bg-white shadow-sm text-primary transition"><i class="fas fa-table mr-1"></i> 列表模式</button>
+                <!-- 預留未來擴充單筆模式 -->
+                <!-- <button onclick="setViewMode('single')" id="btn-view-single" class="px-3 py-1.5 rounded-md text-sm font-bold text-slate-500 hover:text-primary transition"><i class="fas fa-user mr-1"></i> 單筆模式</button> -->
+            </div>
+            <div class="h-6 w-px bg-slate-300 mx-2"></div>
+            <label class="btn-secondary cursor-pointer bg-white border border-slate-300 hover:border-primary text-slate-700 px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2">
+                <i class="fas fa-file-import text-primary"></i> 匯入名單 (Excel)
+                <input type="file" id="file-upload" accept=".xlsx, .csv" class="hidden" onchange="handleFileUpload(event)">
+            </label>
+            <button onclick="exportData()" class="bg-success hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
+                <i class="fas fa-file-export"></i> 匯出報表
+            </button>
+        </div>
+    </header>
+
+    <main class="flex flex-grow overflow-hidden">
+        <!-- 左側統計面板 -->
+        <aside class="w-64 bg-slate-50 border-r border-slate-200 flex flex-col flex-shrink-0 z-30">
+            <div class="p-4 border-b border-slate-200">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">填報進度概覽</h3>
+                <div class="space-y-3">
+                    <div class="stat-card active" onclick="filterData('all', this)">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-bold text-slate-600">全部學生</span>
+                            <span id="count-all" class="bg-slate-200 text-slate-600 px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+                        </div>
+                    </div>
+                    <div class="stat-card" onclick="filterData('error', this)">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-bold text-danger">資料缺漏/錯誤</span>
+                            <span id="count-error" class="bg-red-100 text-danger px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+                        </div>
+                        <div class="text-[10px] text-slate-400 mt-1">請優先處理此類別</div>
+                    </div>
+                    <div class="stat-card" onclick="filterData('valid', this)">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm font-bold text-success">已完成填報</span>
+                            <span id="count-valid" class="bg-green-100 text-success px-2 py-0.5 rounded-full text-xs font-bold">0</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="p-4 flex-grow overflow-y-auto">
+                <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider mb-3">批次操作工具</h3>
+                <div class="bg-white p-3 rounded-lg border border-slate-200 shadow-sm space-y-3">
+                    <p class="text-xs text-slate-500 mb-2">快速填充相同資料 (如: 實習機構)</p>
+                    <button onclick="applyBatchFill()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded text-xs font-bold transition">
+                        <i class="fas fa-fill-drip mr-1"></i> 向下填充選取欄位
+                    </button>
+                    <button onclick="validateAll()" class="w-full bg-slate-100 hover:bg-slate-200 text-slate-700 py-2 rounded text-xs font-bold transition">
+                        <i class="fas fa-check-double mr-1"></i> 重新執行驗證
+                    </button>
+                </div>
+            </div>
+        </aside>
+
+        <!-- 右側主要工作區 -->
+        <section class="flex-grow flex flex-col bg-white relative">
+            
+            <!-- 工具列 -->
+            <div class="h-12 border-b border-slate-200 flex items-center px-4 bg-slate-50 justify-between flex-shrink-0">
+                <div class="flex items-center gap-3">
+                    <div class="relative">
+                        <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs"></i>
+                        <input type="text" id="search-input" placeholder="搜尋姓名、學號或廠商..." class="pl-8 pr-3 py-1.5 border border-slate-300 rounded-full text-sm outline-none focus:border-primary w-64 transition shadow-sm" oninput="applySearch()">
+                    </div>
+                    <span id="filter-status-text" class="text-xs font-bold text-slate-500 bg-slate-200 px-2 py-1 rounded">顯示全部</span>
+                </div>
+                <div class="text-xs text-slate-400">
+                    <i class="fas fa-info-circle mr-1"></i> 提示：紅色框表示必填未填或格式錯誤，灰色框表示依邏輯停用。
+                </div>
+            </div>
+
+            <!-- 表格區域 -->
+            <div class="flex-grow p-4 bg-slate-100 relative">
+                <div id="grid-wrapper" class="data-grid-container relative">
+                    <table class="data-grid w-full">
+                        <thead id="grid-header">
+                            <!-- JS 動態生成表頭 -->
+                        </thead>
+                        <tbody id="grid-body">
+                            <!-- JS 動態生成內容 -->
+                        </tbody>
+                    </table>
+                    
+                    <!-- 空狀態提示 -->
+                    <div id="empty-state" class="absolute inset-0 flex flex-col items-center justify-center bg-white z-0">
+                        <div class="w-20 h-20 bg-slate-100 rounded-full flex items-center justify-center mb-4 text-3xl text-slate-400">
+                            <i class="fas fa-cloud-upload-alt"></i>
+                        </div>
+                        <h3 class="text-lg font-bold text-slate-700 mb-2">尚無資料</h3>
+                        <p class="text-slate-500 text-sm mb-6">請點擊右上角「匯入名單」開始作業，或匯入範例檔。</p>
+                        <button onclick="document.getElementById('file-upload').click()" class="bg-primary text-white px-6 py-2 rounded-full font-bold shadow hover:bg-blue-900 transition">
+                            選擇檔案
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+
+    <!-- Loading Overlay -->
+    <div id="loading-overlay" class="fixed inset-0 flex items-center justify-center hidden">
+        <div class="bg-white p-6 rounded-xl shadow-2xl flex flex-col items-center">
+            <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-primary mb-3"></div>
+            <p class="text-slate-700 font-bold" id="loading-text">處理中...</p>
+        </div>
+    </div>
+
+    <!-- 核心邏輯 -->
+    <script>
+        // 全域變數
+        let appData = {
+            year: '114',
+            template: null, // 儲存 JSON 模板結構
+            records: [],    // 學生資料陣列
+            meta: {}        // 其他全域設定
+        };
+        
+        let viewState = {
+            filter: 'all',  // all, error, valid
+            search: '',
+            sortBy: 'student_id'
+        };
+
+        // 系統預設必須顯示的欄位 (固定在左側)
+        const FIXED_FIELDS = ['student_id', 'student_name', 'student_dept'];
+
+        // 初始化
+        document.addEventListener('DOMContentLoaded', async () => {
+            showLoading('載入系統設定...');
+            await loadTemplate('114'); // 預設載入 114 學年
+            hideLoading();
+        });
+
+        // 1. 載入模板
+        async function loadTemplate(year) {
+            try {
+                const path = `year_templates/year_${year}_templates.json`;
+                const res = await fetch(path);
+                if (!res.ok) throw new Error(`無法載入 ${year} 學年模板`);
+                
+                const json = await res.json();
+                appData.template = json;
+                appData.year = year;
+                
+                document.getElementById('current-year-display').innerText = `${year} 學年度`;
+                console.log("Template Loaded:", appData.template);
+                
+                // 如果已有資料，重新渲染表格以套用新模板規則
+                if(appData.records.length > 0) renderGrid();
+
+            } catch (e) {
+                console.error(e);
+                alert('模板載入失敗，請確認網路連線或聯繫管理員。');
+            }
+        }
+
+        // 2. 處理檔案匯入
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            showLoading('讀取 Excel 檔案...');
+            
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
+                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
+
+                    if (jsonData.length === 0) throw new Error("檔案無內容");
+
+                    processImportedData(jsonData);
+                    hideLoading();
+                } catch (err) {
+                    hideLoading();
+                    alert(`讀取失敗: ${err.message}`);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+            event.target.value = ''; // Reset input
+        }
+
+        // 3. 資料處理與正規化
+        function processImportedData(rawData) {
+            // 清空舊資料
+            appData.records = [];
+            
+            // 建立欄位對照表 (Excel Header -> Template Field ID)
+            // 這裡做簡單的模糊匹配，實際專案可加入 Mapping Modal
+            const headerMap = {};
+            const excelHeaders = Object.keys(rawData[0]);
+            
+            appData.template.fields.forEach(field => {
+                // 嘗試匹配：ID 或 Label
+                const match = excelHeaders.find(h => 
+                    h === field.id || 
+                    h === field.label || 
+                    h.includes(field.label) ||
+                    (field.label.includes(h) && h.length > 2)
+                );
+                if (match) headerMap[field.id] = match;
+            });
+
+            // 轉換資料
+            rawData.forEach((row, index) => {
+                const record = {
+                    _id: `rec_${index}_${Date.now()}`, // 內部唯一 ID
+                    _status: 'valid', // valid, error
+                    _errors: {} // 欄位錯誤訊息
+                };
+
+                // 填入欄位
+                appData.template.fields.forEach(field => {
+                    const excelCol = headerMap[field.id];
+                    let val = excelCol ? row[excelCol] : '';
+                    
+                    // 針對 ID 類欄位做些微清理
+                    if(field.id === 'student_id') val = String(val).trim().toUpperCase();
+                    
+                    record[field.id] = val;
+                });
+
+                // 基本欄位防呆 (若沒學號，自動略過)
+                if(record.student_id) {
+                    appData.records.push(record);
+                }
+            });
+
+            if (appData.records.length === 0) {
+                alert("匯入的檔案中找不到有效的學生資料 (需包含學號)。");
+                return;
+            }
+
+            // 執行一次全面驗證
+            validateAllData();
+            renderGrid();
+            updateStats();
+            document.getElementById('empty-state').classList.add('hidden');
+        }
+
+        // 4. 驗證引擎 (核心邏輯)
+        function validateRecord(record) {
+            let errors = {};
+            let isValid = true;
+
+            appData.template.fields.forEach(field => {
+                const val = record[field.id];
+                
+                // A. 檢查是否顯示 (Visibility Rule)
+                let isVisible = true;
+                if (field.visibilityRule) {
+                    const depField = field.visibilityRule.dep;
+                    const depVal = record[depField];
+                    const targetVal = field.visibilityRule.val;
+                    const action = field.visibilityRule.action; // show or hide
+
+                    if (action === 'show' && depVal !== targetVal) isVisible = false;
+                    if (action === 'hide' && depVal === targetVal) isVisible = false;
+                }
+                
+                // 如果欄位被隱藏，則不需驗證，且清空值 (避免髒資料)
+                if (!isVisible) {
+                    // record[field.id] = ''; // 可選：自動清空隱藏欄位
+                    return; 
+                }
+
+                // B. 必填檢查
+                if (field.required && (!val || val.toString().trim() === '')) {
+                    errors[field.id] = '必填欄位';
+                    isValid = false;
+                }
+
+                // C. 選項檢查 (Single Select)
+                if (field.type === 'single_select' && field.options && val) {
+                    if (!field.options.includes(val)) {
+                        errors[field.id] = '選項無效';
+                        isValid = false;
+                    }
+                }
+                
+                // D. 長度檢查
+                if (field.maxLen && val && val.length > field.maxLen) {
+                    errors[field.id] = `超過字數 (${val.length}/${field.maxLen})`;
+                    isValid = false;
+                }
+            });
+
+            record._errors = errors;
+            record._status = isValid ? 'valid' : 'error';
+            return isValid;
+        }
+
+        function validateAllData() {
+            appData.records.forEach(validateRecord);
+        }
+
+        // 5. 渲染網格 (Grid Renderer)
+        function renderGrid() {
+            const thead = document.getElementById('grid-header');
+            const tbody = document.getElementById('grid-body');
+            
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            // --- 5.1 渲染表頭 ---
+            const trHead = document.createElement('tr');
+            
+            // 序號列
+            const thNo = document.createElement('th');
+            thNo.innerText = '#';
+            thNo.className = 'w-12 text-center col-fixed-left';
+            trHead.appendChild(thNo);
+
+            // 欄位列
+            const sortedFields = [...appData.template.fields].sort((a, b) => a.order - b.order);
+            
+            sortedFields.forEach(field => {
+                const th = document.createElement('th');
+                th.innerText = field.label;
+                if (field.required) th.innerHTML += ' <span class="text-red-500">*</span>';
+                
+                if (FIXED_FIELDS.includes(field.id)) {
+                    th.classList.add('col-fixed-left');
+                    // 簡單計算 left offset (若需要更精準可動態算)
+                    if (field.id === 'student_id') th.style.left = '48px'; 
+                    if (field.id === 'student_name') th.style.left = '148px'; // 估算
+                }
+                
+                // Tooltip for description
+                if(field.description) {
+                    th.title = field.description;
+                    th.innerHTML += ' <i class="fas fa-info-circle text-slate-300 text-xs"></i>';
+                }
+                
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+
+            // --- 5.2 渲染資料列 ---
+            // 根據目前的 viewState.filter 篩選
+            const filteredRecords = appData.records.filter(r => {
+                if (viewState.filter === 'error') return r._status === 'error';
+                if (viewState.filter === 'valid') return r._status === 'valid';
+                return true; 
+            }).filter(r => {
+                if (!viewState.search) return true;
+                const term = viewState.search.toLowerCase();
+                return (r.student_name && r.student_name.includes(term)) || 
+                       (r.student_id && r.student_id.toLowerCase().includes(term)) ||
+                       (r.internship_institution_name && r.internship_institution_name.includes(term));
+            });
+
+            // 渲染上限優化 (Virtual Scrolling 太複雜，這裡先做簡易分頁或限制顯示)
+            // 為求效能，若超過 200 筆，僅渲染前 200 筆並提示
+            const renderLimit = 200; 
+            const displayRecords = filteredRecords.slice(0, renderLimit);
+
+            displayRecords.forEach((record, index) => {
+                const tr = document.createElement('tr');
+                
+                // 序號
+                const tdNo = document.createElement('td');
+                tdNo.className = 'text-center font-mono text-xs text-slate-400 bg-slate-50 col-fixed-left';
+                tdNo.innerText = index + 1;
+                tr.appendChild(tdNo);
+
+                sortedFields.forEach(field => {
+                    const td = document.createElement('td');
+                    const val = record[field.id] || '';
+                    const errorMsg = record._errors[field.id];
+                    
+                    // 判斷 Visibility
+                    let isVisible = true;
+                    if (field.visibilityRule) {
+                        const depVal = record[field.visibilityRule.dep];
+                        const targetVal = field.visibilityRule.val;
+                        const action = field.visibilityRule.action;
+                        if (action === 'show' && depVal !== targetVal) isVisible = false;
+                        if (action === 'hide' && depVal === targetVal) isVisible = false;
+                    }
+
+                    if (FIXED_FIELDS.includes(field.id)) {
+                        td.classList.add('col-fixed-left');
+                        // 修正 offset
+                        if (field.id === 'student_id') td.style.left = '48px'; 
+                        if (field.id === 'student_name') td.style.left = '148px';
+                    }
+
+                    if (!isVisible) {
+                        td.classList.add('cell-disabled');
+                        td.innerHTML = '<span class="text-xs italic pl-2 opacity-50">N/A</span>';
+                    } else {
+                        // 根據類型產生 Input
+                        if (errorMsg) {
+                            td.classList.add('cell-error');
+                            td.title = errorMsg;
+                        }
+
+                        if (field.type === 'single_select' || field.type === 'list') {
+                            const select = document.createElement('select');
+                            select.className = 'cell-input cursor-pointer';
+                            select.innerHTML = '<option value=""></option>' + (field.options || []).map(opt => `<option value="${opt}" ${opt===val?'selected':''}>${opt}</option>`).join('');
+                            select.onchange = (e) => updateField(record._id, field.id, e.target.value);
+                            td.appendChild(select);
+                        } else {
+                            const input = document.createElement('input');
+                            input.type = field.type === 'date' ? 'date' : 'text';
+                            input.className = 'cell-input';
+                            input.value = val;
+                            input.onchange = (e) => updateField(record._id, field.id, e.target.value);
+                            td.appendChild(input);
+                        }
+                    }
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+            
+            if (filteredRecords.length > renderLimit) {
+                const trMore = document.createElement('tr');
+                trMore.innerHTML = `<td colspan="${sortedFields.length + 1}" class="text-center py-4 text-slate-500 text-sm">還有 ${filteredRecords.length - renderLimit} 筆資料未顯示，請使用搜尋或匯出查看。</td>`;
+                tbody.appendChild(trMore);
+            }
+        }
+
+        // 6. 更新單一欄位
+        function updateField(recordId, fieldId, newValue) {
+            const record = appData.records.find(r => r._id === recordId);
+            if (!record) return;
+
+            record[field.id] = newValue;
+            
+            // 重新驗證該筆資料 (因為可能有連動欄位)
+            validateRecord(record);
+            
+            // 更新 UI (這裡為了效能，可以只更新該 Row，但簡單起見重新渲染 Grid 會最穩，
+            // 為了 UX 不跳動，最好是局部 DOM 更新，這裡採用全刷新的簡單策略，
+            // 實際產品可優化為 Row 級別渲染)
+            renderGrid();
+            updateStats();
+            
+            // 顯示已暫存
+            const statusEl = document.getElementById('save-status');
+            statusEl.classList.remove('hidden');
+            setTimeout(() => statusEl.classList.add('hidden'), 2000);
+        }
+
+        // 7. 統計與篩選控制
+        function updateStats() {
+            const all = appData.records.length;
+            const error = appData.records.filter(r => r._status === 'error').length;
+            const valid = all - error;
+
+            document.getElementById('count-all').innerText = all;
+            document.getElementById('count-error').innerText = error;
+            document.getElementById('count-valid').innerText = valid;
+        }
+
+        function filterData(type, el) {
+            viewState.filter = type;
+            document.querySelectorAll('.stat-card').forEach(c => c.classList.remove('active'));
+            el.classList.add('active');
+            
+            const map = { 'all': '顯示全部', 'error': '只顯示錯誤', 'valid': '只顯示完成' };
+            document.getElementById('filter-status-text').innerText = map[type];
+            
+            renderGrid();
+        }
+
+        function applySearch() {
+            viewState.search = document.getElementById('search-input').value;
+            renderGrid();
+        }
+
+        // 8. 批次功能
+        function applyBatchFill() {
+            // 簡單實作：將第一筆資料的「實習機構」套用到所有篩選後的資料
+            // 進階版應該要選欄位，這裡做個 Demo
+            const institutionField = 'internship_institution_name';
+            const firstVal = appData.records[0]?.[institutionField];
+            
+            if (!firstVal) return alert('第一筆資料的「實習機構名稱」為空，無法填充。');
+            
+            if (confirm(`確定要將「${firstVal}」套用到所有 ${appData.records.length} 筆資料的機構名稱嗎？`)) {
+                appData.records.forEach(r => {
+                    r[institutionField] = firstVal;
+                    validateRecord(r);
+                });
+                renderGrid();
+                updateStats();
+            }
+        }
+
+        function validateAll() {
+            showLoading('驗證資料中...');
+            setTimeout(() => {
+                validateAllData();
+                renderGrid();
+                updateStats();
+                hideLoading();
+                alert('驗證完成！請查看左側統計錯誤數。');
+            }, 100);
+        }
+
+        // 9. 匯出
+        function exportData() {
+            if (appData.records.length === 0) return alert('無資料可匯出');
+            
+            // 移除內部欄位 (_id, _status, _errors)
+            const exportData = appData.records.map(r => {
+                const cleanRow = { ...r };
+                delete cleanRow._id;
+                delete cleanRow._status;
+                delete cleanRow._errors;
+                return cleanRow;
+            });
+
+            const ws = XLSX.utils.json_to_sheet(exportData);
+            const wb = XLSX.utils.book_new();
+            XLSX.utils.book_append_sheet(wb, ws, "實習填報資料");
+            XLSX.writeFile(wb, `實習填報結果_${appData.year}.xlsx`);
+        }
+
+        // Helpers
+        function showLoading(text) {
+            document.getElementById('loading-text').innerText = text;
+            document.getElementById('loading-overlay').classList.remove('hidden');
+        }
+        function hideLoading() {
+            document.getElementById('loading-overlay').classList.add('hidden');
+        }
+        function setViewMode(mode) {
+            // 切換視圖 (預留功能)
+            alert('目前僅支援列表模式，單筆模式開發中。');
+        }
+
+    </script>
+</body>
+</html>
