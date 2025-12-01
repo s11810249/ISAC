@@ -25,7 +25,7 @@
                     },
                     fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] },
                     animation: {
-                        'fade-in': 'fadeIn 0.6s ease-out forwards',
+                        'fade-in': 'fadeIn 0.8s ease-out',
                     },
                     keyframes: {
                         fadeIn: {
@@ -38,7 +38,7 @@
         }
     </script>
     <style>
-        body { opacity: 0; animation: fade-in 0.6s ease-out forwards; }
+        /* [修正] 移除 body { opacity: 0 } 以確保內容一定可見 */
         
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -95,7 +95,7 @@
         .logo-filter { filter: invert(13%) sepia(33%) saturate(3736%) hue-rotate(204deg) brightness(91%) contrast(103%); } 
     </style>
 </head>
-<body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
+<body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden animate-fade-in">
 
     <!-- 頂部導航列 -->
     <header class="h-16 flex-shrink-0 glass-header flex items-center justify-between px-6 z-30 shadow-sm">
@@ -262,7 +262,10 @@
             try {
                 const res = await fetch('config.json');
                 if(res.ok) globalConfig = await res.json();
-            } catch(e) { console.log('Config not found, running standalone.'); }
+                else console.log('Config load failed (404/Error), running standalone.');
+            } catch(e) { 
+                console.log('Config fetch error, running standalone:', e); 
+            }
         };
 
         // --- 1. 檔案處理 ---
