@@ -23,22 +23,13 @@
                         surface: '#ffffff',
                         background: '#F8FAFC',
                     },
-                    fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] },
-                    animation: {
-                        'fade-in': 'fadeIn 0.6s ease-out forwards',
-                    },
-                    keyframes: {
-                        fadeIn: {
-                            '0%': { opacity: '0', transform: 'translateY(10px)' },
-                            '100%': { opacity: '1', transform: 'translateY(0)' },
-                        }
-                    }
+                    fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] }
                 }
             }
         }
     </script>
     <style>
-        body { opacity: 0; animation: fade-in 0.6s ease-out forwards; }
+        /* [修改 1] 移除頁面淡入動畫 */
         
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -51,11 +42,13 @@
         .excel-table tr:nth-child(even) { background-color: #f9fafb; }
         .excel-table tr:hover { background-color: #eff6ff; }
 
-        /* Form Styling */
-        .input-group label { font-size: 0.9rem; font-weight: 600; color: #334155; margin-bottom: 0.35rem; display: block; }
-        .input-group input, .input-group select { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.6rem; font-size: 0.95rem; transition: all 0.2s; outline: none; background-color: #fff; }
-        .input-group input:focus, .input-group select:focus { border-color: #002E5D; ring: 2px solid rgba(0, 46, 93, 0.1); box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
-        .input-group textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.6rem; font-size: 0.95rem; outline: none; resize: vertical; min-height: 100px; }
+        /* [修改 2] 優化表單樣式：更緊湊、直覺 */
+        .input-group { margin-bottom: 0.5rem; }
+        .input-group label { font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.2rem; display: block; }
+        /* 輸入框高度稍微縮小，讓畫面能容納更多資訊 */
+        .input-group input, .input-group select { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.4rem 0.6rem; font-size: 0.9rem; transition: all 0.2s; outline: none; background-color: #fff; }
+        .input-group input:focus, .input-group select:focus { border-color: #002E5D; ring: 1px solid #002E5D; }
+        .input-group textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.4rem 0.6rem; font-size: 0.9rem; outline: none; resize: vertical; min-height: 60px; }
         
         .student-item.active { background-color: #eff6ff; border-left: 4px solid #002E5D; }
         
@@ -76,7 +69,7 @@
         .course-check { position: absolute; top: 0.75rem; right: 0.75rem; transform: scale(1.2); }
 
         /* Form Section Header */
-        .form-section-title { font-size: 1rem; font-weight: bold; color: #002E5D; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1rem; margin-top: 1.5rem; }
+        .form-section-title { font-size: 0.95rem; font-weight: bold; color: #002E5D; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.25rem; margin-bottom: 0.75rem; margin-top: 1.25rem; }
         .form-section-title:first-child { margin-top: 0; }
 
         /* Tab System */
@@ -89,7 +82,7 @@
         .tab-btn.active { color: #002E5D; border-bottom-color: #002E5D; background-color: #fff; }
         
         .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fade-in 0.3s ease-out; }
+        .tab-content.active { display: block; }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -97,9 +90,7 @@
     <!-- 頂部導航列 -->
     <header class="h-16 flex-shrink-0 glass-header flex items-center justify-between px-6 z-30 shadow-sm">
         <div class="flex items-center gap-4">
-            <!-- LOGO 修正：加上藍色圓角矩形底色框 -->
             <div class="bg-primary p-1.5 rounded-lg shadow-sm flex items-center justify-center">
-               <!-- 假設 SVG 是白色的，不需要額外 filter。如果 SVG 是黑色的，請加上 class="invert" -->
                <img src="files/svg/THU-Logo.svg" class="h-8 w-auto block" alt="Logo">
             </div>
             <div>
@@ -127,7 +118,6 @@
         
         <!-- 左側：學生清單 -->
         <aside class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-md flex-shrink-0">
-            <!-- 篩選與排序工具列 -->
             <div class="p-4 border-b border-slate-100 space-y-3 bg-slate-50">
                 <div class="relative">
                     <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -152,7 +142,6 @@
                 </div>
             </div>
 
-            <!-- 學生列表 -->
             <div id="student-list" class="flex-grow overflow-y-auto custom-scroll">
                 <div class="p-8 text-center text-slate-400 text-sm">
                     <i class="fas fa-cloud-upload-alt text-3xl mb-2 opacity-50"></i>
@@ -164,7 +153,6 @@
         <!-- 右側：填報工作區 -->
         <section class="flex-1 flex flex-col bg-slate-50 relative overflow-hidden" id="workspace-area">
             
-            <!-- 尚未選擇學生的遮罩 -->
             <div id="empty-workspace" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm">
                 <div class="bg-white p-8 rounded-2xl shadow-xl text-center border border-slate-200 max-w-md">
                     <div class="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
@@ -175,7 +163,6 @@
                 </div>
             </div>
 
-            <!-- 學生基本資訊卡片 (固定頂部) -->
             <div class="bg-white border-b border-slate-200 p-5 flex justify-between items-center z-20 shadow-sm relative flex-shrink-0">
                 <div class="flex gap-4">
                     <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
@@ -196,16 +183,15 @@
                 </div>
             </div>
 
-            <!-- 頁籤系統 (Tabs) -->
+            <!-- 頁籤系統 -->
             <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
-                <!-- Tabs will be injected here -->
                 <button class="tab-btn active" data-tab="settings"><i class="fas fa-cog"></i> 歸戶設定</button>
             </div>
 
-            <!-- 頁籤內容區 (可捲動) -->
+            <!-- 頁籤內容區 -->
             <div class="flex-grow overflow-y-auto custom-scroll p-6 pb-20 relative bg-slate-50">
                 
-                <!-- 1. 歸戶設定 Tab Content -->
+                <!-- 1. 歸戶設定 Tab -->
                 <div id="tab-settings" class="tab-content active max-w-4xl mx-auto">
                     <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
                         <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
@@ -222,31 +208,24 @@
                             <h4 class="text-sm font-bold text-slate-700 mb-3 ml-1 flex items-center gap-2">
                                 <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程 (可勾選)
                             </h4>
-                            <div id="settings-course-list" class="space-y-3 mb-8">
-                                <!-- Unassigned Courses injected here -->
-                            </div>
+                            <div id="settings-course-list" class="space-y-3 mb-8"></div>
                             
                             <h4 class="text-sm font-bold text-slate-700 mb-3 ml-1 flex items-center gap-2 pt-4 border-t border-slate-100">
                                 <span class="w-2 h-2 rounded-full bg-green-500"></span> 已建立的填報單 (已鎖定)
                             </h4>
-                            <div id="app-management-list" class="space-y-3">
-                                <!-- Existing Applications list -->
-                            </div>
+                            <div id="app-management-list" class="space-y-3"></div>
                         </div>
                     </div>
                 </div>
 
                 <!-- 2. 動態產生的填報單 Tab Contents -->
-                <div id="dynamic-tabs-area">
-                    <!-- Application Forms injected here -->
-                </div>
+                <div id="dynamic-tabs-area"></div>
 
             </div>
         </section>
     </main>
 
     <script>
-        // --- 核心資料變數 ---
         let currentTemplate = { fields: [] };
         let allRawData = []; 
         let groupedStudents = {}; 
@@ -254,21 +233,15 @@
         let globalConfig = {};
         let currentYear = null;
 
-        // 系統與核心欄位定義
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
 
-        // --- 初始化 ---
         window.onload = async function() {
             try {
-                const res = await fetch('hedb/config.json'); // 嘗試讀取，但不強求
+                const res = await fetch('hedb/config.json'); 
                 if(res.ok) globalConfig = await res.json();
-                // 移除 console.log 的錯誤提示，避免干擾
-            } catch(e) { 
-                // 靜默失敗，使用預設值
-            }
+            } catch(e) {}
         };
 
-        // --- 1. 檔案處理 ---
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
@@ -310,18 +283,13 @@
 
         async function loadTemplate(year) {
             try {
-                // 嘗試直接讀取 (假設在同一目錄下有 year_templates 資料夾)
                 const path = `year_templates/year_${year}_templates.json`;
-                // 如果這是 hedb/dept_use.html，那麼相對路徑應該是 year_templates/
-                // 但如果是在根目錄測試，可能需要調整。這裡假設標準結構。
-                
                 const res = await fetch(path);
                 if (!res.ok) throw new Error(`找不到 ${year} 學年度的模板設定檔`);
                 const json = await res.json();
                 currentTemplate = json;
             } catch (e) {
                 console.warn("Template load failed:", e);
-                // 不跳 alert 干擾，直接使用空模板，讓使用者至少能看到基本資料
                 currentTemplate = { fields: [] };
             }
         }
@@ -347,9 +315,8 @@
                     };
                 }
                 
-                // Add unique ID to course
                 row._internal_id = `c_${idx}`;
-                row._app_id = null; // Track which app this course belongs to
+                row._app_id = null; 
                 
                 groupedStudents[sid].courses.push(row);
             });
@@ -364,7 +331,6 @@
             document.getElementById('pending-count').innerText = pending;
         }
 
-        // --- 2. 渲染 UI (左側) ---
         function renderStudentList() {
             const container = document.getElementById('student-list');
             container.innerHTML = '';
@@ -420,7 +386,6 @@
         }
         function filterStudents() { renderStudentList(); }
 
-        // --- 3. 填報邏輯 (右側) ---
         function selectStudent(sid) {
             currentStudentId = sid;
             const student = groupedStudents[sid];
@@ -441,7 +406,6 @@
 
             renderTabs(student);
             
-            // 自動跳轉邏輯
             if (student.applications.length > 0) {
                 switchTab(student.applications[0].id);
             } else {
@@ -574,7 +538,6 @@
                 if(c) c._app_id = appId;
             });
 
-            // 初始化 FormData
             const firstCourse = student.courses.find(c => c._internal_id === selectedCourseIds[0]);
             if (firstCourse && currentTemplate.fields) {
                 currentTemplate.fields.forEach(field => {
@@ -660,6 +623,9 @@
                 !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info' && f.category !== 'sys_student_info'
             );
 
+            // [修改 2] 重設表單佈局：更緊湊、直覺
+            // 移除複雜的分組，改為簡單的單欄流式佈局，或者根據內容使用 grid-cols-1 / grid-cols-2
+            // 這裡採用單欄但寬度限制，提升閱讀性
             if (entryFields.length === 0) {
                 container.innerHTML = '<div class="text-center text-slate-400 py-10">無須填報欄位</div>';
                 return;
@@ -680,8 +646,10 @@
                     container.appendChild(title);
                 }
 
+                // [修改 3] 填報欄位顯示：改為單欄，避免過於擁擠
+                // 使用 grid-cols-1 讓每個欄位佔滿寬度，視覺更清晰
                 const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-6';
+                grid.className = 'grid grid-cols-1 gap-4 mb-6'; 
 
                 fields.forEach(field => {
                     const wrapper = document.createElement('div');
@@ -698,7 +666,7 @@
                     if (field.type === 'single_select' || field.type === 'list') {
                         input = document.createElement('select');
                         input.innerHTML = `<option value="">-- 請選擇 --</option>` + (field.options || []).map(opt => `<option value="${opt}" ${opt === currentVal ? 'selected' : ''}>${opt}</option>`).join('');
-                    } else if (field.type === 'text' && (field.label.includes('說明') || field.label.includes('備註'))) {
+                    } else if (field.type === 'text' && (field.label.includes('說明') || field.label.includes('備註') || (field.maxLen && field.maxLen > 50))) {
                         input = document.createElement('textarea');
                         input.value = currentVal;
                     } else if (field.type === 'date') {
@@ -735,17 +703,30 @@
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
+            // [修改 3] 預覽欄位顯示：確保包含所有系統欄位與模板欄位
             let allHeaders = [...CORE_FIELDS]; 
             if (currentTemplate.fields) {
-                currentTemplate.fields.forEach(f => {
-                    if (!allHeaders.includes(f.id)) allHeaders.push(f.id);
+                // 依照 order 排序後加入
+                currentTemplate.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
+                    if (!allHeaders.includes(f.id) && !f.isSystem) { // 排除已在 CORE 的和純系統標記的(如果不想顯示)
+                         // 這裡策略改為：顯示 CORE + 所有非系統填報欄位
+                         allHeaders.push(f.id);
+                    }
                 });
             }
 
             allHeaders.forEach(h => {
                 const th = document.createElement('th');
                 const templateF = currentTemplate.fields?.find(f => f.id === h);
-                th.innerText = templateF ? templateF.label : h;
+                // 優先使用模板 Label，若無則用 ID (針對 CORE FIELDS 嘗試找對應中文)
+                let label = templateF ? templateF.label : h;
+                // 簡單對應 CORE FIELDS 中文
+                if(h==='student_id') label='學號';
+                if(h==='student_name') label='姓名';
+                if(h==='student_dept') label='系所';
+                if(h==='course_name') label='課程';
+                
+                th.innerText = label;
                 thead.appendChild(th);
             });
 
@@ -756,11 +737,14 @@
                 allHeaders.forEach(key => {
                     const td = document.createElement('td');
                     let val = '';
+                    // 優先使用填報數據
                     if (app.formData[key] !== undefined && app.formData[key] !== '') {
                         val = app.formData[key]; 
                         td.classList.add('text-primary', 'font-bold', 'bg-blue-50'); 
                     } else {
-                        val = courseRow[key] || courseRow[currentTemplate.fields?.find(f=>f.id===key)?.label] || '';
+                        // 回退到原始 Excel 數據 (嘗試 ID 或 Label)
+                        const fieldDef = currentTemplate.fields?.find(f=>f.id===key);
+                        val = courseRow[key] || (fieldDef ? courseRow[fieldDef.label] : '') || '';
                     }
                     td.innerText = val;
                     tr.appendChild(td);
