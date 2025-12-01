@@ -954,6 +954,12 @@
                 return; 
             }
 
+            // ★★★ [修正重點] 強制清除舊的 Session Token ★★★
+            // 這確保了 apiFetch 會使用 ghConfig 中的新 Token (當下輸入的) 進行驗證，
+            // 而不是偷用上次登入成功的舊 Token。
+            sessionStorage.removeItem('gh_token'); 
+            // ★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★★
+
             btn.innerHTML = '<div class="spinner"></div> 連線中...'; 
             btn.disabled = true;
             msg.style.opacity = '0'; // Hide previous error message
@@ -978,24 +984,22 @@
                     configData = res.data; 
                     configSha = res.sha; 
                     
-                    // Initialization logic for missing fields in configData (copied from previous code)
+                    // Initialization logic for missing fields...
                     if(!configData.templateCategories) configData.templateCategories = []; 
                     if(!configData.fieldTypes) configData.fieldTypes = []; 
                     if(!configData.addressRules) configData.addressRules = { protected: ['五權', '三民', '三多', '一心', '二聖', '七賢', '八德', '九如', '十全'], keywords: ['段', '路', '街', '巷', '弄', '號', '樓', '鄰', '之'], specials: ['東', '南', '西', '北', '區', '道'] };
                     if(!configData.addressRules.specials) configData.addressRules.specials = ['東', '南', '西', '北', '區', '道'];
                     
-                    // Alliance Mode Depts is now managed within year_templates (Q2)
                     configData.allianceModeDepts = {}; 
 
                     const uniqueTypes = new Map(); 
                     [...SYSTEM_DEFAULT_TYPES, ...configData.fieldTypes].forEach(t => uniqueTypes.set(t.key, t)); 
                     configData.fieldTypes = Array.from(uniqueTypes.values()); 
                 } else {
-                    // Handle other HTTP errors (e.g., 401, 403, 500) that apiFetch might not throw as an exception
                     throw new Error(`GitHub API 錯誤碼: ${res.status}`);
                 }
                 
-                // Ensure system categories exist and are locked
+                // Ensure system categories exist...
                 SYSTEM_CATEGORY_DEFS.forEach(sysCat => {
                     const existingCat = configData.templateCategories.find(c => c.id === sysCat.id);
                     if (!existingCat) { configData.templateCategories.push(sysCat); } 
@@ -1006,7 +1010,7 @@
                 localStorage.setItem('gh_creds_safe', JSON.stringify({ user, repo })); 
                 sessionStorage.setItem('gh_token', token);
                 
-                // 2. Fetch Dept Master Data (Dept details, codes, historical names)
+                // 2. Fetch Dept Master Data
                 try {
                     const deptMasterRes = await apiFetch(DEPT_MASTER_PATH);
                     deptMasterData = deptMasterRes.status === 200 ? deptMasterRes.data : {};
@@ -1017,7 +1021,7 @@
                     deptMasterSha = null;
                 }
                 
-                // 3. Fetch Dept Grouping Data (College grouping/ordering)
+                // 3. Fetch Dept Grouping Data
                 try {
                     const deptRes = await apiFetch(DEPT_DATA_PATH);
                     departmentData = deptRes.status === 200 ? (Array.isArray(deptRes.data) ? deptRes.data : []) : [];
@@ -1044,13 +1048,13 @@
                 renderTemplateCats(); 
                 renderTypeManagerPage(); 
                 renderInternshipView(); 
-                // Render Department View to set up active college/dept list
                 renderDepartmentView(); 
                 
             } catch (err) { 
                 console.error("Login Error:", err); 
                 msg.style.opacity = '1'; 
                 
+                // 錯誤訊息處理
                 if (err.message && err.message.includes('401')) {
                     msg.innerText = '登入失敗：Access Token 錯誤或權限不足';
                 } else if (err.message && err.message.includes('404')) {
