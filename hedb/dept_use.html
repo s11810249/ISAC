@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系所實習資料填報系統</title>
+    <title>東海大學學生校外實習校庫填報輔助系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- Excel 處理庫 -->
@@ -23,15 +23,26 @@
                         surface: '#ffffff',
                         background: '#F8FAFC',
                     },
-                    fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] }
+                    fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] },
+                    animation: {
+                        'fade-in': 'fadeIn 0.6s ease-out forwards',
+                    },
+                    keyframes: {
+                        fadeIn: {
+                            '0%': { opacity: '0', transform: 'translateY(10px)' },
+                            '100%': { opacity: '1', transform: 'translateY(0)' },
+                        }
+                    }
                 }
             }
         }
     </script>
     <style>
+        body { opacity: 0; animation: fade-in 0.6s ease-out forwards; }
+        
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .glass-header { background: rgba(255, 255, 255, 0.95); border-bottom: 1px solid #e2e8f0; }
+        .glass-header { background: rgba(255, 255, 255, 0.95); border-bottom: 1px solid #e2e8f0; backdrop-filter: blur(4px); }
         
         /* Excel-like Table Styles */
         .excel-table { border-collapse: collapse; width: 100%; font-size: 13px; }
@@ -40,15 +51,48 @@
         .excel-table tr:nth-child(even) { background-color: #f9fafb; }
         .excel-table tr:hover { background-color: #eff6ff; }
 
-        .input-group label { font-size: 0.85rem; font-weight: 700; color: #475569; margin-bottom: 0.25rem; display: block; }
-        .input-group input, .input-group select { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.9rem; transition: all 0.2s; outline: none; }
+        /* Form Styling */
+        .input-group label { font-size: 0.9rem; font-weight: 600; color: #334155; margin-bottom: 0.35rem; display: block; }
+        .input-group input, .input-group select { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.6rem; font-size: 0.95rem; transition: all 0.2s; outline: none; background-color: #fff; }
         .input-group input:focus, .input-group select:focus { border-color: #002E5D; ring: 2px solid rgba(0, 46, 93, 0.1); box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
-        .input-group textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.5rem; font-size: 0.9rem; outline: none; resize: vertical; min-height: 80px; }
+        .input-group textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.5rem; padding: 0.6rem; font-size: 0.95rem; outline: none; resize: vertical; min-height: 100px; }
         
         .student-item.active { background-color: #eff6ff; border-left: 4px solid #002E5D; }
         
-        /* Read-only styling for Course Cards */
-        .course-card { background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; margin-bottom: 0.5rem; }
+        /* Course Card Styling */
+        .course-card { 
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; 
+            transition: all 0.2s; position: relative;
+        }
+        .course-card.selectable { cursor: pointer; }
+        .course-card.selectable:hover { border-color: #002E5D; background-color: #f0f9ff; }
+        .course-card.selected { border: 2px solid #002E5D; background-color: #eff6ff; }
+        /* 已歸戶樣式 */
+        .course-card.assigned { 
+            background-color: #f8fafc; border-color: #cbd5e1; opacity: 0.7; 
+            border-left: 4px solid #94a3b8; cursor: default;
+        }
+        
+        .course-check { position: absolute; top: 0.75rem; right: 0.75rem; transform: scale(1.2); }
+
+        /* Form Section Header */
+        .form-section-title { font-size: 1rem; font-weight: bold; color: #002E5D; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.5rem; margin-bottom: 1rem; margin-top: 1.5rem; }
+        .form-section-title:first-child { margin-top: 0; }
+
+        /* Tab System */
+        .tab-btn { 
+            padding: 0.75rem 1.5rem; font-size: 0.9rem; font-weight: 600; color: #64748b; 
+            border-bottom: 3px solid transparent; transition: all 0.2s; cursor: pointer; 
+            display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+        }
+        .tab-btn:hover { color: #002E5D; background-color: #f8fafc; }
+        .tab-btn.active { color: #002E5D; border-bottom-color: #002E5D; background-color: #fff; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fade-in 0.3s ease-out; }
+        
+        /* Logo Filter: Turn white logo to specific dark blue */
+        .logo-filter { filter: invert(13%) sepia(33%) saturate(3736%) hue-rotate(204deg) brightness(91%) contrast(103%); } 
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -56,9 +100,10 @@
     <!-- 頂部導航列 -->
     <header class="h-16 flex-shrink-0 glass-header flex items-center justify-between px-6 z-30 shadow-sm">
         <div class="flex items-center gap-4">
-            <img src="files/svg/THU-Logo.svg" class="h-8 w-auto drop-shadow-sm" alt="Logo">
+            <!-- LOGO 無底色，使用 filter 轉深藍色 -->
+            <img src="files/svg/THU-Logo.svg" class="h-10 w-auto logo-filter" alt="Logo">
             <div>
-                <h1 class="font-bold text-lg text-primary tracking-wide leading-tight">系所實習資料填報</h1>
+                <h1 class="font-bold text-lg text-primary tracking-wide leading-tight">東海大學學生校外實習校庫填報輔助系統</h1>
                 <p class="text-[10px] text-slate-500" id="current-year-display">尚未載入學年模板</p>
             </div>
         </div>
@@ -81,7 +126,7 @@
     <main class="flex-grow flex overflow-hidden">
         
         <!-- 左側：學生清單 -->
-        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-md">
+        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-md flex-shrink-0">
             <!-- 篩選與排序工具列 -->
             <div class="p-4 border-b border-slate-100 space-y-3 bg-slate-50">
                 <div class="relative">
@@ -109,7 +154,6 @@
 
             <!-- 學生列表 -->
             <div id="student-list" class="flex-grow overflow-y-auto custom-scroll">
-                <!-- Javascript will populate this -->
                 <div class="p-8 text-center text-slate-400 text-sm">
                     <i class="fas fa-cloud-upload-alt text-3xl mb-2 opacity-50"></i>
                     <p>請先由左上角<br>匯入 Excel 檔案</p>
@@ -127,78 +171,74 @@
                         <i class="fas fa-user-edit"></i>
                     </div>
                     <h3 class="text-xl font-bold text-slate-800 mb-2">準備填報</h3>
-                    <p class="text-slate-500 text-sm">請從左側清單選擇一位學生，<br>系統將自動載入該學年度的填報欄位。</p>
+                    <p class="text-slate-500 text-sm">請從左側清單選擇一位學生，<br>開始進行實習課程歸戶與填報。</p>
                 </div>
             </div>
 
-            <!-- 填報內容 (可捲動) -->
-            <div class="flex-grow overflow-y-auto custom-scroll p-6 pb-20">
+            <!-- 學生基本資訊卡片 (固定頂部) -->
+            <div class="bg-white border-b border-slate-200 p-5 flex justify-between items-center z-20 shadow-sm relative flex-shrink-0">
+                <div class="flex gap-4">
+                    <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
+                        <span id="header-avatar">?</span>
+                    </div>
+                    <div>
+                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <span id="header-name">學生姓名</span>
+                            <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">ID</span>
+                        </h2>
+                        <p class="text-sm text-slate-500 flex gap-3 mt-1">
+                            <span id="header-dept"><i class="fas fa-graduation-cap mr-1"></i>系所</span>
+                        </p>
+                    </div>
+                </div>
+                <div class="text-right">
+                    <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">未填報</span>
+                </div>
+            </div>
+
+            <!-- 頁籤系統 (Tabs) -->
+            <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
+                <!-- Tabs will be injected here -->
+                <button class="tab-btn active" data-tab="settings"><i class="fas fa-cog"></i> 歸戶設定</button>
+            </div>
+
+            <!-- 頁籤內容區 (可捲動) -->
+            <div class="flex-grow overflow-y-auto custom-scroll p-6 pb-20 relative bg-slate-50">
                 
-                <!-- 學生基本資訊卡片 -->
-                <div class="bg-white rounded-xl shadow-sm border border-slate-200 p-5 mb-6 flex justify-between items-start">
-                    <div class="flex gap-4">
-                        <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
-                            <span id="header-avatar">?</span>
-                        </div>
-                        <div>
-                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <span id="header-name">學生姓名</span>
-                                <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">ID</span>
-                            </h2>
-                            <p class="text-sm text-slate-500 flex gap-3 mt-1">
-                                <span id="header-dept"><i class="fas fa-graduation-cap mr-1"></i>系所</span>
-                                <span id="header-grade"><i class="fas fa-layer-group mr-1"></i>年級</span>
-                            </p>
-                        </div>
-                    </div>
-                    <div class="text-right">
-                        <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">未填報</span>
-                    </div>
-                </div>
-
-                <!-- 雙欄佈局：左邊填報表單，右邊課程清單 -->
-                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
-                    
-                    <!-- 1. 填報表單 (佔 2/3) -->
-                    <div class="lg:col-span-2 space-y-6">
-                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div class="bg-primary/5 px-5 py-3 border-b border-primary/10 flex justify-between items-center">
-                                <h3 class="font-bold text-primary flex items-center gap-2"><i class="fas fa-pen-fancy"></i> 實習資料填報</h3>
-                                <span class="text-xs text-slate-500">此資料將歸戶至該生名下所有課程</span>
+                <!-- 1. 歸戶設定 Tab Content -->
+                <div id="tab-settings" class="tab-content active max-w-4xl mx-auto">
+                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
+                        <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
+                            <div>
+                                <h3 class="font-bold text-indigo-800 text-lg flex items-center gap-2"><i class="fas fa-layer-group"></i> 實習歸戶設定</h3>
+                                <p class="text-xs text-indigo-600 mt-1">請勾選屬於同一筆實習的課程，建立填報單。已歸戶的課程將被鎖定。</p>
                             </div>
-                            <div id="dynamic-form-container" class="p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
-                                <!-- JS 動態生成欄位 -->
-                            </div>
+                            <button onclick="createApplication()" class="btn-create bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
+                                <i class="fas fa-plus-circle"></i> 建立實習填報單
+                            </button>
                         </div>
-                    </div>
-
-                    <!-- 2. 課程清單 (佔 1/3) -->
-                    <div class="lg:col-span-1 space-y-6">
-                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                            <div class="bg-slate-50 px-5 py-3 border-b border-slate-200">
-                                <h3 class="font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-book"></i> 修課紀錄 (歸戶)</h3>
+                        
+                        <div class="p-6">
+                            <h4 class="text-sm font-bold text-slate-700 mb-3 ml-1 flex items-center gap-2">
+                                <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程 (可勾選)
+                            </h4>
+                            <div id="settings-course-list" class="space-y-3 mb-8">
+                                <!-- Unassigned Courses injected here -->
                             </div>
-                            <div id="course-list-container" class="p-4 space-y-3 max-h-[500px] overflow-y-auto custom-scroll">
-                                <!-- JS 生成課程卡片 -->
+                            
+                            <h4 class="text-sm font-bold text-slate-700 mb-3 ml-1 flex items-center gap-2 pt-4 border-t border-slate-100">
+                                <span class="w-2 h-2 rounded-full bg-green-500"></span> 已建立的填報單 (已鎖定)
+                            </h4>
+                            <div id="app-management-list" class="space-y-3">
+                                <!-- Existing Applications list -->
                             </div>
                         </div>
                     </div>
                 </div>
 
-                <!-- 3. 預覽表格 (底部) -->
-                <div class="mt-8">
-                    <h3 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                        <i class="fas fa-table"></i> 資料產出預覽 
-                        <span class="text-xs font-normal text-slate-400">(每個課程一列，實習資料自動帶入)</span>
-                    </h3>
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto">
-                        <table class="excel-table" id="preview-table">
-                            <thead>
-                                <tr id="preview-header-row"></tr>
-                            </thead>
-                            <tbody id="preview-body"></tbody>
-                        </table>
-                    </div>
+                <!-- 2. 動態產生的填報單 Tab Contents -->
+                <div id="dynamic-tabs-area">
+                    <!-- Application Forms injected here -->
                 </div>
 
             </div>
@@ -208,18 +248,17 @@
     <script>
         // --- 核心資料變數 ---
         let currentTemplate = { fields: [] };
-        let allRawData = []; // 原始 Excel 資料 (每一列)
-        let groupedStudents = {}; // 歸戶後的學生資料 Key: StudentID
+        let allRawData = []; 
+        let groupedStudents = {}; 
         let currentStudentId = null;
         let globalConfig = {};
         let currentYear = null;
 
-        // 系統與核心欄位定義 (對應 admin.html)
+        // 系統與核心欄位定義
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
 
         // --- 初始化 ---
         window.onload = async function() {
-            // 嘗試載入 config (非必要，但若有可輔助)
             try {
                 const res = await fetch('config.json');
                 if(res.ok) globalConfig = await res.json();
@@ -247,32 +286,22 @@
                 }
             };
             reader.readAsArrayBuffer(file);
-            event.target.value = ''; // Reset input
+            event.target.value = ''; 
         }
 
         async function processUploadedData(data) {
             allRawData = data;
             
-            // 1. 自動偵測學年度 (抓第一筆資料的 '學年' 或 'school_year' 欄位)
-            // 這裡假設欄位名稱已經是經過 Admin 匹配過的系統欄位 ID，或者中文 '學年'
-            // 為了相容性，我們先找是否存在 year_templates
-            
-            // 簡單偵測：找一個看起來像學年的數字
             let detectedYear = null;
             if (data[0]['school_year']) detectedYear = data[0]['school_year'];
             else if (data[0]['學年']) detectedYear = data[0]['學年'];
-            else detectedYear = '114'; // Fallback Default
+            else detectedYear = '114'; 
 
             currentYear = detectedYear;
             document.getElementById('current-year-display').innerText = `目前學年: ${currentYear} | 總筆數: ${data.length}`;
 
-            // 2. 載入對應的 Template
             await loadTemplate(currentYear);
-
-            // 3. 資料歸戶 (Group by Student ID)
             groupDataByStudent();
-
-            // 4. 渲染左側清單
             renderStudentList();
         }
 
@@ -283,7 +312,6 @@
                 if (!res.ok) throw new Error(`找不到 ${year} 學年度的模板設定檔 (${path})`);
                 const json = await res.json();
                 currentTemplate = json;
-                console.log("Template Loaded:", currentTemplate);
             } catch (e) {
                 alert(`警告: ${e.message}\n將使用預設空模板模式，僅顯示 Excel 原有欄位。`);
                 currentTemplate = { fields: [] };
@@ -293,47 +321,29 @@
         function groupDataByStudent() {
             groupedStudents = {};
             
-            allRawData.forEach(row => {
-                // 寬容處理欄位名稱 (支援中文或 ID)
+            allRawData.forEach((row, idx) => {
                 const sid = row['student_id'] || row['學號'];
                 const sname = row['student_name'] || row['姓名'];
                 const sdept = row['student_dept'] || row['學生所屬學系'] || row['系所'];
                 
-                if (!sid) return; // 無學號則跳過
+                if (!sid) return; 
 
                 if (!groupedStudents[sid]) {
                     groupedStudents[sid] = {
                         id: sid,
                         name: sname || '未知姓名',
                         dept: sdept || '',
-                        status: 'incomplete', // 預設未完成
-                        courses: [], // 該生的所有課程 row
-                        formData: {}  // 該生的共用實習填報資料
+                        status: 'incomplete', 
+                        courses: [], 
+                        applications: [] 
                     };
                 }
                 
-                // 將原始 row 存入 courses
+                // Add unique ID to course
+                row._internal_id = `c_${idx}`;
+                row._app_id = null; // Track which app this course belongs to
+                
                 groupedStudents[sid].courses.push(row);
-                
-                // 如果 Excel 裡面已經有填報過的資料 (例如之前匯出的)，嘗試回填到 formData
-                // 這裡假設 formData 的 key 對應 template 的 field.id
-                if (currentTemplate.fields) {
-                    currentTemplate.fields.forEach(field => {
-                        // 排除系統自動帶入的欄位 (如學號、課名)，只抓填報欄位
-                        if (!CORE_FIELDS.includes(field.id) && !field.isSystem) {
-                            const val = row[field.id] || row[field.label]; // 嘗試 ID 或 Label
-                            if (val && !groupedStudents[sid].formData[field.id]) {
-                                groupedStudents[sid].formData[field.id] = val;
-                            }
-                        }
-                    });
-                }
-                
-                // 簡單判斷：如果有填寫任一非系統欄位，就視為已完成 (或是依據特定欄位判斷)
-                // 這裡先簡單邏輯：如果有 formData 就當作 completed (之後可優化)
-                if (Object.keys(groupedStudents[sid].formData).length > 0) {
-                    groupedStudents[sid].status = 'completed';
-                }
             });
             
             updateStats();
@@ -341,7 +351,7 @@
 
         function updateStats() {
             const all = Object.values(groupedStudents);
-            const pending = all.filter(s => s.status === 'incomplete').length;
+            const pending = all.filter(s => s.applications.length === 0).length;
             document.getElementById('total-count').innerText = all.length;
             document.getElementById('pending-count').innerText = pending;
         }
@@ -354,27 +364,25 @@
             const searchTerm = document.getElementById('search-input').value.toLowerCase();
             const statusFilter = document.getElementById('status-filter').value;
             
-            // 轉為陣列並排序/過濾
             let students = Object.values(groupedStudents);
             
-            // Filter
             students = students.filter(s => {
                 const matchSearch = s.id.toLowerCase().includes(searchTerm) || s.name.toLowerCase().includes(searchTerm);
-                const matchStatus = statusFilter === 'all' || s.status === statusFilter;
+                const isCompleted = s.applications.length > 0;
+                const matchStatus = statusFilter === 'all' || 
+                                    (statusFilter === 'completed' && isCompleted) || 
+                                    (statusFilter === 'incomplete' && !isCompleted);
                 return matchSearch && matchStatus;
             });
-
-            // Sort (Current Sort Mode logic needed, defaulting to ID)
-            // (Simulated Sort)
-            // students.sort(...) 
 
             students.forEach(s => {
                 const el = document.createElement('div');
                 el.className = `student-item p-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition ${currentStudentId === s.id ? 'active' : ''}`;
                 el.onclick = () => selectStudent(s.id);
                 
-                const statusBadge = s.status === 'completed' 
-                    ? `<span class="text-success"><i class="fas fa-check-circle"></i></span>` 
+                const appCount = s.applications.length;
+                const statusBadge = appCount > 0
+                    ? `<span class="text-success text-xs font-bold bg-green-50 px-2 py-0.5 rounded">${appCount} 筆實習</span>` 
                     : `<span class="text-slate-300"><i class="far fa-circle"></i></span>`;
 
                 el.innerHTML = `
@@ -384,27 +392,25 @@
                             <div class="text-xs text-slate-500 font-mono">${s.id}</div>
                             <div class="text-[10px] text-slate-400 mt-1">${s.dept} · ${s.courses.length} 門課</div>
                         </div>
-                        <div class="text-lg">${statusBadge}</div>
+                        <div class="text-right">${statusBadge}</div>
                     </div>
                 `;
                 container.appendChild(el);
             });
         }
 
-        function sortStudents(type) {
-            // 實作排序邏輯 (這裡簡化，直接重繪)
-            const students = Object.values(groupedStudents);
-            if (type === 'id') students.sort((a, b) => a.id.localeCompare(b.id));
-            if (type === 'name') students.sort((a, b) => a.name.localeCompare(b.name));
-            if (type === 'dept') students.sort((a, b) => (a.dept||'').localeCompare(b.dept||''));
-            
-            // Hack: replace groupedStudents order for render? 
-            // Better to have a 'renderedList' variable. For now just re-render is fine if we sort the source object keys order or filtering logic.
-            // Simplified: Just log for now, need state management for sort order.
-            console.log("Sort by", type);
-            // Refresh UI logic would go here
+        function sortStudents(type) { 
+            // 簡單排序實作
+            let students = Object.values(groupedStudents);
+            if(type === 'id') students.sort((a,b) => a.id.localeCompare(b.id));
+            if(type === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
+            if(type === 'dept') students.sort((a,b) => (a.dept||'').localeCompare(b.dept||''));
+            // 重新整理物件順序 (UI 渲染依賴 values 順序)
+            const newGrouped = {};
+            students.forEach(s => newGrouped[s.id] = s);
+            groupedStudents = newGrouped;
+            renderStudentList();
         }
-        
         function filterStudents() { renderStudentList(); }
 
         // --- 3. 填報邏輯 (右側) ---
@@ -412,131 +418,329 @@
             currentStudentId = sid;
             const student = groupedStudents[sid];
             
-            // Update UI Active State
             document.querySelectorAll('.student-item').forEach(el => el.classList.remove('active'));
-            // (Highlighting logic would happen in re-render or explicit DOM manipulation)
-            renderStudentList(); // Re-render to show active state
+            renderStudentList(); 
 
-            // Remove empty mask
             document.getElementById('empty-workspace').classList.add('hidden');
             
-            // Update Header Info
+            // Update Header
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
             document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
-            const isDone = student.status === 'completed';
+            const isDone = student.applications.length > 0;
             document.getElementById('header-status').className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${isDone ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
-            document.getElementById('header-status').innerText = isDone ? '已完成' : '未填報';
+            document.getElementById('header-status').innerText = isDone ? `已建立 ${student.applications.length} 筆歸戶` : '未填報';
 
-            // Render Form & Lists
-            renderDynamicForm(student);
-            renderCourseList(student);
-            renderPreviewTable(student);
+            // --- 歸戶與頁籤跳轉邏輯修正 ---
+            renderTabs(student);
+            
+            // 判斷邏輯：
+            // 如果已建立歸戶 (applications > 0)，直接跳到第一張填報單 (tab = app.id)
+            // 否則，停留在「歸戶設定」頁籤 (tab = settings)
+            if (student.applications.length > 0) {
+                switchTab(student.applications[0].id);
+            } else {
+                switchTab('settings');
+            }
+            
+            // Render settings just in case (e.g. for creating new apps)
+            renderSettingsTab(student);
         }
 
-        function renderDynamicForm(student) {
-            const container = document.getElementById('dynamic-form-container');
-            container.innerHTML = '';
+        function renderTabs(student) {
+            const container = document.getElementById('tabs-container');
+            // Reset tabs
+            container.innerHTML = `<button class="tab-btn active" onclick="switchTab('settings')" data-tab="settings"><i class="fas fa-cog"></i> 歸戶設定</button>`;
+            
+            student.applications.forEach((app, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'tab-btn';
+                btn.onclick = () => switchTab(app.id);
+                btn.dataset.tab = app.id;
+                const unitName = app.formData['internship_institution_name'] || app.formData['實習機構名稱'] || `實習 ${idx+1}`;
+                btn.innerHTML = `<i class="fas fa-file-alt mr-1 text-slate-400"></i> ${unitName}`;
+                container.appendChild(btn);
+            });
+        }
 
-            // Filter out system fields that shouldn't be edited here (like student ID)
-            // Only show fields meant for data entry
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelector(`.tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            
+            if (tabId === 'settings') {
+                document.getElementById('tab-settings').classList.add('active');
+                if(currentStudentId) renderSettingsTab(groupedStudents[currentStudentId]);
+            } else {
+                let contentDiv = document.getElementById(`content-${tabId}`);
+                if (!contentDiv) {
+                    contentDiv = createApplicationTabContent(tabId);
+                    document.getElementById('dynamic-tabs-area').appendChild(contentDiv);
+                }
+                
+                document.querySelectorAll('#dynamic-tabs-area > div').forEach(d => d.style.display = 'none');
+                contentDiv.style.display = 'block';
+                contentDiv.classList.add('active');
+            }
+        }
+
+        function renderSettingsTab(student) {
+            const listContainer = document.getElementById('settings-course-list');
+            const appsContainer = document.getElementById('app-management-list');
+            listContainer.innerHTML = '';
+            appsContainer.innerHTML = '';
+
+            // 1. 未歸戶課程 (可勾選)
+            const unassignedCourses = student.courses.filter(c => !c._app_id);
+            if (unassignedCourses.length === 0) {
+                listContainer.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm bg-slate-50 rounded-lg">所有課程皆已歸戶</div>';
+            } else {
+                unassignedCourses.forEach(c => {
+                    const el = document.createElement('div');
+                    el.className = 'course-card selectable flex items-center justify-between';
+                    el.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</h4>
+                            <div class="text-xs text-slate-500 mt-1">${c['semester']?`第${c['semester']}學期`:''} | ${c['course_id']||c['選課代號']}</div>
+                        </div>
+                        <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary" value="${c._internal_id}">
+                    `;
+                    el.onclick = (e) => {
+                        if(e.target.type !== 'checkbox') {
+                            const cb = el.querySelector('input');
+                            cb.checked = !cb.checked;
+                        }
+                    };
+                    listContainer.appendChild(el);
+                });
+            }
+
+            // 2. 已建立的填報單 (顯示已鎖定課程)
+            if (student.applications.length === 0) {
+                appsContainer.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-300">尚未建立任何填報單</div>';
+            } else {
+                student.applications.forEach((app, idx) => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm';
+                    
+                    const unitName = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
+                    
+                    // 顯示綁定的課程
+                    const courseItems = app.courseIds.map(cid => {
+                        const c = student.courses.find(x => x._internal_id === cid);
+                        return c ? `<div class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded inline-block mr-1 mb-1">${c['course_name']||c['課程名稱']}</div>` : '';
+                    }).join('');
+
+                    el.innerHTML = `
+                        <div class="flex justify-between items-start mb-2">
+                            <h4 class="font-bold text-primary text-sm flex items-center gap-2">
+                                <i class="fas fa-file-contract"></i> ${unitName}
+                            </h4>
+                            <div class="flex gap-2">
+                                <button onclick="switchTab('${app.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold px-2 py-1 rounded hover:bg-indigo-50 transition">
+                                    <i class="fas fa-edit"></i> 編輯填報
+                                </button>
+                                <button onclick="deleteApplication('${app.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 rounded hover:bg-red-50 transition">
+                                    <i class="fas fa-unlock-alt"></i> 解除歸戶
+                                </button>
+                            </div>
+                        </div>
+                        <div class="pl-5 border-l-2 border-slate-200">
+                            ${courseItems}
+                        </div>
+                    `;
+                    appsContainer.appendChild(el);
+                });
+            }
+        }
+
+        function createApplication() {
+            const student = groupedStudents[currentStudentId];
+            const checkboxes = document.querySelectorAll('.course-select-check:checked');
+            if (checkboxes.length === 0) return alert('請先勾選至少一門課程以建立歸戶。');
+
+            const selectedCourseIds = Array.from(checkboxes).map(cb => cb.value);
+            
+            const appId = 'app_' + Date.now();
+            const newApp = {
+                id: appId,
+                courseIds: selectedCourseIds,
+                formData: {}
+            };
+
+            // 鎖定課程 (Assign app_id)
+            selectedCourseIds.forEach(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if(c) c._app_id = appId;
+            });
+
+            // 初始化 formData (抓第一門課的資料)
+            const firstCourse = student.courses.find(c => c._internal_id === selectedCourseIds[0]);
+            if (firstCourse && currentTemplate.fields) {
+                currentTemplate.fields.forEach(field => {
+                    if (!CORE_FIELDS.includes(field.id) && !field.isSystem) {
+                        const val = firstCourse[field.id] || firstCourse[field.label];
+                        if (val) newApp.formData[field.id] = val;
+                    }
+                });
+            }
+
+            student.applications.push(newApp);
+            
+            renderTabs(student);
+            switchTab(appId); 
+            updateStats();
+            renderStudentList();
+        }
+
+        function deleteApplication(appId) {
+            if(!confirm('確定要解除此歸戶設定嗎？\n\n注意：這將會刪除此填報單中已填寫的實習資料，並釋放課程回到未歸戶狀態。')) return;
+            
+            const student = groupedStudents[currentStudentId];
+            const appIdx = student.applications.findIndex(a => a.id === appId);
+            if (appIdx === -1) return;
+
+            const app = student.applications[appIdx];
+            // 釋放課程
+            app.courseIds.forEach(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if(c) c._app_id = null;
+            });
+
+            student.applications.splice(appIdx, 1);
+            
+            const tabContent = document.getElementById(`content-${appId}`);
+            if(tabContent) tabContent.remove();
+
+            renderTabs(student);
+            switchTab('settings');
+            updateStats();
+            renderStudentList();
+        }
+
+        // --- Application Tab Render Logic ---
+        function createApplicationTabContent(appId) {
+            const student = groupedStudents[currentStudentId];
+            const app = student.applications.find(a => a.id === appId);
+            
+            const div = document.createElement('div');
+            div.id = `content-${appId}`;
+            div.className = 'tab-content max-w-5xl mx-auto';
+            
+            const formCard = document.createElement('div');
+            formCard.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8';
+            formCard.innerHTML = `
+                <div class="bg-primary/5 px-6 py-4 border-b border-primary/10 flex justify-between items-center">
+                    <h3 class="font-bold text-primary flex items-center gap-2"><i class="fas fa-pen-fancy"></i> 實習資料填報</h3>
+                    <div class="text-xs text-slate-500">此資料將套用於 ${app.courseIds.length} 門已歸戶課程</div>
+                </div>
+                <div class="p-8 dynamic-form-body"></div>
+            `;
+            
+            renderDynamicFormFields(formCard.querySelector('.dynamic-form-body'), app, student);
+            div.appendChild(formCard);
+
+            const previewCard = document.createElement('div');
+            previewCard.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto';
+            previewCard.innerHTML = `
+                <div class="bg-slate-50 px-6 py-3 border-b border-slate-200 font-bold text-sm text-slate-700">資料預覽</div>
+                <table class="excel-table">
+                    <thead><tr class="preview-head"></tr></thead>
+                    <tbody class="preview-body"></tbody>
+                </table>
+            `;
+            
+            updateTabPreview(previewCard, app, student);
+            div._previewCard = previewCard; 
+            div.appendChild(previewCard);
+            
+            return div;
+        }
+
+        function renderDynamicFormFields(container, app, student) {
             const entryFields = currentTemplate.fields.filter(f => 
-                !f.isSystem && 
-                !CORE_FIELDS.includes(f.id) &&
-                // exclude specific system categories if defined
-                f.category !== 'sys_course_info' && f.category !== 'sys_student_info'
+                !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info' && f.category !== 'sys_student_info'
             );
 
             if (entryFields.length === 0) {
-                container.innerHTML = '<div class="col-span-2 text-center text-slate-400 py-10">無須填報欄位或模板未載入</div>';
+                container.innerHTML = '<div class="text-center text-slate-400 py-10">無須填報欄位</div>';
                 return;
             }
 
+            const categories = {};
             entryFields.sort((a,b) => (a.order||0) - (b.order||0)).forEach(field => {
-                const wrapper = document.createElement('div');
-                wrapper.className = 'input-group';
-                
-                const label = document.createElement('label');
-                label.innerHTML = `${field.label} ${field.required ? '<span class="text-red-500">*</span>' : ''}`;
-                wrapper.appendChild(label);
+                const cat = field.category || 'uncategorized';
+                if (!categories[cat]) categories[cat] = [];
+                categories[cat].push(field);
+            });
 
-                const currentVal = student.formData[field.id] || '';
-
-                let input;
-                if (field.type === 'single_select' || field.type === 'list') {
-                    input = document.createElement('select');
-                    input.innerHTML = `<option value="">請選擇...</option>` + 
-                        (field.options || []).map(opt => `<option value="${opt}" ${opt === currentVal ? 'selected' : ''}>${opt}</option>`).join('');
-                } else if (field.type === 'text' && field.label.includes('說明')) {
-                    input = document.createElement('textarea');
-                    input.value = currentVal;
-                } else if (field.type === 'date') {
-                    input = document.createElement('input');
-                    input.type = 'date'; // Simple date, ignoring advanced ROC logic for basic frontend
-                    input.value = currentVal;
-                } else {
-                    input = document.createElement('input');
-                    input.type = field.type === 'number' ? 'number' : 'text';
-                    input.value = currentVal;
+            for (const [catId, fields] of Object.entries(categories)) {
+                if (Object.keys(categories).length > 1 || catId !== 'uncategorized') {
+                    const title = document.createElement('h4');
+                    title.className = 'form-section-title';
+                    title.innerText = catId === 'uncategorized' ? '基本資料' : catId;
+                    container.appendChild(title);
                 }
 
-                // Event Listener: Auto-save to object
-                input.onchange = (e) => {
-                    student.formData[field.id] = e.target.value;
-                    student.status = 'completed'; // Mark as touched/completed
-                    updateStats();
-                    renderPreviewTable(student); // Update preview immediately
-                    // Update Header Status UI
-                    document.getElementById('header-status').className = "inline-block px-3 py-1 rounded-full text-xs font-bold bg-green-100 text-success";
-                    document.getElementById('header-status').innerText = "已填報 (未匯出)";
-                };
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-6';
 
-                wrapper.appendChild(input);
-                container.appendChild(wrapper);
-            });
+                fields.forEach(field => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = 'input-group';
+                    
+                    const label = document.createElement('label');
+                    label.innerHTML = `${field.label} ${field.required ? '<span class="text-red-500">*</span>' : ''}`;
+                    if (field.description) label.innerHTML += `<span class="block text-xs text-slate-400 font-normal mt-1">${field.description}</span>`;
+                    wrapper.appendChild(label);
+
+                    const currentVal = app.formData[field.id] || '';
+                    let input;
+                    
+                    if (field.type === 'single_select' || field.type === 'list') {
+                        input = document.createElement('select');
+                        input.innerHTML = `<option value="">-- 請選擇 --</option>` + (field.options || []).map(opt => `<option value="${opt}" ${opt === currentVal ? 'selected' : ''}>${opt}</option>`).join('');
+                    } else if (field.type === 'text' && (field.label.includes('說明') || field.label.includes('備註'))) {
+                        input = document.createElement('textarea');
+                        input.value = currentVal;
+                    } else if (field.type === 'date') {
+                        input = document.createElement('input');
+                        input.type = 'date'; 
+                        input.value = currentVal;
+                    } else {
+                        input = document.createElement('input');
+                        input.type = field.type === 'number' ? 'number' : 'text';
+                        input.value = currentVal;
+                    }
+
+                    input.onchange = (e) => {
+                        app.formData[field.id] = e.target.value;
+                        const tabDiv = document.getElementById(`content-${app.id}`);
+                        if(tabDiv && tabDiv._previewCard) updateTabPreview(tabDiv._previewCard, app, student);
+                        
+                        // 動態更新頁籤標題
+                        if (field.id === 'internship_institution_name' || field.label === '實習機構名稱') {
+                            const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
+                            if (tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt mr-1 text-slate-400"></i> ${e.target.value || '未命名實習'}`;
+                        }
+                    };
+
+                    wrapper.appendChild(input);
+                    grid.appendChild(wrapper);
+                });
+                container.appendChild(grid);
+            }
         }
 
-        function renderCourseList(student) {
-            const container = document.getElementById('course-list-container');
-            container.innerHTML = '';
-
-            student.courses.forEach((course, idx) => {
-                const card = document.createElement('div');
-                card.className = 'course-card';
-                
-                // 嘗試抓取課程名稱與代碼
-                const cName = course['course_name'] || course['課程名稱'] || '未知課程';
-                const cId = course['course_id'] || course['選課代號'] || '-';
-                const cSem = course['semester'] || course['學期'] || '';
-                const cCredit = course['internship_credit'] || course['學分'] || '';
-
-                card.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <h4 class="font-bold text-sm text-slate-700">${cName}</h4>
-                        <span class="text-xs bg-slate-200 px-1.5 py-0.5 rounded text-slate-600">${cSem ? '第'+cSem+'學期' : ''}</span>
-                    </div>
-                    <div class="text-xs text-slate-500 mt-1 flex gap-2">
-                        <span><i class="fas fa-barcode"></i> ${cId}</span>
-                        <span><i class="fas fa-star"></i> ${cCredit} 學分</span>
-                    </div>
-                `;
-                container.appendChild(card);
-            });
-        }
-
-        function renderPreviewTable(student) {
-            const thead = document.getElementById('preview-header-row');
-            const tbody = document.getElementById('preview-body');
+        function updateTabPreview(card, app, student) {
+            const thead = card.querySelector('.preview-head');
+            const tbody = card.querySelector('.preview-body');
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            // Combine Core Fields + Template Fields
-            // 預覽表格應該顯示：系統欄位 (唯讀) + 填報欄位 (新值)
-            
-            // 1. Headers
-            // Find all unique keys from raw data + template fields
             let allHeaders = [...CORE_FIELDS]; 
             if (currentTemplate.fields) {
                 currentTemplate.fields.forEach(f => {
@@ -546,30 +750,24 @@
 
             allHeaders.forEach(h => {
                 const th = document.createElement('th');
-                // Try to find label in template
                 const templateF = currentTemplate.fields?.find(f => f.id === h);
                 th.innerText = templateF ? templateF.label : h;
                 thead.appendChild(th);
             });
 
-            // 2. Rows (One per course)
-            student.courses.forEach(courseRow => {
+            const appCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+
+            appCourses.forEach(courseRow => {
                 const tr = document.createElement('tr');
                 allHeaders.forEach(key => {
                     const td = document.createElement('td');
-                    
-                    // Logic: 
-                    // If it's a form data field, use the student.formData value
-                    // If not (or empty), use the original courseRow value
-                    
                     let val = '';
-                    if (student.formData[key] !== undefined && student.formData[key] !== '') {
-                        val = student.formData[key]; // Use filled data
-                        td.classList.add('text-primary', 'font-bold', 'bg-blue-50'); // Highlight edited fields
+                    if (app.formData[key] !== undefined && app.formData[key] !== '') {
+                        val = app.formData[key]; 
+                        td.classList.add('text-primary', 'font-bold', 'bg-blue-50'); 
                     } else {
                         val = courseRow[key] || courseRow[currentTemplate.fields?.find(f=>f.id===key)?.label] || '';
                     }
-                    
                     td.innerText = val;
                     tr.appendChild(td);
                 });
@@ -581,35 +779,42 @@
         function exportToExcel() {
             if (Object.keys(groupedStudents).length === 0) return alert('無資料可匯出');
 
-            // Construct Flat Data
             const flatData = [];
-            
-            // Order of columns: System Fields -> Form Fields
             const headers = [];
-            // We want to export using the structure defined in the template if possible
+            
             if (currentTemplate.fields && currentTemplate.fields.length > 0) {
                 currentTemplate.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
                     headers.push({ key: f.id, label: f.label });
                 });
             } else {
-                // Fallback: use keys from first row of raw data
                 Object.keys(allRawData[0]).forEach(k => headers.push({key: k, label: k}));
             }
 
             Object.values(groupedStudents).forEach(student => {
-                student.courses.forEach(courseRow => {
-                    const rowObj = {};
-                    
-                    headers.forEach(h => {
-                        // Priority: Filled Data -> Original Course Data
-                        let val = student.formData[h.key];
-                        if (val === undefined || val === '') {
-                            // Try finding by ID or Label in original
-                            val = courseRow[h.key] || courseRow[h.label] || '';
-                        }
-                        rowObj[h.label] = val; // Use Label for Excel Header
+                // 1. 處理已歸戶的課程 (套用填報資料)
+                student.applications.forEach(app => {
+                    const appCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+                    appCourses.forEach(courseRow => {
+                        const rowObj = {};
+                        headers.forEach(h => {
+                            let val = app.formData[h.key];
+                            if (val === undefined || val === '') {
+                                val = courseRow[h.key] || courseRow[h.label] || '';
+                            }
+                            rowObj[h.label] = val; 
+                        });
+                        flatData.push(rowObj);
                     });
-                    
+                });
+
+                // 2. 處理未歸戶的課程 (保留原始資料)
+                const unassigned = student.courses.filter(c => !c._app_id);
+                unassigned.forEach(courseRow => {
+                    const rowObj = {};
+                    headers.forEach(h => {
+                        let val = courseRow[h.key] || courseRow[h.label] || '';
+                        rowObj[h.label] = val; 
+                    });
                     flatData.push(rowObj);
                 });
             });
