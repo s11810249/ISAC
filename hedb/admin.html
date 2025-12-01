@@ -2516,7 +2516,13 @@
         // 步驟 1: 觸發處理，先進行檢測
         async function executeFileProcessing(fieldsToProcess) {
             document.getElementById('mapping-modal').classList.add('hidden');
-            document.getElementById('group-list-empty-state').innerHTML = '<div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>檢查資料中...';
+            
+            // ==========================================
+            // [修正] 直接操作父容器，避免找不到子元素導致錯誤
+            // ==========================================
+            const sidebarList = document.getElementById('internship-group-list');
+            sidebarList.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state"><div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>檢查資料中...</div>';
+            // ==========================================
             
             pendingFieldsToProcess = fieldsToProcess;
             const conflicts = checkDataConflicts(fieldsToProcess);
@@ -2626,46 +2632,98 @@
             finalizeProcessing(pendingFieldsToProcess, resolutions);
         }
 
-        // 步驟 2: 最終執行資料處理 (包含排序、分組)
+        // 步驟 2: 最終執行資料處理
         async function finalizeProcessing(fieldsToProcess, resolutions) {
-            document.getElementById('group-list-empty-state').innerHTML = '<div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>彙整中...';
+            // ==========================================
+            // [修正] 同樣改為操作父容器
+            // ==========================================
+            const sidebarList = document.getElementById('internship-group-list');
+            sidebarList.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state"><div class="spinner border-slate-300 border-t-primary mx-auto mb-2"></div>彙整中...</div>';
+            // ==========================================
+        // [新增邏輯] 1. 建立「名稱 -> ID」的反向對照表
+        // ==========================================
+        const deptNameToIdMap = new Map();
+        const targetYear = currentConsolidationYear; // 使用當前選擇的彙整學年度 (例如 114)
 
-            const mappedData = [];
-            
-            // 建立快速查詢衝突處理方式的 Map
-            const resolutionMap = new Map(); // Key: fieldId_value -> action
-            resolutions.forEach(r => resolutionMap.set(`${r.fieldId}:::${r.value}`, r.action));
+        // 遍歷所有系所主檔 (deptMasterData)
+        for (const [deptId, master] of Object.entries(deptMasterData)) {
+            // A. 抓取該學年度的歷史全稱
+            const yearFullName = master.historical_names?.[targetYear];
+            if (yearFullName) {
+                deptNameToIdMap.set(yearFullName.trim(), deptId);
+            }
+            // B. 也要抓取預設全稱 (fallback)
+            if (master.name) {
+            deptNameToIdMap.set(master.name.trim(), deptId);
+            }
+            // C. 甚至可以抓取代碼 (Code) 對應
+            if (master.code) {
+                deptNameToIdMap.set(master.code.trim(), deptId);
+            }
+        }
+    
+        // (選用) 同樣建立學院的對照表
+        const collegeNameToIdMap = new Map();
+        departmentData.forEach(col => {
+            const yearName = col.historical_names?.[targetYear] || col.name;
+            if (yearName) collegeNameToIdMap.set(yearName.trim(), col.id);
+            if (col.name) collegeNameToIdMap.set(col.name.trim(), col.id);
+        });
+        // ==========================================
 
-            // Data Mapping Loop
-            for (let i = 0; i < currentStudentData.length; i++) {
-                const row = currentStudentData[i];
-                const newRow = {};
-                let skipRow = false;
+        const mappedData = [];
+        // ... (原本的 resolutionMap 建立邏輯) ...
 
-                // Map Selected Fields
-                fieldsToProcess.forEach(modField => {
-                    if (skipRow) return;
+        // Data Mapping Loop
+        // Data Mapping Loop
+        for (let i = 0; i < currentStudentData.length; i++) {
+            const row = currentStudentData[i];
+            const newRow = {};
+            let skipRow = false;
 
-                    const mapping = currentMapping[modField.id];
-                    const fileHeader = mapping.excelHeader;
-                    let value = fileHeader ? (row[fileHeader] || '').toString().trim() : '';
+            fieldsToProcess.forEach(modField => {
+                if (skipRow) return;
 
-                    // 應用衝突解決策略
-                    if ((modField.type === 'single_select' || modField.type === 'list') && modField.options && value) {
-                        if (!modField.options.includes(value)) {
-                            const action = resolutionMap.get(`${modField.id}:::${value}`);
-                            if (action === 'skip') {
-                                skipRow = true;
-                            } else if (action === 'clear') {
-                                value = '';
-                            }
-                            // action === 'add'，值保留
+                // 1. 取得 Mapping 設定
+                const mapping = currentMapping[modField.id];
+                
+                // ★★★ 修正重點：明確定義 fileHeader ★★★
+                const fileHeader = mapping ? mapping.excelHeader : null;
+                
+                // 2. 從 Excel Row 取值
+                let value = fileHeader ? (row[fileHeader] || '').toString().trim() : '';
+
+                // 3. 衝突檢測處理 (依據之前使用者的選擇)
+                if ((modField.type === 'single_select' || modField.type === 'list') && modField.options && value) {
+                    if (!modField.options.includes(value)) {
+                        const action = resolutionMap.get(`${modField.id}:::${value}`);
+                        if (action === 'skip') {
+                            skipRow = true;
+                        } else if (action === 'clear') {
+                            value = '';
                         }
+                        // action === 'add' 時，保留原值
                     }
-                    newRow[modField.id] = value;
-                });
+                }
 
-                if (skipRow) continue;
+                // ==========================================
+                // [新增邏輯] 4. 系所/學院 名稱轉 ID (Reverse Lookup)
+                // ==========================================
+                // 必須確認 deptNameToIdMap 已在迴圈外建立 (參考上一則回應)
+                if (modField.type === 'department' && value) {
+                    // 嘗試從對照表中找 ID (例如 "外國語文學系" -> "foreign_lang")
+                    const foundId = deptNameToIdMap.get(value);
+                    if (foundId) value = foundId; 
+                } else if (modField.type === 'college' && value) {
+                    const foundId = collegeNameToIdMap.get(value);
+                    if (foundId) value = foundId;
+                }
+                // ==========================================
+
+                newRow[modField.id] = value;
+            });
+
+            if (skipRow) continue;
 
                 // Alias Mapping (解決 ID 不一致)
                 // offering_department -> course_dept
@@ -2774,11 +2832,10 @@
             const totalRecords = currentConsolidatedResults ? Object.values(currentConsolidatedResults).reduce((sum, group) => sum + group.length, 0) : 0;
             const sortedGroupNames = currentConsolidatedResults ? Object.keys(currentConsolidatedResults).sort() : [];
             
-            // Add 'All' item (Issue 1 fix for title)
+            // Add 'All' item
             el.innerHTML += `<div class="list-item" id="group-all-item" onclick="selectConsolidatedGroup('all')"><span class="font-bold text-sm">全部</span><span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded ml-2">${totalRecords}</span></div>`;
             
             if (totalRecords === 0) {
-                 // Add empty state if no records
                  el.innerHTML += '<div class="p-8 text-center text-slate-400 text-xs" id="group-list-empty-state">無可彙整名單</div>';
             }
             
@@ -2788,21 +2845,44 @@
                     const count = currentConsolidatedResults[groupName].length;
                     const isActive = currentSelectedGroup === groupName;
                     
+                    // ==========================================
+                    // [新增邏輯] 嘗試將 ID (groupName) 轉為 簡稱 (Display Name)
+                    // ==========================================
+                    let displayName = groupName;
+                    
+                    // 1. 嘗試解釋為系所 ID，並取得簡稱 (true)
+                    const deptName = getDeptDisplayName(groupName, true); 
+                    if (deptName !== groupName) {
+                        displayName = deptName;
+                    } else {
+                        // 2. 如果不是系所，嘗試解釋為學院 ID
+                        const colName = getCollegeDisplayName(groupName, true);
+                        if (colName !== groupName) {
+                            displayName = colName;
+                        }
+                    }
+                    // 3. 如果都不是 (例如是聯盟名稱)，就維持原樣
+                    // ==========================================
+
                     const div = document.createElement('div');
                     div.className = `list-item ${isActive ? 'active' : ''}`;
                     div.onclick = () => selectConsolidatedGroup(groupName);
-                    div.innerHTML = `<div class="flex items-center justify-between"><span class="font-bold text-sm truncate">${groupName}</span><span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">${count}</span></div>`;
+                    
+                    // 顯示 displayName
+                    div.innerHTML = `<div class="flex items-center justify-between"><span class="font-bold text-sm truncate">${displayName}</span><span class="text-xs bg-primary/10 text-primary px-1.5 py-0.5 rounded">${count}</span></div>`;
                     el.appendChild(div);
                 });
             }
             
-            // Re-apply active state
+            // Re-apply active state ... (維持原樣)
             document.querySelectorAll('#internship-group-list .list-item').forEach(item => {
                 item.classList.remove('active');
                 if(item.id === 'group-all-item' && currentSelectedGroup === 'all') {
                     item.classList.add('active');
                 } else if(item.querySelector('span')?.innerText.includes(currentSelectedGroup) && currentSelectedGroup !== 'all') {
-                    item.classList.add('active');
+                    // 注意：這裡比對文字可能會因為簡稱轉換而失效，改用 index 或 dataset 會更穩，但為求簡便，
+                    // 建議直接依賴上方的 class 渲染，或是在這裡不做額外檢查
+                    if (currentSelectedGroup === item.dataset.groupId) item.classList.add('active'); // 需在上方加入 data-group-id
                 }
             });
         }
@@ -2854,17 +2934,28 @@
             const allOutputFields = getFieldsToExport(); 
             const fieldMap = new Map(allOutputFields.map(f => [f.id, f]));
             
-            // 2. ★★★ 修正：嚴格依據 OUTPUT_DISPLAY_FIELDS 產生欄位 (只顯示這 10 個) ★★★
+            // 2. 嚴格依據 OUTPUT_DISPLAY_FIELDS 產生欄位
             const uiOutputFields = OUTPUT_DISPLAY_FIELDS.map(displayDef => {
                 const moduleDef = fieldMap.get(displayDef.id) || {};
+                
+                // ==========================================
+                // [新增邏輯] 強制修正欄位類型 (Force Type)
+                // 確保即使模板設定錯誤，關鍵欄位也能正確轉譯名稱
+                // ==========================================
+                let effectiveType = moduleDef.type;
+                if (['student_dept', 'course_dept'].includes(displayDef.id)) effectiveType = 'department';
+                if (['student_college', 'course_college'].includes(displayDef.id)) effectiveType = 'college';
+                // ==========================================
+
                 return {
-                    ...moduleDef,       // 繼承模組屬性 (如 type)
-                    ...displayDef,      // 使用顯示設定的 label 與 id
+                    ...moduleDef,       
+                    ...displayDef,      
+                    type: effectiveType, // 使用強制修正後的類型
                     dataKey: displayDef.id 
                 };
             });
 
-            // 3. 產生標題
+            // 3. 產生標題 (維持原樣)
             const headers = uiOutputFields.map(f => `<th class="text-center whitespace-nowrap">${f.label.replace(/\s*\(必填\)/g, '')}</th>`).join('');
             headersRow.innerHTML = `<th class="w-12 text-center">#</th>${headers}`;
             document.getElementById('current-group-record-count').innerText = dataToShow.length;
@@ -2877,9 +2968,11 @@
                     // 預覽時使用簡稱 (useShort = true)
                     if (f.type === 'department') {
                         const deptId = row[f.dataKey];
+                        // 呼叫 getDeptDisplayName(id, true) 取得簡稱
                         if (deptId) displayValue = getDeptDisplayName(deptId, true) || deptId;
                     } else if (f.type === 'college') {
                          const collegeId = row[f.dataKey];
+                         // 呼叫 getCollegeDisplayName(id, true) 取得簡稱
                          if (collegeId) displayValue = getCollegeDisplayName(collegeId, true) || collegeId;
                     }
                     
