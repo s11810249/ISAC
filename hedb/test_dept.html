@@ -230,6 +230,28 @@
         }
         .col-toggle-label:hover { border-color: #64748b; }
         .col-toggle-label input:checked + span { color: #002E5D; font-weight: bold; }
+        
+        /* Grid View Compact Styles */
+        /* 讓表格行高變小，更像 Excel */
+        .excel-table td { padding: 4px 6px; height: 32px; } 
+        
+        /* 修正輸入框高度與內距 */
+        .grid-input { 
+            width: 100%; 
+            height: 100%;
+            border: 1px solid transparent; 
+            background: transparent; 
+            padding: 0 4px; 
+            font-size: 13px; 
+            border-radius: 0;
+            line-height: 24px;
+        }
+        .grid-input:focus { border: 1px solid #002E5D; background: white; outline: none; box-shadow: none; }
+        .grid-input:disabled { background-color: #f8fafc; color: #cbd5e1; cursor: not-allowed; }
+
+        /* 讓選單更緊湊 */
+        select.grid-input { padding-right: 0; }
+    
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -457,6 +479,7 @@
     <!-- Preview Modal -->
         <div id="preview-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center modal-overlay p-4">
         <div class="bg-white w-full max-w-7xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[85vh]">
+            
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
                 <div>
                     <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-table text-primary"></i> 學生資料預覽</h3>
@@ -464,17 +487,17 @@
                 </div>
                 <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
             </div>
-            
+
             <div class="px-6 py-2 bg-slate-100 border-b border-slate-200 flex flex-wrap gap-2 text-xs" id="preview-column-toggles">
                 </div>
-            
-            <!-- 修改 2: 增加 overflow-x-auto 讓表格可水平滑動 -->
+
             <div class="flex-grow overflow-auto custom-scroll p-0 relative">
                 <table class="excel-table w-full relative">
                     <thead class="sticky top-0 z-10"><tr id="modal-preview-head"></tr></thead>
                     <tbody id="modal-preview-body"></tbody>
                 </table>
             </div>
+
             <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
                 <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="px-5 py-2 btn-manage rounded-lg font-bold text-sm bg-slate-800 text-white shadow hover:bg-slate-900">關閉</button>
             </div>
@@ -720,6 +743,8 @@
             }
         }
 
+// --- 傳統填報模式 (Grid View) 核心邏輯 ---
+
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
@@ -730,134 +755,184 @@
             const fields = currentYearConfig.fields || [];
             
             // 1. Build Header
-            // Fixed columns: Student ID, Name, Course Name
             const fixedCols = [
-                { id: 'student_id', label: '學號', width: '100px' },
-                { id: 'student_name', label: '姓名', width: '100px' },
-                { id: 'course_name', label: '課程名稱', width: '200px' }
+                { id: 'student_id', label: '學號', width: '90px' },
+                { id: 'student_name', label: '姓名', width: '80px' },
+                { id: 'course_name', label: '課程名稱', width: '180px' }
             ];
-            // Dynamic columns (writable)
             const dynamicCols = fields.filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id));
 
             let trHead = document.createElement('tr');
             [...fixedCols, ...dynamicCols].forEach(col => {
                 const th = document.createElement('th');
                 th.innerText = col.label;
-                th.style.minWidth = col.width || '120px';
+                th.style.minWidth = col.width || '100px';
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
 
-            // 2. Build Rows (Flatten all students -> courses)
-            const allRows = [];
+            // 2. Build Rows
             Object.values(groupedStudents).forEach(student => {
                 student.courses.forEach(course => {
-                    // Search filter
                     const searchText = `${student.id} ${student.name} ${course.course_name||''} ${course.course_code||''}`.toLowerCase();
                     if (searchTerm && !searchText.includes(searchTerm)) return;
 
-                    allRows.push({ student, course });
-                });
-            });
+                    const tr = document.createElement('tr');
+                    tr.dataset.sid = student.id;
+                    tr.dataset.cid = course._internal_id; // Store IDs for easy lookup
 
-            // Render limit for performance (optional, simple render here)
-            allRows.forEach(({ student, course }) => {
-                const tr = document.createElement('tr');
-                const appId = course._app_id;
-                let appData = {};
-                
-                // 取得資料來源：如果有歸戶，從 App 拿；如果沒有，從 Course 本身拿
-                if (appId) {
-                    const app = student.applications.find(a => a.id === appId);
-                    if (app) appData = app.formData;
-                }
-
-                // Render Fixed Cols
-                fixedCols.forEach(col => {
-                    const td = document.createElement('td');
-                    td.innerText = course[col.id] || student[col.id === 'student_id' ? 'id' : 'name'] || '';
-                    td.className = "bg-slate-50 font-medium text-slate-600";
-                    tr.appendChild(td);
-                });
-
-                // Render Input Cols
-                dynamicCols.forEach(f => {
-                    const td = document.createElement('td');
-                    
-                    // Value priority: App Data > Course Temp Data
-                    let val = "";
+                    const appId = course._app_id;
+                    let appData = {};
                     if (appId) {
-                        val = appData[f.id] || "";
-                        td.className = "is-linked"; // Visual cue for linked data
-                    } else {
-                        val = course[f.id] || ""; // Assuming we store manual edits on course obj directly
-                        td.className = "is-raw";
-                    }
-                    
-                    // Create Input based on type (Simplified text input for grid for speed, or select)
-                    let input;
-                    if (f.type === 'single_select' || f.type === 'list') {
-                        input = document.createElement('select');
-                        input.className = "grid-input";
-                        input.innerHTML = `<option value="">-</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
-                    } else {
-                        input = document.createElement('input');
-                        input.type = "text";
-                        input.className = "grid-input";
-                        input.value = val;
+                        const app = student.applications.find(a => a.id === appId);
+                        if (app) appData = app.formData;
                     }
 
-                    // --- Logic & Locking for Grid ---
-                    // We need to check visibility rules based on the *current row context*
-                    // To do this efficiently, we build a pseudo-object combining course + app data
-                    const rowContext = appId ? { ...appData } : { ...course };
-                    
-                    if (f.visibilityRule) {
-                        const depVal = rowContext[f.visibilityRule.dep];
-                        let show = f.visibilityRule.action === 'show' ? depVal === f.visibilityRule.val : depVal !== f.visibilityRule.val;
-                        if (!show) {
-                            input.disabled = true;
-                            input.value = ""; // Clear if hidden
-                        }
-                    }
+                    // Fixed Columns
+                    fixedCols.forEach(col => {
+                        const td = document.createElement('td');
+                        td.innerText = course[col.id] || student[col.id === 'student_id' ? 'id' : 'name'] || '';
+                        td.className = "bg-slate-50 font-medium text-slate-600 select-none";
+                        tr.appendChild(td);
+                    });
 
-                    // --- Event Handler: The Linkage Magic ---
-                    input.onchange = (e) => {
-                        const newVal = e.target.value;
-                        hasUnsavedChanges = true;
-
+                    // Input Columns
+                    dynamicCols.forEach(f => {
+                        const td = document.createElement('td');
+                        
+                        let val = "";
                         if (appId) {
-                            // Scenario 1: Linked Course
-                            // Update the App Data -> This affects ALL courses in this app
-                            const app = student.applications.find(a => a.id === appId);
-                            if (app) {
-                                const oldVal = app.formData[f.id];
-                                app.formData[f.id] = newVal;
-                                logChange(f.id, appId, oldVal, newVal, student.id);
-                                
-                                // Re-render logic needed? 
-                                // Yes, because changing this might affect other fields in THIS row or OTHER rows
-                                // For simplicity, we just re-render the whole grid or this row. 
-                                // Re-rendering whole grid is safest for dependencies.
-                                renderGlobalGrid(); 
-                                showToast('info', '已更新歸戶資料 (連動生效)');
-                            }
+                            val = appData[f.id] || "";
+                            td.className = "is-linked"; 
                         } else {
-                            // Scenario 2: Traditional (Unassigned)
-                            // Save directly to course object
-                            const oldVal = course[f.id];
-                            course[f.id] = newVal;
-                            // Also need to support logic check for this row
-                            renderGlobalGrid(); 
+                            val = course[f.id] || ""; 
+                            td.className = "is-raw";
                         }
-                    };
+                        
+                        let input;
+                        if (f.type === 'single_select' || f.type === 'list') {
+                            input = document.createElement('select');
+                            input.innerHTML = `<option value="">-</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                        } else {
+                            input = document.createElement('input');
+                            input.type = "text";
+                            input.value = val;
+                        }
 
-                    td.appendChild(input);
-                    tr.appendChild(td);
+                        input.className = "grid-input";
+                        
+                        // 標記 class 方便連動更新找到它
+                        if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
+                        
+                        // 邏輯鎖定檢查 (Visibility)
+                        // 使用 helper 檢查是否應該 disable
+                        checkGridInputVisibility(input, f, appId ? appData : course);
+
+                        // Event Handler: 使用 handleGridChange 處理邏輯
+                        input.onchange = (e) => handleGridChange(e.target, student, course, f);
+
+                        td.appendChild(input);
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
                 });
-
-                tbody.appendChild(tr);
             });
+        }
+
+        // 檢查單一格子的顯示邏輯
+        function checkGridInputVisibility(input, fieldDef, dataContext) {
+            if (fieldDef.visibilityRule) {
+                const depVal = dataContext[fieldDef.visibilityRule.dep];
+                let show = fieldDef.visibilityRule.action === 'show' ? depVal === fieldDef.visibilityRule.val : depVal !== fieldDef.visibilityRule.val;
+                if (!show) {
+                    input.disabled = true;
+                    input.value = ""; 
+                    input.style.opacity = "0.3";
+                } else {
+                    input.disabled = false;
+                    input.style.opacity = "1";
+                }
+            }
+        }
+
+        // ★★★ 核心：處理格子變更 (不隨意 Re-render) ★★★
+        function handleGridChange(inputEl, student, course, fieldDef) {
+            const newVal = inputEl.value;
+            const appId = course._app_id;
+            hasUnsavedChanges = true;
+
+            // 定義哪些欄位「不需要」觸發自動歸戶 (例如成績、學分、時數)
+            // 這裡使用簡單的關鍵字排除法，您可以根據 config id 調整
+            const isScoreField = ['score', 'grade', 'credit', 'hours', 'point', '成績', '學分', '時數'].some(k => fieldDef.id.toLowerCase().includes(k) || fieldDef.label.includes(k));
+
+            if (appId) {
+                // --- 情境 A: 已歸戶 (Linked) ---
+                // 更新 App Data
+                const app = student.applications.find(a => a.id === appId);
+                if (app) {
+                    const oldVal = app.formData[fieldDef.id];
+                    app.formData[fieldDef.id] = newVal;
+                    logChange(fieldDef.id, appId, oldVal, newVal, student.id);
+
+                    // 同步更新畫面上所有連結到此 App 的格子
+                    document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
+                        if (el !== inputEl) el.value = newVal; // 不要更新自己以免斷掉輸入體驗
+                    });
+
+                    // 觸發相依欄位的邏輯檢查 (例如改了"有實習"，"機構"要解鎖)
+                    // 這裡簡單做：如果是有 visibilityRule 依賴此欄位的，重新檢查全表 (或是該 App 的 row)
+                    // 為了效能與焦點，我們只重新 render 或是遍歷 DOM 檢查
+                    // 簡單解法：如果修改的欄位是別人的依賴條件，才需要大動作，否則不用
+                    const isDependency = (currentYearConfig.fields||[]).some(f => f.visibilityRule && f.visibilityRule.dep === fieldDef.id);
+                    if(isDependency) {
+                         // 只有當影響結構邏輯時，才不得已 Re-render，但會盡量避免
+                         renderGlobalGrid();
+                    }
+                }
+            } else {
+                // --- 情境 B: 未歸戶 (Raw) ---
+                
+                // ★★★ 自動歸戶邏輯 ★★★
+                // 如果填寫的不是成績欄位，且有值，就自動建立歸戶
+                if (!isScoreField && newVal && newVal.trim() !== "") {
+                    // 1. 建立新 App
+                    const newAppId = 'app_auto_' + Date.now();
+                    const initData = {};
+                    
+                    // 把目前這格的值放進去
+                    initData[fieldDef.id] = newVal;
+                    
+                    // 把課程身上已有的其他 Raw Data 也搬進去 (如果有的話)
+                    (currentYearConfig.fields||[]).forEach(f => {
+                         if(course[f.id] && !initData[f.id]) initData[f.id] = course[f.id];
+                    });
+
+                    const newApp = { 
+                        id: newAppId, 
+                        courseIds: [course._internal_id], 
+                        formData: initData 
+                    };
+                    
+                    // 2. 綁定
+                    student.applications.push(newApp);
+                    course._app_id = newAppId;
+
+                    // 3. 必須 Re-render 才能將此列變色 (變為藍色) 並綁定 class
+                    // 這是狀態改變 (Raw -> Linked)，所以失去焦點是可接受的代價
+                    renderGlobalGrid();
+                    showToast('success', '已自動建立歸戶');
+                    
+                    logChange('AutoCreate', newAppId, '', 'Created from Grid', student.id);
+
+                } else {
+                    // 只是成績或清空資料，維持 Raw 狀態
+                    course[fieldDef.id] = newVal;
+                    
+                    // 檢查 Raw 狀態下的邏輯鎖定 (針對該 Row)
+                    const isDependency = (currentYearConfig.fields||[]).some(f => f.visibilityRule && f.visibilityRule.dep === fieldDef.id);
+                    if(isDependency) renderGlobalGrid();
+                }
+            }
         }
 
         // --- Initialization ---
