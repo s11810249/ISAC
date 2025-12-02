@@ -40,11 +40,32 @@
         textarea.input-stylish { height: auto; min-height: 2.5em; padding-top: 0.4rem; padding-bottom: 0.4rem; }
 
         /* Sidebar Transition */
-        aside { transition: width 0.3s ease; }
+        aside { transition: width 0.3s ease; position: relative; }
         aside.collapsed { width: 0 !important; overflow: hidden; }
-        #sidebar-toggle { position: absolute; left: 0; top: 50%; transform: translateY(-50%); z-index: 40; background: #fff; border: 1px solid #e2e8f0; border-left: 0; border-radius: 0 8px 8px 0; padding: 8px 4px; cursor: pointer; shadow: 0 2px 4px rgba(0,0,0,0.1); transition: left 0.3s ease; }
-        aside.collapsed + #sidebar-toggle { left: 0; }
-        aside:not(.collapsed) + #sidebar-toggle { left: 20rem; }
+        
+        /* New Full-Height Sidebar Toggle */
+        #sidebar-toggle-strip {
+            position: absolute;
+            left: 20rem; /* Matches sidebar width */
+            top: 0;
+            bottom: 0;
+            width: 12px;
+            background: #f1f5f9;
+            border-right: 1px solid #e2e8f0;
+            border-left: 1px solid #fff;
+            cursor: pointer;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.3s ease, background-color 0.2s;
+        }
+        #sidebar-toggle-strip:hover { background-color: #e2e8f0; }
+        #sidebar-toggle-strip i { font-size: 10px; color: #94a3b8; transition: transform 0.3s; }
+        
+        /* When collapsed */
+        aside.collapsed + #sidebar-toggle-strip { left: 0; border-left: none; }
+        aside.collapsed + #sidebar-toggle-strip i { transform: rotate(180deg); }
 
         /* Left Sidebar Items */
         .student-item { cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
@@ -193,6 +214,8 @@
                 <button onclick="setFontSize('14px')" class="px-2 py-1 text-xs font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="標準字體">A</button>
                 <button onclick="setFontSize('16px')" class="px-2 py-1 text-sm font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="加大字體">A+</button>
                 <button onclick="setFontSize('18px')" class="px-2 py-1 text-base font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="特大字體">A++</button>
+                <!-- New Larger Sizes -->
+                <button onclick="setFontSize('20px')" class="px-2 py-1 text-lg font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="超大字體">A+++</button>
             </div>
 
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
@@ -273,10 +296,10 @@
             </div>
         </aside>
 
-        <!-- Sidebar Toggle Button -->
-        <button id="sidebar-toggle" onclick="toggleSidebar()" title="收合/展開側邊欄">
+        <!-- Sidebar Toggle Strip (Replaces Button) -->
+        <div id="sidebar-toggle-strip" onclick="toggleSidebar()" title="收合/展開側邊欄">
             <i class="fas fa-chevron-left text-slate-400"></i>
-        </button>
+        </div>
 
         <!-- Right Side: Workspace -->
         <main class="flex-grow bg-slate-50 overflow-hidden relative flex flex-col" id="main-content">
@@ -455,14 +478,12 @@
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            const icon = document.querySelector('#sidebar-toggle i');
+            // Use the new strip toggle
             sidebar.classList.toggle('collapsed');
             
-            if (sidebar.classList.contains('collapsed')) {
-                icon.className = 'fas fa-chevron-right text-slate-400';
-            } else {
-                icon.className = 'fas fa-chevron-left text-slate-400';
-            }
+            // No need to update icon here as it's handled by CSS relative to the sidebar state
+            // but if we want to force redraw of icon if css fails for some reason:
+            // CSS sibling selector handles it.
         }
 
         // --- Logic: Year Template ---
@@ -842,9 +863,10 @@
             student.applications.push(newApp);
             renderTabs(student);
             renderSettingsTab(student);
-            switchTab(appId); 
+            // 修正 2: 建立填報單後，不自動跳轉，保留在歸戶設定頁面
+            // switchTab(appId); 
             renderStudentList(); 
-            showToast('success', '已建立填報單');
+            showToast('success', '已建立填報單，可繼續建立其他填報單或切換上方頁籤進行填報');
         }
 
         function deleteApplication(appId) {
@@ -1054,8 +1076,6 @@
                 } else if (val === "") {
                     onChange("");
                 } else {
-                    // Invalid or unknown format, save as is but might break logic
-                    // Better to clear or warn, but let's keep raw
                     onChange(val); 
                 }
             };
@@ -1086,6 +1106,54 @@
             wrapper.appendChild(inputGroup);
             wrapper.appendChild(popover);
             return wrapper;
+        }
+        
+        // 修正 3: 強化地址智慧處理功能 (Smart Address)
+        function processAddress(inputEl, settings) {
+            let val = inputEl.value;
+            if(!val) return;
+
+            // 1. 全形轉半形 (toHalf)
+            if(settings.toHalf) {
+                val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
+                         .replace(/　/g, " ");
+            }
+
+            // 2. 強制台轉臺 (forceTai)
+            if(settings.forceTai) {
+                if(val.startsWith('台')) {
+                    val = '臺' + val.substring(1);
+                }
+            }
+
+            // 3. 拉丁文轉英文 (latinToEng)
+            if(settings.latinToEng) {
+                 val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            }
+
+            // 4. 智慧路名數字轉換 (smartFormat)
+            if(settings.smartFormat) {
+                // 中文數字對照表
+                const cnNums = {'一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9, '十':10};
+                // 簡單範例：將「五段」轉為「5段」
+                // 使用 config 中的 keywords
+                const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街'];
+                keywords.forEach(k => {
+                    const regex = new RegExp(`([一二三四五六七八九十]+)${k}`, 'g');
+                    val = val.replace(regex, (match, p1) => {
+                        // 簡單轉換 1-10
+                        let num = cnNums[p1];
+                        return num ? `${num}${k}` : match;
+                    });
+                });
+            }
+
+            // 更新值
+            if(val !== inputEl.value) {
+                inputEl.value = val;
+                // 觸發 change 事件以保存到 formData
+                inputEl.dispatchEvent(new Event('change'));
+            }
         }
 
         function renderFields(container, app) {
@@ -1142,15 +1210,11 @@
                     const val = app.formData[f.id] || '';
                     let input;
 
-                    // 修正 2: 使用仿西元樣式的民國年選擇器
                     if (f.type === 'date' && f.inputFormat === 'ROC') {
                         input = createRocDatePicker(app.id, f.id, val, (newValue) => {
                             app.formData[f.id] = newValue;
                             evaluateLogic(app);
                         });
-                        // Hidden input for logic engine disabling (to handle field-locked state)
-                        // Note: Logic engine toggles 'disabled' on inputs. 
-                        // For this custom component, we need to handle visual disable state in CSS via .field-locked
                         const hidden = document.createElement('input');
                         hidden.type = 'hidden';
                         hidden.id = `input-${app.id}-${f.id}`;
@@ -1182,6 +1246,13 @@
 
                         input.onchange = (e) => {
                             let newVal = e.target.value;
+                            
+                            // 修正 3: 呼叫智慧地址處理
+                            if (f.type === 'address') {
+                                processAddress(e.target, f);
+                                newVal = e.target.value; // update value after processing
+                            }
+
                             app.formData[f.id] = newVal;
                             evaluateLogic(app);
                             
@@ -1210,6 +1281,7 @@
                     const depVal = app.formData[f.visibilityRule.dep];
                     const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
                     const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
+                    const rocContainer = document.getElementById(`roc-wrapper-${app.id}-${f.id}`);
                     
                     if (wrapper) {
                         let shouldEnable = f.visibilityRule.action === 'show' 
@@ -1218,14 +1290,25 @@
                         
                         if (inputEl && inputEl.type !== 'hidden') inputEl.disabled = !shouldEnable;
                         
-                        // Handle Custom Date Picker disabling via wrapper class
-                        const customDateInput = wrapper.querySelector('.date-input-group input');
-                        if(customDateInput) customDateInput.disabled = !shouldEnable;
+                        // Handle Custom Date Picker disabling
+                        if (rocContainer) {
+                            const textInput = rocContainer.querySelector('input[type="text"]');
+                            if (textInput) textInput.disabled = !shouldEnable;
+                            // Toggle btn visual
+                            const trigger = rocContainer.querySelector('.date-picker-trigger');
+                             if (trigger) {
+                                trigger.style.pointerEvents = shouldEnable ? 'auto' : 'none';
+                                trigger.style.opacity = shouldEnable ? '1' : '0.5';
+                            }
+                        }
                         
                         if (!shouldEnable) {
                             wrapper.classList.add('field-locked');
                             if (inputEl && inputEl.type !== 'hidden') inputEl.value = "";
-                            if (customDateInput) customDateInput.value = "";
+                            if (rocContainer) {
+                                const textInput = rocContainer.querySelector('input[type="text"]');
+                                if (textInput) textInput.value = "";
+                            }
                             app.formData[f.id] = "";
                         } else {
                             wrapper.classList.remove('field-locked');
