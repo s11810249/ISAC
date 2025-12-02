@@ -968,6 +968,7 @@
 
         function renderTabs(student) {
             const container = document.getElementById('tabs-container');
+            // Reset contents but keep the Settings tab button
             container.innerHTML = `<button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>`;
             
             student.applications.forEach((app, idx) => {
@@ -976,14 +977,9 @@
                 btn.dataset.tab = app.id;
                 btn.onclick = () => switchTab(app.id);
                 
-                // 2. 不要叫做實習填報清單x，改叫{學號}+實習紀錄+{流水號}
-                let label = `${student.id}_實習紀錄_${idx+1}`;
+                // 修改: 頁籤名稱統一為 "實習紀錄{流水號}"
+                let label = `實習紀錄${idx+1}`;
                 
-                // Overwrite if manual name provided (though requirement says change default)
-                if(app.formData['internship_institution_name']) {
-                    label = app.formData['internship_institution_name'];
-                }
-
                 btn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${label}`;
                 container.appendChild(btn);
             });
@@ -1018,6 +1014,7 @@
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
+            // --- 左側：未歸戶課程列表 (保持原樣，或視需要微調) ---
             const unassigned = student.courses.filter(c => !c._app_id);
             if (unassigned.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
@@ -1025,12 +1022,6 @@
                 unassigned.forEach(c => {
                     const el = document.createElement('div');
                     el.className = 'course-card';
-                    // 3. Course ID display in unassigned list
-                    // Use rYear + rSem + rCode if available for display? 
-                    // The original code used course_code. The prompt asks for "Course_IDs" format for internal logic,
-                    // but for display, let's stick to readable format.
-                    // "Course_IDs改用..." usually means the internal ID used for linking.
-                    
                     el.innerHTML = `
                         <div>
                             <div class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</div>
@@ -1038,6 +1029,7 @@
                         </div>
                         <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
                     `;
+                    // 點擊卡片也能勾選
                     el.onclick = (e) => {
                         if(e.target.type !== 'checkbox') {
                             const cb = el.querySelector('input');
@@ -1053,44 +1045,71 @@
                 });
             }
 
+            // --- 右側：已建立的填報單 (大幅修改顯示方式) ---
             if (student.applications.length === 0) {
                 appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
             } else {
                 student.applications.forEach((app, idx) => {
                     const el = document.createElement('div');
-                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-start shadow-sm';
+                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col gap-3';
                     
-                    // 2. 改名規則: {學號}+實習紀錄+{流水號}
-                    // Default name. If Institution name is set, maybe show it too?
-                    // Prompt says "不要叫做實習填報清單x，改叫..."
-                    // Let's use the new format as the main title.
-                    let name = `${student.id}_實習紀錄_${idx+1}`;
-                    if(app.formData['internship_institution_name']) name = app.formData['internship_institution_name'];
+                    // 1. 標題邏輯修改
+                    const instName = app.formData['internship_institution_name'];
+                    const titleText = instName ? `實習紀錄${idx+1}：${instName}` : `實習紀錄${idx+1}`;
                     
-                    // 1. 已建立的填報清單也要顯示學期/選課代號
-                    const courses = app.courseIds.map(cid => {
+                    // 2. 課程列表改為表格呈現
+                    // 收集課程資料
+                    const courseRows = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
-                        if (c) {
-                             const sem = c['semester'] || c['學期'] || '';
-                             const code = c['course_code'] || c['選課代號'] || '';
-                             const cName = c['course_name'] || c['課程名稱'] || '';
-                             // Display Semester and Course Code
-                             return `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded" title="${cName}">${sem}_${code}</span>`;
-                        }
-                        return '';
-                    }).join(' ');
+                        if (!c) return '';
+                        
+                        const sem = c['semester'] || c['學期'] || '-';
+                        const code = c['course_code'] || c['選課代號'] || '-';
+                        const name = c['course_name'] || c['課程名稱'] || '未知課程';
+                        const type = c['course_type'] || c['修別'] || c['選必修'] || '-'; // 嘗試多種欄位名稱
+                        const credits = c['credits'] || c['學分'] || '-';
+
+                        return `
+                            <tr class="border-t border-slate-100 hover:bg-slate-50">
+                                <td class="px-2 py-1.5 text-center">${sem}</td>
+                                <td class="px-2 py-1.5 font-mono text-slate-600">${code}</td>
+                                <td class="px-2 py-1.5 font-medium text-slate-800">${name}</td>
+                                <td class="px-2 py-1.5 text-center text-slate-500">${type}</td>
+                                <td class="px-2 py-1.5 text-center text-slate-500">${credits}</td>
+                            </tr>
+                        `;
+                    }).join('');
+
+                    const tableHtml = `
+                        <div class="overflow-x-auto border border-slate-200 rounded-md">
+                            <table class="w-full text-xs text-left">
+                                <thead class="bg-slate-50 text-slate-500 font-medium">
+                                    <tr>
+                                        <th class="px-2 py-1.5 text-center w-12">學期</th>
+                                        <th class="px-2 py-1.5 w-20">代號</th>
+                                        <th class="px-2 py-1.5">課程名稱</th>
+                                        <th class="px-2 py-1.5 text-center w-16">屬性</th>
+                                        <th class="px-2 py-1.5 text-center w-12">學分</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="bg-white">
+                                    ${courseRows}
+                                </tbody>
+                            </table>
+                        </div>
+                    `;
 
                     el.innerHTML = `
-                        <div>
-                            <h4 class="font-bold text-primary text-sm mb-1">${name}</h4>
-                            <div class="flex flex-wrap gap-1">
-                                ${courses}
+                        <div class="flex justify-between items-start">
+                            <h4 class="font-bold text-primary text-sm flex items-center gap-2">
+                                <i class="fas fa-folder-open text-indigo-200"></i> ${titleText}
+                            </h4>
+                            <div class="flex gap-2">
+                                <button onclick="switchTab('${app.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1.5 rounded transition"><i class="fas fa-edit"></i> 編輯</button>
+                                <button onclick="deleteApplication('${app.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1.5 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button>
                             </div>
                         </div>
-                        <div class="flex gap-2">
-                            <button onclick="switchTab('${app.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1.5 rounded transition"><i class="fas fa-edit"></i> 編輯</button>
-                            <button onclick="deleteApplication('${app.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1.5 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button>
-                        </div>
+                        ${tableHtml}
                     `;
                     appsContainer.appendChild(el);
                 });
@@ -1172,10 +1191,62 @@
             
             const div = document.createElement('div');
             div.id = `content-${appId}`;
-            div.className = 'dynamic-tab-content max-w-5xl mx-auto';
+            div.className = 'dynamic-tab-content max-w-5xl mx-auto space-y-6'; // 加入 space-y-6 增加間距
             
+            // --- 新增：頂部課程資訊區塊 (Info Block) ---
+            const infoBlock = document.createElement('div');
+            infoBlock.className = 'bg-white p-5 rounded-xl border border-slate-200 shadow-sm';
+            
+            // 產生課程表格 Row
+            const courseRows = app.courseIds.map(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if (!c) return '';
+                
+                const sem = c['semester'] || c['學期'] || '-';
+                const code = c['course_code'] || c['選課代號'] || '-';
+                const name = c['course_name'] || c['課程名稱'] || '未知課程';
+                const type = c['course_type'] || c['修別'] || c['選必修'] || '-';
+                const credits = c['credits'] || c['學分'] || '-';
+
+                return `
+                    <tr class="border-t border-slate-100 hover:bg-slate-50">
+                        <td class="px-3 py-2 text-center text-slate-600">${sem}</td>
+                        <td class="px-3 py-2 font-mono text-slate-600">${code}</td>
+                        <td class="px-3 py-2 font-bold text-slate-800">${name}</td>
+                        <td class="px-3 py-2 text-center text-slate-600">${type}</td>
+                        <td class="px-3 py-2 text-center text-slate-600">${credits}</td>
+                    </tr>
+                `;
+            }).join('');
+
+            infoBlock.innerHTML = `
+                <div class="mb-3 flex items-center gap-2 text-slate-700">
+                    <i class="fas fa-info-circle text-primary"></i>
+                    <h3 class="font-bold text-sm">此紀錄包含之課程資訊</h3>
+                </div>
+                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+                    <table class="w-full text-sm text-left">
+                        <thead class="bg-slate-50 text-slate-500 font-bold">
+                            <tr>
+                                <th class="px-3 py-2 text-center w-16">學期</th>
+                                <th class="px-3 py-2 w-24">選課代號</th>
+                                <th class="px-3 py-2">課程名稱</th>
+                                <th class="px-3 py-2 text-center w-20">課程屬性</th>
+                                <th class="px-3 py-2 text-center w-16">學分</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white">
+                            ${courseRows}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+            
+            div.appendChild(infoBlock);
+
+            // --- 原有的表單區塊 ---
             const formContainer = document.createElement('div');
-            formContainer.className = 'form-body';
+            formContainer.className = 'form-body bg-white p-6 rounded-xl border border-slate-200 shadow-sm'; // 增加一點樣式讓它看起來像卡片
             
             renderFields(formContainer, app);
             div.appendChild(formContainer);
