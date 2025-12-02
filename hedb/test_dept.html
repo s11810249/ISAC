@@ -696,7 +696,26 @@
                 const rCode = row['course_code'] || row['選課代號'];
                 
                 if (rYear && rSem && rCode) {
-                     row._internal_id = `${rYear}${rSem}_${rCode}_${idx}`; // 加上 index 確保絕對唯一
+                     // 修改: 使用學年+學期+選課代號作為基礎 ID，並處理重複
+                     // 為了確保唯一性，我們先嘗試找是否已經有相同的 course ID
+                     const baseId = `${rYear}-${rSem}-${rCode}`;
+                     let internalId = baseId;
+                     let dupCount = 0;
+                     
+                     // 在 groupedStudents 中檢查是否已經有這個 ID
+                     // 這需要在當前學生的課程列表中檢查
+                     const studentCourses = groupedStudents[sid].courses;
+                     
+                     // 檢查重複的邏輯:
+                     // 如果是同一個學生修同一門課兩次（例如重修，但在同一學期不太可能，除非資料有誤或特殊情況）
+                     // 或者 Excel 中有重複行
+                     // 我們簡單地加上計數後綴如果 ID 已存在
+                     while(studentCourses.some(c => c._internal_id === internalId)) {
+                         dupCount++;
+                         internalId = `${baseId}_${dupCount}`;
+                     }
+                     
+                     row._internal_id = internalId;
                 } else {
                      row._internal_id = `c_${idx}`;
                 }
