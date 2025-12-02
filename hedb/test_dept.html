@@ -251,7 +251,62 @@
 
         /* 讓選單更緊湊 */
         select.grid-input { padding-right: 0; }
-    
+        
+        /* =========================================
+           ★★★ 預覽視窗：欄位標籤按鈕化 (Tag Style) ★★★
+           ========================================= */
+        
+        /* 隱藏原本的 input checkbox */
+        .toggle-chip input {
+            display: none;
+        }
+
+        /* 標籤按鈕基底樣式 (未選取狀態) */
+        .toggle-chip {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.25rem 0.75rem;
+            background-color: #f1f5f9; /* slate-100 */
+            color: #64748b;            /* slate-500 */
+            border: 1px solid #e2e8f0; /* slate-200 */
+            border-radius: 9999px;     /* 圓角膠囊 */
+            font-size: 0.75rem;        /* xs */
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+            user-select: none;
+        }
+
+        /* 滑鼠移過去 */
+        .toggle-chip:hover {
+            background-color: #e2e8f0;
+            color: #475569;
+        }
+
+        /* 選取狀態 (Checked) - 變為深藍色實心 */
+        .toggle-chip:has(input:checked) {
+            background-color: #002E5D; /* Primary */
+            border-color: #002E5D;
+            color: #ffffff;
+            box-shadow: 0 2px 4px rgba(0, 46, 93, 0.2);
+        }
+        
+        /* 選取狀態的 Hover */
+        .toggle-chip:has(input:checked):hover {
+            background-color: #003d7a;
+            border-color: #003d7a;
+        }
+
+        /* 收合選單樣式 */
+        details.column-picker > summary {
+            list-style: none;
+        }
+        details.column-picker > summary::-webkit-details-marker {
+            display: none;
+        }
+
+
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -518,6 +573,38 @@
             </div>
         </div>
     </div>
+    
+    <div id="merge-modal" class="fixed inset-0 z-[120] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 rounded-t-xl flex justify-between items-center">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                        <i class="fas fa-random text-primary"></i> 暫存資料歸戶確認
+                    </h3>
+                    <p class="text-xs text-slate-500 mt-1">系統偵測到未歸戶的資料，請選擇如何處理：</p>
+                </div>
+                <button onclick="closeMergeModal()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            
+            <div class="flex-grow overflow-y-auto custom-scroll p-6 bg-slate-50/50">
+                <div id="merge-list-container" class="space-y-4"></div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 bg-white rounded-b-xl flex justify-between items-center">
+                <button onclick="discardAndSwitch()" class="text-red-500 hover:bg-red-50 px-4 py-2 rounded-lg text-sm font-bold transition">
+                    <i class="fas fa-trash-alt mr-1"></i> 放棄資料並切換
+                </button>
+                <div class="flex gap-3">
+                    <button onclick="closeMergeModal()" class="px-5 py-2 rounded-lg font-bold text-sm text-slate-500 bg-slate-100 hover:bg-slate-200">
+                        回到表格修改
+                    </button>
+                    <button onclick="processMergeAndSwitch()" class="px-5 py-2 rounded-lg font-bold text-sm text-white bg-primary hover:opacity-90 shadow-lg">
+                        確認歸戶並切換 <i class="fas fa-arrow-right ml-1"></i>
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <!-- Toast Notification (Fixed) -->
     <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
@@ -588,25 +675,93 @@
         function openPreviewModal() {
             if (!currentStudentId) return;
             document.getElementById('preview-modal').classList.remove('hidden');
-            renderPreviewControls();
-            renderPreviewTable();
+            renderPreviewControls(); // ★ 有呼叫這個就是新版
+            renderPreviewTable();    // ★ 有呼叫這個就是新版
         }
 
         function renderPreviewControls() {
             const container = document.getElementById('preview-column-toggles');
-            container.innerHTML = '<span class="text-slate-500 py-1">顯示欄位:</span>';
+            const allFields = getAllExportFields();
+            const total = allFields.length;
+            const currentHidden = previewState.hiddenCols.length;
+            const currentVisible = total - currentHidden;
+
+            // 清空容器
+            container.innerHTML = '';
+
+            // 1. 建立收合選單的外框 (Details)
+            const details = document.createElement('details');
+            details.className = "column-picker w-full group";
             
-            const fields = getAllExportFields();
-            fields.forEach(f => {
+            // 2. 建立標題列 (Summary)
+            const summary = document.createElement('summary');
+            summary.className = "flex items-center justify-between cursor-pointer p-2 rounded-lg hover:bg-slate-200 transition text-slate-600 select-none";
+            summary.innerHTML = `
+                <div class="flex items-center gap-2 font-bold text-sm">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>設定顯示欄位</span>
+                    <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full group-open:bg-slate-300">
+                        顯示中: ${currentVisible} / ${total}
+                    </span>
+                </div>
+                <div class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-300">
+                    <i class="fas fa-chevron-down"></i>
+                </div>
+            `;
+
+            // 3. 建立內容區塊 (包含操作按鈕與標籤列表)
+            const content = document.createElement('div');
+            content.className = "mt-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm";
+
+            // 3-1. 快速操作按鈕 (全選/全不選)
+            const actions = document.createElement('div');
+            actions.className = "flex gap-2 mb-3 pb-3 border-b border-slate-100";
+            actions.innerHTML = `
+                <button type="button" id="btn-show-all" class="text-xs px-2 py-1 rounded hover:bg-slate-100 text-primary font-bold transition">
+                    <i class="fas fa-check-double mr-1"></i> 全部顯示
+                </button>
+                <button type="button" id="btn-hide-all" class="text-xs px-2 py-1 rounded hover:bg-slate-100 text-slate-500 transition">
+                    <i class="fas fa-times mr-1"></i> 全部隱藏
+                </button>
+            `;
+            content.appendChild(actions);
+
+            // 3-2. 標籤列表容器
+            const tagsContainer = document.createElement('div');
+            tagsContainer.className = "flex flex-wrap gap-2 max-h-[200px] overflow-y-auto custom-scroll pr-2"; // 限制高度並可捲動
+
+            allFields.forEach(f => {
                 const lbl = document.createElement('label');
-                lbl.className = 'col-toggle-label';
+                lbl.className = 'toggle-chip'; // 套用新的 CSS Class
                 const checked = !previewState.hiddenCols.includes(f.id);
+                
+                // 注意：這裡移除了原本的 Checkbox 圖示，純粹靠 CSS 變色
                 lbl.innerHTML = `
                     <input type="checkbox" onchange="togglePreviewCol('${f.id}')" ${checked ? 'checked' : ''}>
                     <span>${f.label}</span>
                 `;
-                container.appendChild(lbl);
+                tagsContainer.appendChild(lbl);
             });
+            content.appendChild(tagsContainer);
+
+            // 組合 DOM
+            details.appendChild(summary);
+            details.appendChild(content);
+            container.appendChild(details);
+
+            // 綁定全選/全不選事件
+            content.querySelector('#btn-show-all').onclick = () => {
+                previewState.hiddenCols = []; // 清空隱藏列表 = 全部顯示
+                renderPreviewControls(); // 重新渲染控制項(更新數字)
+                renderPreviewTable();    // 重新渲染表格
+            };
+
+            content.querySelector('#btn-hide-all').onclick = () => {
+                // 將所有欄位 ID 加入隱藏列表
+                previewState.hiddenCols = allFields.map(f => f.id);
+                renderPreviewControls();
+                renderPreviewTable();
+            };
         }
 
         function togglePreviewCol(fieldId) {
@@ -636,9 +791,10 @@
             tbody.innerHTML = '';
 
             const allFields = getAllExportFields();
+            // 過濾隱藏欄位
             const visibleFields = allFields.filter(f => !previewState.hiddenCols.includes(f.id));
 
-            // Render Header
+            // Render Header (包含排序功能)
             visibleFields.forEach(h => {
                 const th = document.createElement('th');
                 th.className = 'sortable-header';
@@ -655,7 +811,8 @@
 
             // Prepare Data Rows
             let rows = [];
-            // 1. Consolidated Rows
+            
+            // 1. 處理已歸戶資料 (Consolidated Rows)
             student.applications.forEach(app => {
                 const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
                 courses.forEach(c => {
@@ -669,16 +826,18 @@
                     rows.push(rowData);
                 });
             });
-            // 2. Unassigned Rows
+            
+            // 2. 處理未歸戶資料 (Unassigned Rows)
             student.courses.filter(c => !c._app_id).forEach(c => {
                 rows.push({ ...c, _source: 'raw' });
             });
 
-            // Sort
+            // 執行排序
             if (previewState.sortKey) {
                 rows.sort((a, b) => {
                     const valA = (a[previewState.sortKey] || '').toString();
                     const valB = (b[previewState.sortKey] || '').toString();
+                    // 支援中文排序
                     return previewState.sortDir === 'asc' ? valA.localeCompare(valB, 'zh-Hant') : -valB.localeCompare(valA, 'zh-Hant');
                 });
             }
@@ -689,12 +848,25 @@
                 visibleFields.forEach(h => {
                     const td = document.createElement('td');
                     let val = r[h.id];
-                    // Handle specific logic like Average calculation (simplified for preview)
+                    
+                    // 處理平均值顯示邏輯 (這裡簡化處理，若需精確可複製 exportData 的邏輯)
                     if (val === undefined || val === null) val = "";
                     
+                    // 如果是歸戶資料，底色變藍
                     if (r._source === 'app' && r._appData[h.id]) {
                         td.className = "text-indigo-600 font-bold bg-indigo-50";
                     }
+                    
+                    // 處理 ROC 日期顯示
+                    const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                    if (fieldDef && fieldDef.type === 'date' && fieldDef.inputFormat === 'ROC' && val && val.includes('-')) {
+                        const parts = val.split('-');
+                        if (parts.length === 3) {
+                            const roc = parseInt(parts[0]) - 1911;
+                            val = `${roc}/${parts[1]}/${parts[2]}`;
+                        }
+                    }
+
                     td.innerText = val;
                     tr.appendChild(td);
                 });
@@ -713,13 +885,30 @@
 
         // --- 傳統填報模式 (Grid View) ---
         
-        function switchViewMode(mode) {
-            const appView = document.getElementById('sidebar').parentElement; // Main layout
+        // --- 修改後的視圖切換函式 ---
+        // --- 修改後的視圖切換函式 (加入清除暫存與資料檢查) ---
+        async function switchViewMode(mode) {
             const gridView = document.getElementById('grid-view-container');
             const btnApp = document.getElementById('btn-view-app');
             const btnGrid = document.getElementById('btn-view-grid');
 
-            if (mode === 'grid') {
+            if (mode === 'app') {
+                // 1. 檢查未歸戶資料 (維持上一段的邏輯)
+                const hasRaw = checkForRawData(); 
+                if (hasRaw) {
+                    openMergeModal();
+                    return; 
+                }
+                
+                // 2. ★★★ 關鍵修正：清除歸戶填報頁籤的暫存 DOM ★★★
+                // 這會強制系統在點擊頁籤時，重新從 formData 讀取最新資料來產生畫面
+                document.getElementById('dynamic-tabs-area').innerHTML = '';
+
+                // 3. 執行切換
+                executeSwitchToApp();
+
+            } else {
+                // 切換到 Grid 模式
                 document.getElementById('sidebar').style.display = 'none';
                 document.getElementById('main-content').style.display = 'none';
                 document.getElementById('sidebar-toggle-strip').style.display = 'none';
@@ -728,22 +917,12 @@
                 btnApp.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition";
                 btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary";
                 
+                // 進入 Grid 模式時，因為 renderGlobalGrid 會重繪，所以資料一定是最新的
                 renderGlobalGrid();
-            } else {
-                document.getElementById('sidebar').style.display = 'flex';
-                document.getElementById('main-content').style.display = 'flex';
-                document.getElementById('sidebar-toggle-strip').style.display = 'flex';
-                gridView.classList.add('hidden');
-                
-                btnApp.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary";
-                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition";
-                
-                // Refresh current view in case data changed
-                if(currentStudentId) selectStudent(currentStudentId);
             }
         }
 
-// --- 傳統填報模式 (Grid View) 核心邏輯 ---
+        // --- 傳統填報模式 (Grid View) 核心邏輯 ---
 
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
@@ -855,82 +1034,48 @@
             }
         }
 
-        // ★★★ 核心：處理格子變更 (不隨意 Re-render) ★★★
+        // ★★★ 核心：處理格子變更 ★★★
         function handleGridChange(inputEl, student, course, fieldDef) {
             const newVal = inputEl.value;
             const appId = course._app_id;
+            
+            // 標記有變更
             hasUnsavedChanges = true;
-
-            // 定義哪些欄位「不需要」觸發自動歸戶 (例如成績、學分、時數)
-            // 這裡使用簡單的關鍵字排除法，您可以根據 config id 調整
-            const isScoreField = ['score', 'grade', 'credit', 'hours', 'point', '成績', '學分', '時數'].some(k => fieldDef.id.toLowerCase().includes(k) || fieldDef.label.includes(k));
 
             if (appId) {
                 // --- 情境 A: 已歸戶 (Linked) ---
-                // 更新 App Data
+                // 更新 App Data (連動邏輯維持不變)
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
                     const oldVal = app.formData[fieldDef.id];
                     app.formData[fieldDef.id] = newVal;
                     logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
-                    // 同步更新畫面上所有連結到此 App 的格子
                     document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
-                        if (el !== inputEl) el.value = newVal; // 不要更新自己以免斷掉輸入體驗
+                        if (el !== inputEl) el.value = newVal;
                     });
 
-                    // 觸發相依欄位的邏輯檢查 (例如改了"有實習"，"機構"要解鎖)
-                    // 這裡簡單做：如果是有 visibilityRule 依賴此欄位的，重新檢查全表 (或是該 App 的 row)
-                    // 為了效能與焦點，我們只重新 render 或是遍歷 DOM 檢查
-                    // 簡單解法：如果修改的欄位是別人的依賴條件，才需要大動作，否則不用
+                    // 檢查相依性
                     const isDependency = (currentYearConfig.fields||[]).some(f => f.visibilityRule && f.visibilityRule.dep === fieldDef.id);
-                    if(isDependency) {
-                         // 只有當影響結構邏輯時，才不得已 Re-render，但會盡量避免
-                         renderGlobalGrid();
-                    }
+                    if(isDependency) renderGlobalGrid();
                 }
             } else {
                 // --- 情境 B: 未歸戶 (Raw) ---
+                course[fieldDef.id] = newVal;
                 
-                // ★★★ 自動歸戶邏輯 ★★★
-                // 如果填寫的不是成績欄位，且有值，就自動建立歸戶
-                if (!isScoreField && newVal && newVal.trim() !== "") {
-                    // 1. 建立新 App
-                    const newAppId = 'app_auto_' + Date.now();
-                    const initData = {};
-                    
-                    // 把目前這格的值放進去
-                    initData[fieldDef.id] = newVal;
-                    
-                    // 把課程身上已有的其他 Raw Data 也搬進去 (如果有的話)
-                    (currentYearConfig.fields||[]).forEach(f => {
-                         if(course[f.id] && !initData[f.id]) initData[f.id] = course[f.id];
-                    });
-
-                    const newApp = { 
-                        id: newAppId, 
-                        courseIds: [course._internal_id], 
-                        formData: initData 
-                    };
-                    
-                    // 2. 綁定
-                    student.applications.push(newApp);
-                    course._app_id = newAppId;
-
-                    // 3. 必須 Re-render 才能將此列變色 (變為藍色) 並綁定 class
-                    // 這是狀態改變 (Raw -> Linked)，所以失去焦點是可接受的代價
+                // 1. 先處理基本的顯示邏輯 (解鎖欄位)
+                const isDependency = (currentYearConfig.fields||[]).some(f => f.visibilityRule && f.visibilityRule.dep === fieldDef.id);
+                if(isDependency) {
+                    // 如果改了關鍵欄位導致其他欄位解鎖，必須先重繪，讓使用者能填寫後續
                     renderGlobalGrid();
-                    showToast('success', '已自動建立歸戶');
-                    
-                    logChange('AutoCreate', newAppId, '', 'Created from Grid', student.id);
+                    // 重繪後 inputEl 已經換了，所以這裡 return，等待使用者填完下一格再觸發合併
+                    return; 
+                }
 
-                } else {
-                    // 只是成績或清空資料，維持 Raw 狀態
-                    course[fieldDef.id] = newVal;
-                    
-                    // 檢查 Raw 狀態下的邏輯鎖定 (針對該 Row)
-                    const isDependency = (currentYearConfig.fields||[]).some(f => f.visibilityRule && f.visibilityRule.dep === fieldDef.id);
-                    if(isDependency) renderGlobalGrid();
+                // 2. ★★★ 觸發智慧歸戶檢查 ★★★
+                // 只有當填寫的值不為空時才檢查，節省效能
+                if (newVal && newVal.trim() !== "") {
+                    tryAutoMerge(student, course);
                 }
             }
         }
@@ -1450,7 +1595,36 @@
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
-            // --- 左側：未歸戶課程列表 ---
+            // --- 修改處：增加自動歸戶按鈕區塊 ---
+            const leftHeader = document.createElement('div');
+            leftHeader.className = "flex justify-between items-center mb-3 pb-2 border-b border-slate-200";
+            leftHeader.innerHTML = `
+                <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程
+                </h4>
+                <button onclick="autoGroupCourses()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded border border-slate-300 transition" title="將相同名稱的課程自動合併">
+                    <i class="fas fa-magic text-yellow-500"></i> 自動歸戶
+                </button>
+            `;
+            
+            // 清空舊標題並加入新標題
+            const leftCol = document.querySelector('#settings-course-list').parentElement;
+            // 這裡為了避免重複添加，我們只清空 listContainer，標題部分動態插入
+            // 比較安全的做法是直接操作 settings-course-list 的父層，但為了簡單，我們這裡直接重寫 listContainer 的內容
+            // 為了讓按鈕顯示在正確位置，我們把標題區塊放在 listContainer 的前面
+            // 注意：原本 HTML 結構裡已有 h4，我們需要隱藏原本的 h4 或用 JS 取代它
+            // 簡單解法：直接把這個 header 插入到 listContainer 裡面最上方
+            
+            // 修正：更乾淨的做法是直接修改 HTML 結構，或是用 JS 替換掉原本的 h4
+            // 這裡我們用 JS 替換原本的 h4
+            const oldHeader = leftCol.querySelector('h4');
+            if(oldHeader) oldHeader.remove();
+            
+            // 確保不會重複插入 header
+            if(!leftCol.querySelector('.flex.justify-between')) {
+                 leftCol.insertBefore(leftHeader, listContainer);
+            }
+
             const unassigned = student.courses.filter(c => !c._app_id);
             if (unassigned.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
@@ -1488,11 +1662,9 @@
                     const el = document.createElement('div');
                     el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col gap-3';
                     
-                    // 標題邏輯
                     const instName = app.formData['internship_institution_name'];
                     const titleText = instName ? `實習紀錄${idx+1}：${instName}` : `實習紀錄${idx+1}`;
                     
-                    // 產生課程表格 Row (使用 Helper 抓取欄位)
                     const courseRows = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
                         if (!c) return '';
@@ -1500,51 +1672,21 @@
                         const sem = getCourseValue(c, ['semester', '學期']);
                         const code = getCourseValue(c, ['course_code', '選課代號']);
                         const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']);
-                        // 增加多種關鍵字偵測
-                        const type = getCourseValue(c, ['course_type', '修別', '選必修', '必選修', '部別']); 
+                        const type = getCourseValue(c, ['course_type', '修別', '選必修', '必選修']); 
                         const credits = getCourseValue(c, ['credits', '學分', '學分數']);
 
-                        return `
-                            <tr class="border-t border-slate-100 hover:bg-slate-50">
-                                <td class="px-2 py-1.5 text-center">${sem}</td>
-                                <td class="px-2 py-1.5 font-mono text-slate-600">${code}</td>
-                                <td class="px-2 py-1.5 font-medium text-slate-800">${name}</td>
-                                <td class="px-2 py-1.5 text-center text-slate-500">${type}</td>
-                                <td class="px-2 py-1.5 text-center text-slate-500">${credits}</td>
-                            </tr>
-                        `;
+                        return `<tr class="border-t border-slate-100 hover:bg-slate-50">
+                                <td class="px-2 py-1.5 text-center">${sem}</td><td class="px-2 py-1.5 font-mono text-slate-600">${code}</td>
+                                <td class="px-2 py-1.5 font-medium text-slate-800">${name}</td><td class="px-2 py-1.5 text-center text-slate-500">${type}</td>
+                                <td class="px-2 py-1.5 text-center text-slate-500">${credits}</td></tr>`;
                     }).join('');
-
-                    const tableHtml = `
-                        <div class="overflow-x-auto border border-slate-200 rounded-md">
-                            <table class="w-full text-xs text-left">
-                                <thead class="bg-slate-50 text-slate-500 font-medium">
-                                    <tr>
-                                        <th class="px-2 py-1.5 text-center w-12">學期</th>
-                                        <th class="px-2 py-1.5 w-20">代號</th>
-                                        <th class="px-2 py-1.5">課程名稱</th>
-                                        <th class="px-2 py-1.5 text-center w-16">屬性</th>
-                                        <th class="px-2 py-1.5 text-center w-12">學分</th>
-                                    </tr>
-                                </thead>
-                                <tbody class="bg-white">
-                                    ${courseRows}
-                                </tbody>
-                            </table>
-                        </div>
-                    `;
 
                     el.innerHTML = `
                         <div class="flex justify-between items-start">
-                            <h4 class="font-bold text-primary text-sm flex items-center gap-2">
-                                <i class="fas fa-folder-open text-indigo-200"></i> ${titleText}
-                            </h4>
-                            <div class="flex gap-2">
-                                <button onclick="switchTab('${app.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1.5 rounded transition"><i class="fas fa-edit"></i> 編輯</button>
-                                <button onclick="deleteApplication('${app.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1.5 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button>
-                            </div>
+                            <h4 class="font-bold text-primary text-sm flex items-center gap-2"><i class="fas fa-folder-open text-indigo-200"></i> ${titleText}</h4>
+                            <div class="flex gap-2"><button onclick="switchTab('${app.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1.5 rounded transition"><i class="fas fa-edit"></i> 編輯</button><button onclick="deleteApplication('${app.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1.5 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button></div>
                         </div>
-                        ${tableHtml}
+                        <div class="overflow-x-auto border border-slate-200 rounded-md"><table class="w-full text-xs text-left"><thead class="bg-slate-50 text-slate-500 font-medium"><tr><th class="px-2 py-1.5 text-center w-12">學期</th><th class="px-2 py-1.5 w-20">代號</th><th class="px-2 py-1.5">課程名稱</th><th class="px-2 py-1.5 text-center w-16">屬性</th><th class="px-2 py-1.5 text-center w-12">學分</th></tr></thead><tbody class="bg-white">${courseRows}</tbody></table></div>
                     `;
                     appsContainer.appendChild(el);
                 });
@@ -2014,6 +2156,7 @@
                         hidden.id = `input-${app.id}-${f.id}`;
                         wrapper.appendChild(hidden);
                     } else {
+                        // 一般輸入框建立
                         if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.className = "input-stylish cursor-pointer";
@@ -2038,6 +2181,7 @@
 
                         input.id = `input-${app.id}-${f.id}`; 
 
+                        // 處理 Address 特殊邏輯
                         if (f.type === 'address') {
                             input.addEventListener('blur', (e) => {
                                 const oldVal = input.value;
@@ -2052,28 +2196,37 @@
                             });
                         }
 
-                        input.addEventListener('change', (e) => {
+                        // ★★★ 修改處：定義更新資料的函式 ★★★
+                        const updateData = (e) => {
                             let newVal = e.target.value;
                             const oldVal = app.formData[f.id];
-                            if (f.type === 'address') {
+                            if (f.type === 'address' && e.type === 'change') {
+                                // Address 只有在 change/blur 時才做格式化，避免打字打一半被改掉
                                 processAddress(e.target, f);
                                 newVal = e.target.value;
                             }
-                            app.formData[f.id] = newVal;
-                            evaluateLogic(app);
-                            hasUnsavedChanges = true;
                             
-                            if (f.id === 'internship_institution_name') {
-                                const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
-                                if(tabBtn) {
-                                    // 2. 不要叫做實習填報清單x，改叫{學號}+實習紀錄+{流水號}
-                                    // Don't auto update here to keep naming consistent unless we want dynamic renaming.
-                                    // Keeping it simple as per request 2
-                                }
+                            // 只有值真的變了才處理 (避免重複觸發)
+                            if (oldVal !== newVal) {
+                                app.formData[f.id] = newVal;
+                                evaluateLogic(app);
+                                hasUnsavedChanges = true;
+                                logChange(f.id, appId, oldVal, newVal, groupedStudents[currentStudentId].id);
                             }
+                        };
 
-                            logChange(f.id, appId, oldVal, newVal, groupedStudents[currentStudentId].id);
-                        });
+                        // 綁定事件
+                        // 1. change: 適用於所有類型 (Select, Date, Text 離開焦點時)
+                        input.addEventListener('change', updateData);
+                        
+                        // 2. input: 針對文字框，打字時就即時更新 (解決"沒點開就切換視圖"導致資料沒存到的問題)
+                        if (f.type === 'text' || f.type === 'number' || f.type === 'address') {
+                            input.addEventListener('input', (e) => {
+                                app.formData[f.id] = e.target.value;
+                                hasUnsavedChanges = true;
+                                // 注意：input 事件不記錄 log 或執行 heavy logic，以免效能太差，這些留給 change/blur
+                            });
+                        }
                     }
 
                     wrapper.appendChild(input);
@@ -2141,86 +2294,6 @@
                     }
                 }
             });
-        }
-
-        function openPreviewModal() {
-            if (!currentStudentId) return;
-            const student = groupedStudents[currentStudentId];
-            const thead = document.getElementById('modal-preview-head');
-            const tbody = document.getElementById('modal-preview-body');
-            thead.innerHTML = '';
-            tbody.innerHTML = '';
-
-            const headers = [];
-            (currentYearConfig.fields || []).sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
-                headers.push({id: f.id, label: f.label});
-            });
-            if(headers.length === 0) CORE_FIELDS.forEach(k => headers.push({id:k, label:k}));
-
-            headers.forEach(h => {
-                const th = document.createElement('th');
-                th.innerText = h.label;
-                thead.appendChild(th);
-            });
-
-            student.applications.forEach(app => {
-                const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-                const courseCount = courses.length;
-
-                courses.forEach((c, idx) => {
-                    const tr = document.createElement('tr');
-                    headers.forEach(h => {
-                        const td = document.createElement('td');
-                        let val = app.formData[h.id];
-                        
-                        const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
-                        if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
-                            const totalVal = parseFloat(val);
-                            const baseVal = Math.floor(totalVal / courseCount);
-                            const remainder = totalVal % courseCount;
-                            
-                            if (idx === courses.length - 1) {
-                                val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
-                            } else {
-                                val = baseVal.toFixed(fieldDef.decimal || 0);
-                            }
-                        }
-
-                        if (val === undefined || val === "") {
-                            val = c[h.id] || c[h.label] || "";
-                        } else {
-                            td.className = "text-indigo-600 font-bold bg-indigo-50"; 
-                        }
-                        
-                        if (fieldDef && fieldDef.type === 'date' && fieldDef.inputFormat === 'ROC' && val && val.includes('-')) {
-                             const parts = val.split('-');
-                             if (parts.length === 3) {
-                                 const roc = parseInt(parts[0]) - 1911;
-                                 val = `${roc}/${parts[1]}/${parts[2]}`;
-                             }
-                        }
-
-                        td.innerText = val;
-                        tr.appendChild(td);
-                    });
-                    tbody.appendChild(tr);
-                });
-            });
-
-            const unassigned = student.courses.filter(c => !c._app_id);
-            unassigned.forEach(c => {
-                const tr = document.createElement('tr');
-                tr.className = "opacity-50"; 
-                headers.forEach(h => {
-                    const td = document.createElement('td');
-                    let val = c[h.id] || c[h.label] || "";
-                    td.innerText = val;
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-            });
-
-            document.getElementById('preview-modal').classList.remove('hidden');
         }
 
         async function exportData() {
@@ -2407,7 +2480,485 @@
             }
             return '-';
         }
+        // --- 智慧自動歸戶邏輯 ---
+        function tryAutoMerge(student, currentCourse) {
+            // 1. 取得所有需要比對的欄位定義
+            // 排除系統資訊、排除不須填寫的欄位
+            const allFields = currentYearConfig.fields || [];
+            const dataFields = allFields.filter(f => 
+                !f.isSystem && 
+                !CORE_FIELDS.includes(f.id) && 
+                f.category !== 'sys_course_info' && 
+                f.category !== 'sys_student_info'
+            );
 
+            // 2. 檢查目前這門課是否「填寫完成」
+            // 定義：所有「當下可見」且「必填」的欄位都有值
+            const isComplete = (course) => {
+                for (const f of dataFields) {
+                    // A. 檢查是否被鎖定 (Visibility)
+                    let isVisible = true;
+                    if (f.visibilityRule) {
+                        const depVal = course[f.visibilityRule.dep];
+                        isVisible = f.visibilityRule.action === 'show' ? depVal === f.visibilityRule.val : depVal !== f.visibilityRule.val;
+                    }
+                    if (!isVisible) continue; // 鎖定的欄位忽略，不算未填
+
+                    // B. 檢查必填
+                    if (f.required) {
+                        const val = course[f.id];
+                        if (val === undefined || val === null || String(val).trim() === "") {
+                            return false; // 還有必填沒填
+                        }
+                    }
+                }
+                return true; // 所有該填的都填了
+            };
+
+            if (!isComplete(currentCourse)) return; // 自己都沒填完，不動作
+
+            // 3. 尋找其他「也填寫完成」且「尚未歸戶」的課程
+            const candidates = student.courses.filter(c => 
+                !c._app_id && // 未歸戶
+                c._internal_id !== currentCourse._internal_id && // 不是自己
+                isComplete(c) // 也填完了
+            );
+
+            if (candidates.length === 0) return; // 沒人可以配對
+
+            // 4. 比對邏輯
+            const matchedCourses = [currentCourse];
+
+            candidates.forEach(otherC => {
+                let isMatch = true;
+                for (const f of dataFields) {
+                    // 忽略「平均型」數值欄位 (這些允許不同，因為要加總)
+                    if (f.type === 'number' && f.calcMode === 'average') continue;
+
+                    // 忽略鎖定的欄位 (假設鎖定欄位值為空或無意義)
+                    let isVisible = true;
+                    if (f.visibilityRule) {
+                        const depVal = currentCourse[f.visibilityRule.dep];
+                        isVisible = f.visibilityRule.action === 'show' ? depVal === f.visibilityRule.val : depVal !== f.visibilityRule.val;
+                    }
+                    if (!isVisible) continue;
+
+                    // 比對值是否相同
+                    const valA = String(currentCourse[f.id] || "").trim();
+                    const valB = String(otherC[f.id] || "").trim();
+                    if (valA !== valB) {
+                        isMatch = false;
+                        break;
+                    }
+                }
+
+                if (isMatch) matchedCourses.push(otherC);
+            });
+
+            // 5. 如果找到匹配 (至少 2 門課一樣) -> 執行合併
+            if (matchedCourses.length >= 2) {
+                const newAppId = 'app_merge_' + Date.now();
+                const initData = {};
+
+                // A. 填入一般欄位 (取第一門課的值，因為大家都一樣)
+                dataFields.forEach(f => {
+                    if (f.type === 'number' && f.calcMode === 'average') return; // 先跳過平均欄位
+                    
+                    const val = currentCourse[f.id];
+                    if (val !== undefined && val !== "") {
+                        initData[f.id] = val;
+                    }
+                });
+
+                // B. ★★★ 處理加總欄位 ★★★
+                dataFields.filter(f => f.type === 'number' && f.calcMode === 'average').forEach(f => {
+                    let sum = 0;
+                    let hasVal = false;
+                    matchedCourses.forEach(c => {
+                        const v = parseFloat(c[f.id]);
+                        if (!isNaN(v)) {
+                            sum += v;
+                            hasVal = true;
+                        }
+                    });
+                    if (hasVal) {
+                        // 依照小數點設定格式化
+                        initData[f.id] = f.decimal ? sum.toFixed(2) : String(sum);
+                    }
+                });
+
+                // C. 建立 Application 物件
+                const newApp = {
+                    id: newAppId,
+                    courseIds: matchedCourses.map(c => c._internal_id),
+                    formData: initData
+                };
+
+                // D. 綁定並更新狀態
+                student.applications.push(newApp);
+                matchedCourses.forEach(c => {
+                    c._app_id = newAppId;
+                });
+
+                // E. 重新渲染
+                renderGlobalGrid();
+                
+                // 顯示提示
+                const names = matchedCourses.map(c => getCourseValue(c, ['course_name', '課程名稱'])).join('、');
+                showToast('success', `已自動合併歸戶：${names} (數值已加總)`);
+                
+                logChange('AutoMerge', newAppId, '', 'Merged based on matching content', student.id);
+            }
+        }
+        // --- 輔助：檢查是否有未歸戶的暫存資料 ---
+        function checkForRawData() {
+            const fields = currentYearConfig.fields || [];
+            // 找出所有可填寫的欄位 ID
+            const writableFields = fields
+                .filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info')
+                .map(f => f.id);
+
+            if (writableFields.length === 0) return false;
+
+            // 遍歷所有學生與課程
+            for (const student of Object.values(groupedStudents)) {
+                for (const course of student.courses) {
+                    // 只檢查沒有歸戶的課程 (Raw Data)
+                    if (!course._app_id) {
+                        for (const fid of writableFields) {
+                            const val = course[fid];
+                            // 只要發現有一個欄位有值，就回傳 true
+                            if (val !== undefined && val !== null && String(val).trim() !== "") {
+                                return true; 
+                            }
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // --- 輔助：將 Raw Data 轉換為 Application (1對1轉換以保留資料) ---
+        function convertRawToApps() {
+            const fields = currentYearConfig.fields || [];
+            const writableFields = fields
+                .filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id))
+                .map(f => f.id);
+
+            let changeCount = 0;
+
+            Object.values(groupedStudents).forEach(student => {
+                student.courses.forEach(course => {
+                    if (!course._app_id) {
+                        // 檢查這門課是否有資料
+                        const initData = {};
+                        let hasData = false;
+                        
+                        writableFields.forEach(fid => {
+                            const val = course[fid];
+                            if (val !== undefined && val !== null && String(val).trim() !== "") {
+                                initData[fid] = val;
+                                hasData = true;
+                            }
+                        });
+
+                        if (hasData) {
+                            // 建立新歸戶
+                            const newAppId = 'app_saved_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                            const newApp = {
+                                id: newAppId,
+                                courseIds: [course._internal_id], // 1對1
+                                formData: initData
+                            };
+
+                            student.applications.push(newApp);
+                            course._app_id = newAppId;
+                            changeCount++;
+                        }
+                    }
+                });
+            });
+
+            if (changeCount > 0) {
+                hasUnsavedChanges = true;
+                logChange('BatchConvert', '', 'Raw', 'Converted to Apps', 'System');
+            }
+        }
+
+        // --- 輔助：清除未歸戶的暫存資料 ---
+        function clearRawData() {
+            const fields = currentYearConfig.fields || [];
+            const writableFields = fields
+                .filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id))
+                .map(f => f.id);
+
+            let changeCount = 0;
+
+            Object.values(groupedStudents).forEach(student => {
+                student.courses.forEach(course => {
+                    if (!course._app_id) {
+                        writableFields.forEach(fid => {
+                            if (course[fid] !== undefined && course[fid] !== "") {
+                                course[fid] = ""; // 清空
+                                changeCount++;
+                            }
+                        });
+                    }
+                });
+            });
+            
+            if (changeCount > 0) {
+                hasUnsavedChanges = true; // 雖然清空了，但也算是一種變更（回復原狀）
+            }
+        }
+
+        // --- 歸戶選擇視窗邏輯 ---
+
+        let pendingMergeData = []; // 暫存要處理的資料結構
+
+        function openMergeModal() {
+            const container = document.getElementById('merge-list-container');
+            container.innerHTML = '';
+            pendingMergeData = [];
+
+            const fields = currentYearConfig.fields || [];
+            const writableFields = fields
+                .filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info')
+                .map(f => f.id);
+
+            // 1. 掃描資料
+            Object.values(groupedStudents).forEach(student => {
+                const sourceCourses = []; // 有填資料的課 (來源)
+                const emptyCourses = [];  // 沒填資料的課 (可被歸戶的目標)
+
+                student.courses.forEach(c => {
+                    if (c._app_id) return; // 已歸戶的跳過
+
+                    // 檢查是否有資料
+                    let hasData = false;
+                    for (const fid of writableFields) {
+                        const val = c[fid];
+                        if (val !== undefined && val !== null && String(val).trim() !== "") {
+                            hasData = true;
+                            break;
+                        }
+                    }
+
+                    if (hasData) sourceCourses.push(c);
+                    else emptyCourses.push(c);
+                });
+
+                // 2. 如果該學生有來源資料，就產生 UI
+                if (sourceCourses.length > 0) {
+                    sourceCourses.forEach(srcCourse => {
+                        pendingMergeData.push({
+                            student: student,
+                            source: srcCourse,
+                            targets: emptyCourses // 這一門來源課，可以選擇併入哪些空課
+                        });
+                    });
+                }
+            });
+
+            // 3. 渲染 UI
+            if (pendingMergeData.length === 0) {
+                // 理論上不會發生，因為 checkForRawData 過了，防呆一下
+                executeSwitchToApp();
+                return;
+            }
+
+            pendingMergeData.forEach((item, idx) => {
+                const card = document.createElement('div');
+                card.className = "bg-white border border-slate-200 rounded-lg p-4 shadow-sm";
+                
+                const srcName = getCourseValue(item.source, ['course_name', '課程名稱']);
+                const srcCode = getCourseValue(item.source, ['course_code', '選課代號']);
+
+                // 目標課程的 Checkbox 列表
+                let targetsHtml = '';
+                if (item.targets.length > 0) {
+                    targetsHtml = `<div class="mt-3 pl-4 border-l-2 border-slate-100">
+                        <p class="text-xs text-slate-500 mb-2">是否要將資料同時套用到其他課程？(勾選以歸戶)</p>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
+                    
+                    item.targets.forEach(tgt => {
+                        const tName = getCourseValue(tgt, ['course_name', '課程名稱']);
+                        const tCode = getCourseValue(tgt, ['course_code', '選課代號']);
+                        // Checkbox ID 格式: merge-chk-{來源索引}-{目標內部ID}
+                        targetsHtml += `
+                            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded border border-transparent hover:border-slate-200 transition">
+                                <input type="checkbox" class="merge-target-chk w-4 h-4 text-primary rounded focus:ring-primary" 
+                                    data-idx="${idx}" value="${tgt._internal_id}">
+                                <span>${tName} <span class="text-xs text-slate-400">(${tCode})</span></span>
+                            </label>
+                        `;
+                    });
+                    targetsHtml += `</div></div>`;
+                } else {
+                    targetsHtml = `<div class="mt-2 text-xs text-slate-400 italic pl-4">無其他未歸戶課程可供合併，將單獨建立。</div>`;
+                }
+
+                card.innerHTML = `
+                    <div class="flex items-start gap-3">
+                        <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 font-bold text-xs flex-shrink-0">
+                            ${idx + 1}
+                        </div>
+                        <div class="flex-grow">
+                            <h4 class="font-bold text-slate-700 text-sm">
+                                ${item.student.name} <span class="font-normal text-slate-500 mx-1">/</span> 
+                                <span class="text-primary">${srcName}</span>
+                                <span class="text-xs text-slate-400 font-mono ml-1">${srcCode}</span>
+                            </h4>
+                            <div class="text-xs text-emerald-600 mt-1">
+                                <i class="fas fa-check-circle"></i> 已填寫資料，準備建立歸戶
+                            </div>
+                            ${targetsHtml}
+                        </div>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+
+            document.getElementById('merge-modal').classList.remove('hidden');
+        }
+
+        function closeMergeModal() {
+            document.getElementById('merge-modal').classList.add('hidden');
+        }
+
+        function discardAndSwitch() {
+            // 清除所有 Raw Data
+            clearRawData(); // 使用之前的輔助函式
+            closeMergeModal();
+            executeSwitchToApp();
+            showToast('info', '已清除未儲存的暫存資料');
+        }
+
+        function processMergeAndSwitch() {
+            // 執行歸戶邏輯
+            let createdCount = 0;
+            const fields = currentYearConfig.fields || [];
+            const writableFields = fields.filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id)).map(f => f.id);
+
+            pendingMergeData.forEach((item, idx) => {
+                const student = item.student;
+                const sourceCourse = item.source;
+                
+                // 1. 找出被勾選的目標課程
+                const checkedBoxes = document.querySelectorAll(`.merge-target-chk[data-idx="${idx}"]:checked`);
+                const targetIds = Array.from(checkedBoxes).map(cb => cb.value);
+                
+                // 2. 準備課程 ID 列表 (來源 + 勾選的目標)
+                const finalCourseIds = [sourceCourse._internal_id, ...targetIds];
+                
+                // 3. 準備 Form Data (從來源課程複製)
+                const initData = {};
+                writableFields.forEach(fid => {
+                    const val = sourceCourse[fid];
+                    if (val !== undefined && val !== null && String(val).trim() !== "") {
+                        initData[fid] = val;
+                    }
+                });
+
+                // 4. 建立 App
+                const newAppId = 'app_saved_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                const newApp = {
+                    id: newAppId,
+                    courseIds: finalCourseIds,
+                    formData: initData
+                };
+
+                student.applications.push(newApp);
+                
+                // 5. 更新這些課程的 _app_id
+                finalCourseIds.forEach(cid => {
+                    const c = student.courses.find(x => x._internal_id === cid);
+                    if(c) c._app_id = newAppId;
+                });
+
+                createdCount++;
+            });
+
+            hasUnsavedChanges = true;
+            closeMergeModal();
+            executeSwitchToApp();
+            showToast('success', `已建立 ${createdCount} 筆歸戶紀錄`);
+            
+            logChange('SmartMerge', '', 'Raw', `User merged ${createdCount} entries`, 'User');
+        }
+        
+        function executeSwitchToApp() {
+            document.getElementById('sidebar').style.display = 'flex';
+            document.getElementById('main-content').style.display = 'flex';
+            document.getElementById('sidebar-toggle-strip').style.display = 'flex';
+            document.getElementById('grid-view-container').classList.add('hidden');
+            
+            document.getElementById('btn-view-app').className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary";
+            document.getElementById('btn-view-grid').className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition";
+            
+            if(currentStudentId) selectStudent(currentStudentId);
+        }
+        
+        function autoGroupCourses() {
+            if (!currentStudentId) return;
+            const student = groupedStudents[currentStudentId];
+            const unassigned = student.courses.filter(c => !c._app_id);
+
+            if (unassigned.length === 0) {
+                return showToast('info', '沒有尚未歸戶的課程');
+            }
+
+            const groups = {};
+            unassigned.forEach(c => {
+                let key = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']);
+                if (!key || key === '-') key = 'unknown_' + c._internal_id;
+                if (!groups[key]) groups[key] = [];
+                groups[key].push(c);
+            });
+
+            let createdCount = 0;
+            Object.keys(groups).forEach(key => {
+                const groupCourses = groups[key];
+                if (groupCourses.length > 0) { 
+                    const appId = 'app_auto_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                    const ids = groupCourses.map(c => c._internal_id);
+                    
+                    const firstC = groupCourses[0];
+                    const initData = {};
+                    const instName = getCourseValue(firstC, ['internship_institution_name', '實習機構', '機構名稱']);
+                    if (instName && instName !== '-') {
+                        initData['internship_institution_name'] = instName;
+                    }
+                    if (currentYearConfig.fields) {
+                        currentYearConfig.fields.forEach(f => {
+                             const val = getCourseValue(firstC, [f.id, f.label]);
+                             if(val && val !== '-') initData[f.id] = val;
+                        });
+                    }
+
+                    const newApp = { id: appId, courseIds: ids, formData: initData };
+                    ids.forEach(cid => {
+                        const c = student.courses.find(x => x._internal_id === cid);
+                        if(c) c._app_id = appId;
+                    });
+
+                    student.applications.push(newApp);
+                    logChange('AutoGroup', appId, '', `Grouped by ${key}`, student.id);
+                    createdCount++;
+                }
+            });
+
+            if (createdCount > 0) {
+                hasUnsavedChanges = true;
+                renderTabs(student);
+                renderSettingsTab(student);
+                renderStudentList();
+                showToast('success', `已自動建立 ${createdCount} 筆歸戶紀錄`);
+            } else {
+                showToast('info', '沒有符合自動分組條件的課程');
+            }
+        }
+        
     </script>
 </body>
 </html>
