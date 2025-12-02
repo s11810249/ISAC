@@ -1772,8 +1772,7 @@
                 });
             }
 
-            // 6. 新增 _Course_Data 隱藏工作表 (備份課程核心欄位)
-            // 這能確保即使主表欄位被移動，我們仍有乾淨的課程資訊與 ID 對照
+            // --- 新增邏輯：備份課程核心欄位 ---
             const courseDataSheet = workbook.addWorksheet('_Course_Data', {state: 'hidden'});
             
             // 找出所有屬於 'sys_course_info' 的欄位
@@ -1781,10 +1780,10 @@
                 .filter(f => f.category === 'sys_course_info')
                 .map(f => ({ id: f.id, label: f.label }));
                 
-            // 定義固定欄位 (ID + 系統課程欄位)
+            // 定義固定欄位
             const courseDataHeaders = [
                 { header: 'Course_Internal_ID', key: '_internal_id' },
-                { header: 'Student_ID', key: 'student_id' }, // 輔助對照
+                { header: 'Student_ID', key: 'student_id' },
                 ...sysCourseFields.map(f => ({ header: f.id, key: f.id }))
             ];
             courseDataSheet.columns = courseDataHeaders;
@@ -1797,22 +1796,52 @@
                         student_id: s.id
                     };
                     sysCourseFields.forEach(f => {
-                        // 嘗試從原始資料或對應後的資料中抓取
-                        // 注意：c 物件中已經包含了 mapping 後的 key (如 academic_year)，也有原始 key (如 '學年')
-                        // 這裡我們存入標準化後的 ID (key)
                         rowData[f.id] = c[f.id] || '';
                     });
                     courseDataSheet.addRow(rowData);
                 });
             });
+            // --- 結束新增邏輯 ---
 
-            // 原有的 _Consolidation_Data 邏輯保持在下方
             const conSheet = workbook.addWorksheet('_Consolidation_Data', {state: 'hidden'});
             conSheet.columns = [{header: 'App_ID', key: 'id'}, {header: 'Student_ID', key: 'sid'}, {header: 'Course_IDs', key: 'cids'}, {header: 'Form_Data', key: 'data'}];
             Object.values(groupedStudents).forEach(s => {
                 s.applications.forEach(app => {
                     conSheet.addRow({ id: app.id, sid: s.id, cids: app.courseIds.join(','), data: JSON.stringify(app.formData) });
                 });
+            });
+
+            const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
+            logSheet.columns = [
+                {header: 'Time', key: 'time'}, {header: 'Field', key: 'field'}, 
+                {header: 'Old_Value', key: 'old'}, {header: 'New_Value', key: 'new'}, 
+                {header: 'Student', key: 'student'}, {header: 'App_ID', key: 'app'}
+            ];
+            changeLogs.forEach(l => logSheet.addRow(l));
+
+            const metaSheet = workbook.addWorksheet('_System_Metadata', {state: 'hidden'});
+            metaSheet.columns = [{header:'Field_ID', key:'id'}, {header:'Field_Label', key:'label'}];
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.forEach(f => metaSheet.addRow({id: f.id, label: f.label}));
+            }
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `實習填報_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('success', '匯出成功 (包含隱藏設定)');
+            
+            hasUnsavedChanges = false;
+        }
+
+        function logChange(field, appId, oldVal, newVal, studentId) {
+            if(oldVal === newVal) return;
+            changeLogs.push({
+                time: new Date().toISOString(),
+                field: field,
+                old: oldVal,
+                new: newVal,
+                student: studentId,
+                app: appId
             });
         }
 
