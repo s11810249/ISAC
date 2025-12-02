@@ -2324,56 +2324,82 @@
             const fields = currentYearConfig.fields || [];
             
             fields.forEach(f => {
-                if (f.visibilityRule && f.visibilityRule.dep) {
+                // 取得介面元素
+                const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
+                const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
+                const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
+                
+                if (!wrapper) return;
+
+                let isLocked = false;
+
+                // --- 1. Visibility 檢查 ---
+                if (f.visibilityRule) {
                     const depVal = app.formData[f.visibilityRule.dep];
-                    const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
-                    const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
-                    const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
+                    const shouldShow = f.visibilityRule.action === 'show' 
+                        ? depVal === f.visibilityRule.val 
+                        : depVal !== f.visibilityRule.val;
                     
-                    if (wrapper) {
-                        let shouldEnable = f.visibilityRule.action === 'show' 
-                            ? depVal === f.visibilityRule.val 
-                            : depVal !== f.visibilityRule.val;
-                        
-                        if (inputEl && inputEl.type !== 'hidden') inputEl.disabled = !shouldEnable;
-                        
-                        if (rocContainer) {
-                            rocContainer.querySelector('input').disabled = !shouldEnable;
-                            const btn = rocContainer.querySelector('.date-toggle-btn');
-                            if(btn) {
-                                btn.style.pointerEvents = shouldEnable ? 'auto' : 'none';
-                                btn.style.opacity = shouldEnable ? '1' : '0.5';
-                            }
-                        }
-                        
-                        if (!shouldEnable) {
-                            wrapper.classList.add('field-locked');
-                            if (inputEl && inputEl.type !== 'hidden') inputEl.value = "";
-                            if (rocContainer) rocContainer.querySelector('input').value = "";
-                            app.formData[f.id] = "";
+                    if (!shouldShow) {
+                        isLocked = true;
+                    }
+                }
+
+                // --- 2. Filter Rules 檢查 (新增嚴格鎖定邏輯) ---
+                if (!isLocked && f.filterRules && f.filterRules.length > 0) {
+                    const parentId = f.filterRules[0].dep;
+                    const parentVal = app.formData[parentId];
+
+                    // ★ 關鍵：若父欄位無值，強制鎖定子欄位 ★
+                    if (!parentVal || parentVal === "") {
+                        isLocked = true;
+                    } else {
+                        // 若父欄位有值，檢查是否有對應規則
+                        const rule = f.filterRules.find(r => r.val === parentVal);
+                        if (!rule) {
+                            // 無對應規則 (例如選"無"待遇)，也鎖定
+                            isLocked = true; 
                         } else {
-                            wrapper.classList.remove('field-locked');
+                            // 有規則 -> 執行選項過濾
+                            if (inputEl && inputEl.tagName === 'SELECT') {
+                                Array.from(inputEl.options).forEach(opt => {
+                                    if (opt.value === "") return;
+                                    const shouldShow = rule.limitTo && rule.limitTo.includes(opt.value);
+                                    opt.hidden = !shouldShow;
+                                    opt.disabled = !shouldShow; // Safari/Firefox 支援
+                                });
+                                // 檢查目前值是否有效
+                                if (inputEl.value && rule.limitTo && !rule.limitTo.includes(inputEl.value)) {
+                                    inputEl.value = "";
+                                    app.formData[f.id] = "";
+                                }
+                            }
                         }
                     }
                 }
-                
-                if (f.filterRules && f.filterRules.length > 0) {
-                    const input = document.getElementById(`input-${app.id}-${f.id}`);
-                    if (input && input.tagName === 'SELECT') {
-                        const rule = f.filterRules.find(r => app.formData[r.dep] === r.val);
-                        Array.from(input.options).forEach(opt => {
-                            if (opt.value === "") return;
-                            if (rule && rule.limitTo) {
-                                opt.hidden = !rule.limitTo.includes(opt.value);
-                            } else {
-                                opt.hidden = false;
-                            }
-                        });
-                        if (input.selectedOptions[0]?.hidden) {
-                            input.value = "";
+
+                // --- 3. 執行鎖定/解鎖 UI 更新 ---
+                if (isLocked) {
+                    wrapper.classList.add('field-locked');
+                    
+                    if (inputEl && inputEl.type !== 'hidden') {
+                        inputEl.disabled = true;
+                        if(inputEl.value !== "") {
+                            inputEl.value = "";
                             app.formData[f.id] = "";
                         }
                     }
+                    
+                    if (rocContainer) {
+                        rocContainer.querySelector('input').value = "";
+                        rocContainer.querySelector('input').disabled = true;
+                        const btn = rocContainer.querySelector('.date-toggle-btn'); // if any
+                        if(btn) btn.style.pointerEvents = 'none';
+                    }
+                } else {
+                    wrapper.classList.remove('field-locked');
+                    if (inputEl) inputEl.disabled = false;
+                    if (rocContainer) rocContainer.querySelector('input').disabled = false;
                 }
             });
         }
@@ -3067,11 +3093,10 @@
             const fields = currentYearConfig.fields || [];
             
             fields.forEach(f => {
-                // 找到該列對應這個欄位的 input
                 const input = tr.querySelector(`[data-field="${f.id}"]`);
                 if (!input) return;
 
-                // 1. 處理 Visibility (顯示/鎖定)
+                // --- 1. 處理 Visibility (整欄顯示/隱藏) ---
                 if (f.visibilityRule) {
                     const depVal = dataContext[f.visibilityRule.dep];
                     const shouldShow = f.visibilityRule.action === 'show' 
@@ -3079,53 +3104,76 @@
                         : depVal !== f.visibilityRule.val;
                     
                     if (!shouldShow) {
-                        if (!input.disabled) { // 只有狀態改變時才動作
+                        if (!input.disabled) {
                             input.disabled = true;
-                            input.value = ""; // 隱藏時清空
-                            if (dataContext[f.id] !== "") dataContext[f.id] = ""; // 同步清空資料
+                            input.value = "";
+                            if (dataContext[f.id] !== "") dataContext[f.id] = "";
                         }
+                        // 隱藏的欄位不需要再處理下拉連動，直接跳過
+                        return; 
                     } else {
-                        if (input.disabled) input.disabled = false;
+                        // 如果是可見的，先解鎖 (但下面 Filter Rules 可能會再次鎖住它)
+                        input.disabled = false;
                     }
                 }
 
-                // 2. 處理 Filter Rules (下拉選單連動)
+                // --- 2. 處理 Filter Rules (下拉選單連動 - 嚴格模式) ---
                 if (f.filterRules && f.filterRules.length > 0 && input.tagName === 'SELECT') {
-                    const currentVal = input.value;
-                    let isValid = false;
-                    
-                    // 檢查每一個 option 是否該顯示
-                    Array.from(input.options).forEach(opt => {
-                        if (opt.value === "") {
-                            isValid = true; // 空選項永遠顯示
-                            return;
-                        }
+                    // 取得依賴的父欄位 ID (通常一組規則的依賴對象是一樣的，取第一個即可)
+                    const parentId = f.filterRules[0].dep;
+                    const parentVal = dataContext[parentId];
 
-                        // 找到目前符合的規則
-                        const rule = f.filterRules.find(r => dataContext[r.dep] === r.val);
-                        
-                        let shouldShowOpt = true;
-                        if (rule && rule.limitTo) {
-                            shouldShowOpt = rule.limitTo.includes(opt.value);
-                        }
-                        
-                        // 隱藏/顯示 Option
-                        if (!shouldShowOpt) {
-                            opt.hidden = true;
-                            opt.disabled = true; 
-                            opt.style.display = 'none';
-                        } else {
-                            opt.hidden = false;
-                            opt.disabled = false;
-                            opt.style.display = '';
-                            if (opt.value === currentVal) isValid = true;
-                        }
-                    });
-
-                    // 如果當前選的值被隱藏了，要重置
-                    if (!isValid && currentVal !== "") {
+                    // ★ 關鍵修改：如果父欄位沒值，直接鎖定 ★
+                    if (!parentVal || parentVal === "") {
+                        input.disabled = true;
                         input.value = "";
-                        dataContext[f.id] = ""; // 同步更新資料
+                        if (dataContext[f.id] !== "") dataContext[f.id] = "";
+                        // 視覺上給予提示 (選填)
+                        input.title = "請先選擇關聯欄位";
+                        return; // 結束，不需處理選項
+                    }
+
+                    // 父欄位有值，尋找匹配規則
+                    const rule = f.filterRules.find(r => r.val === parentVal);
+                    
+                    if (!rule) {
+                        // 父欄位有值，但沒有定義對應的子選項規則 (例如選了"無"，後面就沒得選)
+                        input.disabled = true;
+                        input.value = "";
+                        if (dataContext[f.id] !== "") dataContext[f.id] = "";
+                    } else {
+                        // 有匹配規則 -> 解鎖並過濾選項
+                        input.disabled = false;
+                        
+                        const currentVal = input.value;
+                        let isValid = false;
+
+                        Array.from(input.options).forEach(opt => {
+                            if (opt.value === "") {
+                                isValid = true; 
+                                return;
+                            }
+                            
+                            // 根據 limitTo 決定顯示或隱藏
+                            const shouldShowOpt = rule.limitTo && rule.limitTo.includes(opt.value);
+                            
+                            if (!shouldShowOpt) {
+                                opt.hidden = true;
+                                opt.disabled = true; 
+                                opt.style.display = 'none';
+                            } else {
+                                opt.hidden = false;
+                                opt.disabled = false;
+                                opt.style.display = '';
+                                if (opt.value === currentVal) isValid = true;
+                            }
+                        });
+
+                        // 如果當前選的值不在允許清單內，清空
+                        if (!isValid && currentVal !== "") {
+                            input.value = "";
+                            dataContext[f.id] = "";
+                        }
                     }
                 }
             });
@@ -3299,7 +3347,7 @@
             showToast('success', '歸戶完成');
             logChange('GridMerge', newAppId, '', `Merged ${selectedCourses.length} items`, student.id);
         }
-        
+
     </script>
 </body>
 </html>
