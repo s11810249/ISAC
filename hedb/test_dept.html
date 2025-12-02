@@ -231,79 +231,74 @@
         .col-toggle-label:hover { border-color: #64748b; }
         .col-toggle-label input:checked + span { color: #002E5D; font-weight: bold; }
         
-        /* Grid View Compact Styles */
-        /* 讓表格行高變小，更像 Excel */
-        .excel-table td { padding: 4px 6px; height: 32px; } 
+        /* =========================================
+           ★★★ Grid View 極致美化與修復 ★★★
+           ========================================= */
         
-        /* 修正輸入框高度與內距 */
+        /* 1. 移除表格儲存格的內距，讓 Input 填滿 (解決空隙問題) */
+        .excel-table td { 
+            padding: 0 !important; 
+            height: 34px; /* 固定高度，避免跳動 */
+            position: relative;
+            border-color: #cbd5e1; /* 邊框顏色統一 */
+        }
+        
+        /* 2. 輸入框與選單通用樣式 */
         .grid-input { 
             width: 100%; 
             height: 100%;
-            border: 1px solid transparent; 
+            border: none; /* 移除原本邊框，由 td 提供 */
             background: transparent; 
-            padding: 0 4px; 
+            padding: 0 8px; /* 內部文字留白 */
             font-size: 13px; 
             border-radius: 0;
-            line-height: 24px;
-        }
-        .grid-input:focus { border: 1px solid #002E5D; background: white; outline: none; box-shadow: none; }
-        .grid-input:disabled { background-color: #f8fafc; color: #cbd5e1; cursor: not-allowed; }
-
-        /* 讓選單更緊湊 */
-        select.grid-input { padding-right: 0; }
-        
-        /* =========================================
-           ★★★ 預覽視窗：欄位標籤按鈕化 (Tag Style) ★★★
-           ========================================= */
-        
-        /* 隱藏原本的 input checkbox */
-        .toggle-chip input {
-            display: none;
+            line-height: 34px;
+            color: #334155;
+            
+            /* 長文字處理 (解決選項太長看不到的問題) */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
-        /* 標籤按鈕基底樣式 (未選取狀態) */
-        .toggle-chip {
-            display: inline-flex;
-            align-items: center;
-            justify-content: center;
-            padding: 0.25rem 0.75rem;
-            background-color: #f1f5f9; /* slate-100 */
-            color: #64748b;            /* slate-500 */
-            border: 1px solid #e2e8f0; /* slate-200 */
-            border-radius: 9999px;     /* 圓角膠囊 */
-            font-size: 0.75rem;        /* xs */
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            user-select: none;
+        /* Focus 狀態：加上深藍色內陰影框線，不影響佈局 */
+        .grid-input:focus { 
+            outline: none;
+            box-shadow: inset 0 0 0 2px #002E5D; 
+            background-color: #fff;
+            z-index: 10; /* 確保浮在最上層 */
         }
 
-        /* 滑鼠移過去 */
-        .toggle-chip:hover {
+        /* 3. 鎖定/不可填寫狀態 (解決顏色太淺看不清楚的問題) */
+        .grid-input:disabled { 
+            background-color: #e2e8f0; /* 加深灰色 (Slate-200) */
+            color: #94a3b8; /* 文字變淡 */
+            cursor: not-allowed;
+        }
+        /* 針對整格背景也變色，確保無死角 */
+        td:has(.grid-input:disabled) {
             background-color: #e2e8f0;
-            color: #475569;
         }
 
-        /* 選取狀態 (Checked) - 變為深藍色實心 */
-        .toggle-chip:has(input:checked) {
-            background-color: #002E5D; /* Primary */
-            border-color: #002E5D;
-            color: #ffffff;
-            box-shadow: 0 2px 4px rgba(0, 46, 93, 0.2);
+        /* 4. 美化下拉選單 (解決內建選單很醜的問題) */
+        select.grid-input { 
+            appearance: none; /* 移除瀏覽器預設樣式 */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            padding-right: 24px; /* 留位置給箭頭 */
+            cursor: pointer;
+            
+            /* 自訂小箭頭 (SVG Data URI) */
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 4px center;
+            background-size: 14px;
         }
         
-        /* 選取狀態的 Hover */
-        .toggle-chip:has(input:checked):hover {
-            background-color: #003d7a;
-            border-color: #003d7a;
-        }
-
-        /* 收合選單樣式 */
-        details.column-picker > summary {
-            list-style: none;
-        }
-        details.column-picker > summary::-webkit-details-marker {
-            display: none;
+        /* 修正 Firefox 下拉選單文字可能被截斷 */
+        select.grid-input:-moz-focusring {
+            color: transparent;
+            text-shadow: 0 0 0 #000;
         }
 
 
@@ -524,7 +519,8 @@
                  <input type="text" id="grid-search" placeholder="篩選學號/姓名/課程..." class="px-3 py-1.5 border border-slate-300 rounded text-sm w-64" oninput="renderGlobalGrid()">
             </div>
         </div>
-        <div class="flex-grow overflow-auto custom-scroll relative">
+
+        <div class="flex-grow overflow-auto custom-scroll relative pb-24">
             <table class="excel-table w-full relative">
                 <thead class="sticky top-0 z-20 bg-slate-100 shadow-sm" id="grid-thead"></thead>
                 <tbody id="grid-tbody"></tbody>
@@ -924,6 +920,7 @@
 
         // --- 傳統填報模式 (Grid View) 核心邏輯 ---
 
+        // --- 傳統填報模式 (Grid View) 核心邏輯 (重構版) ---
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
@@ -958,40 +955,43 @@
 
                     const tr = document.createElement('tr');
                     tr.dataset.sid = student.id;
-                    tr.dataset.cid = course._internal_id; // Store IDs for easy lookup
+                    tr.dataset.cid = course._internal_id; 
 
                     const appId = course._app_id;
-                    let appData = {};
+                    let rowContext = {}; // 這一列的資料上下文 (可能是 AppData 或 Course)
+                    
                     if (appId) {
                         const app = student.applications.find(a => a.id === appId);
-                        if (app) appData = app.formData;
+                        rowContext = app ? app.formData : {};
+                    } else {
+                        rowContext = course;
                     }
 
-                    // Fixed Columns
+                    // A. Fixed Columns
                     fixedCols.forEach(col => {
                         const td = document.createElement('td');
-                        td.innerText = course[col.id] || student[col.id === 'student_id' ? 'id' : 'name'] || '';
-                        td.className = "bg-slate-50 font-medium text-slate-600 select-none";
+                        const val = course[col.id] || student[col.id === 'student_id' ? 'id' : 'name'] || '';
+                        td.innerText = val;
+                        td.title = val; // Hover 顯示完整文字
+                        td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 flex items-center"; // 微調樣式
                         tr.appendChild(td);
                     });
 
-                    // Input Columns
+                    // B. Input Columns
                     dynamicCols.forEach(f => {
                         const td = document.createElement('td');
+                        const val = rowContext[f.id] || "";
                         
-                        let val = "";
                         if (appId) {
-                            val = appData[f.id] || "";
                             td.className = "is-linked"; 
                         } else {
-                            val = course[f.id] || ""; 
                             td.className = "is-raw";
                         }
                         
                         let input;
                         if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
-                            input.innerHTML = `<option value="">-</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                         } else {
                             input = document.createElement('input');
                             input.type = "text";
@@ -999,21 +999,26 @@
                         }
 
                         input.className = "grid-input";
+                        input.dataset.field = f.id; // ★ 重要：標記欄位 ID
+                        input.title = val; // ★ 重要：Hover 顯示完整內容
                         
-                        // 標記 class 方便連動更新找到它
+                        // 標記 class 方便連動更新找到它 (如果是歸戶)
                         if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
                         
-                        // 邏輯鎖定檢查 (Visibility)
-                        // 使用 helper 檢查是否應該 disable
-                        checkGridInputVisibility(input, f, appId ? appData : course);
-
-                        // Event Handler: 使用 handleGridChange 處理邏輯
+                        // Event Handler
                         input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                        
+                        // 即時更新 Title (UX)
+                        input.oninput = (e) => { e.target.title = e.target.value; };
 
                         td.appendChild(input);
                         tr.appendChild(td);
                     });
+                    
                     tbody.appendChild(tr);
+
+                    // ★★★ 3. 立即執行一次邏輯檢查 (初始化鎖定狀態與選項) ★★★
+                    updateRowLogic(tr, rowContext);
                 });
             });
         }
@@ -1034,47 +1039,56 @@
             }
         }
 
-        // ★★★ 核心：處理格子變更 ★★★
+        // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
             const newVal = inputEl.value;
-            const appId = course._app_id;
+            inputEl.title = newVal; // 更新 Hover 提示
             
-            // 標記有變更
+            const appId = course._app_id;
             hasUnsavedChanges = true;
 
+            const isScoreField = ['score', 'grade', 'credit', 'hours', 'point', '成績', '學分', '時數'].some(k => fieldDef.id.toLowerCase().includes(k) || fieldDef.label.includes(k));
+
             if (appId) {
-                // --- 情境 A: 已歸戶 (Linked) ---
-                // 更新 App Data (連動邏輯維持不變)
+                // === 情境 A: 已歸戶 ===
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
                     const oldVal = app.formData[fieldDef.id];
                     app.formData[fieldDef.id] = newVal;
                     logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
+                    // 1. 同步數值到所有共用此 App 的格子
                     document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
-                        if (el !== inputEl) el.value = newVal;
+                        if (el !== inputEl) {
+                            el.value = newVal;
+                            el.title = newVal;
+                        }
                     });
 
-                    // 檢查相依性
-                    const isDependency = (currentYearConfig.fields||[]).some(f => f.visibilityRule && f.visibilityRule.dep === fieldDef.id);
-                    if(isDependency) renderGlobalGrid();
+                    // 2. ★★★ 觸發連動邏輯檢查 (不重繪表格) ★★★
+                    // 找出目前畫面上所有屬於這個 App 的列 (TR)
+                    const relatedRows = [];
+                    // 這裡用簡單的方式找：遍歷 tbody 的 tr，看 dataset.cid 是否在 app.courseIds 裡
+                    // 為了效能，我們可以只針對目前操作的這一列，但為了完整連動(改A課，B課也要解鎖)，需遍歷
+                    // 效能優化：只針對有顯示在畫面上的列
+                    const allRows = document.getElementById('grid-tbody').querySelectorAll('tr');
+                    allRows.forEach(tr => {
+                        const cid = tr.dataset.cid;
+                        if (app.courseIds.includes(cid)) {
+                            updateRowLogic(tr, app.formData);
+                        }
+                    });
                 }
             } else {
-                // --- 情境 B: 未歸戶 (Raw) ---
+                // === 情境 B: 未歸戶 ===
                 course[fieldDef.id] = newVal;
                 
-                // 1. 先處理基本的顯示邏輯 (解鎖欄位)
-                const isDependency = (currentYearConfig.fields||[]).some(f => f.visibilityRule && f.visibilityRule.dep === fieldDef.id);
-                if(isDependency) {
-                    // 如果改了關鍵欄位導致其他欄位解鎖，必須先重繪，讓使用者能填寫後續
-                    renderGlobalGrid();
-                    // 重繪後 inputEl 已經換了，所以這裡 return，等待使用者填完下一格再觸發合併
-                    return; 
-                }
+                // 1. 觸發單列邏輯檢查
+                const tr = inputEl.closest('tr');
+                if (tr) updateRowLogic(tr, course);
 
-                // 2. ★★★ 觸發智慧歸戶檢查 ★★★
-                // 只有當填寫的值不為空時才檢查，節省效能
-                if (newVal && newVal.trim() !== "") {
+                // 2. 觸發智慧自動歸戶
+                if (!isScoreField && newVal && newVal.trim() !== "") {
                     tryAutoMerge(student, course);
                 }
             }
@@ -2721,20 +2735,25 @@
             container.innerHTML = '';
             pendingMergeData = [];
 
+            // 1. 定義哪些欄位是使用者填寫的 (Writable)
             const fields = currentYearConfig.fields || [];
             const writableFields = fields
                 .filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info')
                 .map(f => f.id);
 
-            // 1. 掃描資料
+            // 2. 定義哪些欄位是用來識別課程資訊的 (System Info) - 用於顯示
+            const sysInfoFields = fields
+                .filter(f => f.category === 'sys_course_info')
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            // 3. 掃描資料
             Object.values(groupedStudents).forEach(student => {
-                const sourceCourses = []; // 有填資料的課 (來源)
-                const emptyCourses = [];  // 沒填資料的課 (可被歸戶的目標)
+                const sourceCourses = []; 
+                const emptyCourses = [];  
 
                 student.courses.forEach(c => {
-                    if (c._app_id) return; // 已歸戶的跳過
+                    if (c._app_id) return; 
 
-                    // 檢查是否有資料
                     let hasData = false;
                     for (const fid of writableFields) {
                         const val = c[fid];
@@ -2748,48 +2767,62 @@
                     else emptyCourses.push(c);
                 });
 
-                // 2. 如果該學生有來源資料，就產生 UI
                 if (sourceCourses.length > 0) {
                     sourceCourses.forEach(srcCourse => {
                         pendingMergeData.push({
                             student: student,
                             source: srcCourse,
-                            targets: emptyCourses // 這一門來源課，可以選擇併入哪些空課
+                            targets: emptyCourses 
                         });
                     });
                 }
             });
 
-            // 3. 渲染 UI
             if (pendingMergeData.length === 0) {
-                // 理論上不會發生，因為 checkForRawData 過了，防呆一下
                 executeSwitchToApp();
                 return;
             }
 
+            // 4. 渲染 UI
             pendingMergeData.forEach((item, idx) => {
                 const card = document.createElement('div');
                 card.className = "bg-white border border-slate-200 rounded-lg p-4 shadow-sm";
                 
                 const srcName = getCourseValue(item.source, ['course_name', '課程名稱']);
-                const srcCode = getCourseValue(item.source, ['course_code', '選課代號']);
+                
+                // 來源課程的資訊顯示 (Source Info)
+                let srcInfoHtml = '';
+                sysInfoFields.forEach(f => {
+                    const val = item.source[f.id];
+                    if(val) srcInfoHtml += `<span class="mr-3 text-slate-500">${f.label}: <span class="font-mono text-slate-700">${val}</span></span>`;
+                });
 
                 // 目標課程的 Checkbox 列表
                 let targetsHtml = '';
                 if (item.targets.length > 0) {
                     targetsHtml = `<div class="mt-3 pl-4 border-l-2 border-slate-100">
                         <p class="text-xs text-slate-500 mb-2">是否要將資料同時套用到其他課程？(勾選以歸戶)</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">`;
+                        <div class="grid grid-cols-1 gap-2">`; // 改回單欄顯示，以免資訊太長切到
                     
                     item.targets.forEach(tgt => {
                         const tName = getCourseValue(tgt, ['course_name', '課程名稱']);
-                        const tCode = getCourseValue(tgt, ['course_code', '選課代號']);
-                        // Checkbox ID 格式: merge-chk-{來源索引}-{目標內部ID}
+                        
+                        // ★★★ 動態生成目標課程的所有系統欄位資訊 ★★★
+                        let tInfoHtml = '';
+                        sysInfoFields.forEach(f => {
+                            const val = tgt[f.id];
+                            // 使用灰色小字顯示這些屬性
+                            if(val) tInfoHtml += `<span class="inline-block bg-slate-100 px-1.5 py-0.5 rounded text-[10px] text-slate-500 mr-1 border border-slate-200">${f.label}: ${val}</span>`;
+                        });
+
                         targetsHtml += `
-                            <label class="flex items-center gap-2 text-sm cursor-pointer hover:bg-slate-50 p-1.5 rounded border border-transparent hover:border-slate-200 transition">
-                                <input type="checkbox" class="merge-target-chk w-4 h-4 text-primary rounded focus:ring-primary" 
+                            <label class="flex items-start gap-2 text-sm cursor-pointer hover:bg-slate-50 p-2 rounded border border-transparent hover:border-slate-200 transition">
+                                <input type="checkbox" class="merge-target-chk w-4 h-4 text-primary rounded focus:ring-primary mt-1" 
                                     data-idx="${idx}" value="${tgt._internal_id}">
-                                <span>${tName} <span class="text-xs text-slate-400">(${tCode})</span></span>
+                                <div>
+                                    <div class="font-medium text-slate-700">${tName}</div>
+                                    <div class="mt-1 flex flex-wrap gap-1">${tInfoHtml}</div>
+                                </div>
                             </label>
                         `;
                     });
@@ -2807,9 +2840,11 @@
                             <h4 class="font-bold text-slate-700 text-sm">
                                 ${item.student.name} <span class="font-normal text-slate-500 mx-1">/</span> 
                                 <span class="text-primary">${srcName}</span>
-                                <span class="text-xs text-slate-400 font-mono ml-1">${srcCode}</span>
                             </h4>
-                            <div class="text-xs text-emerald-600 mt-1">
+                            <div class="text-xs mt-1 mb-2 flex flex-wrap gap-y-1">
+                                ${srcInfoHtml}
+                            </div>
+                            <div class="text-xs text-emerald-600 mt-1 border-t border-slate-100 pt-2">
                                 <i class="fas fa-check-circle"></i> 已填寫資料，準備建立歸戶
                             </div>
                             ${targetsHtml}
@@ -2821,7 +2856,7 @@
 
             document.getElementById('merge-modal').classList.remove('hidden');
         }
-
+        
         function closeMergeModal() {
             document.getElementById('merge-modal').classList.add('hidden');
         }
@@ -2957,6 +2992,75 @@
             } else {
                 showToast('info', '沒有符合自動分組條件的課程');
             }
+        }
+        
+        // ★★★ 核心輔助：更新單一列的邏輯 (鎖定狀態 & 下拉連動) ★★★
+        function updateRowLogic(tr, dataContext) {
+            const fields = currentYearConfig.fields || [];
+            
+            fields.forEach(f => {
+                // 找到該列對應這個欄位的 input
+                const input = tr.querySelector(`[data-field="${f.id}"]`);
+                if (!input) return;
+
+                // 1. 處理 Visibility (顯示/鎖定)
+                if (f.visibilityRule) {
+                    const depVal = dataContext[f.visibilityRule.dep];
+                    const shouldShow = f.visibilityRule.action === 'show' 
+                        ? depVal === f.visibilityRule.val 
+                        : depVal !== f.visibilityRule.val;
+                    
+                    if (!shouldShow) {
+                        if (!input.disabled) { // 只有狀態改變時才動作
+                            input.disabled = true;
+                            input.value = ""; // 隱藏時清空
+                            if (dataContext[f.id] !== "") dataContext[f.id] = ""; // 同步清空資料
+                        }
+                    } else {
+                        if (input.disabled) input.disabled = false;
+                    }
+                }
+
+                // 2. 處理 Filter Rules (下拉選單連動)
+                if (f.filterRules && f.filterRules.length > 0 && input.tagName === 'SELECT') {
+                    const currentVal = input.value;
+                    let isValid = false;
+                    
+                    // 檢查每一個 option 是否該顯示
+                    Array.from(input.options).forEach(opt => {
+                        if (opt.value === "") {
+                            isValid = true; // 空選項永遠顯示
+                            return;
+                        }
+
+                        // 找到目前符合的規則
+                        const rule = f.filterRules.find(r => dataContext[r.dep] === r.val);
+                        
+                        let shouldShowOpt = true;
+                        if (rule && rule.limitTo) {
+                            shouldShowOpt = rule.limitTo.includes(opt.value);
+                        }
+                        
+                        // 隱藏/顯示 Option
+                        if (!shouldShowOpt) {
+                            opt.hidden = true;
+                            opt.disabled = true; 
+                            opt.style.display = 'none';
+                        } else {
+                            opt.hidden = false;
+                            opt.disabled = false;
+                            opt.style.display = '';
+                            if (opt.value === currentVal) isValid = true;
+                        }
+                    });
+
+                    // 如果當前選的值被隱藏了，要重置
+                    if (!isValid && currentVal !== "") {
+                        input.value = "";
+                        dataContext[f.id] = ""; // 同步更新資料
+                    }
+                }
+            });
         }
         
     </script>
