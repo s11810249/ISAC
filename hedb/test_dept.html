@@ -1522,6 +1522,53 @@
                 showToast('success', `已還原 ${savedApps.length} 筆歸戶設定`);
             }
 
+            // ★★★ 新增：匯入時自動歸戶單筆資料 (針對只有一筆課程的學生) ★★★
+            let autoSingleCount = 0;
+            // 取得可寫入的欄位定義
+            const fields = currentYearConfig.fields || [];
+            const writableFields = fields.filter(f => 
+                !f.isSystem && 
+                !CORE_FIELDS.includes(f.id) && 
+                f.category !== 'sys_course_info' &&
+                f.category !== 'sys_student_info'
+            );
+
+            Object.values(groupedStudents).forEach(student => {
+                // 條件：學生只有一門課，且該課程尚未被還原設定歸戶(沒有 _app_id)
+                if (student.courses.length === 1 && !student.courses[0]._app_id) {
+                    const course = student.courses[0];
+                    // 建立新的 App ID
+                    const appId = 'app_auto_imp_' + Date.now() + Math.random().toString(36).substr(2, 5);
+                    const initData = {};
+
+                    // 自動從課程資料複製內容到表單
+                    writableFields.forEach(f => {
+                        const val = course[f.id];
+                        if (val !== undefined && val !== null && String(val).trim() !== "") {
+                            initData[f.id] = val;
+                        }
+                    });
+
+                    // 特殊處理：嘗試帶入機構名稱，讓頁籤標題好看一點
+                    if (!initData['internship_institution_name']) {
+                        const instName = getCourseValue(course, ['internship_institution_name', '實習機構', '機構名稱']);
+                        if (instName && instName !== '-') initData['internship_institution_name'] = instName;
+                    }
+
+                    // 建立歸戶物件
+                    const newApp = {
+                        id: appId,
+                        courseIds: [course._internal_id],
+                        formData: initData
+                    };
+
+                    // 寫入學生資料
+                    student.applications.push(newApp);
+                    course._app_id = appId;
+                    autoSingleCount++;
+                }
+            });
+
             const renderOpts = (elId, set) => {
                 const el = document.getElementById(elId);
                 const current = el.value;
@@ -2348,12 +2395,19 @@
                 // --- 1. Visibility 檢查 ---
                 if (f.visibilityRule) {
                     const depVal = app.formData[f.visibilityRule.dep];
-                    const shouldShow = f.visibilityRule.action === 'show' 
-                        ? depVal === f.visibilityRule.val 
-                        : depVal !== f.visibilityRule.val;
                     
-                    if (!shouldShow) {
+                    // ★★★ 修正：若依賴對象為空，強制鎖定 (無論是 show 或 hide 規則) ★★★
+                    if (depVal === undefined || depVal === null || String(depVal).trim() === "") {
                         isLocked = true;
+                    } else {
+                        // 依賴對象有值，才進行規則比對
+                        const shouldShow = f.visibilityRule.action === 'show' 
+                            ? depVal === f.visibilityRule.val 
+                            : depVal !== f.visibilityRule.val;
+                        
+                        if (!shouldShow) {
+                            isLocked = true;
+                        }
                     }
                 }
 
@@ -3111,9 +3165,17 @@
                 // --- 1. 處理 Visibility (整欄顯示/隱藏) ---
                 if (f.visibilityRule) {
                     const depVal = dataContext[f.visibilityRule.dep];
-                    const shouldShow = f.visibilityRule.action === 'show' 
-                        ? depVal === f.visibilityRule.val 
-                        : depVal !== f.visibilityRule.val;
+                    let shouldShow = false;
+
+                    // ★★★ 修正：若依賴對象為空，強制視為不顯示 (鎖定) ★★★
+                    if (depVal === undefined || depVal === null || String(depVal).trim() === "") {
+                        shouldShow = false;
+                    } else {
+                        // 依賴對象有值，才進行規則比對
+                        shouldShow = f.visibilityRule.action === 'show' 
+                            ? depVal === f.visibilityRule.val 
+                            : depVal !== f.visibilityRule.val;
+                    }
                     
                     if (!shouldShow) {
                         if (!input.disabled) {
@@ -3121,7 +3183,7 @@
                             input.value = "";
                             if (dataContext[f.id] !== "") dataContext[f.id] = "";
                         }
-                        // 隱藏的欄位不需要再處理下拉連動，直接跳過
+                        // 隱藏/鎖定的欄位不需要再處理下拉連動，直接跳過
                         return; 
                     } else {
                         // 如果是可見的，先解鎖 (但下面 Filter Rules 可能會再次鎖住它)
@@ -3665,7 +3727,9 @@
                 `🔄 平均每筆歸戶包含：${appAvg} 門課程`
             );
         }
+        
 
+        
     </script>
 </body>
 </html>
