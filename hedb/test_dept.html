@@ -415,6 +415,9 @@
             <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
                 <i class="fas fa-file-export"></i> 匯出結果
             </button>
+            <button onclick="document.getElementById('info-modal').classList.remove('hidden')" class="ml-3 text-slate-400 hover:text-primary transition" title="系統與隱私聲明">
+                <i class="fas fa-info-circle text-xl"></i>
+            </button>
         </div>
     </header>
 
@@ -717,6 +720,47 @@
         <span id="toast-msg">Notification</span>
         <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
     </div>
+    
+    <div id="info-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="px-6 py-4 bg-primary text-white flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2">
+                    <i class="fas fa-shield-alt"></i> 系統使用與隱私聲明
+                </h3>
+                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="text-white/80 hover:text-white transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 space-y-4 text-sm text-slate-700">
+                <div class="flex gap-3">
+                    <div class="text-2xl text-blue-500"><i class="fas fa-laptop-code"></i></div>
+                    <div>
+                        <h4 class="font-bold text-slate-800">純前端運作</h4>
+                        <p class="text-slate-500 mt-1">本系統所有運算皆在您的瀏覽器內完成，<span class="text-red-500 font-bold">不會</span>將任何學生個資上傳至外部伺服器或資料庫，請安心使用。</p>
+                    </div>
+                </div>
+                
+                <div class="flex gap-3">
+                    <div class="text-2xl text-orange-500"><i class="fas fa-save"></i></div>
+                    <div>
+                        <h4 class="font-bold text-slate-800">資料暫存機制</h4>
+                        <p class="text-slate-500 mt-1">資料僅暫存於記憶體中。若您<span class="font-bold">重新整理網頁</span>或<span class="font-bold">關閉瀏覽器</span>，所有未匯出的進度將會<span class="text-red-500 font-bold">永久遺失</span>。</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <div class="text-2xl text-emerald-500"><i class="fas fa-file-excel"></i></div>
+                    <div>
+                        <h4 class="font-bold text-slate-800">資料保管責任</h4>
+                        <p class="text-slate-500 mt-1">匯出的 Excel 檔案包含敏感個資，請妥善保管。若使用公用電腦，請務必在使用後刪除下載的檔案。</p>
+                    </div>
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
+                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="bg-primary hover:bg-sky-900 text-white px-6 py-2 rounded-lg font-bold shadow transition">
+                    我已了解，開始使用
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- 修正 1: 加入 Footer 版權宣告 -->
     <footer class="bg-white border-t border-slate-200 py-3 px-6 text-center text-[10px] text-slate-400 flex-shrink-0 z-50 fixed bottom-0 w-full">
@@ -1015,24 +1059,26 @@
             const searchTerm = document.getElementById('grid-search').value.toLowerCase();
             const fields = currentYearConfig.fields || [];
 
-            // --- 1. 欄位準備 (解決排序與預設顯示問題) ---
-            // 取消分群，統一過濾並依照 order 排序
-            // 解決問題：完全依照後台 order 排序
-            // 解決問題：移除強制加入學號姓名的 fallback，只顯示 config 有設定的欄位
+            // --- 1. 欄位準備 (修正排序問題) ---
             const allColumns = fields
                 .filter(f => true) 
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
-                /* ★★★ 修改開始：修正 0 被視為 false 導致排序錯誤的問題 ★★★ */
-                .sort((a,b) => (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999));
-                /* ★★★ 修改結束 ★★★ */
+                // ★★★ 修正：嚴謹判斷 order，避免 0 被排到最後 ★★★
+                .sort((a,b) => {
+                    const oA = (a.order !== undefined && a.order !== null) ? Number(a.order) : 999;
+                    const oB = (b.order !== undefined && b.order !== null) ? Number(b.order) : 999;
+                    return oA - oB;
+                });
 
             if (allColumns.length === 0) {
                 thead.innerHTML = '<tr><th class="p-4 text-center text-slate-400">無顯示欄位設定</th></tr>';
                 return;
             }
 
-            // --- 2. 建立表頭 ---
+            // --- 2. 建立表頭 (移除 Checkbox) ---
             let trHead = document.createElement('tr');
+            
+            // (Checkbox 已移除)
 
             allColumns.forEach(col => {
                 const th = document.createElement('th');
@@ -1043,24 +1089,23 @@
             });
             thead.appendChild(trHead);
 
-            // --- 3. 建立內容 (解決右側無產出問題) ---
+            // --- 3. 建立內容 ---
             const students = Object.values(groupedStudents);
             if (students.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="p-8 text-center text-slate-400">無資料</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${allColumns.length}" class="p-8 text-center text-slate-400">無資料</td></tr>`;
                 return;
             }
 
             students.forEach(student => {
                 student.courses.forEach(course => {
-                    // 搜尋過濾
                     const fullText = Object.values(course).join(' ') + student.name + student.id;
                     if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
 
                     const tr = document.createElement('tr');
                     tr.className = "hover:bg-slate-50 transition border-b border-slate-100 group";
-                    tr.dataset.cid = course._internal_id; // 用於連動更新
+                    tr.dataset.cid = course._internal_id; 
+                    tr.dataset.sid = student.id; // ★ 重要：用於連動檢查
 
-                    // 判斷歸戶狀態
                     const appId = course._app_id;
                     let appData = {};
                     if(appId) {
@@ -1068,24 +1113,23 @@
                         if(app) appData = app.formData;
                     }
 
+                    // (Checkbox 格已移除)
+
                     // B. Data Cells
                     allColumns.forEach(f => {
                         const td = document.createElement('td');
                         td.className = "border-r border-slate-200 p-0 relative h-[40px]";
                         
-                        // 數值解析：優先取歸戶資料(若有)，否則取原始資料
                         let val = "";
                         if (appId && appData[f.id] !== undefined) {
                             val = appData[f.id];
                         } else {
                             val = course[f.id];
-                            // 補救：如果 Excel 欄位名稱沒對應到，嘗試從 student 物件取基本資料
                             if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
                             if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
                             if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                         }
                         
-                        // 判斷唯讀 (系統欄位) vs 可寫 (填報欄位)
                         const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                         
                         if (isReadOnly) {
@@ -1101,31 +1145,29 @@
                                 input.type = "text";
                                 input.value = val || "";
                                 
-                                /* ★★★ 修改：日期欄位自動格式化 (含 ROC 與 西元) ★★★ */
+                                // ★★★ 新增：日期欄位自動格式化 (ROC 與 西元) ★★★
                                 if (f.type === 'date') {
                                     input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
                                     input.addEventListener('change', (e) => {
-                                        // 移除所有非數字與非斜線字元
-                                        let v = e.target.value.trim().replace(/[^\d]/g, '');
+                                        let v = e.target.value.trim().replace(/[^\d]/g, ''); // 只留數字
                                         
-                                        // 1. 處理 ROC (6或7碼)
+                                        // 1. ROC (6或7碼)
                                         if (f.inputFormat === 'ROC') {
-                                            if (v.length === 7) { // 1140101 -> 114/01/01
+                                            if (v.length === 7) { 
                                                 e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
-                                            } else if (v.length === 6) { // 990101 -> 99/01/01
+                                            } else if (v.length === 6) { 
                                                 e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
                                             }
                                         } 
-                                        // 2. 處理 西元 (8碼)
-                                        else if (v.length === 8) { // 20250101 -> 2025/01/01
+                                        // 2. 西元 (8碼)
+                                        else if (v.length === 8) { 
                                             e.target.value = `${v.substring(0,4)}/${v.substring(4,6)}/${v.substring(6,8)}`;
                                         }
                                         
-                                        // 格式化後再觸發資料更新
+                                        // 格式化後更新資料
                                         handleGridChange(e.target, student, course, f);
                                     });
                                 }
-                                /* ★★★ 新增結束 ★★★ */
                             }
                             
                             input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
@@ -1139,13 +1181,10 @@
                                 td.classList.add('is-raw');
                             }
 
-                            // ★★★ 注意：這裡原本的 else 綁定要移除，改為統一處理 ★★★
-                            // 原本代碼：if (!(f.type === 'date' && f.inputFormat === 'ROC')) { ... }
-                            // 修改後：只要不是 date 類型，才在這裡綁定 change
+                            // 綁定事件 (非日期欄位直接綁定，日期欄位由上方 listener 觸發)
                             if (f.type !== 'date') {
                                 input.onchange = (e) => handleGridChange(e.target, student, course, f);
                             }
-                            /* ★★★ 修改結束 ★★★ */
                             
                             input.oninput = (e) => { e.target.title = e.target.value; }; 
 
@@ -1155,8 +1194,7 @@
                     });
                     
                     tbody.appendChild(tr);
-                    
-                    // 觸發該列的鎖定邏輯檢查
+                    // 傳入合併後的資料進行邏輯檢查
                     updateRowLogic(tr, appId ? appData : course);
                 });
             });
@@ -1258,7 +1296,12 @@
                 deptMasterData = masterRes;
 
                 updateFooterYear();
-
+                
+                // ★★★ 新增：首次載入時顯示聲明 ★★★
+                // 您可以使用 localStorage 來記錄是否已經看過，避免每次F5都跳出來煩人
+                // 但因為這系統強調"不存東西"，所以每次跳出來提醒"資料不存檔"其實也是好的
+                document.getElementById('info-modal').classList.remove('hidden');
+                
             } catch (e) {
                 console.error("Init failed", e);
                 showToast('error', '系統初始化失敗');
@@ -2403,7 +2446,6 @@
             const fields = currentYearConfig.fields || [];
             
             fields.forEach(f => {
-                // 取得介面元素
                 const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
                 const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
                 const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
@@ -2415,49 +2457,40 @@
                 // --- 1. Visibility 檢查 ---
                 if (f.visibilityRule) {
                     const depVal = app.formData[f.visibilityRule.dep];
+                    // ★ 嚴謹檢查 ★
                     const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
                     
-                    let shouldShow = false;
-
                     if (!hasDepValue) {
-                        shouldShow = false; // 父欄位沒填 -> 鎖定
+                        isLocked = true; // 沒填依賴 -> 鎖定
                     } else {
+                        let shouldShow = false;
                         if (f.visibilityRule.action === 'show') {
                             shouldShow = (depVal === f.visibilityRule.val);
                         } else {
                             shouldShow = (depVal !== f.visibilityRule.val);
                         }
-                    }
-                    
-                    if (!shouldShow) {
-                        isLocked = true;
+                        if (!shouldShow) isLocked = true;
                     }
                 }
 
-                // --- 2. Filter Rules 檢查 (新增嚴格鎖定邏輯) ---
+                // --- 2. Filter Rules 檢查 ---
                 if (!isLocked && f.filterRules && f.filterRules.length > 0) {
                     const parentId = f.filterRules[0].dep;
                     const parentVal = app.formData[parentId];
 
-                    // ★ 關鍵：若父欄位無值，強制鎖定子欄位 ★
                     if (!parentVal || parentVal === "") {
                         isLocked = true;
                     } else {
-                        // 若父欄位有值，檢查是否有對應規則
                         const rule = f.filterRules.find(r => r.val === parentVal);
-                        if (!rule) {
-                            // 無對應規則 (例如選"無"待遇)，也鎖定
-                            isLocked = true; 
-                        } else {
-                            // 有規則 -> 執行選項過濾
+                        if (!rule) isLocked = true;
+                        else {
                             if (inputEl && inputEl.tagName === 'SELECT') {
                                 Array.from(inputEl.options).forEach(opt => {
                                     if (opt.value === "") return;
-                                    const shouldShow = rule.limitTo && rule.limitTo.includes(opt.value);
-                                    opt.hidden = !shouldShow;
-                                    opt.disabled = !shouldShow; // Safari/Firefox 支援
+                                    const show = rule.limitTo && rule.limitTo.includes(opt.value);
+                                    opt.hidden = !show;
+                                    opt.disabled = !show;
                                 });
-                                // 檢查目前值是否有效
                                 if (inputEl.value && rule.limitTo && !rule.limitTo.includes(inputEl.value)) {
                                     inputEl.value = "";
                                     app.formData[f.id] = "";
@@ -2467,10 +2500,9 @@
                     }
                 }
 
-                // --- 3. 執行鎖定/解鎖 UI 更新 ---
+                // --- 3. UI 更新 ---
                 if (isLocked) {
                     wrapper.classList.add('field-locked');
-                    
                     if (inputEl && inputEl.type !== 'hidden') {
                         inputEl.disabled = true;
                         if(inputEl.value !== "") {
@@ -2478,12 +2510,9 @@
                             app.formData[f.id] = "";
                         }
                     }
-                    
                     if (rocContainer) {
                         rocContainer.querySelector('input').value = "";
                         rocContainer.querySelector('input').disabled = true;
-                        const btn = rocContainer.querySelector('.date-toggle-btn'); // if any
-                        if(btn) btn.style.pointerEvents = 'none';
                     }
                 } else {
                     wrapper.classList.remove('field-locked');
@@ -3185,45 +3214,76 @@
                 const input = tr.querySelector(`[data-field="${f.id}"]`);
                 if (!input) return;
 
-                // --- 1. 處理 Visibility (整欄顯示/隱藏) ---
+                let isLocked = false;
+
+                // --- 1. 處理 Visibility (顯示/隱藏) ---
                 if (f.visibilityRule) {
                     const depVal = dataContext[f.visibilityRule.dep];
-                    let shouldShow = false;
-
-                    // ★★★ 核心修正：判斷依賴對象是否有值 ★★★
-                    // 只有當依賴對象「有值」時，才進行規則比對
-                    // 若依賴對象為空，則直接視為 false (鎖定)，符合「輸入前鎖定」原則
+                    // 嚴謹檢查：依賴欄位必須有實質內容 (排除 undefined, null, 空字串)
                     const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
 
                     if (!hasDepValue) {
-                        shouldShow = false; // 父欄位沒填 -> 鎖定
+                        // ★ 若依賴對象為空，強制不顯示 (鎖定) ★
+                        isLocked = true;
                     } else {
-                        // 父欄位有填 -> 檢查規則
+                        // 若依賴對象有值，檢查規則
+                        let shouldShow = false;
                         if (f.visibilityRule.action === 'show') {
-                            // 規則是「符合才顯示」
                             shouldShow = (depVal === f.visibilityRule.val);
                         } else {
-                            // 規則是「符合則隱藏」 (即：不符合才顯示)
+                            // action: hide
                             shouldShow = (depVal !== f.visibilityRule.val);
                         }
-                    }
-                    
-                    if (!shouldShow) {
-                        if (!input.disabled) {
-                            input.disabled = true;
-                            input.value = "";
-                            if (dataContext[f.id] !== "") dataContext[f.id] = "";
-                        }
-                        return; // 隱藏欄位不需處理後續
-                    } else {
-                        input.disabled = false; // 符合條件 -> 解鎖
+                        
+                        if (!shouldShow) isLocked = true;
                     }
                 }
 
                 // --- 2. 處理 Filter Rules (下拉選單連動) ---
-                // ... (這部分保持原本的嚴格鎖定邏輯即可) ...
-                if (f.filterRules && f.filterRules.length > 0 && input.tagName === 'SELECT') {
-                     // ...
+                if (!isLocked && f.filterRules && f.filterRules.length > 0 && input.tagName === 'SELECT') {
+                    const parentId = f.filterRules[0].dep;
+                    const parentVal = dataContext[parentId];
+
+                    if (!parentVal || parentVal === "") {
+                        isLocked = true; // 父欄位無值 -> 鎖定
+                        input.title = "請先選擇關聯欄位";
+                    } else {
+                        // 有值 -> 執行過濾
+                        const rule = f.filterRules.find(r => r.val === parentVal);
+                        
+                        if (!rule) {
+                            isLocked = true; // 無對應規則 -> 鎖定
+                        } else {
+                            // 有規則 -> 更新選項
+                            const currentVal = input.value;
+                            let isValid = false;
+                            Array.from(input.options).forEach(opt => {
+                                if (opt.value === "") { isValid = true; return; }
+                                const show = rule.limitTo && rule.limitTo.includes(opt.value);
+                                opt.hidden = !show;
+                                opt.disabled = !show;
+                                if(opt.value === currentVal && show) isValid = true;
+                            });
+                            
+                            if (!isValid && currentVal !== "") {
+                                input.value = "";
+                                dataContext[f.id] = "";
+                            }
+                        }
+                    }
+                }
+
+                // --- 3. 執行 UI 更新 ---
+                if (isLocked) {
+                    if (!input.disabled) {
+                        input.disabled = true;
+                        input.value = "";
+                        if (dataContext[f.id] !== "") dataContext[f.id] = ""; // 清除資料
+                    }
+                    input.parentElement.style.backgroundColor = "#f1f5f9"; // 視覺灰底
+                } else {
+                    input.disabled = false;
+                    input.parentElement.style.backgroundColor = ""; // 恢復背景
                 }
             });
         }
