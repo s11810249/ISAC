@@ -6,22 +6,16 @@
     <title>東海大學學生校外實習校庫填報輔助系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- Excel 處理庫 -->
+    <!-- SheetJS for Excel Import/Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    <!-- Google Fonts -->
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
-    
     <script>
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        primary: '#002E5D', // 東海深藍
-                        secondary: '#C6A87C', // 東海金
-                        success: '#219653',
-                        surface: '#ffffff',
-                        background: '#F8FAFC',
+                        primary: '#002E5D', secondary: '#C6A87C', success: '#219653', danger: '#DC2626', surface: '#ffffff', background: '#F8FAFC',
                     },
                     fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] }
                 }
@@ -29,52 +23,80 @@
         }
     </script>
     <style>
-        /* [修改 1] 移除頁面淡入動畫 */
+        :root {
+            --base-size: 14px; /* Default font size base */
+        }
+        
+        body { font-size: var(--base-size); }
         
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
-        .glass-header { background: rgba(255, 255, 255, 0.95); border-bottom: 1px solid #e2e8f0; backdrop-filter: blur(4px); }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        /* Excel-like Table Styles */
-        .excel-table { border-collapse: collapse; width: 100%; font-size: 13px; }
-        .excel-table th, .excel-table td { border: 1px solid #d1d5db; padding: 6px 10px; white-space: nowrap; }
-        .excel-table th { background-color: #f3f4f6; color: #374151; font-weight: bold; text-align: center; }
-        .excel-table tr:nth-child(even) { background-color: #f9fafb; }
-        .excel-table tr:hover { background-color: #eff6ff; }
+        .input-stylish { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.375rem; padding: 0.4rem 0.75rem; font-size: 1em; transition: all 0.2s; background-color: #fff; line-height: 1.5; min-height: 2.5em; }
+        .input-stylish:focus { border-color: #002E5D; outline: none; box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
+        .input-stylish:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+        
+        textarea.input-stylish { height: auto; min-height: 2.5em; padding-top: 0.4rem; padding-bottom: 0.4rem; }
 
-        /* [修改 2] 優化表單樣式：更緊湊、直覺 */
-        .input-group { margin-bottom: 0.5rem; }
-        .input-group label { font-size: 0.85rem; font-weight: 600; color: #334155; margin-bottom: 0.2rem; display: block; }
-        /* 輸入框高度稍微縮小，讓畫面能容納更多資訊 */
-        .input-group input, .input-group select { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.4rem 0.6rem; font-size: 0.9rem; transition: all 0.2s; outline: none; background-color: #fff; }
-        .input-group input:focus, .input-group select:focus { border-color: #002E5D; ring: 1px solid #002E5D; }
-        .input-group textarea { width: 100%; border: 1px solid #cbd5e1; border-radius: 0.375rem; padding: 0.4rem 0.6rem; font-size: 0.9rem; outline: none; resize: vertical; min-height: 60px; }
+        /* Sidebar Transition */
+        aside { transition: width 0.3s ease; position: relative; }
+        aside.collapsed { width: 0 !important; overflow: hidden; }
         
-        .student-item.active { background-color: #eff6ff; border-left: 4px solid #002E5D; }
+        /* New Full-Height Sidebar Toggle */
+        #sidebar-toggle-strip {
+            position: absolute;
+            left: 20rem; /* Matches sidebar width */
+            top: 0;
+            bottom: 0;
+            width: 12px;
+            background: #f1f5f9;
+            border-right: 1px solid #e2e8f0;
+            border-left: 1px solid #fff;
+            cursor: pointer;
+            z-index: 40;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: left 0.3s ease, background-color 0.2s;
+        }
+        #sidebar-toggle-strip:hover { background-color: #e2e8f0; }
+        #sidebar-toggle-strip i { font-size: 10px; color: #94a3b8; transition: transform 0.3s; }
         
-        /* Course Card Styling */
+        /* When collapsed */
+        aside.collapsed + #sidebar-toggle-strip { left: 0; border-left: none; }
+        aside.collapsed + #sidebar-toggle-strip i { transform: rotate(180deg); }
+
+        /* Left Sidebar Items */
+        .student-item { cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
+        .student-item:hover { background-color: #f8fafc; }
+        .student-item.active { background-color: #eff6ff; border-left-color: #002E5D; }
+        .student-item.active .student-name { color: #002E5D; font-weight: bold; }
+
+        /* Import Button (Admin Style) */
+        .import-btn { border: 2px dashed #bbf7d0; color: #219653; background-color: #f0fdf4; transition: all 0.2s; border-radius: 0.75rem; text-align: center; padding: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9em; width: 100%; }
+        .import-btn:hover { border-color: #219653; background-color: #dcfce7; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        /* Course Card in Settings Tab */
         .course-card { 
             background: #fff; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; 
-            transition: all 0.2s; position: relative;
+            transition: all 0.2s; position: relative; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
         }
-        .course-card.selectable { cursor: pointer; }
-        .course-card.selectable:hover { border-color: #002E5D; background-color: #f0f9ff; }
-        .course-card.selected { border: 2px solid #002E5D; background-color: #eff6ff; }
-        /* 已歸戶樣式 */
-        .course-card.assigned { 
-            background-color: #f8fafc; border-color: #cbd5e1; opacity: 0.7; 
-            border-left: 4px solid #94a3b8; cursor: default;
-        }
-        
-        .course-check { position: absolute; top: 0.75rem; right: 0.75rem; transform: scale(1.2); }
+        .course-card:hover { border-color: #002E5D; background-color: #f0f9ff; }
+        .course-card.selected { border-color: #002E5D; background-color: #eff6ff; }
 
-        /* Form Section Header */
-        .form-section-title { font-size: 0.95rem; font-weight: bold; color: #002E5D; border-bottom: 2px solid #e2e8f0; padding-bottom: 0.25rem; margin-bottom: 0.75rem; margin-top: 1.25rem; }
-        .form-section-title:first-child { margin-top: 0; }
+        .field-group { transition: all 0.3s ease; margin-bottom: 0.5rem; }
+        /* 鎖定時的視覺樣式 (取代原本的 hidden) */
+        .field-locked label { color: #94a3b8; }
+        .field-locked .input-stylish { background-color: #f8fafc; color: #cbd5e1; border-color: #f1f5f9; }
+        .field-locked .date-picker-trigger { pointer-events: none; opacity: 0.5; }
+        
+        .spinner { border: 3px solid rgba(0,46,93,0.1); border-radius: 50%; border-top: 3px solid #002E5D; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
 
         /* Tab System */
         .tab-btn { 
-            padding: 0.75rem 1.5rem; font-size: 0.9rem; font-weight: 600; color: #64748b; 
+            padding: 0.75rem 1.5rem; font-size: 1em; font-weight: 600; color: #64748b; 
             border-bottom: 3px solid transparent; transition: all 0.2s; cursor: pointer; 
             display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
         }
@@ -83,435 +105,715 @@
         
         .tab-content { display: none; }
         .tab-content.active { display: block; }
+
+        /* Excel Preview Table */
+        .excel-table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+        .excel-table th, .excel-table td { border: 1px solid #e2e8f0; padding: 6px 10px; white-space: nowrap; }
+        .excel-table th { background-color: #f8fafc; color: #64748b; font-weight: bold; text-align: left; }
+        
+        /* Form Section Title */
+        .form-section-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #002E5D;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .form-section-title:first-child { margin-top: 0; }
+        .form-section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 1.2em;
+            background-color: #C6A87C;
+            border-radius: 2px;
+        }
+
+        /* Tooltip Style */
+        .tooltip-container { position: relative; display: inline-block; margin-left: 0.5rem; }
+        .tooltip-icon { color: #94a3b8; cursor: help; transition: color 0.2s; }
+        .tooltip-icon:hover { color: #002E5D; }
+        .tooltip-text { 
+            visibility: hidden; width: 200px; background-color: #334155; color: #fff; text-align: left; 
+            border-radius: 6px; padding: 8px; position: absolute; z-index: 50; bottom: 125%; left: 50%; 
+            margin-left: -100px; opacity: 0; transition: opacity 0.3s; font-size: 0.85em; font-weight: normal; line-height: 1.4;
+            pointer-events: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+        }
+        .tooltip-text::after {
+            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+            border-width: 5px; border-style: solid; border-color: #334155 transparent transparent transparent;
+        }
+        .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
+
+        /* Modal Overlay */
+        .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+
+        /* Custom ROC Date Picker Styles */
+        .date-picker-wrapper { position: relative; width: 100%; }
+        .date-input-group { position: relative; display: flex; align-items: center; }
+        .date-picker-trigger {
+            position: absolute; right: 8px; color: #64748b; cursor: pointer; padding: 4px;
+            border-radius: 4px; transition: color 0.2s;
+        }
+        .date-picker-trigger:hover { color: #002E5D; background-color: #f1f5f9; }
+        
+        .calendar-popover {
+            position: absolute; top: 100%; left: 0; margin-top: 4px;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 280px; z-index: 50; display: none; padding: 12px; font-size: 0.9em;
+        }
+        .calendar-popover.active { display: block; animation: fadeIn 0.1s ease-out; }
+        
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .cal-btn { padding: 4px 8px; border-radius: 4px; hover: bg-slate-100; cursor: pointer; color: #64748b; }
+        .cal-btn:hover { background-color: #f1f5f9; color: #002E5D; }
+        .cal-title { font-weight: bold; color: #334155; cursor: pointer; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+        .cal-day-header { font-size: 0.75em; color: #94a3b8; padding: 4px 0; }
+        .cal-day { 
+            padding: 6px 0; cursor: pointer; border-radius: 4px; color: #334155; 
+        }
+        .cal-day:hover:not(.empty) { background-color: #f1f5f9; color: #002E5D; }
+        .cal-day.selected { background-color: #002E5D; color: #fff; }
+        .cal-day.empty { pointer-events: none; }
+        .cal-day.today { border: 1px solid #002E5D; font-weight: bold; }
+
+        /* Filter Styles */
+        .filter-select { font-size: 0.85em; padding: 0.25rem 0.5rem; border-radius: 0.25rem; border: 1px solid #e2e8f0; background-color: #fff; width: 100%; }
+        
+        /* Toast Animation */
+        .toast-enter { transform: translateY(20px); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-out; }
+        .toast-exit { transform: translateY(0); opacity: 1; }
+        .toast-exit-active { transform: translateY(20px); opacity: 0; transition: all 0.3s ease-in; }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
 
-    <!-- 頂部導航列 -->
-    <header class="h-16 flex-shrink-0 glass-header flex items-center justify-between px-6 z-30 shadow-sm">
+    <!-- Header -->
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 flex-shrink-0 justify-between">
         <div class="flex items-center gap-4">
-            <div class="bg-primary p-1.5 rounded-lg shadow-sm flex items-center justify-center">
-               <img src="files/svg/THU-Logo.svg" class="h-8 w-auto block" alt="Logo">
+            <div class="bg-primary p-1.5 rounded-lg shadow-sm">
+                <img src="files/svg/THU-Logo.svg" class="h-8 w-auto" alt="Logo">
             </div>
             <div>
-                <h1 class="font-bold text-lg text-primary tracking-wide leading-tight">東海大學學生校外實習校庫填報輔助系統</h1>
-                <p class="text-[10px] text-slate-500" id="current-year-display">尚未載入學年模板</p>
+                <h1 class="font-bold text-lg text-primary tracking-wide">東海大學學生校外實習校庫填報輔助系統</h1>
+                <p class="text-[10px] text-slate-400">Department Data Entry System</p>
             </div>
         </div>
-        
         <div class="flex items-center gap-3">
+            
+            <!-- 修正 1: 下拉式字體選擇 -->
             <div class="relative group">
-                <label for="file-upload" class="cursor-pointer bg-primary hover:bg-[#001e3d] text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
-                    <i class="fas fa-file-import"></i> 匯入學生名單
-                </label>
-                <input type="file" id="file-upload" accept=".xlsx, .csv" class="hidden" onchange="handleFileUpload(event)">
+                <select id="font-size-select" onchange="setFontSize(this.value)" class="pl-3 pr-8 py-2 bg-slate-100 border-none rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary outline-none appearance-none hover:bg-slate-200 transition">
+                    <option value="14px">字體: 標準 (A)</option>
+                    <option value="16px">字體: 加大 (A+)</option>
+                    <option value="18px">字體: 特大 (A++)</option>
+                    <option value="24px">字體: 超大 (A++++)</option>
+                </select>
+                <i class="fas fa-text-height absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
             </div>
-            <div class="h-6 w-px bg-slate-300 mx-1"></div>
-            <button onclick="exportToExcel()" class="bg-success hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
-                <i class="fas fa-file-download"></i> 匯出填報結果
+
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+            <!-- Year Selector -->
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-calendar-alt text-slate-400"></i>
+                </div>
+                <select id="year-select" onchange="changeYear(this.value)" class="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none hover:bg-white transition shadow-sm">
+                    <option value="">請選擇學年度...</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+                </div>
+            </div>
+
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+            <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
+                <i class="fas fa-file-export"></i> 匯出結果
             </button>
         </div>
     </header>
 
-    <!-- 主要內容區 -->
-    <main class="flex-grow flex overflow-hidden">
+    <!-- Main Layout -->
+    <div class="flex-grow flex overflow-hidden relative">
         
-        <!-- 左側：學生清單 -->
-        <aside class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-md flex-shrink-0">
-            <div class="p-4 border-b border-slate-100 space-y-3 bg-slate-50">
-                <div class="relative">
-                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
-                    <input type="text" id="search-input" placeholder="搜尋姓名或學號..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm outline-none focus:border-primary" oninput="filterStudents()">
-                </div>
-                
-                <div class="flex justify-between items-center">
-                    <div class="flex gap-1">
-                        <button onclick="sortStudents('id')" class="p-1.5 text-xs rounded border border-slate-200 hover:bg-white hover:text-primary transition" title="依學號排序"><i class="fas fa-sort-numeric-down"></i></button>
-                        <button onclick="sortStudents('name')" class="p-1.5 text-xs rounded border border-slate-200 hover:bg-white hover:text-primary transition" title="依姓名排序"><i class="fas fa-sort-alpha-down"></i></button>
-                        <button onclick="sortStudents('dept')" class="p-1.5 text-xs rounded border border-slate-200 hover:bg-white hover:text-primary transition" title="依系所排序"><i class="fas fa-building"></i></button>
-                    </div>
-                    <select id="status-filter" class="text-xs border border-slate-300 rounded p-1.5 outline-none bg-white" onchange="filterStudents()">
-                        <option value="all">全部顯示</option>
-                        <option value="incomplete">未完成</option>
-                        <option value="completed">已完成</option>
-                    </select>
-                </div>
-                <div class="text-xs text-slate-500 flex justify-between">
-                    <span>總計: <span id="total-count" class="font-bold">0</span> 人</span>
-                    <span>待填: <span id="pending-count" class="font-bold text-red-500">0</span></span>
-                </div>
+        <!-- Sidebar: Student List -->
+        <aside id="sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0 relative">
+            <!-- Import Button -->
+            <div class="p-4 pb-0 bg-slate-50">
+                <label class="import-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success">
+                    <i class="fas fa-file-import text-lg"></i> 匯入學生名單 (Excel)
+                    <input type="file" id="file-upload" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event)">
+                </label>
             </div>
 
-            <div id="student-list" class="flex-grow overflow-y-auto custom-scroll">
+            <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="search-input" oninput="filterStudentList()" placeholder="搜尋姓名或學號..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none">
+                </div>
+                
+                <!-- Filters -->
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="filter-course-dept" onchange="filterStudentList()" class="filter-select">
+                        <option value="">全部開課系</option>
+                    </select>
+                    <select id="filter-student-dept" onchange="filterStudentList()" class="filter-select">
+                        <option value="">全部學生系</option>
+                    </select>
+                    <select id="filter-status" onchange="filterStudentList()" class="filter-select col-span-2">
+                        <option value="">全部填報進度</option>
+                        <option value="pending">未開始</option>
+                        <option value="completed">已填報</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-500">
+                    <div>總計: <span id="student-count" class="font-bold text-slate-700">0</span> 人</div>
+                    <div class="flex gap-1">
+                        <button onclick="toggleSort('id')" class="hover:text-primary p-1 rounded transition" title="依學號排序" id="sort-id-btn">
+                            <i class="fas fa-sort-numeric-down"></i>
+                        </button>
+                        <button onclick="toggleSort('name')" class="hover:text-primary p-1 rounded transition" title="依姓名排序" id="sort-name-btn">
+                            <i class="fas fa-sort-alpha-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="student-list" class="flex-grow overflow-y-auto custom-scroll p-2 space-y-1">
                 <div class="p-8 text-center text-slate-400 text-sm">
-                    <i class="fas fa-cloud-upload-alt text-3xl mb-2 opacity-50"></i>
-                    <p>請先由左上角<br>匯入 Excel 檔案</p>
+                    <i class="fas fa-arrow-up mb-2 text-xl block"></i>
+                    請先從上方匯入 Excel 名單
                 </div>
             </div>
         </aside>
 
-        <!-- 右側：填報工作區 -->
-        <section class="flex-1 flex flex-col bg-slate-50 relative overflow-hidden" id="workspace-area">
+        <!-- Sidebar Toggle Strip -->
+        <div id="sidebar-toggle-strip" onclick="toggleSidebar()" title="收合/展開側邊欄">
+            <i class="fas fa-chevron-left text-slate-400"></i>
+        </div>
+
+        <!-- Right Side: Workspace -->
+        <main class="flex-grow bg-slate-50 overflow-hidden relative flex flex-col" id="main-content">
             
-            <div id="empty-workspace" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-50/80 backdrop-blur-sm">
-                <div class="bg-white p-8 rounded-2xl shadow-xl text-center border border-slate-200 max-w-md">
-                    <div class="w-16 h-16 bg-indigo-50 text-indigo-500 rounded-full flex items-center justify-center mx-auto mb-4 text-2xl">
-                        <i class="fas fa-user-edit"></i>
-                    </div>
-                    <h3 class="text-xl font-bold text-slate-800 mb-2">準備填報</h3>
-                    <p class="text-slate-500 text-sm">請從左側清單選擇一位學生，<br>開始進行實習課程歸戶與填報。</p>
+            <!-- Empty State -->
+            <div id="form-empty-state" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-50 text-slate-400">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 text-3xl shadow-sm border border-slate-100">
+                    <i class="fas fa-user-edit text-slate-300"></i>
                 </div>
+                <p>請從左側選擇一位學生開始填報</p>
             </div>
 
-            <div class="bg-white border-b border-slate-200 p-5 flex justify-between items-center z-20 shadow-sm relative flex-shrink-0">
-                <div class="flex gap-4">
-                    <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
-                        <span id="header-avatar">?</span>
-                    </div>
-                    <div>
-                        <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <span id="header-name">學生姓名</span>
-                            <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">ID</span>
-                        </h2>
-                        <p class="text-sm text-slate-500 flex gap-3 mt-1">
-                            <span id="header-dept"><i class="fas fa-graduation-cap mr-1"></i>系所</span>
-                        </p>
-                    </div>
-                </div>
-                <div class="text-right">
-                    <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">未填報</span>
-                </div>
-            </div>
-
-            <!-- 頁籤系統 -->
-            <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
-                <button class="tab-btn active" data-tab="settings"><i class="fas fa-cog"></i> 歸戶設定</button>
-            </div>
-
-            <!-- 頁籤內容區 -->
-            <div class="flex-grow overflow-y-auto custom-scroll p-6 pb-20 relative bg-slate-50">
+            <!-- Content Area (Visible when student selected) -->
+            <div id="form-container" class="hidden flex flex-col h-full w-full">
                 
-                <!-- 1. 歸戶設定 Tab -->
-                <div id="tab-settings" class="tab-content active max-w-4xl mx-auto">
-                    <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden">
-                        <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
-                            <div>
-                                <h3 class="font-bold text-indigo-800 text-lg flex items-center gap-2"><i class="fas fa-layer-group"></i> 實習歸戶設定</h3>
-                                <p class="text-xs text-indigo-600 mt-1">請勾選屬於同一筆實習的課程，建立填報單。已歸戶的課程將被鎖定。</p>
-                            </div>
-                            <button onclick="createApplication()" class="btn-create bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
-                                <i class="fas fa-plus-circle"></i> 建立實習填報單
-                            </button>
+                <!-- Student Header Panel -->
+                <div class="bg-white px-6 py-4 border-b border-slate-200 shadow-sm flex-shrink-0 flex justify-between items-center z-20">
+                    <div class="flex gap-4 items-center">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
+                            <span id="header-avatar">?</span>
                         </div>
-                        
-                        <div class="p-6">
-                            <h4 class="text-sm font-bold text-slate-700 mb-3 ml-1 flex items-center gap-2">
-                                <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程 (可勾選)
-                            </h4>
-                            <div id="settings-course-list" class="space-y-3 mb-8"></div>
-                            
-                            <h4 class="text-sm font-bold text-slate-700 mb-3 ml-1 flex items-center gap-2 pt-4 border-t border-slate-100">
-                                <span class="w-2 h-2 rounded-full bg-green-500"></span> 已建立的填報單 (已鎖定)
-                            </h4>
-                            <div id="app-management-list" class="space-y-3"></div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <span id="header-name">學生姓名</span>
+                                <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">ID</span>
+                            </h2>
+                            <p class="text-sm text-slate-500 flex gap-3 mt-0.5">
+                                <span id="header-dept"><i class="fas fa-graduation-cap mr-1"></i>系所</span>
+                            </p>
                         </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="openPreviewModal()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-2">
+                            <i class="fas fa-table"></i> 資料預覽
+                        </button>
+                        <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">未填報</span>
                     </div>
                 </div>
 
-                <!-- 2. 動態產生的填報單 Tab Contents -->
-                <div id="dynamic-tabs-area"></div>
+                <!-- Tabs -->
+                <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
+                    <button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>
+                </div>
 
+                <!-- Tab Contents Scrollable Area -->
+                <div class="flex-grow overflow-y-auto custom-scroll p-6 pb-24 relative">
+                    
+                    <!-- Tab: Settings (Consolidation) -->
+                    <div id="tab-settings" class="tab-content active max-w-7xl mx-auto">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+                            <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
+                                <div>
+                                    <h3 class="font-bold text-indigo-800 text-lg flex items-center gap-2"><i class="fas fa-layer-group"></i> 實習歸戶設定</h3>
+                                    <p class="text-xs text-indigo-600 mt-1">請勾選同一實習機構的課程，合併建立為一份填報單。</p>
+                                </div>
+                                <button onclick="createApplication()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
+                                    <i class="fas fa-plus"></i> 建立實習填報單
+                                </button>
+                            </div>
+                            
+                            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- Left Column: Unassigned Courses -->
+                                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 pb-2 border-b border-slate-200">
+                                        <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程 (請勾選)
+                                    </h4>
+                                    <div id="settings-course-list" class="space-y-2"></div>
+                                </div>
+                                
+                                <!-- Right Column: Existing Applications -->
+                                <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
+                                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 pb-2 border-b border-indigo-200">
+                                        <span class="w-2 h-2 rounded-full bg-success"></span> 已建立的填報單
+                                    </h4>
+                                    <div id="app-management-list" class="space-y-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Tabs will be injected here -->
+                    <div id="dynamic-tabs-area"></div>
+
+                </div>
             </div>
-        </section>
-    </main>
+        </main>
+    </div>
+
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-7xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[85vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-table text-primary"></i> 學生資料預覽</h3>
+                    <p class="text-xs text-slate-500 mt-1">包含所有課程（已歸戶與未歸戶）的完整資料</p>
+                </div>
+                <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-grow overflow-auto custom-scroll p-0 relative">
+                <table class="excel-table w-full relative">
+                    <thead class="sticky top-0 z-10"><tr id="modal-preview-head"></tr></thead>
+                    <tbody id="modal-preview-body"></tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="px-5 py-2 btn-manage rounded-lg font-bold text-sm bg-slate-800 text-white shadow hover:bg-slate-900">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification -->
+    <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <i id="toast-icon" class="fas fa-info-circle"></i>
+        <span id="toast-msg">Notification</span>
+        <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
+    </div>
 
     <script>
-        let currentTemplate = { fields: [] };
-        let allRawData = []; 
-        let groupedStudents = {}; 
-        let currentStudentId = null;
-        let globalConfig = {};
-        let currentYear = null;
-
+        // --- Global State ---
+        let globalConfig = {};       
+        let currentYearConfig = {};  
+        let departmentData = [];     
+        let deptMasterData = {};     
+        
+        let allRawData = [];         
+        let groupedStudents = {};    
+        let currentStudentId = null; 
+        let activeYear = "";         
+        
+        let sortConfig = { key: 'id', direction: 'asc' }; 
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
 
+        // --- Initialization ---
         window.onload = async function() {
             try {
-                const res = await fetch('hedb/config.json'); 
-                if(res.ok) globalConfig = await res.json();
-            } catch(e) {}
+                // Load static configs
+                const [cfgRes, deptRes, masterRes] = await Promise.all([
+                    fetch('config.json').then(r => r.ok ? r.json() : {}),
+                    fetch('data_departments.json').then(r => r.ok ? r.json() : []),
+                    fetch('data_dept_master.json').then(r => r.ok ? r.json() : {})
+                ]);
+
+                globalConfig = cfgRes;
+                departmentData = deptRes;
+                deptMasterData = masterRes;
+
+                const yearSelect = document.getElementById('year-select');
+                yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
+                
+                if (globalConfig.academicYears && globalConfig.academicYears.length > 0) {
+                    globalConfig.academicYears.sort((a,b) => b.year.localeCompare(a.year));
+                    globalConfig.academicYears.forEach(y => {
+                        const opt = document.createElement('option');
+                        opt.value = y.year;
+                        opt.innerText = `${y.year} 學年度`;
+                        yearSelect.appendChild(opt);
+                    });
+                } else {
+                    yearSelect.innerHTML = '<option value="">無設定</option>';
+                }
+
+            } catch (e) {
+                console.error("Init failed", e);
+                showToast('error', '系統初始化失敗');
+            }
         };
 
+        // --- Font Size & Sidebar Toggle ---
+        function setFontSize(size) {
+            document.documentElement.style.setProperty('--base-size', size);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // --- Logic: Year Template ---
+        async function changeYear(year) {
+            if(!year) return;
+            activeYear = year;
+            showToast('info', `載入 ${year} 學年度設定...`);
+            
+            try {
+                const res = await fetch(`year_templates/year_${year}_templates.json?t=${Date.now()}`);
+                if (!res.ok) throw new Error("Template not found");
+                currentYearConfig = await res.json();
+                
+                if (currentStudentId) {
+                    selectStudent(currentStudentId); 
+                }
+                showToast('success', `已切換至 ${year} 學年度`);
+            } catch (e) {
+                console.error(e);
+                showToast('error', `無法讀取 ${year} 學年度模板`);
+            }
+        }
+
+        // --- Logic: File Import ---
         function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = async function(e) {
+            reader.onload = function(e) {
                 try {
                     const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, { type: 'array' });
-                    const firstSheet = workbook.Sheets[workbook.SheetNames[0]];
-                    const jsonData = XLSX.utils.sheet_to_json(firstSheet, { defval: "" });
-
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {defval: ""});
+                    
                     if (jsonData.length === 0) throw new Error("檔案無內容");
-
+                    
                     processUploadedData(jsonData);
+                    event.target.value = ''; 
                 } catch (err) {
-                    alert(`讀取失敗: ${err.message}`);
+                    showToast('error', `讀取失敗: ${err.message}`);
                 }
             };
             reader.readAsArrayBuffer(file);
-            event.target.value = ''; 
         }
 
-        async function processUploadedData(data) {
+        function processUploadedData(data) {
             allRawData = data;
-            
-            let detectedYear = null;
-            if (data[0]['school_year']) detectedYear = data[0]['school_year'];
-            else if (data[0]['學年']) detectedYear = data[0]['學年'];
-            else detectedYear = '114'; 
-
-            currentYear = detectedYear;
-            document.getElementById('current-year-display').innerText = `目前學年: ${currentYear} | 總筆數: ${data.length}`;
-
-            await loadTemplate(currentYear);
-            groupDataByStudent();
-            renderStudentList();
-        }
-
-        async function loadTemplate(year) {
-            try {
-                const path = `year_templates/year_${year}_templates.json`;
-                const res = await fetch(path);
-                if (!res.ok) throw new Error(`找不到 ${year} 學年度的模板設定檔`);
-                const json = await res.json();
-                currentTemplate = json;
-            } catch (e) {
-                console.warn("Template load failed:", e);
-                currentTemplate = { fields: [] };
-            }
-        }
-
-        function groupDataByStudent() {
             groupedStudents = {};
-            
+
+            if (data.length > 0) {
+                let detectedYear = data[0]['school_year'] || data[0]['學年'];
+                if (detectedYear) {
+                    detectedYear = detectedYear.toString().trim();
+                    const yearSelect = document.getElementById('year-select');
+                    const opt = Array.from(yearSelect.options).find(o => o.value === detectedYear);
+                    if (opt) {
+                        yearSelect.value = detectedYear;
+                        changeYear(detectedYear);
+                        showToast('info', `已自動切換至 ${detectedYear} 學年度`);
+                    }
+                }
+            }
+
+            const courseDepts = new Set();
+            const studentDepts = new Set();
+
             allRawData.forEach((row, idx) => {
-                const sid = row['student_id'] || row['學號'];
-                const sname = row['student_name'] || row['姓名'];
-                const sdept = row['student_dept'] || row['學生所屬學系'] || row['系所'];
+                const sid = row['student_id'] || row['學號'] || row['id'];
+                const sname = row['student_name'] || row['姓名'] || row['name'];
+                const sdept = row['student_dept'] || row['系所'] || row['department'];
+                const cdept = row['course_dept'] || row['開課系所'];
                 
-                if (!sid) return; 
+                if (sdept) studentDepts.add(sdept);
+                if (cdept) courseDepts.add(cdept);
+
+                if (!sid) return;
 
                 if (!groupedStudents[sid]) {
+                    let deptDisplay = sdept;
+                    if (deptMasterData && deptMasterData[sdept]) {
+                        const y = activeYear || '114';
+                        const master = deptMasterData[sdept];
+                        deptDisplay = (master.historical_names && master.historical_names[y]) || master.short_name || master.name || sdept;
+                    }
+
                     groupedStudents[sid] = {
                         id: sid,
-                        name: sname || '未知姓名',
-                        dept: sdept || '',
-                        status: 'incomplete', 
-                        courses: [], 
+                        name: sname || '未知',
+                        dept: deptDisplay || '',
+                        courses: [],
                         applications: [] 
                     };
                 }
                 
                 row._internal_id = `c_${idx}`;
                 row._app_id = null; 
-                
                 groupedStudents[sid].courses.push(row);
             });
-            
-            updateStats();
+
+            const renderOpts = (elId, set) => {
+                const el = document.getElementById(elId);
+                const current = el.value;
+                el.innerHTML = el.options[0].outerHTML; 
+                Array.from(set).sort().forEach(v => {
+                    el.innerHTML += `<option value="${v}">${v}</option>`;
+                });
+                el.value = current;
+            };
+            renderOpts('filter-course-dept', courseDepts);
+            renderOpts('filter-student-dept', studentDepts);
+
+            renderStudentList();
+            showToast('success', `匯入 ${Object.keys(groupedStudents).length} 位學生資料`);
         }
 
-        function updateStats() {
-            const all = Object.values(groupedStudents);
-            const pending = all.filter(s => s.applications.length === 0).length;
-            document.getElementById('total-count').innerText = all.length;
-            document.getElementById('pending-count').innerText = pending;
-        }
-
+        // --- Logic: Sidebar ---
         function renderStudentList() {
             const container = document.getElementById('student-list');
             container.innerHTML = '';
             
-            const searchTerm = document.getElementById('search-input').value.toLowerCase();
-            const statusFilter = document.getElementById('status-filter').value;
-            
+            const term = document.getElementById('search-input').value.toLowerCase();
+            const fCourseDept = document.getElementById('filter-course-dept').value;
+            const fStudentDept = document.getElementById('filter-student-dept').value;
+            const fStatus = document.getElementById('filter-status').value;
+
             let students = Object.values(groupedStudents);
             
             students = students.filter(s => {
-                const matchSearch = s.id.toLowerCase().includes(searchTerm) || s.name.toLowerCase().includes(searchTerm);
-                const isCompleted = s.applications.length > 0;
-                const matchStatus = statusFilter === 'all' || 
-                                    (statusFilter === 'completed' && isCompleted) || 
-                                    (statusFilter === 'incomplete' && !isCompleted);
-                return matchSearch && matchStatus;
+                const matchText = s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term);
+                if (!matchText) return false;
+
+                const hasStudentDept = !fStudentDept || s.courses.some(c => (c['student_dept'] || c['系所']) === fStudentDept);
+                if(!hasStudentDept) return false;
+
+                const hasCourseDept = !fCourseDept || s.courses.some(c => (c['course_dept'] || c['開課系所']) === fCourseDept);
+                if(!hasCourseDept) return false;
+
+                if (fStatus === 'completed' && s.applications.length === 0) return false;
+                if (fStatus === 'pending' && s.applications.length > 0) return false;
+
+                return true;
             });
+            
+            students.sort((a, b) => {
+                let valA = a[sortConfig.key];
+                let valB = b[sortConfig.key];
+                const comp = valA.localeCompare(valB, undefined, {numeric: true, sensitivity: 'base'});
+                return sortConfig.direction === 'asc' ? comp : -comp;
+            });
+
+            document.getElementById('student-count').innerText = students.length;
+
+            if (students.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">無符合資料</div>';
+                return;
+            }
 
             students.forEach(s => {
                 const el = document.createElement('div');
-                el.className = `student-item p-4 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition ${currentStudentId === s.id ? 'active' : ''}`;
+                el.className = `student-item p-3 pl-4 border-b border-slate-100 ${currentStudentId === s.id ? 'active' : ''}`;
                 el.onclick = () => selectStudent(s.id);
                 
                 const appCount = s.applications.length;
-                const statusBadge = appCount > 0
-                    ? `<span class="text-success text-xs font-bold bg-green-50 px-2 py-0.5 rounded">${appCount} 筆實習</span>` 
-                    : `<span class="text-slate-300"><i class="far fa-circle"></i></span>`;
+                const totalCourses = s.courses.length;
+                const statusHtml = appCount > 0 
+                    ? `<span class="bg-green-100 text-success text-[10px] px-1.5 py-0.5 rounded font-bold">${appCount} 筆填報</span>` 
+                    : `<span class="bg-slate-100 text-slate-400 text-[10px] px-1.5 py-0.5 rounded">未開始</span>`;
 
                 el.innerHTML = `
-                    <div class="flex justify-between items-center">
+                    <div class="flex justify-between items-start">
                         <div>
-                            <div class="font-bold text-slate-700 text-sm">${s.name}</div>
+                            <div class="font-bold text-slate-700 text-sm student-name">${s.name}</div>
                             <div class="text-xs text-slate-500 font-mono">${s.id}</div>
-                            <div class="text-[10px] text-slate-400 mt-1">${s.dept} · ${s.courses.length} 門課</div>
                         </div>
-                        <div class="text-right">${statusBadge}</div>
+                        <div class="text-right">
+                            ${statusHtml}
+                            <div class="text-[10px] text-slate-400 mt-1">${totalCourses} 門課</div>
+                        </div>
                     </div>
                 `;
                 container.appendChild(el);
             });
         }
 
-        function sortStudents(type) { 
-            let students = Object.values(groupedStudents);
-            if(type === 'id') students.sort((a,b) => a.id.localeCompare(b.id));
-            if(type === 'name') students.sort((a,b) => a.name.localeCompare(b.name));
-            if(type === 'dept') students.sort((a,b) => (a.dept||'').localeCompare(b.dept||''));
+        function filterStudentList() { renderStudentList(); }
+        
+        function toggleSort(key) {
+            if (sortConfig.key === key) {
+                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.key = key;
+                sortConfig.direction = 'asc';
+            }
             
-            const newGrouped = {};
-            students.forEach(s => newGrouped[s.id] = s);
-            groupedStudents = newGrouped;
+            const iconClass = sortConfig.direction === 'asc' ? 
+                (key === 'id' ? 'fa-sort-numeric-down' : 'fa-sort-alpha-down') : 
+                (key === 'id' ? 'fa-sort-numeric-up' : 'fa-sort-alpha-up');
+            
+            document.querySelectorAll('#sort-id-btn i, #sort-name-btn i').forEach(i => {
+                if (i.parentElement.id === `sort-${key}-btn`) {
+                    i.className = `fas ${iconClass}`;
+                    i.parentElement.classList.add('text-primary', 'bg-slate-100');
+                } else {
+                    const otherKey = key === 'id' ? 'name' : 'id';
+                    const defaultIcon = otherKey === 'id' ? 'fa-sort-numeric-down' : 'fa-sort-alpha-down';
+                    i.className = `fas ${defaultIcon} opacity-50`;
+                    i.parentElement.classList.remove('text-primary', 'bg-slate-100');
+                }
+            });
+
             renderStudentList();
         }
-        function filterStudents() { renderStudentList(); }
 
+        // --- Logic: Student Workspace ---
         function selectStudent(sid) {
             currentStudentId = sid;
-            const student = groupedStudents[sid];
-            
-            document.querySelectorAll('.student-item').forEach(el => el.classList.remove('active'));
             renderStudentList(); 
-
-            document.getElementById('empty-workspace').classList.add('hidden');
+            
+            const student = groupedStudents[sid];
+            document.getElementById('form-empty-state').classList.add('hidden');
+            document.getElementById('form-container').classList.remove('hidden');
             
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
             document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
-            const isDone = student.applications.length > 0;
-            document.getElementById('header-status').className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${isDone ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
-            document.getElementById('header-status').innerText = isDone ? `已建立 ${student.applications.length} 筆歸戶` : '未填報';
+            const appCount = student.applications.length;
+            const statusEl = document.getElementById('header-status');
+            statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
+            statusEl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${appCount > 0 ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
 
             renderTabs(student);
             
-            if (student.applications.length > 0) {
-                switchTab(student.applications[0].id);
-            } else {
-                switchTab('settings');
-            }
+            if (appCount > 0) switchTab(student.applications[0].id);
+            else switchTab('settings');
             
             renderSettingsTab(student);
         }
 
         function renderTabs(student) {
             const container = document.getElementById('tabs-container');
-            container.innerHTML = `<button class="tab-btn active" onclick="switchTab('settings')" data-tab="settings"><i class="fas fa-cog"></i> 歸戶設定</button>`;
+            container.innerHTML = `<button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>`;
             
             student.applications.forEach((app, idx) => {
                 const btn = document.createElement('button');
                 btn.className = 'tab-btn';
-                btn.onclick = () => switchTab(app.id);
                 btn.dataset.tab = app.id;
-                const unitName = app.formData['internship_institution_name'] || app.formData['實習機構名稱'] || `實習 ${idx+1}`;
-                btn.innerHTML = `<i class="fas fa-file-alt mr-1 text-slate-400"></i> ${unitName}`;
+                btn.onclick = () => switchTab(app.id);
+                const name = app.formData['internship_institution_name'] || `實習 ${idx+1}`;
+                btn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${name}`;
                 container.appendChild(btn);
             });
         }
 
         function switchTab(tabId) {
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.querySelector(`.tab-btn[data-tab="${tabId}"]`)?.classList.add('active');
+            const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            if(btn) btn.classList.add('active');
             
             document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            
+            document.getElementById('dynamic-tabs-area').style.display = 'none';
+
             if (tabId === 'settings') {
                 document.getElementById('tab-settings').classList.add('active');
                 if(currentStudentId) renderSettingsTab(groupedStudents[currentStudentId]);
             } else {
-                let contentDiv = document.getElementById(`content-${tabId}`);
-                if (!contentDiv) {
-                    contentDiv = createApplicationTabContent(tabId);
-                    document.getElementById('dynamic-tabs-area').appendChild(contentDiv);
+                document.getElementById('dynamic-tabs-area').style.display = 'block';
+                let content = document.getElementById(`content-${tabId}`);
+                if (!content) {
+                    content = createApplicationContent(tabId);
+                    document.getElementById('dynamic-tabs-area').appendChild(content);
                 }
-                
-                document.querySelectorAll('#dynamic-tabs-area > div').forEach(d => d.style.display = 'none');
-                contentDiv.style.display = 'block';
-                contentDiv.classList.add('active');
+                document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
+                content.style.display = 'block';
             }
         }
 
+        // --- Logic: Consolidation Settings ---
         function renderSettingsTab(student) {
             const listContainer = document.getElementById('settings-course-list');
             const appsContainer = document.getElementById('app-management-list');
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
-            const unassignedCourses = student.courses.filter(c => !c._app_id);
-            if (unassignedCourses.length === 0) {
-                listContainer.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm bg-slate-50 rounded-lg">所有課程皆已歸戶</div>';
+            const unassigned = student.courses.filter(c => !c._app_id);
+            if (unassigned.length === 0) {
+                listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
             } else {
-                unassignedCourses.forEach(c => {
+                unassigned.forEach(c => {
                     const el = document.createElement('div');
-                    el.className = 'course-card selectable flex items-center justify-between';
+                    el.className = 'course-card';
                     el.innerHTML = `
                         <div>
-                            <h4 class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</h4>
-                            <div class="text-xs text-slate-500 mt-1">${c['semester']?`第${c['semester']}學期`:''} | ${c['course_id']||c['選課代號']}</div>
+                            <div class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</div>
+                            <div class="text-xs text-slate-500">${c['semester'] ? `第${c['semester']}學期` : ''} <span class="mx-1">|</span> ${c['course_id'] || c['選課代號']}</div>
                         </div>
-                        <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary" value="${c._internal_id}">
+                        <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
                     `;
                     el.onclick = (e) => {
                         if(e.target.type !== 'checkbox') {
                             const cb = el.querySelector('input');
                             cb.checked = !cb.checked;
+                            el.classList.toggle('selected', cb.checked);
                         }
+                    };
+                    el.querySelector('input').onclick = (e) => {
+                        e.target.parentElement.classList.toggle('selected', e.target.checked);
+                        e.stopPropagation();
                     };
                     listContainer.appendChild(el);
                 });
             }
 
             if (student.applications.length === 0) {
-                appsContainer.innerHTML = '<div class="text-center text-slate-400 py-4 text-sm bg-slate-50 rounded-lg border border-dashed border-slate-300">尚未建立任何填報單</div>';
+                appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
             } else {
                 student.applications.forEach((app, idx) => {
                     const el = document.createElement('div');
-                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm';
-                    
-                    const unitName = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
-                    
-                    const courseItems = app.courseIds.map(cid => {
+                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-start shadow-sm';
+                    const name = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
+                    const courses = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
-                        return c ? `<div class="text-xs bg-slate-100 text-slate-600 px-2 py-1 rounded inline-block mr-1 mb-1">${c['course_name']||c['課程名稱']}</div>` : '';
-                    }).join('');
+                        return c ? (c['course_name'] || c['課程名稱']) : 'Unknown';
+                    });
 
                     el.innerHTML = `
-                        <div class="flex justify-between items-start mb-2">
-                            <h4 class="font-bold text-primary text-sm flex items-center gap-2">
-                                <i class="fas fa-file-contract"></i> ${unitName}
-                            </h4>
-                            <div class="flex gap-2">
-                                <button onclick="switchTab('${app.id}')" class="text-indigo-600 hover:text-indigo-800 text-xs font-bold px-2 py-1 rounded hover:bg-indigo-50 transition">
-                                    <i class="fas fa-edit"></i> 編輯填報
-                                </button>
-                                <button onclick="deleteApplication('${app.id}')" class="text-red-500 hover:text-red-700 text-xs font-bold px-2 py-1 rounded hover:bg-red-50 transition">
-                                    <i class="fas fa-unlock-alt"></i> 解除歸戶
-                                </button>
+                        <div>
+                            <h4 class="font-bold text-primary text-sm mb-1">${name}</h4>
+                            <div class="flex flex-wrap gap-1">
+                                ${courses.map(c => `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${c}</span>`).join('')}
                             </div>
                         </div>
-                        <div class="pl-5 border-l-2 border-slate-200">
-                            ${courseItems}
+                        <div class="flex gap-2">
+                            <button onclick="switchTab('${app.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1.5 rounded transition"><i class="fas fa-edit"></i> 編輯</button>
+                            <button onclick="deleteApplication('${app.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1.5 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button>
                         </div>
                     `;
                     appsContainer.appendChild(el);
@@ -522,286 +824,635 @@
         function createApplication() {
             const student = groupedStudents[currentStudentId];
             const checkboxes = document.querySelectorAll('.course-select-check:checked');
-            if (checkboxes.length === 0) return alert('請先勾選至少一門課程以建立歸戶。');
+            if (checkboxes.length === 0) return showToast('error', '請先勾選至少一門課程');
 
-            const selectedCourseIds = Array.from(checkboxes).map(cb => cb.value);
-            
+            const ids = Array.from(checkboxes).map(cb => cb.value);
             const appId = 'app_' + Date.now();
-            const newApp = {
-                id: appId,
-                courseIds: selectedCourseIds,
-                formData: {}
-            };
-
-            selectedCourseIds.forEach(cid => {
-                const c = student.courses.find(x => x._internal_id === cid);
-                if(c) c._app_id = appId;
-            });
-
-            const firstCourse = student.courses.find(c => c._internal_id === selectedCourseIds[0]);
-            if (firstCourse && currentTemplate.fields) {
-                currentTemplate.fields.forEach(field => {
-                    if (!CORE_FIELDS.includes(field.id) && !field.isSystem) {
-                        const val = firstCourse[field.id] || firstCourse[field.label];
-                        if (val) newApp.formData[field.id] = val;
+            const firstC = student.courses.find(c => c._internal_id === ids[0]);
+            const initData = {};
+            
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.forEach(f => {
+                    if (!CORE_FIELDS.includes(f.id) && !f.isSystem) {
+                        const val = firstC[f.id] || firstC[f.label];
+                        if (val) initData[f.id] = val;
                     }
                 });
             }
 
+            const newApp = { id: appId, courseIds: ids, formData: initData };
+            ids.forEach(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if(c) c._app_id = appId;
+            });
+
             student.applications.push(newApp);
-            
             renderTabs(student);
-            switchTab(appId); 
-            updateStats();
-            renderStudentList();
+            renderSettingsTab(student);
+            
+            renderStudentList(); 
+            showToast('success', '已建立填報單，可繼續建立其他填報單或切換上方頁籤進行填報');
         }
 
         function deleteApplication(appId) {
-            if(!confirm('確定要解除此歸戶設定嗎？\n\n注意：這將會刪除此填報單中已填寫的實習資料，並釋放課程回到未歸戶狀態。')) return;
-            
+            if (!confirm('確定要解除此歸戶嗎？填寫的資料將會遺失。')) return;
             const student = groupedStudents[currentStudentId];
-            const appIdx = student.applications.findIndex(a => a.id === appId);
-            if (appIdx === -1) return;
+            const idx = student.applications.findIndex(a => a.id === appId);
+            if (idx === -1) return;
 
-            const app = student.applications[appIdx];
+            const app = student.applications[idx];
             app.courseIds.forEach(cid => {
                 const c = student.courses.find(x => x._internal_id === cid);
                 if(c) c._app_id = null;
             });
 
-            student.applications.splice(appIdx, 1);
-            
-            const tabContent = document.getElementById(`content-${appId}`);
-            if(tabContent) tabContent.remove();
+            student.applications.splice(idx, 1);
+            const dom = document.getElementById(`content-${appId}`);
+            if(dom) dom.remove();
 
             renderTabs(student);
-            switchTab('settings');
-            updateStats();
+            renderSettingsTab(student);
             renderStudentList();
+            showToast('success', '歸戶已解除');
         }
 
-        function createApplicationTabContent(appId) {
+        function createApplicationContent(appId) {
             const student = groupedStudents[currentStudentId];
             const app = student.applications.find(a => a.id === appId);
             
             const div = document.createElement('div');
             div.id = `content-${appId}`;
-            div.className = 'tab-content max-w-5xl mx-auto';
+            div.className = 'dynamic-tab-content max-w-5xl mx-auto';
             
-            const formCard = document.createElement('div');
-            formCard.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-8';
-            formCard.innerHTML = `
-                <div class="bg-primary/5 px-6 py-4 border-b border-primary/10 flex justify-between items-center">
-                    <h3 class="font-bold text-primary flex items-center gap-2"><i class="fas fa-pen-fancy"></i> 實習資料填報</h3>
-                    <div class="text-xs text-slate-500">此資料將套用於 ${app.courseIds.length} 門已歸戶課程</div>
-                </div>
-                <div class="p-8 dynamic-form-body"></div>
-            `;
+            const formContainer = document.createElement('div');
+            formContainer.className = 'form-body';
             
-            renderDynamicFormFields(formCard.querySelector('.dynamic-form-body'), app, student);
-            div.appendChild(formCard);
+            renderFields(formContainer, app);
+            div.appendChild(formContainer);
 
-            const previewCard = document.createElement('div');
-            previewCard.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden overflow-x-auto';
-            previewCard.innerHTML = `
-                <div class="bg-slate-50 px-6 py-3 border-b border-slate-200 font-bold text-sm text-slate-700">資料預覽</div>
-                <table class="excel-table">
-                    <thead><tr class="preview-head"></tr></thead>
-                    <tbody class="preview-body"></tbody>
-                </table>
-            `;
-            
-            updateTabPreview(previewCard, app, student);
-            div._previewCard = previewCard; 
-            div.appendChild(previewCard);
-            
             return div;
         }
 
-        function renderDynamicFormFields(container, app, student) {
-            const entryFields = currentTemplate.fields.filter(f => 
+        // 修正 2: 仿西元樣式的民國日期選擇器 (即時修正)
+        function createRocDatePicker(appId, fieldId, initialValue, onChange) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'date-picker-wrapper';
+            wrapper.id = `roc-wrapper-${appId}-${fieldId}`;
+
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'date-input-group';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'input-stylish';
+            input.placeholder = '例: 114/01/01';
+            input.maxLength = 10; 
+            input.style.flex = "1";
+            input.style.paddingRight = "35px"; 
+
+            const trigger = document.createElement('div');
+            trigger.className = 'date-picker-trigger';
+            trigger.innerHTML = '<i class="fas fa-calendar-alt"></i>';
+            trigger.onclick = (e) => {
+                e.stopPropagation();
+                toggleCalendar();
+            };
+
+            inputGroup.appendChild(input);
+            inputGroup.appendChild(trigger);
+
+            const popover = document.createElement('div');
+            popover.className = 'calendar-popover';
+            
+            let currentYear = new Date().getFullYear();
+            let currentMonth = new Date().getMonth(); 
+            let selectedDate = null; 
+
+            const renderCalendar = () => {
+                const rocYear = currentYear - 1911;
+                const monthName = currentMonth + 1;
+                
+                let html = `
+                    <div class="cal-header">
+                        <div class="cal-btn" id="prev-month"><i class="fas fa-chevron-left"></i></div>
+                        <div class="cal-title">${rocYear}年 ${monthName}月</div>
+                        <div class="cal-btn" id="next-month"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                    <div class="cal-grid">
+                        <div class="cal-day-header">日</div><div class="cal-day-header">一</div><div class="cal-day-header">二</div><div class="cal-day-header">三</div><div class="cal-day-header">四</div><div class="cal-day-header">五</div><div class="cal-day-header">六</div>
+                `;
+
+                const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const today = new Date();
+
+                for(let i=0; i<firstDay; i++) html += `<div class="cal-day empty"></div>`;
+
+                for(let d=1; d<=daysInMonth; d++) {
+                    let classes = 'cal-day';
+                    if(currentYear === today.getFullYear() && currentMonth === today.getMonth() && d === today.getDate()) {
+                        classes += ' today';
+                    }
+                    if(selectedDate && currentYear === selectedDate.getFullYear() && currentMonth === selectedDate.getMonth() && d === selectedDate.getDate()) {
+                        classes += ' selected';
+                    }
+
+                    html += `<div class="${classes}" data-day="${d}">${d}</div>`;
+                }
+
+                html += `</div>`; 
+                popover.innerHTML = html;
+
+                popover.querySelector('#prev-month').onclick = (e) => { e.stopPropagation(); currentMonth--; if(currentMonth<0){currentMonth=11;currentYear--;} renderCalendar(); };
+                popover.querySelector('#next-month').onclick = (e) => { e.stopPropagation(); currentMonth++; if(currentMonth>11){currentMonth=0;currentYear++;} renderCalendar(); };
+                
+                popover.querySelectorAll('.cal-day:not(.empty)').forEach(el => {
+                    el.onclick = (e) => {
+                        e.stopPropagation();
+                        const d = parseInt(el.dataset.day);
+                        selectedDate = new Date(currentYear, currentMonth, d);
+                        const rocY = currentYear - 1911;
+                        const mm = String(currentMonth + 1).padStart(2, '0');
+                        const dd = String(d).padStart(2, '0');
+                        
+                        const formatted = `${rocY}/${mm}/${dd}`;
+                        input.value = formatted;
+                        
+                        const stdVal = `${currentYear}-${mm}-${dd}`;
+                        onChange(stdVal); 
+                        
+                        popover.classList.remove('active');
+                    };
+                });
+            };
+
+            const toggleCalendar = () => {
+                const isActive = popover.classList.contains('active');
+                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); 
+                
+                if(!isActive) {
+                    if(input.value) {
+                        let y, m, d;
+                        const val = input.value.replace(/\//g, '');
+                        if(val.length >= 6) { 
+                            if(val.includes('-')) {
+                                const p = val.split('-');
+                                y = parseInt(p[0]); m = parseInt(p[1])-1; d = parseInt(p[2]);
+                            } else {
+                                if(val.length === 7) {
+                                    y = parseInt(val.substring(0,3)) + 1911;
+                                    m = parseInt(val.substring(3,5)) - 1;
+                                    d = parseInt(val.substring(5,7));
+                                } else if (val.length === 6) { 
+                                    y = parseInt(val.substring(0,2)) + 1911;
+                                    m = parseInt(val.substring(2,4)) - 1;
+                                    d = parseInt(val.substring(4,6));
+                                }
+                            }
+                            if(y && !isNaN(m) && d) {
+                                currentYear = y;
+                                currentMonth = m;
+                                selectedDate = new Date(y, m, d);
+                            }
+                        }
+                    }
+                    renderCalendar();
+                    popover.classList.add('active');
+                }
+            };
+
+            input.onchange = (e) => {
+                const val = e.target.value.trim();
+                const cleanVal = val.replace(/\//g, '');
+                
+                if (cleanVal.length === 7 && !isNaN(cleanVal)) {
+                    const rocY = parseInt(cleanVal.substring(0,3));
+                    const mm = cleanVal.substring(3,5);
+                    const dd = cleanVal.substring(5,7);
+                    input.value = `${rocY}/${mm}/${dd}`;
+                    const westY = rocY + 1911;
+                    onChange(`${westY}-${mm}-${dd}`);
+                } else if (val === "") {
+                    onChange("");
+                } else {
+                    onChange(val); 
+                }
+            };
+
+            if(initialValue) {
+                if(initialValue.includes('-')) {
+                    const p = initialValue.split('-');
+                    if(p.length === 3) {
+                        const roc = parseInt(p[0]) - 1911;
+                        input.value = `${roc}/${p[1]}/${p[2]}`;
+                    } else {
+                        input.value = initialValue;
+                    }
+                } else {
+                    input.value = initialValue;
+                }
+            }
+
+            document.addEventListener('click', (e) => {
+                if(!wrapper.contains(e.target)) {
+                    popover.classList.remove('active');
+                }
+            });
+
+            wrapper.appendChild(inputGroup);
+            wrapper.appendChild(popover);
+            return wrapper;
+        }
+
+        function processAddress(inputEl, settings) {
+            let val = inputEl.value;
+            if(!val) return;
+
+            if(settings.toHalf) {
+                val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
+                         .replace(/　/g, " ");
+            }
+
+            if(settings.forceTai) {
+                if(val.startsWith('台')) {
+                    val = '臺' + val.substring(1);
+                }
+            }
+
+            if(settings.latinToEng) {
+                 val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            }
+
+            if(settings.smartFormat) {
+                const cnNums = {'一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9, '十':10};
+                const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街'];
+                keywords.forEach(k => {
+                    const regex = new RegExp(`([一二三四五六七八九十]+)${k}`, 'g');
+                    val = val.replace(regex, (match, p1) => {
+                        let num = cnNums[p1];
+                        return num ? `${num}${k}` : match;
+                    });
+                });
+            }
+
+            if(val !== inputEl.value) {
+                inputEl.value = val;
+                inputEl.dispatchEvent(new Event('change'));
+            }
+        }
+
+        function renderFields(container, app) {
+            const fields = currentYearConfig.fields || [];
+            
+            const visibleFields = fields.filter(f => 
                 !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info' && f.category !== 'sys_student_info'
             );
 
-            // [修改 2] 重設表單佈局：更緊湊、直覺
-            // 移除複雜的分組，改為簡單的單欄流式佈局，或者根據內容使用 grid-cols-1 / grid-cols-2
-            // 這裡採用單欄但寬度限制，提升閱讀性
-            if (entryFields.length === 0) {
-                container.innerHTML = '<div class="text-center text-slate-400 py-10">無須填報欄位</div>';
+            if (visibleFields.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-400">無須填報欄位</div>';
                 return;
             }
 
-            const categories = {};
-            entryFields.sort((a,b) => (a.order||0) - (b.order||0)).forEach(field => {
-                const cat = field.category || 'uncategorized';
-                if (!categories[cat]) categories[cat] = [];
-                categories[cat].push(field);
+            const categories = globalConfig.templateCategories || [];
+            const fieldsByCat = {};
+            const sortedFields = [...visibleFields].sort((a,b) => (a.order||0) - (b.order||0));
+
+            sortedFields.forEach(f => {
+                const cat = f.category || 'uncategorized';
+                if(!fieldsByCat[cat]) fieldsByCat[cat] = [];
+                fieldsByCat[cat].push(f);
             });
 
-            for (const [catId, fields] of Object.entries(categories)) {
-                if (Object.keys(categories).length > 1 || catId !== 'uncategorized') {
-                    const title = document.createElement('h4');
-                    title.className = 'form-section-title';
-                    title.innerText = catId === 'uncategorized' ? '基本資料' : catId;
-                    container.appendChild(title);
-                }
+            const sortedCats = [...categories].sort((a,b) => a.order - b.order);
+            if(fieldsByCat['uncategorized']) sortedCats.push({id: 'uncategorized', name: '其他資訊'});
 
-                // [修改 3] 填報欄位顯示：改為單欄，避免過於擁擠
-                // 使用 grid-cols-1 讓每個欄位佔滿寬度，視覺更清晰
+            sortedCats.forEach(catDef => {
+                const catFields = fieldsByCat[catDef.id];
+                if(!catFields || catFields.length === 0) return;
+
+                const title = document.createElement('h4');
+                title.className = 'form-section-title';
+                title.innerText = catDef.name;
+                container.appendChild(title);
+
                 const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 gap-4 mb-6'; 
+                grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'; 
 
-                fields.forEach(field => {
+                catFields.forEach(f => {
                     const wrapper = document.createElement('div');
-                    wrapper.className = 'input-group';
+                    wrapper.className = `field-group ${f.id}-wrapper`; 
+                    wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
                     const label = document.createElement('label');
-                    label.innerHTML = `${field.label} ${field.required ? '<span class="text-red-500">*</span>' : ''}`;
-                    if (field.description) label.innerHTML += `<span class="block text-xs text-slate-400 font-normal mt-1">${field.description}</span>`;
+                    label.className = "block text-sm font-bold text-slate-700 mb-1 flex items-center";
+                    label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
+                    
+                    if(f.description) {
+                        label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${f.description}</span></div>`;
+                    }
                     wrapper.appendChild(label);
 
-                    const currentVal = app.formData[field.id] || '';
+                    const val = app.formData[f.id] || '';
                     let input;
-                    
-                    if (field.type === 'single_select' || field.type === 'list') {
-                        input = document.createElement('select');
-                        input.innerHTML = `<option value="">-- 請選擇 --</option>` + (field.options || []).map(opt => `<option value="${opt}" ${opt === currentVal ? 'selected' : ''}>${opt}</option>`).join('');
-                    } else if (field.type === 'text' && (field.label.includes('說明') || field.label.includes('備註') || (field.maxLen && field.maxLen > 50))) {
-                        input = document.createElement('textarea');
-                        input.value = currentVal;
-                    } else if (field.type === 'date') {
-                        input = document.createElement('input');
-                        input.type = 'date'; 
-                        input.value = currentVal;
-                    } else {
-                        input = document.createElement('input');
-                        input.type = field.type === 'number' ? 'number' : 'text';
-                        input.value = currentVal;
-                    }
 
-                    input.onchange = (e) => {
-                        app.formData[field.id] = e.target.value;
-                        const tabDiv = document.getElementById(`content-${app.id}`);
-                        if(tabDiv && tabDiv._previewCard) updateTabPreview(tabDiv._previewCard, app, student);
-                        
-                        if (field.id === 'internship_institution_name' || field.label === '實習機構名稱') {
-                            const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
-                            if (tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt mr-1 text-slate-400"></i> ${e.target.value || '未命名實習'}`;
+                    if (f.type === 'date' && f.inputFormat === 'ROC') {
+                        input = createRocDatePicker(app.id, f.id, val, (newValue) => {
+                            app.formData[f.id] = newValue;
+                            evaluateLogic(app);
+                        });
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.id = `input-${app.id}-${f.id}`;
+                        wrapper.appendChild(hidden);
+                    } else {
+                        if (f.type === 'single_select' || f.type === 'list') {
+                            input = document.createElement('select');
+                            input.className = "input-stylish cursor-pointer";
+                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
+                        } else if (f.type === 'date') {
+                            input = document.createElement('input');
+                            input.type = 'date';
+                            input.className = "input-stylish";
+                            input.value = val;
+                        } else if (f.type === 'number') {
+                            input = document.createElement('input');
+                            input.type = 'number';
+                            input.className = "input-stylish";
+                            input.step = f.decimal ? '0.01' : '1';
+                            input.value = val;
+                        } else {
+                            input = document.createElement('input');
+                            input.type = 'text';
+                            input.className = "input-stylish";
+                            input.value = val;
                         }
-                    };
+
+                        input.id = `input-${app.id}-${f.id}`; 
+
+                        // 修正 2: 綁定 blur 事件，確保地址邏輯能被觸發
+                        if (f.type === 'address') {
+                            input.addEventListener('blur', (e) => {
+                                processAddress(e.target, f);
+                                let newVal = e.target.value;
+                                app.formData[f.id] = newVal;
+                                evaluateLogic(app);
+                            });
+                        }
+
+                        input.addEventListener('change', (e) => {
+                            let newVal = e.target.value;
+                            // 地址類型在 change 時也處理一次
+                            if (f.type === 'address') {
+                                processAddress(e.target, f);
+                                newVal = e.target.value;
+                            }
+                            
+                            app.formData[f.id] = newVal;
+                            evaluateLogic(app);
+                            
+                            if (f.id === 'internship_institution_name') {
+                                const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
+                                if(tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${e.target.value || '未命名'}`;
+                            }
+                        });
+                    }
 
                     wrapper.appendChild(input);
                     grid.appendChild(wrapper);
                 });
                 container.appendChild(grid);
-            }
+            });
+
+            setTimeout(() => evaluateLogic(app), 0);
         }
 
-        function updateTabPreview(card, app, student) {
-            const thead = card.querySelector('.preview-head');
-            const tbody = card.querySelector('.preview-body');
+        function evaluateLogic(app) {
+            const fields = currentYearConfig.fields || [];
+            
+            fields.forEach(f => {
+                if (f.visibilityRule && f.visibilityRule.dep) {
+                    const depVal = app.formData[f.visibilityRule.dep];
+                    const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
+                    const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
+                    const rocContainer = document.getElementById(`roc-wrapper-${app.id}-${f.id}`);
+                    
+                    if (wrapper) {
+                        let shouldEnable = f.visibilityRule.action === 'show' 
+                            ? depVal === f.visibilityRule.val 
+                            : depVal !== f.visibilityRule.val;
+                        
+                        if (inputEl && inputEl.type !== 'hidden') inputEl.disabled = !shouldEnable;
+                        
+                        if (rocContainer) {
+                            rocContainer.querySelector('input').disabled = !shouldEnable;
+                            const btn = rocContainer.querySelector('.date-toggle-btn');
+                            if(btn) {
+                                btn.style.pointerEvents = shouldEnable ? 'auto' : 'none';
+                                btn.style.opacity = shouldEnable ? '1' : '0.5';
+                            }
+                        }
+                        
+                        if (!shouldEnable) {
+                            wrapper.classList.add('field-locked');
+                            if (inputEl && inputEl.type !== 'hidden') inputEl.value = "";
+                            if (rocContainer) rocContainer.querySelector('input').value = "";
+                            app.formData[f.id] = "";
+                        } else {
+                            wrapper.classList.remove('field-locked');
+                        }
+                    }
+                }
+                
+                if (f.filterRules && f.filterRules.length > 0) {
+                    const input = document.getElementById(`input-${app.id}-${f.id}`);
+                    if (input && input.tagName === 'SELECT') {
+                        const rule = f.filterRules.find(r => app.formData[r.dep] === r.val);
+                        Array.from(input.options).forEach(opt => {
+                            if (opt.value === "") return;
+                            if (rule && rule.limitTo) {
+                                opt.hidden = !rule.limitTo.includes(opt.value);
+                            } else {
+                                opt.hidden = false;
+                            }
+                        });
+                        if (input.selectedOptions[0]?.hidden) {
+                            input.value = "";
+                            app.formData[f.id] = "";
+                        }
+                    }
+                }
+            });
+        }
+
+        function openPreviewModal() {
+            if (!currentStudentId) return;
+            const student = groupedStudents[currentStudentId];
+            const thead = document.getElementById('modal-preview-head');
+            const tbody = document.getElementById('modal-preview-body');
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            // [修改 3] 預覽欄位顯示：確保包含所有系統欄位與模板欄位
-            let allHeaders = [...CORE_FIELDS]; 
-            if (currentTemplate.fields) {
-                // 依照 order 排序後加入
-                currentTemplate.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
-                    if (!allHeaders.includes(f.id) && !f.isSystem) { // 排除已在 CORE 的和純系統標記的(如果不想顯示)
-                         // 這裡策略改為：顯示 CORE + 所有非系統填報欄位
-                         allHeaders.push(f.id);
-                    }
-                });
-            }
+            const headers = [];
+            (currentYearConfig.fields || []).sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
+                headers.push({id: f.id, label: f.label});
+            });
+            if(headers.length === 0) CORE_FIELDS.forEach(k => headers.push({id:k, label:k}));
 
-            allHeaders.forEach(h => {
+            headers.forEach(h => {
                 const th = document.createElement('th');
-                const templateF = currentTemplate.fields?.find(f => f.id === h);
-                // 優先使用模板 Label，若無則用 ID (針對 CORE FIELDS 嘗試找對應中文)
-                let label = templateF ? templateF.label : h;
-                // 簡單對應 CORE FIELDS 中文
-                if(h==='student_id') label='學號';
-                if(h==='student_name') label='姓名';
-                if(h==='student_dept') label='系所';
-                if(h==='course_name') label='課程';
-                
-                th.innerText = label;
+                th.innerText = h.label;
                 thead.appendChild(th);
             });
 
-            const appCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+            student.applications.forEach(app => {
+                const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+                const courseCount = courses.length;
 
-            appCourses.forEach(courseRow => {
+                courses.forEach((c, idx) => {
+                    const tr = document.createElement('tr');
+                    headers.forEach(h => {
+                        const td = document.createElement('td');
+                        let val = app.formData[h.id];
+                        
+                        const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                        if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                            const totalVal = parseFloat(val);
+                            const baseVal = Math.floor(totalVal / courseCount);
+                            const remainder = totalVal % courseCount;
+                            
+                            if (idx === courses.length - 1) {
+                                val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                            } else {
+                                val = baseVal.toFixed(fieldDef.decimal || 0);
+                            }
+                        }
+
+                        if (val === undefined || val === "") {
+                            val = c[h.id] || c[h.label] || "";
+                        } else {
+                            td.className = "text-indigo-600 font-bold bg-indigo-50"; 
+                        }
+                        
+                        if (fieldDef && fieldDef.type === 'date' && fieldDef.inputFormat === 'ROC' && val && val.includes('-')) {
+                             const parts = val.split('-');
+                             if (parts.length === 3) {
+                                 const roc = parseInt(parts[0]) - 1911;
+                                 val = `${roc}/${parts[1]}/${parts[2]}`;
+                             }
+                        }
+
+                        td.innerText = val;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+            });
+
+            const unassigned = student.courses.filter(c => !c._app_id);
+            unassigned.forEach(c => {
                 const tr = document.createElement('tr');
-                allHeaders.forEach(key => {
+                tr.className = "opacity-50"; 
+                headers.forEach(h => {
                     const td = document.createElement('td');
-                    let val = '';
-                    // 優先使用填報數據
-                    if (app.formData[key] !== undefined && app.formData[key] !== '') {
-                        val = app.formData[key]; 
-                        td.classList.add('text-primary', 'font-bold', 'bg-blue-50'); 
-                    } else {
-                        // 回退到原始 Excel 數據 (嘗試 ID 或 Label)
-                        const fieldDef = currentTemplate.fields?.find(f=>f.id===key);
-                        val = courseRow[key] || (fieldDef ? courseRow[fieldDef.label] : '') || '';
-                    }
+                    let val = c[h.id] || c[h.label] || "";
                     td.innerText = val;
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
             });
+
+            document.getElementById('preview-modal').classList.remove('hidden');
         }
 
-        function exportToExcel() {
-            if (Object.keys(groupedStudents).length === 0) return alert('無資料可匯出');
+        function exportData() {
+            if(Object.keys(groupedStudents).length === 0) return showToast('error', '無資料可匯出');
 
-            const flatData = [];
+            const exportRows = [];
             const headers = [];
             
-            if (currentTemplate.fields && currentTemplate.fields.length > 0) {
-                currentTemplate.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
-                    headers.push({ key: f.id, label: f.label });
-                });
-            } else {
-                Object.keys(allRawData[0]).forEach(k => headers.push({key: k, label: k}));
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => headers.push({id:f.id, label:f.label}));
             }
 
-            Object.values(groupedStudents).forEach(student => {
-                student.applications.forEach(app => {
-                    const appCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-                    appCourses.forEach(courseRow => {
-                        const rowObj = {};
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
+                    const courseCount = courses.length;
+
+                    courses.forEach((c, idx) => {
+                        const row = {};
                         headers.forEach(h => {
-                            let val = app.formData[h.key];
-                            if (val === undefined || val === '') {
-                                val = courseRow[h.key] || courseRow[h.label] || '';
+                            let val = app.formData[h.id];
+                            
+                            const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                            if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                                const totalVal = parseFloat(val);
+                                const baseVal = Math.floor(totalVal / courseCount);
+                                const remainder = totalVal % courseCount;
+                                if (idx === courses.length - 1) {
+                                    val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                                } else {
+                                    val = baseVal.toFixed(fieldDef.decimal || 0);
+                                }
                             }
-                            rowObj[h.label] = val; 
+
+                            if (val === undefined || val === "") val = c[h.id] || c[h.label] || "";
+                            
+                            if (fieldDef && fieldDef.type === 'date' && fieldDef.outputFormat === 'ROC' && val && val.includes('-')) {
+                                 const parts = val.split('-');
+                                 if (parts.length === 3) {
+                                     const roc = parseInt(parts[0]) - 1911;
+                                     val = `${roc}${parts[1]}${parts[2]}`;
+                                 }
+                            }
+
+                            row[h.label] = val;
                         });
-                        flatData.push(rowObj);
+                        exportRows.push(row);
                     });
                 });
 
-                const unassigned = student.courses.filter(c => !c._app_id);
-                unassigned.forEach(courseRow => {
-                    const rowObj = {};
+                const unassigned = s.courses.filter(c => !c._app_id);
+                unassigned.forEach(c => {
+                    const row = {};
                     headers.forEach(h => {
-                        let val = courseRow[h.key] || courseRow[h.label] || '';
-                        rowObj[h.label] = val; 
+                        row[h.label] = c[h.id] || c[h.label] || "";
                     });
-                    flatData.push(rowObj);
+                    exportRows.push(row);
                 });
             });
 
             const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(flatData);
-            XLSX.utils.book_append_sheet(wb, ws, "實習填報資料");
+            const ws = XLSX.utils.json_to_sheet(exportRows);
+            XLSX.utils.book_append_sheet(wb, ws, "填報資料");
             
-            const filename = `實習填報結果_${currentYear || 'Unknown'}_${new Date().toISOString().slice(0,10)}.xlsx`;
-            XLSX.writeFile(wb, filename);
+            const fname = `實習填報_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fname);
+            showToast('success', '匯出成功');
         }
 
+        let toastTimeout;
+        function showToast(type, msg) {
+            const el = document.getElementById('toast');
+            el.classList.remove('pointer-events-none');
+            
+            el.innerHTML = `
+                <i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> 
+                <span>${msg}</span>
+                <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
+            `;
+            el.className = `fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} toast-enter-active`;
+            
+            if(toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => hideToast(), 3000);
+        }
+
+        function hideToast(e) {
+            if(e) e.stopPropagation();
+            const el = document.getElementById('toast');
+            el.classList.replace('toast-enter-active', 'toast-exit-active');
+            el.classList.add('pointer-events-none');
+        }
     </script>
 </body>
 </html>
