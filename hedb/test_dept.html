@@ -6,8 +6,12 @@
     <title>東海大學學生校外實習校庫填報輔助系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
-    <!-- SheetJS for Excel Import/Export -->
+    
+    <!-- SheetJS (保留用於簡單讀取) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ExcelJS (新增：用於高階讀寫與樣式控制) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
@@ -23,13 +27,12 @@
         }
     </script>
     <style>
-        /* 修改 2: 透過設定 html 的 font-size 來控制全域 rem 單位 */
         :root {
             --base-size: 14px; 
         }
         
         html { font-size: var(--base-size); }
-        body { font-size: 1rem; } /* 使用 rem 繼承 html font-size */
+        body { font-size: 1rem; } 
         
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -440,7 +443,9 @@
         let currentStudentId = null; 
         let activeYear = "";         
         
-        // Sorting State
+        // Change Log Store
+        let changeLogs = []; // { time, field, oldVal, newVal, student, app }
+
         let sortConfig = { key: 'id', direction: 'asc' }; 
 
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
@@ -459,7 +464,6 @@
                 departmentData = deptRes;
                 deptMasterData = masterRes;
 
-                // Setup Year Selector
                 const yearSelect = document.getElementById('year-select');
                 yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
                 
@@ -525,34 +529,114 @@
             }
         }
 
-        // --- Logic: File Import ---
-        function handleFileUpload(event) {
+        // --- Logic: File Import (Using ExcelJS for hidden sheet support) ---
+        async function handleFileUpload(event) {
             const file = event.target.files[0];
             if (!file) return;
 
             const reader = new FileReader();
-            reader.onload = function(e) {
+            reader.onload = async function(e) {
                 try {
-                    const data = new Uint8Array(e.target.result);
-                    const workbook = XLSX.read(data, {type: 'array'});
-                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {defval: ""});
+                    const arrayBuffer = e.target.result;
+                    const workbook = new ExcelJS.Workbook();
+                    await workbook.xlsx.load(arrayBuffer);
+
+                    // 1. Read Metadata (ID Mapping)
+                    let fieldMap = {}; // Label -> ID
+                    const metaSheet = workbook.getWorksheet('_System_Metadata');
+                    if (metaSheet) {
+                        metaSheet.eachRow((row, rowNumber) => {
+                            if (rowNumber > 1) { // Skip header
+                                const id = row.getCell(1).value;
+                                const label = row.getCell(2).value;
+                                if (id && label) fieldMap[label] = id;
+                            }
+                        });
+                        console.log("Loaded Metadata:", fieldMap);
+                    }
+
+                    // 2. Read Main Data
+                    // Usually first visible sheet
+                    let mainSheet = null;
+                    workbook.eachSheet((sheet) => {
+                        if (!mainSheet && sheet.state === 'visible') mainSheet = sheet;
+                    });
+                    if (!mainSheet) mainSheet = workbook.getWorksheet(1); // Fallback
+
+                    const jsonData = [];
+                    const headers = [];
+                    mainSheet.getRow(1).eachCell((cell, colNumber) => {
+                        headers[colNumber] = cell.value;
+                    });
+
+                    mainSheet.eachRow((row, rowNumber) => {
+                        if (rowNumber > 1) {
+                            const rowData = {};
+                            row.eachCell((cell, colNumber) => {
+                                let header = headers[colNumber];
+                                // Apply ID mapping
+                                if (fieldMap[header]) header = fieldMap[header];
+                                rowData[header] = cell.value;
+                            });
+                            if(Object.keys(rowData).length > 0) jsonData.push(rowData);
+                        }
+                    });
+
+                    // 3. Read Consolidation Data
+                    let savedApps = [];
+                    const conSheet = workbook.getWorksheet('_Consolidation_Data');
+                    if (conSheet) {
+                        const conHeaders = [];
+                        conSheet.getRow(1).eachCell((cell, colNumber) => {
+                            conHeaders[colNumber] = cell.value;
+                        });
+                        conSheet.eachRow((row, rowNumber) => {
+                            if (rowNumber > 1) {
+                                const rowData = {};
+                                row.eachCell((cell, colNumber) => {
+                                    rowData[conHeaders[colNumber]] = cell.value;
+                                });
+                                savedApps.push({
+                                    id: rowData['App_ID'],
+                                    studentId: rowData['Student_ID'],
+                                    courseIds: rowData['Course_IDs'] ? rowData['Course_IDs'].toString().split(',') : [],
+                                    formData: rowData['Form_Data'] ? JSON.parse(rowData['Form_Data']) : {}
+                                });
+                            }
+                        });
+                        console.log("Restored Apps:", savedApps);
+                    }
                     
+                    // 4. Read Audit Log
+                    const logSheet = workbook.getWorksheet('_Audit_Log');
+                    if (logSheet) {
+                        const logHeaders = [];
+                        logSheet.getRow(1).eachCell((c, i) => logHeaders[i] = c.value);
+                        logSheet.eachRow((r, i) => {
+                            if(i > 1) {
+                                const l = {};
+                                r.eachCell((c, idx) => l[logHeaders[idx]] = c.value);
+                                changeLogs.push(l);
+                            }
+                        });
+                    }
+
                     if (jsonData.length === 0) throw new Error("檔案無內容");
                     
-                    processUploadedData(jsonData);
-                    event.target.value = ''; // Reset
+                    processUploadedData(jsonData, savedApps);
+                    event.target.value = ''; 
                 } catch (err) {
+                    console.error(err);
                     showToast('error', `讀取失敗: ${err.message}`);
                 }
             };
             reader.readAsArrayBuffer(file);
         }
 
-        function processUploadedData(data) {
+        function processUploadedData(data, savedApps = []) {
             allRawData = data;
             groupedStudents = {};
 
-            // 嘗試從資料中偵測學年度並自動套用
             if (data.length > 0) {
                 let detectedYear = data[0]['school_year'] || data[0]['學年'];
                 if (detectedYear) {
@@ -567,11 +651,9 @@
                 }
             }
 
-            // Populate Filters
             const courseDepts = new Set();
             const studentDepts = new Set();
 
-            // Group by Student ID
             allRawData.forEach((row, idx) => {
                 const sid = row['student_id'] || row['學號'] || row['id'];
                 const sname = row['student_name'] || row['姓名'] || row['name'];
@@ -600,16 +682,53 @@
                     };
                 }
                 
+                // Assign internal ID (Using course_id + semester or unique combination would be better, but using index for now)
+                // If restoring from Excel, we need a way to match back.
+                // Here we assume data order is preserved or we can match by unique props.
+                // For simplicity, we regenerate internal IDs and try to map back via logic below.
                 row._internal_id = `c_${idx}`;
                 row._app_id = null; 
                 groupedStudents[sid].courses.push(row);
             });
 
-            // Render Filter Options
+            // Restore Apps Logic
+            if (savedApps && savedApps.length > 0) {
+                savedApps.forEach(app => {
+                    const student = groupedStudents[app.studentId];
+                    if (student) {
+                        // Try to match stored course IDs to current internal IDs
+                        // This is the weak point if source data changes. 
+                        // In a real DB, we'd have persistent IDs.
+                        // Here, we stored the internal IDs which might be fragile if re-imported differently.
+                        // A better way: Match courses by (Course Name + Course ID + Semester)
+                        // For this prototype, we assume the import file is identical, so indexes match.
+                        
+                        const validCourseIds = [];
+                        app.courseIds.forEach(cid => {
+                             // Check if this internal ID exists in student courses (it should if file is same)
+                             const exists = student.courses.find(c => c._internal_id === cid);
+                             if(exists) {
+                                 validCourseIds.push(cid);
+                                 exists._app_id = app.id;
+                             }
+                        });
+
+                        if(validCourseIds.length > 0) {
+                             student.applications.push({
+                                 id: app.id,
+                                 courseIds: validCourseIds,
+                                 formData: app.formData
+                             });
+                        }
+                    }
+                });
+                showToast('success', `已還原 ${savedApps.length} 筆歸戶設定`);
+            }
+
             const renderOpts = (elId, set) => {
                 const el = document.getElementById(elId);
                 const current = el.value;
-                el.innerHTML = el.options[0].outerHTML; // Keep first option
+                el.innerHTML = el.options[0].outerHTML; 
                 Array.from(set).sort().forEach(v => {
                     el.innerHTML += `<option value="${v}">${v}</option>`;
                 });
@@ -619,10 +738,8 @@
             renderOpts('filter-student-dept', studentDepts);
 
             renderStudentList();
-            showToast('success', `匯入 ${Object.keys(groupedStudents).length} 位學生資料`);
         }
 
-        // --- Logic: Sidebar ---
         function renderStudentList() {
             const container = document.getElementById('student-list');
             container.innerHTML = '';
@@ -634,7 +751,6 @@
 
             let students = Object.values(groupedStudents);
             
-            // Filter
             students = students.filter(s => {
                 const matchText = s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term);
                 if (!matchText) return false;
@@ -651,7 +767,6 @@
                 return true;
             });
             
-            // Sorting logic
             students.sort((a, b) => {
                 let valA = a[sortConfig.key];
                 let valB = b[sortConfig.key];
@@ -722,16 +837,14 @@
             renderStudentList();
         }
 
-        // --- Logic: Student Workspace ---
         function selectStudent(sid) {
             currentStudentId = sid;
-            renderStudentList(); // Update active highlight
+            renderStudentList(); 
             
             const student = groupedStudents[sid];
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // Header Info
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
@@ -744,7 +857,6 @@
 
             renderTabs(student);
             
-            // If student has apps, show first one, else show settings
             if (appCount > 0) switchTab(student.applications[0].id);
             else switchTab('settings');
             
@@ -753,7 +865,6 @@
 
         function renderTabs(student) {
             const container = document.getElementById('tabs-container');
-            // Keep Settings Tab
             container.innerHTML = `<button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>`;
             
             student.applications.forEach((app, idx) => {
@@ -761,8 +872,6 @@
                 btn.className = 'tab-btn';
                 btn.dataset.tab = app.id;
                 btn.onclick = () => switchTab(app.id);
-                
-                // Try to find a name for the tab
                 const name = app.formData['internship_institution_name'] || `實習 ${idx+1}`;
                 btn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${name}`;
                 container.appendChild(btn);
@@ -770,7 +879,6 @@
         }
 
         function switchTab(tabId) {
-            // UI Toggle
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
             if(btn) btn.classList.add('active');
@@ -783,27 +891,22 @@
                 if(currentStudentId) renderSettingsTab(groupedStudents[currentStudentId]);
             } else {
                 document.getElementById('dynamic-tabs-area').style.display = 'block';
-                // Find or Create Tab Content
                 let content = document.getElementById(`content-${tabId}`);
                 if (!content) {
                     content = createApplicationContent(tabId);
                     document.getElementById('dynamic-tabs-area').appendChild(content);
                 }
-                
-                // Hide all dynamic contents first
                 document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
                 content.style.display = 'block';
             }
         }
 
-        // --- Logic: Consolidation Settings ---
         function renderSettingsTab(student) {
             const listContainer = document.getElementById('settings-course-list');
             const appsContainer = document.getElementById('app-management-list');
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
-            // Unassigned Courses
             const unassigned = student.courses.filter(c => !c._app_id);
             if (unassigned.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
@@ -833,14 +936,12 @@
                 });
             }
 
-            // Existing Applications
             if (student.applications.length === 0) {
                 appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
             } else {
                 student.applications.forEach((app, idx) => {
                     const el = document.createElement('div');
                     el.className = 'bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-start shadow-sm';
-                    
                     const name = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
                     const courses = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
@@ -872,12 +973,9 @@
             const ids = Array.from(checkboxes).map(cb => cb.value);
             const appId = 'app_' + Date.now();
             
-            // Auto-fill from first course
             const firstC = student.courses.find(c => c._internal_id === ids[0]);
             const initData = {};
             
-            // Map common fields from course data to form data if they match
-            // Simple heuristic: if field ID exists in course data, copy it
             if (currentYearConfig.fields) {
                 currentYearConfig.fields.forEach(f => {
                     if (!CORE_FIELDS.includes(f.id) && !f.isSystem) {
@@ -887,31 +985,24 @@
                 });
             }
 
-            const newApp = {
-                id: appId,
-                courseIds: ids,
-                formData: initData
-            };
-
-            // Link courses
+            const newApp = { id: appId, courseIds: ids, formData: initData };
             ids.forEach(cid => {
                 const c = student.courses.find(x => x._internal_id === cid);
                 if(c) c._app_id = appId;
             });
 
             student.applications.push(newApp);
-            
             renderTabs(student);
             renderSettingsTab(student);
-            // 修正 2: 建立填報單後，不自動跳轉，保留在歸戶設定頁面
-            // switchTab(appId); 
+            
             renderStudentList(); 
-            showToast('success', '已建立填報單，可繼續建立其他填報單或切換上方頁籤進行填報');
+            showToast('success', '已建立填報單');
+            
+            logChange('CreateApp', appId, '', 'Created', student.id);
         }
 
         function deleteApplication(appId) {
             if (!confirm('確定要解除此歸戶嗎？填寫的資料將會遺失。')) return;
-            
             const student = groupedStudents[currentStudentId];
             const idx = student.applications.findIndex(a => a.id === appId);
             if (idx === -1) return;
@@ -923,8 +1014,6 @@
             });
 
             student.applications.splice(idx, 1);
-            
-            // Remove DOM
             const dom = document.getElementById(`content-${appId}`);
             if(dom) dom.remove();
 
@@ -932,9 +1021,10 @@
             renderSettingsTab(student);
             renderStudentList();
             showToast('success', '歸戶已解除');
+            
+            logChange('DeleteApp', appId, 'Existing', 'Deleted', student.id);
         }
 
-        // --- Logic: Dynamic Form Generation ---
         function createApplicationContent(appId) {
             const student = groupedStudents[currentStudentId];
             const app = student.applications.find(a => a.id === appId);
@@ -943,8 +1033,6 @@
             div.id = `content-${appId}`;
             div.className = 'dynamic-tab-content max-w-5xl mx-auto';
             
-            // 修正 1: 移除卡片外框，直接使用透明背景
-            // 移除 bg-white, border 等樣式，只保留邊距
             const formContainer = document.createElement('div');
             formContainer.className = 'form-body';
             
@@ -954,13 +1042,11 @@
             return div;
         }
 
-        // 修正 4: 自製民國年日期選擇器 (可選 + 可手輸，Pop-over Style)
         function createRocDatePicker(appId, fieldId, initialValue, onChange) {
             const wrapper = document.createElement('div');
             wrapper.className = 'date-picker-wrapper';
             wrapper.id = `roc-container-${appId}-${fieldId}`;
 
-            // Main Input Group (Text + Button)
             const inputGroup = document.createElement('div');
             inputGroup.className = 'date-input-group';
             
@@ -968,9 +1054,9 @@
             input.type = 'text';
             input.className = 'input-stylish';
             input.placeholder = '例: 114/01/01';
-            input.maxLength = 10; // 114/01/01 is 9 chars, allowing buffer
+            input.maxLength = 10; 
             input.style.flex = "1";
-            input.style.paddingRight = "35px"; // Space for icon
+            input.style.paddingRight = "35px"; 
 
             const trigger = document.createElement('div');
             trigger.className = 'date-picker-trigger';
@@ -983,16 +1069,13 @@
             inputGroup.appendChild(input);
             inputGroup.appendChild(trigger);
 
-            // Calendar Popover
             const popover = document.createElement('div');
             popover.className = 'calendar-popover';
             
-            // Popover State
             let currentYear = new Date().getFullYear();
-            let currentMonth = new Date().getMonth(); // 0-11
-            let selectedDate = null; // Date Obj
+            let currentMonth = new Date().getMonth(); 
+            let selectedDate = null; 
 
-            // Render Calendar
             const renderCalendar = () => {
                 const rocYear = currentYear - 1911;
                 const monthName = currentMonth + 1;
@@ -1011,33 +1094,20 @@
                 const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
                 const today = new Date();
 
-                // Empty cells
                 for(let i=0; i<firstDay; i++) html += `<div class="cal-day empty"></div>`;
 
-                // Days
                 for(let d=1; d<=daysInMonth; d++) {
                     let classes = 'cal-day';
-                    
-                    // Check today
-                    if(currentYear === today.getFullYear() && currentMonth === today.getMonth() && d === today.getDate()) {
-                        classes += ' today';
-                    }
-                    
-                    // Check selected
-                    if(selectedDate && currentYear === selectedDate.getFullYear() && currentMonth === selectedDate.getMonth() && d === selectedDate.getDate()) {
-                        classes += ' selected';
-                    }
-
+                    if(currentYear === today.getFullYear() && currentMonth === today.getMonth() && d === today.getDate()) classes += ' today';
+                    if(selectedDate && currentYear === selectedDate.getFullYear() && currentMonth === selectedDate.getMonth() && d === selectedDate.getDate()) classes += ' selected';
                     html += `<div class="${classes}" data-day="${d}">${d}</div>`;
                 }
 
-                html += `</div>`; // Close grid
+                html += `</div>`; 
                 popover.innerHTML = html;
 
-                // Bind Events
                 popover.querySelector('#prev-month').onclick = (e) => { e.stopPropagation(); currentMonth--; if(currentMonth<0){currentMonth=11;currentYear--;} renderCalendar(); };
                 popover.querySelector('#next-month').onclick = (e) => { e.stopPropagation(); currentMonth++; if(currentMonth>11){currentMonth=0;currentYear++;} renderCalendar(); };
-                
                 popover.querySelectorAll('.cal-day:not(.empty)').forEach(el => {
                     el.onclick = (e) => {
                         e.stopPropagation();
@@ -1046,15 +1116,10 @@
                         const rocY = currentYear - 1911;
                         const mm = String(currentMonth + 1).padStart(2, '0');
                         const dd = String(d).padStart(2, '0');
-                        
-                        // Format: YYY/MM/DD
                         const formatted = `${rocY}/${mm}/${dd}`;
                         input.value = formatted;
-                        
-                        // Convert to standard YYYY-MM-DD for storage
                         const stdVal = `${currentYear}-${mm}-${dd}`;
-                        onChange(stdVal); // Save logic
-                        
+                        onChange(stdVal); 
                         popover.classList.remove('active');
                     };
                 });
@@ -1062,27 +1127,21 @@
 
             const toggleCalendar = () => {
                 const isActive = popover.classList.contains('active');
-                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); // Close others
-                
+                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); 
                 if(!isActive) {
-                    // Try to parse current input for initial calendar view
                     if(input.value) {
-                        // Support 114/01/01 or 1140101
                         let y, m, d;
                         const val = input.value.replace(/\//g, '');
-                        if(val.length >= 6) { // Loose check
-                            // Try to parse ROC
+                        if(val.length >= 6) { 
                             if(val.includes('-')) {
-                                // Assume YYYY-MM-DD standard if dash present (rare in display but possible)
                                 const p = val.split('-');
                                 y = parseInt(p[0]); m = parseInt(p[1])-1; d = parseInt(p[2]);
                             } else {
-                                // Assume ROC string
                                 if(val.length === 7) {
                                     y = parseInt(val.substring(0,3)) + 1911;
                                     m = parseInt(val.substring(3,5)) - 1;
                                     d = parseInt(val.substring(5,7));
-                                } else if (val.length === 6) { // 990101
+                                } else if (val.length === 6) { 
                                     y = parseInt(val.substring(0,2)) + 1911;
                                     m = parseInt(val.substring(2,4)) - 1;
                                     d = parseInt(val.substring(4,6));
@@ -1100,36 +1159,35 @@
                 }
             };
 
-            // Input Handling (Manual Typing)
             input.onchange = (e) => {
                 const val = e.target.value.trim();
-                // Validate and Convert
-                // Accepted formats: 114/01/01, 1140101
                 const cleanVal = val.replace(/\//g, '');
-                
-                if (cleanVal.length === 7 && !isNaN(cleanVal)) {
-                    const rocY = parseInt(cleanVal.substring(0,3));
-                    const mm = cleanVal.substring(3,5);
-                    const dd = cleanVal.substring(5,7);
-                    
-                    // Format display
-                    input.value = `${rocY}/${mm}/${dd}`;
-                    
-                    // Save standard
-                    const westY = rocY + 1911;
-                    onChange(`${westY}-${mm}-${dd}`);
+                if (cleanVal.length >= 6 && !isNaN(cleanVal)) {
+                    let rocY, mm, dd;
+                    if(cleanVal.length === 7) {
+                        rocY = parseInt(cleanVal.substring(0,3));
+                        mm = cleanVal.substring(3,5);
+                        dd = cleanVal.substring(5,7);
+                    } else if (cleanVal.length === 6) {
+                         rocY = parseInt(cleanVal.substring(0,2));
+                         mm = cleanVal.substring(2,4);
+                         dd = cleanVal.substring(4,6);
+                    }
+                    if (rocY && mm && dd) {
+                        input.value = `${rocY}/${mm}/${dd}`;
+                        const westY = rocY + 1911;
+                        onChange(`${westY}-${mm}-${dd}`);
+                    } else {
+                        onChange(val); 
+                    }
                 } else if (val === "") {
                     onChange("");
                 } else {
-                    // Invalid or unknown format, save as is but might break logic
-                    // Better to clear or warn, but let's keep raw
                     onChange(val); 
                 }
             };
 
-            // Initial Value Display Logic
             if(initialValue) {
-                // Should be YYYY-MM-DD from storage
                 if(initialValue.includes('-')) {
                     const p = initialValue.split('-');
                     if(p.length === 3) {
@@ -1143,7 +1201,6 @@
                 }
             }
 
-            // Close on click outside
             document.addEventListener('click', (e) => {
                 if(!wrapper.contains(e.target)) {
                     popover.classList.remove('active');
@@ -1154,8 +1211,7 @@
             wrapper.appendChild(popover);
             return wrapper;
         }
-        
-        // 【新增】中文數字轉換輔助函式 (處理一到九十九)
+
         function cnToNum(cnStr) {
             const units = { '': 1, '十': 10 };
             const nums = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '零': 0 };
@@ -1167,7 +1223,6 @@
                 if (nums[char] !== undefined) {
                     temp = nums[char];
                 } else if (units[char] === 10) {
-                    // 處理 '十' 字。如 '三十七' (3*10) + 7 或 '十七' (1*10) + 7
                     result += (temp || 1) * units[char];
                     temp = 0;
                 }
@@ -1176,58 +1231,48 @@
             return result;
         }
 
-
-        // 【修改】 processAddress 函式 (替換原有的)
         function processAddress(inputEl, settings) {
             let val = inputEl.value;
             if(!val) return;
 
-            // 1. 全形轉半形 (toHalf)
             if(settings.toHalf) {
-                val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
-                        .replace(/　/g, " ");
+                val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); }).replace(/　/g, " ");
             }
 
-            // 2. 強制台轉臺 (forceTai) - 修改為全域替換
             if(settings.forceTai) {
-                // 替換字串中所有出現的 '台' -> '臺'
                 val = val.replace(/台/g, '臺'); 
             }
 
-            // 3. 拉丁文轉英文 (latinToEng)
             if(settings.latinToEng) {
                 val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             }
 
-            // 4. 智慧路名數字轉換 (smartFormat) - 處理複合數字
             if(settings.smartFormat) {
-                // 中文數字，處理 '一'到'九十九'
-                const cnNumsPattern = '(一|二|三|四|五|六|七|八|九|十)+';
+                const cnNumsPattern = '(一|二|三|四|五|六|七|八|九|十|零)+';
                 const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街', '巷', '弄', '號', '樓'];
                 
                 keywords.forEach(k => {
-                    // 匹配中文數字 + 關鍵字 (例如: 三十七段)
                     const regex = new RegExp(`(${cnNumsPattern})${k}`, 'g');
-                    
                     val = val.replace(regex, (match, p1) => {
-                        // p1: 匹配到的中文數字字串 (例如: 三十七)
-                        let num = cnToNum(p1); 
-                        // 檢查是否在保護名單 (Whitelist) 內，避免像 "五權" 這種地名被轉換
-                        const isProtected = (globalConfig.addressRules && globalConfig.addressRules.protected) ? 
-                                            globalConfig.addressRules.protected.includes(match.replace(p1, '').trim()) : false;
-                        
-                        if (num > 0 && !isProtected) {
-                            return `${num}${k}`;
+                        let num = 0;
+                        const isLiteral = p1.includes('零') || (p1.length >= 2 && !p1.includes('十'));
+                        if (isLiteral) {
+                             let tempStr = "";
+                             const literalMap = { '一': '1', '二': '2', '三': '3', '四': '4', '五': '5', '六': '6', '七': '7', '八': '8', '九': '9', '零': '0', '十': '10' }; 
+                             for (let char of p1) if (literalMap[char]) tempStr += literalMap[char];
+                             num = parseInt(tempStr);
+                        } else {
+                             num = cnToNum(p1);
                         }
+                        const isProtected = (globalConfig.addressRules && globalConfig.addressRules.protected) ? globalConfig.addressRules.protected.includes(match.replace(p1, '').trim()) : false;
+                        if (num > 0 && !isProtected) return `${num}${k}`;
                         return match;
                     });
                 });
             }
 
-            // 更新值
             if(val !== inputEl.value) {
                 inputEl.value = val;
-                // 觸發 change 事件以保存到 formData
                 inputEl.dispatchEvent(new Event('change'));
             }
         }
@@ -1288,8 +1333,10 @@
 
                     if (f.type === 'date' && f.inputFormat === 'ROC') {
                         input = createRocDatePicker(app.id, f.id, val, (newValue) => {
+                            const oldVal = app.formData[f.id];
                             app.formData[f.id] = newValue;
                             evaluateLogic(app);
+                            logChange(f.id, appId, oldVal, newValue, groupedStudents[currentStudentId].id);
                         });
                         const hidden = document.createElement('input');
                         hidden.type = 'hidden';
@@ -1320,24 +1367,26 @@
 
                         input.id = `input-${app.id}-${f.id}`; 
 
-                        // 修正 2: 綁定 blur 事件，確保地址邏輯能被觸發
                         if (f.type === 'address') {
                             input.addEventListener('blur', (e) => {
+                                const oldVal = input.value;
                                 processAddress(e.target, f);
-                                let newVal = e.target.value;
-                                app.formData[f.id] = newVal;
-                                evaluateLogic(app);
+                                const newVal = e.target.value;
+                                if(oldVal !== newVal) {
+                                    app.formData[f.id] = newVal;
+                                    evaluateLogic(app);
+                                    logChange(f.id, appId, oldVal, newVal, groupedStudents[currentStudentId].id);
+                                }
                             });
                         }
 
                         input.addEventListener('change', (e) => {
                             let newVal = e.target.value;
-                            // 地址類型在 change 時也處理一次
+                            const oldVal = app.formData[f.id];
                             if (f.type === 'address') {
                                 processAddress(e.target, f);
                                 newVal = e.target.value;
                             }
-                            
                             app.formData[f.id] = newVal;
                             evaluateLogic(app);
                             
@@ -1345,6 +1394,8 @@
                                 const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
                                 if(tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${e.target.value || '未命名'}`;
                             }
+
+                            logChange(f.id, appId, oldVal, newVal, groupedStudents[currentStudentId].id);
                         });
                     }
 
@@ -1357,7 +1408,6 @@
             setTimeout(() => evaluateLogic(app), 0);
         }
 
-        // --- Logic: Visibility (Locked) & Filters ---
         function evaluateLogic(app) {
             const fields = currentYearConfig.fields || [];
             
@@ -1416,7 +1466,6 @@
             });
         }
 
-        // --- Logic: Preview & Export ---
         function openPreviewModal() {
             if (!currentStudentId) return;
             const student = groupedStudents[currentStudentId];
@@ -1497,16 +1546,25 @@
             document.getElementById('preview-modal').classList.remove('hidden');
         }
 
-        function exportData() {
+        // --- Export Data using ExcelJS ---
+        async function exportData() {
             if(Object.keys(groupedStudents).length === 0) return showToast('error', '無資料可匯出');
 
-            const exportRows = [];
-            const headers = [];
-            
-            if (currentYearConfig.fields) {
-                currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => headers.push({id:f.id, label:f.label}));
-            }
+            const workbook = new ExcelJS.Workbook();
+            const ws = workbook.addWorksheet('填報資料');
 
+            const headers = [];
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => headers.push({key: f.id, header: f.label}));
+            }
+            ws.columns = headers;
+
+            // Apply styles to header row
+            const headerRow = ws.getRow(1);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002E5D' } };
+
+            // Iterate data
             Object.values(groupedStudents).forEach(s => {
                 s.applications.forEach(app => {
                     const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
@@ -1515,69 +1573,119 @@
                     courses.forEach((c, idx) => {
                         const row = {};
                         headers.forEach(h => {
-                            let val = app.formData[h.id];
+                            let val = app.formData[h.key];
+                            const fieldDef = currentYearConfig.fields?.find(f => f.id === h.key);
                             
-                            const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                            // Average Calculation
                             if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
                                 const totalVal = parseFloat(val);
                                 const baseVal = Math.floor(totalVal / courseCount);
                                 const remainder = totalVal % courseCount;
-                                if (idx === courses.length - 1) {
-                                    val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
-                                } else {
-                                    val = baseVal.toFixed(fieldDef.decimal || 0);
-                                }
+                                if (idx === courses.length - 1) val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                                else val = baseVal.toFixed(fieldDef.decimal || 0);
                             }
 
-                            if (val === undefined || val === "") val = c[h.id] || c[h.label] || "";
+                            // Fallback to Course Data
+                            if (val === undefined || val === "") val = c[h.key] || c[h.header] || "";
                             
+                            // ROC Date Format for Export
                             if (fieldDef && fieldDef.type === 'date' && fieldDef.outputFormat === 'ROC' && val && val.includes('-')) {
                                  const parts = val.split('-');
                                  if (parts.length === 3) {
                                      const roc = parseInt(parts[0]) - 1911;
-                                     val = `${roc}${parts[1]}${parts[2]}`;
+                                     val = `${roc}${parts[1]}${parts[2]}`; // Standard 7-digit ROC
                                  }
                             }
 
-                            row[h.label] = val;
+                            row[h.key] = val;
                         });
-                        exportRows.push(row);
+                        ws.addRow(row);
                     });
                 });
 
                 const unassigned = s.courses.filter(c => !c._app_id);
                 unassigned.forEach(c => {
                     const row = {};
-                    headers.forEach(h => {
-                        row[h.label] = c[h.id] || c[h.label] || "";
-                    });
-                    exportRows.push(row);
+                    headers.forEach(h => row[h.key] = c[h.key] || c[h.header] || "");
+                    ws.addRow(row);
                 });
             });
 
-            const wb = XLSX.utils.book_new();
-            const ws = XLSX.utils.json_to_sheet(exportRows);
-            XLSX.utils.book_append_sheet(wb, ws, "填報資料");
-            
-            const fname = `實習填報_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`;
-            XLSX.writeFile(wb, fname);
-            showToast('success', '匯出成功');
+            // Apply Column Widths and Validations from Config
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.forEach((f, i) => {
+                    const col = ws.getColumn(i + 1);
+                    if (f.excelWidth) col.width = f.excelWidth;
+                    
+                    // Data Validation (Dropdown)
+                    if (f.type === 'single_select' && f.options && f.options.length > 0) {
+                         // ExcelJS data validation needs to be applied to cells, or whole column?
+                         // Whole column is tricky if header is row 1. Iterate rows or set range.
+                         // For simplicity, apply to a large range.
+                         const char = col.letter;
+                         // Note: list validation length limit 255 chars
+                         const listStr = f.options.join(',');
+                         if(listStr.length < 255) {
+                             ws.dataValidations.add(`${char}2:${char}9999`, {
+                                 type: 'list',
+                                 allowBlank: true,
+                                 formulae: [`"${listStr}"`]
+                             });
+                         }
+                    }
+                });
+            }
+
+            // Hidden Sheet: Consolidation Data
+            const conSheet = workbook.addWorksheet('_Consolidation_Data', {state: 'hidden'});
+            conSheet.columns = [{header: 'App_ID', key: 'id'}, {header: 'Student_ID', key: 'sid'}, {header: 'Course_IDs', key: 'cids'}, {header: 'Form_Data', key: 'data'}];
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    conSheet.addRow({ id: app.id, sid: s.id, cids: app.courseIds.join(','), data: JSON.stringify(app.formData) });
+                });
+            });
+
+            // Hidden Sheet: Audit Log
+            const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
+            logSheet.columns = [
+                {header: 'Time', key: 'time'}, {header: 'Field', key: 'field'}, 
+                {header: 'Old_Value', key: 'old'}, {header: 'New_Value', key: 'new'}, 
+                {header: 'Student', key: 'student'}, {header: 'App_ID', key: 'app'}
+            ];
+            changeLogs.forEach(l => logSheet.addRow(l));
+
+            // Hidden Sheet: Metadata (Preserve if exists, or create minimal)
+            const metaSheet = workbook.addWorksheet('_System_Metadata', {state: 'hidden'});
+            metaSheet.columns = [{header:'Field_ID', key:'id'}, {header:'Field_Label', key:'label'}];
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.forEach(f => metaSheet.addRow({id: f.id, label: f.label}));
+            }
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `實習填報_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('success', '匯出成功 (包含隱藏設定)');
         }
 
-        // --- UI Utils (Fixed: Proper Toast Dismiss) ---
+        function logChange(field, appId, oldVal, newVal, studentId) {
+            if(oldVal === newVal) return;
+            changeLogs.push({
+                time: new Date().toISOString(),
+                field: field,
+                old: oldVal,
+                new: newVal,
+                student: studentId,
+                app: appId
+            });
+        }
+
+        // --- UI Utils ---
         let toastTimeout;
         function showToast(type, msg) {
             const el = document.getElementById('toast');
-            // Remove pointer-events-none to allow clicking close button
             el.classList.remove('pointer-events-none');
-            
-            el.innerHTML = `
-                <i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> 
-                <span>${msg}</span>
-                <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
-            `;
+            el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> <span>${msg}</span><button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>`;
             el.className = `fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} toast-enter-active`;
-            
             if(toastTimeout) clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => hideToast(), 3000);
         }
