@@ -1211,10 +1211,20 @@
                     td.className = "border-r border-slate-200 p-0 relative h-[40px]";
                     
                     let val = "";
-                    if (appId && appData[f.id] !== undefined) {
-                        val = appData[f.id];
-                    } else {
+                    
+                    // ★★★ 修改重點：優先判斷是否為獨立欄位 (average) ★★★
+                    if (f.calcMode === 'average') {
+                        // 若是加總型欄位，強制顯示「原始課程數值」，讓各列獨立顯示
                         val = course[f.id];
+                    } 
+                    // 其他歸戶欄位：若有歸戶資料，則顯示共用資料
+                    else if (appId && appData[f.id] !== undefined) {
+                        val = appData[f.id];
+                    } 
+                    // 否則顯示原始資料 (Fallback)
+                    else {
+                        val = course[f.id];
+                        // 預設資料補救邏輯
                         if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
                         if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
@@ -1306,27 +1316,61 @@
                 // === 情境 A: 已歸戶 ===
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
-                    const oldVal = app.formData[fieldDef.id];
-                    app.formData[fieldDef.id] = newVal;
-                    logChange(fieldDef.id, appId, oldVal, newVal, student.id);
-
-                    // 1. 同步數值到所有共用此 App 的格子
-                    document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
-                        if (el !== inputEl) {
-                            el.value = newVal;
-                            el.title = newVal;
+                    
+                    // ★★★ 修改重點：區分「獨立加總欄位」與「共用欄位」 ★★★
+                    if (fieldDef.calcMode === 'average') {
+                        // 1. 獨立欄位：只更新這門課的原始資料
+                        course[fieldDef.id] = newVal;
+                        
+                        // 2. 重新計算 App 的總和 (Sum)
+                        // 找出歸戶內的所有課程
+                        const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+                        let sum = 0;
+                        let hasVal = false;
+                        
+                        linkedCourses.forEach(c => {
+                            const v = parseFloat(c[fieldDef.id]);
+                            if (!isNaN(v)) {
+                                sum += v;
+                                hasVal = true;
+                            }
+                        });
+                        
+                        // 3. 更新 App Data (總和)
+                        const oldAppVal = app.formData[fieldDef.id];
+                        if (hasVal) {
+                            app.formData[fieldDef.id] = fieldDef.decimal ? sum.toFixed(fieldDef.decimal) : String(sum);
+                        } else {
+                            app.formData[fieldDef.id] = "";
                         }
-                    });
+                        
+                        logChange(fieldDef.id, appId, oldAppVal, app.formData[fieldDef.id], student.id);
 
-                    // 2. ★★★ 觸發連動邏輯檢查 (不重繪表格) ★★★
+                        // 注意：這裡【不】同步到其他格子，因為我們要讓它們保持獨立顯示
+                        
+                    } else {
+                        // 1. 一般共用欄位：更新 App Data
+                        const oldVal = app.formData[fieldDef.id];
+                        app.formData[fieldDef.id] = newVal;
+                        logChange(fieldDef.id, appId, oldVal, newVal, student.id);
+
+                        // 2. 同步數值到所有共用此 App 的格子 (讓大家長一樣)
+                        document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
+                            if (el !== inputEl) {
+                                el.value = newVal;
+                                el.title = newVal;
+                            }
+                        });
+                    }
+
+                    // 3. 觸發連動邏輯檢查 (例如填了依賴欄位後解鎖子欄位)
                     // 找出目前畫面上所有屬於這個 App 的列 (TR)
-                    const relatedRows = [];
                     const allRows = document.getElementById('grid-tbody').querySelectorAll('tr');
                     allRows.forEach(tr => {
                         const cid = tr.dataset.cid;
-                        const sid = tr.dataset.sid; // 取得該列的學生 ID
+                        const sid = tr.dataset.sid; 
                         
-                        // ★★★ 修正：增加 sid === student.id 比對，確保只更新該位學生的列 ★★★
+                        // 只更新同一位學生的相關列
                         if (sid === student.id && app.courseIds.includes(cid)) {
                             updateRowLogic(tr, app.formData);
                         }
