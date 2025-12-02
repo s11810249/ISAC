@@ -1236,6 +1236,12 @@
 
                 // B. Data Cells
                 allColumns.forEach(f => {
+                    // ★★★ 修改：加入 'weighted' 模式也需要合併儲存格 ★★★
+                    const shouldMerge = appId && (f.calcMode === 'average' || f.calcMode === 'weighted');
+
+                    // 如果需要合併，且是被隱藏的列，則不產生 td
+                    if (shouldMerge && hiddenRows[idx]) return;
+
                     const td = document.createElement('td');
                     td.className = "border-r border-slate-200 p-0 relative h-[40px]";
                     
@@ -1333,6 +1339,126 @@
 
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
+            const newVal = inputEl.value;
+            inputEl.title = newVal; // 更新 Hover 提示
+            
+            const appId = course._app_id;
+            hasUnsavedChanges = true;
+
+            const isScoreField = ['score', 'grade', 'credit', 'hours', 'point', '成績', '學分', '時數'].some(k => fieldDef.id.toLowerCase().includes(k) || fieldDef.label.includes(k));
+
+            if (appId) {
+                // === 情境 A: 已歸戶 ===
+                const app = student.applications.find(a => a.id === appId);
+                if (app) {
+                    
+                    // ★★★ 修改重點：處理 Average (平均) 與 Weighted (權重) 模式 ★★★
+                    if (fieldDef.type === 'number' && (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted')) {
+                        const totalVal = parseFloat(newVal);
+                        const oldAppVal = app.formData[fieldDef.id];
+                        
+                        // 更新 App Data (顯示的總數)
+                        app.formData[fieldDef.id] = newVal;
+                        logChange(fieldDef.id, appId, oldAppVal, newVal, student.id);
+
+                        // 同步畫面上的其他合併格 (若因排序未合併)
+                        document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
+                            if (el !== inputEl) { el.value = newVal; el.title = newVal; }
+                        });
+
+                        if (!isNaN(totalVal)) {
+                            // 1. 找出此歸戶下的所有課程
+                            const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+                            
+                            // 2. 準備權重 (分母)
+                            let totalWeight = 0;
+                            const weights = linkedCourses.map(c => {
+                                let w = 1; // 預設權重 (average 模式或找不到欄位時)
+                                
+                                if (fieldDef.calcMode === 'weighted') {
+                                    // 優先使用設定的權重欄位，若無設定則嘗試抓取 "學分" 相關欄位
+                                    const targetField = fieldDef.weightField || 'internship_credit'; // 預設找 internship_credit
+                                    
+                                    // 嘗試從課程資料中抓取權重值 (支援欄位 ID 或 Label 模糊搜尋)
+                                    // 注意：這裡假設您的 getCourseValue 函式可用，若無可直接用 c[targetField]
+                                    let val = c[targetField];
+                                    
+                                    // 如果找不到 ID，嘗試用 Helper 找
+                                    if (!val && typeof getCourseValue === 'function') {
+                                        val = getCourseValue(c, [targetField, 'credits', '學分', '學分數']);
+                                    }
+
+                                    const parsedW = parseFloat(val);
+                                    if (!isNaN(parsedW) && parsedW > 0) {
+                                        w = parsedW;
+                                    }
+                                }
+                                totalWeight += w;
+                                return w;
+                            });
+
+                            // 3. 執行分配 (依比例寫回課程原始資料)
+                            let currentSum = 0;
+                            const decimals = fieldDef.decimal || 0; // 小數位數設定
+
+                            linkedCourses.forEach((c, idx) => {
+                                const weight = weights[idx];
+                                let distVal = 0;
+                                
+                                if (totalWeight === 0) {
+                                    // 防呆：若總權重為 0，平均分配
+                                    distVal = totalVal / linkedCourses.length;
+                                } else if (idx === linkedCourses.length - 1) {
+                                    // 最後一筆：用減法吸收誤差 (Total - 已分配總和)
+                                    distVal = totalVal - currentSum;
+                                } else {
+                                    // 一般計算：總數 * (權重 / 總權重)
+                                    distVal = totalVal * (weight / totalWeight);
+                                }
+                                
+                                // 格式化數值並寫入課程
+                                // 注意：toFixed 會回傳字串，若需運算要轉回 float
+                                const finalValStr = distVal.toFixed(decimals);
+                                c[fieldDef.id] = finalValStr;
+                                
+                                currentSum += parseFloat(finalValStr);
+                            });
+                        }
+                    } 
+                    else {
+                        // === 一般共用欄位 (文字/日期等) ===
+                        const oldVal = app.formData[fieldDef.id];
+                        app.formData[fieldDef.id] = newVal;
+                        logChange(fieldDef.id, appId, oldVal, newVal, student.id);
+
+                        // 同步更新所有格子
+                        document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
+                            if (el !== inputEl) { el.value = newVal; el.title = newVal; }
+                        });
+                    }
+
+                    // 觸發連動檢查
+                    const allRows = document.getElementById('grid-tbody').querySelectorAll('tr');
+                    allRows.forEach(tr => {
+                        const cid = tr.dataset.cid;
+                        const sid = tr.dataset.sid; 
+                        if (sid === student.id && app.courseIds.includes(cid)) {
+                            updateRowLogic(tr, app.formData);
+                        }
+                    });
+                }
+            } else {
+                // === 情境 B: 未歸戶 (直接更新) ===
+                course[fieldDef.id] = newVal;
+                
+                const tr = inputEl.closest('tr');
+                if (tr) updateRowLogic(tr, course);
+
+                if (!isScoreField && newVal && newVal.trim() !== "") {
+                    tryAutoMerge(student, course);
+                }
+            }
+        }
             const newVal = inputEl.value;
             inputEl.title = newVal; // 更新 Hover 提示
             
@@ -2849,6 +2975,7 @@
 
         // --- Helper: 寬鬆搜尋課程欄位值 ---
         function getCourseValue(courseObj, keys) {
+            if (!courseObj) return null;
             // 優先找完全符合的 key
             for (const k of keys) {
                 if (courseObj[k] !== undefined && courseObj[k] !== null && courseObj[k] !== "") 
@@ -2861,7 +2988,7 @@
                 const foundKey = rowKeys.find(rk => rk.toLowerCase().includes(target) || rk.replace(/\s/g,'') === target);
                 if (foundKey && courseObj[foundKey]) return courseObj[foundKey];
             }
-            return '-';
+            return null;
         }
         // --- 智慧自動歸戶邏輯 ---
         function tryAutoMerge(student, currentCourse) {
