@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>系所資料填報系統 (Department Data Entry)</title>
+    <title>東海大學學生校外實習校庫填報輔助系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- SheetJS for Excel Import/Export -->
@@ -31,7 +31,7 @@
         .input-stylish:focus { border-color: #002E5D; outline: none; box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
         .input-stylish:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
 
-        /* Left Sidebar Items (Keep the style you liked) */
+        /* Left Sidebar Items */
         .student-item { cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
         .student-item:hover { background-color: #f8fafc; }
         .student-item.active { background-color: #eff6ff; border-left-color: #002E5D; }
@@ -45,8 +45,10 @@
         .course-card:hover { border-color: #002E5D; background-color: #f0f9ff; }
         .course-card.selected { border-color: #002E5D; background-color: #eff6ff; }
 
-        .field-group { transition: all 0.3s ease; margin-bottom: 1rem; }
-        .field-group.hidden-field { display: none; }
+        .field-group { transition: all 0.3s ease; margin-bottom: 0; }
+        /* 鎖定時的視覺樣式 (取代原本的 hidden) */
+        .field-locked label { color: #94a3b8; }
+        .field-locked .input-stylish { background-color: #f8fafc; color: #cbd5e1; border-color: #f1f5f9; }
         
         .spinner { border: 3px solid rgba(0,46,93,0.1); border-radius: 50%; border-top: 3px solid #002E5D; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -67,16 +69,39 @@
         .excel-table { border-collapse: collapse; width: 100%; font-size: 12px; }
         .excel-table th, .excel-table td { border: 1px solid #e2e8f0; padding: 6px 10px; white-space: nowrap; }
         .excel-table th { background-color: #f8fafc; color: #64748b; font-weight: bold; text-align: left; }
+        
+        /* Form Section Title */
+        .form-section-title {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #002E5D;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .form-section-title:first-child { margin-top: 0; }
+        .form-section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 1.2em;
+            background-color: #C6A87C;
+            border-radius: 2px;
+        }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
 
-    <!-- Header (Restored from previous preferred version) -->
+    <!-- Header -->
     <header class="h-16 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 flex-shrink-0 justify-between">
         <div class="flex items-center gap-4">
             <img src="files/svg/THU-Logo.svg" class="h-8 w-auto" alt="Logo">
             <div>
-                <h1 class="font-bold text-lg text-primary tracking-wide">系所資料填報系統</h1>
+                <h1 class="font-bold text-lg text-primary tracking-wide">東海大學學生校外實習校庫填報輔助系統</h1>
                 <p class="text-[10px] text-slate-400">Department Data Entry System</p>
             </div>
         </div>
@@ -111,7 +136,7 @@
     <!-- Main Layout -->
     <div class="flex-grow flex overflow-hidden">
         
-        <!-- Sidebar: Student List (Keeping the version you liked) -->
+        <!-- Sidebar: Student List -->
         <aside class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0">
             <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
                 <div class="relative">
@@ -634,7 +659,7 @@
                 <div class="bg-primary/5 px-6 py-4 border-b border-primary/10">
                     <h3 class="font-bold text-primary flex items-center gap-2"><i class="fas fa-pen-fancy"></i> 資料填報</h3>
                 </div>
-                <div class="p-8 grid grid-cols-1 md:grid-cols-2 gap-6 form-body"></div>
+                <div class="p-8 form-body"></div>
             `;
             
             renderFields(formCard.querySelector('.form-body'), app);
@@ -668,89 +693,136 @@
             );
 
             if (visibleFields.length === 0) {
-                container.innerHTML = '<div class="col-span-2 text-center text-slate-400">無須填報欄位</div>';
+                container.innerHTML = '<div class="text-center text-slate-400">無須填報欄位</div>';
                 return;
             }
 
-            visibleFields.sort((a,b) => (a.order||0) - (b.order||0)).forEach(f => {
-                const wrapper = document.createElement('div');
-                wrapper.className = `field-group ${f.id}-wrapper`; // Add class for logic targeting
-                wrapper.id = `wrapper-${app.id}-${f.id}`;
-                
-                const label = document.createElement('label');
-                label.className = "block text-sm font-bold text-slate-700 mb-1";
-                label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
-                if(f.description) label.innerHTML += `<span class="block text-xs text-slate-400 font-normal">${f.description}</span>`;
-                wrapper.appendChild(label);
+            // Group fields by category
+            const categories = globalConfig.templateCategories || [];
+            const fieldsByCat = {};
+            
+            // Sort fields by order
+            const sortedFields = [...visibleFields].sort((a,b) => (a.order||0) - (b.order||0));
 
-                const val = app.formData[f.id] || '';
-                let input;
+            // Distribute to buckets
+            sortedFields.forEach(f => {
+                const cat = f.category || 'uncategorized';
+                if(!fieldsByCat[cat]) fieldsByCat[cat] = [];
+                fieldsByCat[cat].push(f);
+            });
 
-                if (f.type === 'single_select' || f.type === 'list') {
-                    input = document.createElement('select');
-                    input.className = "input-stylish cursor-pointer";
-                    input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
-                } else if (f.type === 'date') {
-                    input = document.createElement('input');
-                    input.type = 'date';
-                    input.className = "input-stylish";
-                    input.value = val;
-                } else if (f.type === 'number') {
-                    input = document.createElement('input');
-                    input.type = 'number';
-                    input.className = "input-stylish";
-                    input.step = f.decimal ? '0.01' : '1';
-                    input.value = val;
-                } else {
-                    input = document.createElement('input');
-                    input.type = 'text';
-                    input.className = "input-stylish";
-                    input.value = val;
-                }
+            // Get Sorted Category List
+            const sortedCats = [...categories].sort((a,b) => a.order - b.order);
+            // Append Uncategorized
+            if(fieldsByCat['uncategorized']) sortedCats.push({id: 'uncategorized', name: '其他資訊'});
 
-                // Event Listener for Data & Logic
-                input.onchange = (e) => {
-                    app.formData[f.id] = e.target.value;
-                    evaluateLogic(app); // Run Logic
+            sortedCats.forEach(catDef => {
+                const catFields = fieldsByCat[catDef.id];
+                if(!catFields || catFields.length === 0) return;
+
+                // Render Section Title
+                const title = document.createElement('h4');
+                title.className = 'form-section-title';
+                title.innerText = catDef.name;
+                container.appendChild(title);
+
+                // Render Grid Container
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-6 mb-6';
+
+                catFields.forEach(f => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = `field-group ${f.id}-wrapper`; 
+                    wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
-                    // Update Tab Name if Institution Name changes
-                    if (f.id === 'internship_institution_name') {
-                        const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
-                        if(tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${e.target.value || '未命名'}`;
-                    }
-                    
-                    // Update Preview
-                    const contentDiv = document.getElementById(`content-${app.id}`);
-                    if(contentDiv && contentDiv._previewCard) {
-                        updatePreview(contentDiv._previewCard, app, groupedStudents[currentStudentId]);
-                    }
-                };
-                
-                // Attach ID for logic helper
-                input.id = `input-${app.id}-${f.id}`; 
+                    const label = document.createElement('label');
+                    label.className = "block text-sm font-bold text-slate-700 mb-1";
+                    label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
+                    if(f.description) label.innerHTML += `<span class="block text-xs text-slate-400 font-normal">${f.description}</span>`;
+                    wrapper.appendChild(label);
 
-                wrapper.appendChild(input);
-                container.appendChild(wrapper);
+                    const val = app.formData[f.id] || '';
+                    let input;
+
+                    if (f.type === 'single_select' || f.type === 'list') {
+                        input = document.createElement('select');
+                        input.className = "input-stylish cursor-pointer";
+                        input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
+                    } else if (f.type === 'date') {
+                        input = document.createElement('input');
+                        input.type = 'date';
+                        input.className = "input-stylish";
+                        input.value = val;
+                    } else if (f.type === 'number') {
+                        input = document.createElement('input');
+                        input.type = 'number';
+                        input.className = "input-stylish";
+                        input.step = f.decimal ? '0.01' : '1';
+                        input.value = val;
+                    } else {
+                        input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = "input-stylish";
+                        input.value = val;
+                    }
+
+                    // Event Listener for Data & Logic
+                    input.onchange = (e) => {
+                        app.formData[f.id] = e.target.value;
+                        evaluateLogic(app); // Run Logic
+                        
+                        // Update Tab Name if Institution Name changes
+                        if (f.id === 'internship_institution_name') {
+                            const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
+                            if(tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${e.target.value || '未命名'}`;
+                        }
+                        
+                        // Update Preview
+                        const contentDiv = document.getElementById(`content-${app.id}`);
+                        if(contentDiv && contentDiv._previewCard) {
+                            updatePreview(contentDiv._previewCard, app, groupedStudents[currentStudentId]);
+                        }
+                    };
+                    
+                    // Attach ID for logic helper
+                    input.id = `input-${app.id}-${f.id}`; 
+
+                    wrapper.appendChild(input);
+                    grid.appendChild(wrapper);
+                });
+                container.appendChild(grid);
             });
 
             // Initial Logic Run
             setTimeout(() => evaluateLogic(app), 0);
         }
 
-        // --- Logic: Visibility & Filters ---
+        // --- Logic: Visibility (Locked) & Filters ---
         function evaluateLogic(app) {
             const fields = currentYearConfig.fields || [];
             
             fields.forEach(f => {
-                // Visibility
+                // Visibility -> Lock Logic
                 if (f.visibilityRule && f.visibilityRule.dep) {
                     const depVal = app.formData[f.visibilityRule.dep];
+                    const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
                     const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
-                    if (wrapper) {
-                        let show = f.visibilityRule.action === 'show' 
+                    
+                    if (inputEl) {
+                        let shouldEnable = f.visibilityRule.action === 'show' 
                             ? depVal === f.visibilityRule.val 
                             : depVal !== f.visibilityRule.val;
-                        wrapper.style.display = show ? 'block' : 'none';
+                        
+                        inputEl.disabled = !shouldEnable;
+                        
+                        // Visual Feedback for Locked Field
+                        if (!shouldEnable) {
+                            if(wrapper) wrapper.classList.add('field-locked');
+                            inputEl.value = ""; // Clear value to prevent submitting invalid data
+                            app.formData[f.id] = "";
+                        } else {
+                            if(wrapper) wrapper.classList.remove('field-locked');
+                        }
                     }
                 }
                 
