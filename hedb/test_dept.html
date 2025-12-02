@@ -23,11 +23,13 @@
         }
     </script>
     <style>
+        /* 修改 2: 透過設定 html 的 font-size 來控制全域 rem 單位 */
         :root {
-            --base-size: 14px; /* Default font size base */
+            --base-size: 14px; 
         }
         
-        body { font-size: var(--base-size); }
+        html { font-size: var(--base-size); }
+        body { font-size: 1rem; } /* 使用 rem 繼承 html font-size */
         
         .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
@@ -420,6 +422,12 @@
         <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
     </div>
 
+    <!-- 修正 1: 加入 Footer 版權宣告 -->
+    <footer class="bg-white border-t border-slate-200 py-3 px-6 text-center text-[10px] text-slate-400 flex-shrink-0 z-30 relative">
+        <p class="font-bold">Copyright © <span id="copyright-year">2025</span> 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p>
+        <p class="mt-0.5 font-medium opacity-80">網頁製作：張博堯 | Assisted by Google Gemini</p>
+    </footer>
+
     <script>
         // --- Global State ---
         let globalConfig = {};       
@@ -453,8 +461,6 @@
 
                 // Setup Year Selector
                 const yearSelect = document.getElementById('year-select');
-                
-                // 修正 2: 保持 "請選擇學年度" 為預設，不自動載入
                 yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
                 
                 if (globalConfig.academicYears && globalConfig.academicYears.length > 0) {
@@ -469,13 +475,25 @@
                     yearSelect.innerHTML = '<option value="">無設定</option>';
                 }
 
+                updateFooterYear();
+
             } catch (e) {
                 console.error("Init failed", e);
                 showToast('error', '系統初始化失敗');
             }
         };
 
+        function updateFooterYear() {
+            const startYear = 2025;
+            const currentYear = new Date().getFullYear();
+            const yearSpan = document.getElementById('copyright-year');
+            if (yearSpan) {
+                yearSpan.innerText = currentYear > startYear ? `${startYear}-${currentYear}` : `${startYear}`;
+            }
+        }
+
         // --- Font Size & Sidebar Toggle ---
+        // 修正 2: 同步修改 html 根元素字體大小
         function setFontSize(size) {
             document.documentElement.style.setProperty('--base-size', size);
         }
