@@ -8,7 +8,7 @@
     <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
     <!-- SheetJS for Excel Import/Export -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-    <!-- ExcelJS (新增：用於高階讀寫與樣式控制) -->
+    <!-- ExcelJS (用於高階讀寫與樣式控制) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
     
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -623,7 +623,9 @@
 
                     if (jsonData.length === 0) throw new Error("檔案無內容");
                     
-                    processUploadedData(jsonData, savedApps);
+                    // 關鍵修正 1：使用 await 確保 changeYear 完成後才呼叫 processUploadedData
+                    await processUploadedData(jsonData, savedApps);
+                    
                     event.target.value = ''; 
                 } catch (err) {
                     console.error(err);
@@ -633,7 +635,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        function processUploadedData(data, savedApps = []) {
+        async function processUploadedData(data, savedApps = []) {
             allRawData = data;
             groupedStudents = {};
 
@@ -645,7 +647,8 @@
                     const opt = Array.from(yearSelect.options).find(o => o.value === detectedYear);
                     if (opt) {
                         yearSelect.value = detectedYear;
-                        changeYear(detectedYear);
+                        // 關鍵修正 2：等待學年設定載入
+                        await changeYear(detectedYear);
                         showToast('info', `已自動切換至 ${detectedYear} 學年度`);
                     }
                 }
@@ -682,30 +685,13 @@
                     };
                 }
                 
-                // --- Modified Internal ID Generation ---
-                // Use SchoolYear + Semester + CourseCode if available, fallback to index
-                // This creates a consistent ID across sessions if data is same
+                // 關鍵修正 3: 強化 _internal_id 生成邏輯
                 const rYear = row['school_year'] || row['學年'];
                 const rSem = row['semester'] || row['學期'];
                 const rCode = row['course_code'] || row['選課代號'];
                 
                 if (rYear && rSem && rCode) {
-                     let baseId = `${rYear}${rSem}_${rCode}`;
-                     // Check for duplicates in this student's courses (unlikely but possible for grouped lists)
-                     // Actually internal ID must be unique globally or per student?
-                     // The original logic used global index. Let's stick to global unique ID.
-                     // But we want stability.
-                     // Let's use composite key, but handle duplicates by appending index if needed.
-                     // Wait, row index is easiest but not stable if file sorted.
-                     // Composite key is stable.
-                     // Check if this ID already exists in groupedStudents (global check not easy here).
-                     // Let's just use composite key. If duplicates exist in source file (e.g. same course appearing twice?),
-                     // we might need to append index.
-                     // For safety, let's append the original row index to ensure uniqueness while keeping readability?
-                     // No, user asked for sorting by Year+Sem+Code.
-                     // Let's use that as the base.
-                     
-                     row._internal_id = `${rYear}${rSem}_${rCode}_${idx}`; // Unique and stable-ish
+                     row._internal_id = `${rYear}${rSem}_${rCode}_${idx}`; // 加上 index 確保絕對唯一
                 } else {
                      row._internal_id = `c_${idx}`;
                 }
@@ -721,13 +707,9 @@
                     if (student) {
                         const validCourseIds = [];
                         app.courseIds.forEach(cid => {
-                             // Check if this internal ID exists in student courses
-                             // Since we changed ID generation, old saved files might not match if they used c_0 format.
-                             // If the file being imported has the same structure/content, we need to match.
-                             // The user asked to change ID format to prevent mess up.
-                             // If we change ID format now, old excel files with c_0 IDs won't link correctly.
-                             // But since this is a "new feature request", we assume starting fresh or re-exporting.
-                             
+                             // 關鍵修正 4: 使用更寬鬆的 matching 邏輯，因為 _internal_id 包含 index
+                             // 這裡假設 Excel 匯出的 Course_IDs 是完整的 internal_id
+                             // 只要 ID 一樣就能對到
                              const exists = student.courses.find(c => c._internal_id === cid);
                              if(exists) {
                                  validCourseIds.push(cid);
@@ -939,7 +921,7 @@
                     el.innerHTML = `
                         <div>
                             <div class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</div>
-                            <div class="text-xs text-slate-500">${c['semester'] ? `第${c['semester']}學期` : ''} <span class="mx-1">|</span> ${c['course_id'] || c['選課代號']}</div>
+                            <div class="text-xs text-slate-500">${c['semester'] ? `第${c['semester']}學期` : ''} <span class="mx-1">|</span> ${c['course_id'] || c['選課代號'] || c['course_code'] || '無代號'}</div>
                         </div>
                         <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
                     `;
