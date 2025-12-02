@@ -1075,7 +1075,7 @@
 
             if(settings.forceTai) {
                 if(val.startsWith('台')) {
-                    val = '臺' + val.substring(1); // 只處理第一個字
+                    val = '臺' + val.substring(1);
                 }
             }
 
@@ -1083,78 +1083,20 @@
                  val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             }
 
-            function cnToNum(cnStr) {
-            const units = { '': 1, '十': 10 };
-            const nums = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '零': 0 };
-            let result = 0;
-            let temp = 0;
-
-            for (let i = 0; i < cnStr.length; i++) {
-                const char = cnStr[i];
-                if (nums[char] !== undefined) {
-                    temp = nums[char];
-                } else if (units[char] === 10) {
-                    // 處理 '十' 字。如 '三十七' (3*10) + 7 或 '十七' (1*10) + 7
-                    result += (temp || 1) * units[char];
-                    temp = 0;
-                }
-            }
-            result += temp;
-            return result;
-        }
-        
-        
-        // 【修改】 processAddress 函式 (替換原有的)
-        function processAddress(inputEl, settings) {
-            let val = inputEl.value;
-            if(!val) return;
-
-            // 1. 全形轉半形 (toHalf)
-            if(settings.toHalf) {
-                val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
-                         .replace(/　/g, " ");
-            }
-        
-            // 2. 強制台轉臺 (forceTai) - 修改為全域替換
-            if(settings.forceTai) {
-                // 替換字串中所有出現的 '台' -> '臺'
-                val = val.replace(/台/g, '臺'); 
-            }
-        
-            // 3. 拉丁文轉英文 (latinToEng)
-            if(settings.latinToEng) {
-                 val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            }
-        
-            // 4. 智慧路名數字轉換 (smartFormat) - 處理複合數字
             if(settings.smartFormat) {
-                // 中文數字，處理 '一'到'九十九'
-                const cnNumsPattern = '(一|二|三|四|五|六|七|八|九|十)+';
-                const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街', '巷', '弄', '號', '樓'];
-        
+                const cnNums = {'一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9, '十':10};
+                const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街'];
                 keywords.forEach(k => {
-                    // 匹配中文數字 + 關鍵字 (例如: 三十七段)
-                    const regex = new RegExp(`(${cnNumsPattern})${k}`, 'g');
-            
+                    const regex = new RegExp(`([一二三四五六七八九十]+)${k}`, 'g');
                     val = val.replace(regex, (match, p1) => {
-                        // p1: 匹配到的中文數字字串 (例如: 三十七)
-                        let num = cnToNum(p1); 
-                        // 檢查是否在保護名單 (Whitelist) 內，避免像 "五權" 這種地名被轉換
-                        const isProtected = (globalConfig.addressRules && globalConfig.addressRules.protected) ? 
-                                             globalConfig.addressRules.protected.includes(match.replace(p1, '').trim()) : false;
-                
-                        if (num > 0 && !isProtected) {
-                            return `${num}${k}`;
-                        }
-                        return match;
+                        let num = cnNums[p1];
+                        return num ? `${num}${k}` : match;
                     });
                 });
             }
 
-            // 更新值
             if(val !== inputEl.value) {
                 inputEl.value = val;
-                // 觸發 change 事件以保存到 formData
                 inputEl.dispatchEvent(new Event('change'));
             }
         }
