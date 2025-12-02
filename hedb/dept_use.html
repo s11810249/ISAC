@@ -3,88 +3,1591 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>網頁建置中 | 東海大學</title>
+    <title>東海大學學生校外實習校庫填報輔助系統</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- SheetJS for Excel Import/Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
-        // 參考 HEDB 風格定義主要顏色
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        thuBlue: '#002E5D',      // 東海深藍 (用於文字和重點)
-                        bgLightPurple: '#F3E8FF',// 極淡紫色 (背景起始色)
-                        bgLightBlue: '#E0F2FE',  // 極淡藍色 (背景結束色/裝飾)
+                        primary: '#002E5D', secondary: '#C6A87C', success: '#219653', danger: '#DC2626', surface: '#ffffff', background: '#F8FAFC',
                     },
-                    fontFamily: {
-                        sans: ['"Noto Sans TC"', 'sans-serif'],
-                    }
+                    fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] }
                 }
             }
         }
     </script>
     <style>
-        /* 1. 背景：使用新的淡藍紫漸層 (HEDB Index 參考色) */
-        .main-bg {
-            background: linear-gradient(135deg, #F3E8FF 0%, #E0F2FE 100%);
-            min-height: 100vh;
+        /* 修改 2: 透過設定 html 的 font-size 來控制全域 rem 單位 */
+        :root {
+            --base-size: 14px; 
+        }
+        
+        html { font-size: var(--base-size); }
+        body { font-size: 1rem; } /* 使用 rem 繼承 html font-size */
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .input-stylish { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.375rem; padding: 0.4rem 0.75rem; font-size: 1em; transition: all 0.2s; background-color: #fff; line-height: 1.5; min-height: 2.5em; }
+        .input-stylish:focus { border-color: #002E5D; outline: none; box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
+        .input-stylish:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
+        
+        textarea.input-stylish { height: auto; min-height: 2.5em; padding-top: 0.4rem; padding-bottom: 0.4rem; }
+
+        /* Sidebar Transition */
+        aside { transition: width 0.3s ease; position: relative; }
+        aside.collapsed { width: 0 !important; overflow: hidden; }
+        
+        /* New Full-Height Sidebar Toggle */
+        #sidebar-toggle-strip {
+            position: absolute;
+            left: 20rem; /* Matches sidebar width */
+            top: 0;
+            bottom: 0;
+            width: 12px;
+            background: #f1f5f9;
+            border-right: 1px solid #e2e8f0;
+            border-left: 1px solid #fff;
+            cursor: pointer;
+            z-index: 40;
             display: flex;
             align-items: center;
             justify-content: center;
-            position: relative;
-            overflow: hidden;
+            transition: left 0.3s ease, background-color 0.2s;
+        }
+        #sidebar-toggle-strip:hover { background-color: #e2e8f0; }
+        #sidebar-toggle-strip i { font-size: 10px; color: #94a3b8; transition: transform 0.3s; }
+        
+        /* When collapsed */
+        aside.collapsed + #sidebar-toggle-strip { left: 0; border-left: none; }
+        aside.collapsed + #sidebar-toggle-strip i { transform: rotate(180deg); }
+
+        /* Left Sidebar Items */
+        .student-item { cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
+        .student-item:hover { background-color: #f8fafc; }
+        .student-item.active { background-color: #eff6ff; border-left-color: #002E5D; }
+        .student-item.active .student-name { color: #002E5D; font-weight: bold; }
+
+        /* Import Button (Admin Style) */
+        .import-btn { border: 2px dashed #bbf7d0; color: #219653; background-color: #f0fdf4; transition: all 0.2s; border-radius: 0.75rem; text-align: center; padding: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9em; width: 100%; }
+        .import-btn:hover { border-color: #219653; background-color: #dcfce7; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        /* Course Card in Settings Tab */
+        .course-card { 
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; 
+            transition: all 0.2s; position: relative; cursor: pointer; display: flex; justify-content: space-between; align-items: center;
+        }
+        .course-card:hover { border-color: #002E5D; background-color: #f0f9ff; }
+        .course-card.selected { border-color: #002E5D; background-color: #eff6ff; }
+
+        .field-group { transition: all 0.3s ease; margin-bottom: 0.5rem; }
+        /* 鎖定時的視覺樣式 (取代原本的 hidden) */
+        .field-locked label { color: #94a3b8; }
+        .field-locked .input-stylish { background-color: #f8fafc; color: #cbd5e1; border-color: #f1f5f9; }
+        .field-locked .date-picker-trigger { pointer-events: none; opacity: 0.5; }
+        
+        .spinner { border: 3px solid rgba(0,46,93,0.1); border-radius: 50%; border-top: 3px solid #002E5D; width: 24px; height: 24px; animation: spin 1s linear infinite; }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+
+        /* Tab System */
+        .tab-btn { 
+            padding: 0.75rem 1.5rem; font-size: 1em; font-weight: 600; color: #64748b; 
+            border-bottom: 3px solid transparent; transition: all 0.2s; cursor: pointer; 
+            display: flex; align-items: center; gap: 0.5rem; white-space: nowrap;
+        }
+        .tab-btn:hover { color: #002E5D; background-color: #f8fafc; }
+        .tab-btn.active { color: #002E5D; border-bottom-color: #002E5D; background-color: #fff; }
+        
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Excel Preview Table */
+        .excel-table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+        .excel-table th, .excel-table td { border: 1px solid #e2e8f0; padding: 6px 10px; white-space: nowrap; }
+        .excel-table th { background-color: #f8fafc; color: #64748b; font-weight: bold; text-align: left; }
+        
+        /* Form Section Title */
+        .form-section-title {
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #002E5D;
+            margin-top: 1.5rem;
+            margin-bottom: 1rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .form-section-title:first-child { margin-top: 0; }
+        .form-section-title::before {
+            content: '';
+            display: block;
+            width: 4px;
+            height: 1.2em;
+            background-color: #C6A87C;
+            border-radius: 2px;
         }
 
-        /* 2. 毛玻璃卡片：根據您的要求更新樣式 */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.6); /* 保持高透明度 */
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        /* Tooltip Style */
+        .tooltip-container { position: relative; display: inline-block; margin-left: 0.5rem; }
+        .tooltip-icon { color: #94a3b8; cursor: help; transition: color 0.2s; }
+        .tooltip-icon:hover { color: #002E5D; }
+        .tooltip-text { 
+            visibility: hidden; width: 200px; background-color: #334155; color: #fff; text-align: left; 
+            border-radius: 6px; padding: 8px; position: absolute; z-index: 50; bottom: 125%; left: 50%; 
+            margin-left: -100px; opacity: 0; transition: opacity 0.3s; font-size: 0.85em; font-weight: normal; line-height: 1.4;
+            pointer-events: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
         }
+        .tooltip-text::after {
+            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+            border-width: 5px; border-style: solid; border-color: #334155 transparent transparent transparent;
+        }
+        .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
 
-        /* 移除動畫效果，因為沒有圓點裝飾了 */
+        /* Modal Overlay */
+        .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+
+        /* Custom ROC Date Picker Styles */
+        .date-picker-wrapper { position: relative; width: 100%; }
+        .date-input-group { position: relative; display: flex; align-items: center; }
+        .date-picker-trigger {
+            position: absolute; right: 8px; color: #64748b; cursor: pointer; padding: 4px;
+            border-radius: 4px; transition: color 0.2s;
+        }
+        .date-picker-trigger:hover { color: #002E5D; background-color: #f1f5f9; }
+        
+        .calendar-popover {
+            position: absolute; top: 100%; left: 0; margin-top: 4px;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 8px;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            width: 280px; z-index: 50; display: none; padding: 12px; font-size: 0.9em;
+        }
+        .calendar-popover.active { display: block; animation: fadeIn 0.1s ease-out; }
+        
+        .cal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 10px; }
+        .cal-btn { padding: 4px 8px; border-radius: 4px; hover: bg-slate-100; cursor: pointer; color: #64748b; }
+        .cal-btn:hover { background-color: #f1f5f9; color: #002E5D; }
+        .cal-title { font-weight: bold; color: #334155; cursor: pointer; }
+        .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; text-align: center; }
+        .cal-day-header { font-size: 0.75em; color: #94a3b8; padding: 4px 0; }
+        .cal-day { 
+            padding: 6px 0; cursor: pointer; border-radius: 4px; color: #334155; 
+        }
+        .cal-day:hover:not(.empty) { background-color: #f1f5f9; color: #002E5D; }
+        .cal-day.selected { background-color: #002E5D; color: #fff; }
+        .cal-day.empty { pointer-events: none; }
+        .cal-day.today { border: 1px solid #002E5D; font-weight: bold; }
+
+        /* Filter Styles */
+        .filter-select { font-size: 0.85em; padding: 0.25rem 0.5rem; border-radius: 0.25rem; border: 1px solid #e2e8f0; background-color: #fff; width: 100%; }
+        
+        /* Toast Animation */
+        .toast-enter { transform: translateY(20px); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-out; }
+        .toast-exit { transform: translateY(0); opacity: 1; }
+        .toast-exit-active { transform: translateY(20px); opacity: 0; transition: all 0.3s ease-in; }
     </style>
 </head>
-<body class="main-bg font-sans">
-    
-    <!-- 移除背景裝飾圓形 -->
+<body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
 
-    <!-- 核心內容卡片 (毛玻璃面板) -->
-    <div class="glass-card w-11/12 max-w-lg p-10 md:p-16 rounded-2xl text-center relative z-10 mx-auto shadow-xl">
-        
-        <!-- 標誌或圖示 -->
-        <!-- 圖示背景使用淺藍色，圖示顏色使用 thuBlue -->
-        <div class="w-16 h-16 bg-bgLightBlue text-thuBlue rounded-full flex items-center justify-center text-3xl mx-auto mb-6 shadow-md">
-             <i class="fas fa-tools"></i>
-        </div>
-
-        <!-- 標題 -->
-        <!-- 文字顏色改回深色以符合淺色卡片對比要求 -->
-        <h1 class="text-3xl md:text-4xl font-black text-thuBlue tracking-wider mb-4">
-            網頁建置中
-        </h1>
-
-        <!-- 副標題 -->
-        <p class="text-gray-700 text-base md:text-lg font-light mb-8 max-w-sm mx-auto leading-relaxed">
-            我們正在努力建置一個更棒的協作平台，
-            請您耐心等候，很快就能與您見面。
-        </p>
-        
-        <!-- 額外資訊或進度條 -->
-        <!-- 內層元素背景使用純白，確保文字清晰 -->
-        <div class="bg-white/90 p-4 rounded-xl border border-gray-100 shadow-inner">
-            <p class="text-sm font-bold text-gray-700 mb-2 flex items-center justify-center gap-2">
-                <i class="fas fa-spinner fa-spin text-thuBlue"></i> 預計將於近期完成上線
-            </p>
-            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                <!-- 模擬進度條，顏色使用 thuBlue -->
-                <div class="bg-thuBlue h-2.5 rounded-full transition-all duration-1000" style="width: 85%"></div>
+    <!-- Header -->
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 flex-shrink-0 justify-between">
+        <div class="flex items-center gap-4">
+            <div class="bg-primary p-1.5 rounded-lg shadow-sm">
+                <img src="files/svg/THU-Logo.svg" class="h-8 w-auto" alt="Logo">
+            </div>
+            <div>
+                <h1 class="font-bold text-lg text-primary tracking-wide">東海大學學生校外實習校庫填報輔助系統</h1>
+                <p class="text-[10px] text-slate-400">Department Data Entry System</p>
             </div>
         </div>
+        <div class="flex items-center gap-3">
+            
+            <!-- Font Size Toggle -->
+            <div class="relative group">
+                <select id="font-size-select" onchange="setFontSize(this.value)" class="pl-3 pr-8 py-2 bg-slate-100 border-none rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary outline-none appearance-none hover:bg-slate-200 transition">
+                    <option value="14px">字體: 標準 (A)</option>
+                    <option value="16px">字體: 加大 (A+)</option>
+                    <option value="18px">字體: 特大 (A++)</option>
+                    <option value="24px">字體: 超大 (A++++)</option>
+                </select>
+                <i class="fas fa-text-height absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
+            </div>
+
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+            <!-- Year Selector -->
+            <div class="relative group">
+                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                    <i class="fas fa-calendar-alt text-slate-400"></i>
+                </div>
+                <select id="year-select" onchange="changeYear(this.value)" class="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none hover:bg-white transition shadow-sm">
+                    <option value="">請選擇學年度...</option>
+                </select>
+                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
+                    <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
+                </div>
+            </div>
+
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+            <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
+                <i class="fas fa-file-export"></i> 匯出結果
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="flex-grow flex overflow-hidden relative">
         
+        <!-- Sidebar: Student List -->
+        <aside id="sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0 relative">
+            <!-- Import Button -->
+            <div class="p-4 pb-0 bg-slate-50">
+                <label class="import-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success">
+                    <i class="fas fa-file-import text-lg"></i> 匯入學生名單 (Excel)
+                    <input type="file" id="file-upload" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event)">
+                </label>
+            </div>
+
+            <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="search-input" oninput="filterStudentList()" placeholder="搜尋姓名或學號..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none">
+                </div>
+                
+                <!-- Filters -->
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="filter-course-dept" onchange="filterStudentList()" class="filter-select">
+                        <option value="">全部開課系</option>
+                    </select>
+                    <select id="filter-student-dept" onchange="filterStudentList()" class="filter-select">
+                        <option value="">全部學生系</option>
+                    </select>
+                    <select id="filter-status" onchange="filterStudentList()" class="filter-select col-span-2">
+                        <option value="">全部填報進度</option>
+                        <option value="pending">未開始</option>
+                        <option value="completed">已填報</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-500">
+                    <div>總計: <span id="student-count" class="font-bold text-slate-700">0</span> 人</div>
+                    <div class="flex gap-1">
+                        <button onclick="toggleSort('id')" class="hover:text-primary p-1 rounded transition" title="依學號排序" id="sort-id-btn">
+                            <i class="fas fa-sort-numeric-down"></i>
+                        </button>
+                        <button onclick="toggleSort('name')" class="hover:text-primary p-1 rounded transition" title="依姓名排序" id="sort-name-btn">
+                            <i class="fas fa-sort-alpha-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="student-list" class="flex-grow overflow-y-auto custom-scroll p-2 space-y-1">
+                <div class="p-8 text-center text-slate-400 text-sm">
+                    <i class="fas fa-arrow-up mb-2 text-xl block"></i>
+                    請先從上方匯入 Excel 名單
+                </div>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle Strip -->
+        <div id="sidebar-toggle-strip" onclick="toggleSidebar()" title="收合/展開側邊欄">
+            <i class="fas fa-chevron-left text-slate-400"></i>
+        </div>
+
+        <!-- Right Side: Workspace -->
+        <main class="flex-grow bg-slate-50 overflow-hidden relative flex flex-col" id="main-content">
+            
+            <!-- Empty State -->
+            <div id="form-empty-state" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-50 text-slate-400">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 text-3xl shadow-sm border border-slate-100">
+                    <i class="fas fa-user-edit text-slate-300"></i>
+                </div>
+                <p>請從左側選擇一位學生開始填報</p>
+            </div>
+
+            <!-- Content Area (Visible when student selected) -->
+            <div id="form-container" class="hidden flex flex-col h-full w-full">
+                
+                <!-- Student Header Panel -->
+                <div class="bg-white px-6 py-4 border-b border-slate-200 shadow-sm flex-shrink-0 flex justify-between items-center z-20">
+                    <div class="flex gap-4 items-center">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold">
+                            <span id="header-avatar">?</span>
+                        </div>
+                        <div>
+                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                <span id="header-name">學生姓名</span>
+                                <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded">ID</span>
+                            </h2>
+                            <p class="text-sm text-slate-500 flex gap-3 mt-0.5">
+                                <span id="header-dept"><i class="fas fa-graduation-cap mr-1"></i>系所</span>
+                            </p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button onclick="openPreviewModal()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-2">
+                            <i class="fas fa-table"></i> 資料預覽
+                        </button>
+                        <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">未填報</span>
+                    </div>
+                </div>
+
+                <!-- Tabs -->
+                <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
+                    <button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>
+                </div>
+
+                <!-- Tab Contents Scrollable Area -->
+                <div class="flex-grow overflow-y-auto custom-scroll p-6 pb-24 relative">
+                    
+                    <!-- Tab: Settings (Consolidation) -->
+                    <div id="tab-settings" class="tab-content active max-w-7xl mx-auto">
+                        <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
+                            <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
+                                <div>
+                                    <h3 class="font-bold text-indigo-800 text-lg flex items-center gap-2"><i class="fas fa-layer-group"></i> 實習歸戶設定</h3>
+                                    <p class="text-xs text-indigo-600 mt-1">請勾選同一實習機構的課程，合併建立為一份填報單。</p>
+                                </div>
+                                <button onclick="createApplication()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
+                                    <i class="fas fa-plus"></i> 建立實習填報單
+                                </button>
+                            </div>
+                            
+                            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
+                                <!-- Left Column: Unassigned Courses -->
+                                <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 pb-2 border-b border-slate-200">
+                                        <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程 (請勾選)
+                                    </h4>
+                                    <div id="settings-course-list" class="space-y-2"></div>
+                                </div>
+                                
+                                <!-- Right Column: Existing Applications -->
+                                <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
+                                    <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 pb-2 border-b border-indigo-200">
+                                        <span class="w-2 h-2 rounded-full bg-success"></span> 已建立的填報單
+                                    </h4>
+                                    <div id="app-management-list" class="space-y-3"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Dynamic Tabs will be injected here -->
+                    <div id="dynamic-tabs-area"></div>
+
+                </div>
+            </div>
+        </main>
     </div>
+
+    <!-- Preview Modal -->
+    <div id="preview-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-7xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[85vh]">
+            <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2"><i class="fas fa-table text-primary"></i> 學生資料預覽</h3>
+                    <p class="text-xs text-slate-500 mt-1">包含所有課程（已歸戶與未歸戶）的完整資料</p>
+                </div>
+                <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+            </div>
+            <!-- 修改 2: 增加 overflow-x-auto 讓表格可水平滑動 -->
+            <div class="flex-grow overflow-auto custom-scroll p-0 relative">
+                <table class="excel-table w-full relative">
+                    <thead class="sticky top-0 z-10"><tr id="modal-preview-head"></tr></thead>
+                    <tbody id="modal-preview-body"></tbody>
+                </table>
+            </div>
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50/50 flex justify-end gap-3 flex-shrink-0">
+                <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="px-5 py-2 btn-manage rounded-lg font-bold text-sm bg-slate-800 text-white shadow hover:bg-slate-900">關閉</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast Notification (Fixed) -->
+    <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
+        <i id="toast-icon" class="fas fa-info-circle"></i>
+        <span id="toast-msg">Notification</span>
+        <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
+    </div>
+
+    <!-- 修正 1: 加入 Footer 版權宣告 -->
+    <footer class="bg-white border-t border-slate-200 py-3 px-6 text-center text-[10px] text-slate-400 flex-shrink-0 z-30 relative">
+        <p class="font-bold">Copyright © <span id="copyright-year">2025</span> 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p>
+        <p class="mt-0.5 font-medium opacity-80">網頁製作：張博堯 | Assisted by Google Gemini</p>
+    </footer>
+
+    <script>
+        // --- Global State ---
+        let globalConfig = {};       
+        let currentYearConfig = {};  
+        let departmentData = [];     
+        let deptMasterData = {};     
+        
+        let allRawData = [];         
+        let groupedStudents = {};    
+        let currentStudentId = null; 
+        let activeYear = "";         
+        
+        // Sorting State
+        let sortConfig = { key: 'id', direction: 'asc' }; 
+
+        const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
+
+        // --- Initialization ---
+        window.onload = async function() {
+            try {
+                // Load static configs
+                const [cfgRes, deptRes, masterRes] = await Promise.all([
+                    fetch('config.json').then(r => r.ok ? r.json() : {}),
+                    fetch('data_departments.json').then(r => r.ok ? r.json() : []),
+                    fetch('data_dept_master.json').then(r => r.ok ? r.json() : {})
+                ]);
+
+                globalConfig = cfgRes;
+                departmentData = deptRes;
+                deptMasterData = masterRes;
+
+                // Setup Year Selector
+                const yearSelect = document.getElementById('year-select');
+                yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
+                
+                if (globalConfig.academicYears && globalConfig.academicYears.length > 0) {
+                    globalConfig.academicYears.sort((a,b) => b.year.localeCompare(a.year));
+                    globalConfig.academicYears.forEach(y => {
+                        const opt = document.createElement('option');
+                        opt.value = y.year;
+                        opt.innerText = `${y.year} 學年度`;
+                        yearSelect.appendChild(opt);
+                    });
+                } else {
+                    yearSelect.innerHTML = '<option value="">無設定</option>';
+                }
+
+                updateFooterYear();
+
+            } catch (e) {
+                console.error("Init failed", e);
+                showToast('error', '系統初始化失敗');
+            }
+        };
+
+        function updateFooterYear() {
+            const startYear = 2025;
+            const currentYear = new Date().getFullYear();
+            const yearSpan = document.getElementById('copyright-year');
+            if (yearSpan) {
+                yearSpan.innerText = currentYear > startYear ? `${startYear}-${currentYear}` : `${startYear}`;
+            }
+        }
+
+        // --- Font Size & Sidebar Toggle ---
+        // 修正 2: 同步修改 html 根元素字體大小
+        function setFontSize(size) {
+            document.documentElement.style.setProperty('--base-size', size);
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            sidebar.classList.toggle('collapsed');
+        }
+
+        // --- Logic: Year Template ---
+        async function changeYear(year) {
+            if(!year) return;
+            activeYear = year;
+            showToast('info', `載入 ${year} 學年度設定...`);
+            
+            try {
+                const res = await fetch(`year_templates/year_${year}_templates.json?t=${Date.now()}`);
+                if (!res.ok) throw new Error("Template not found");
+                currentYearConfig = await res.json();
+                
+                // If we have data, re-render current view
+                if (currentStudentId) {
+                    selectStudent(currentStudentId); 
+                }
+                showToast('success', `已切換至 ${year} 學年度`);
+            } catch (e) {
+                console.error(e);
+                showToast('error', `無法讀取 ${year} 學年度模板`);
+            }
+        }
+
+        // --- Logic: File Import ---
+        function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, {type: 'array'});
+                    const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[workbook.SheetNames[0]], {defval: ""});
+                    
+                    if (jsonData.length === 0) throw new Error("檔案無內容");
+                    
+                    processUploadedData(jsonData);
+                    event.target.value = ''; // Reset
+                } catch (err) {
+                    showToast('error', `讀取失敗: ${err.message}`);
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function processUploadedData(data) {
+            allRawData = data;
+            groupedStudents = {};
+
+            // 嘗試從資料中偵測學年度並自動套用
+            if (data.length > 0) {
+                let detectedYear = data[0]['school_year'] || data[0]['學年'];
+                if (detectedYear) {
+                    detectedYear = detectedYear.toString().trim();
+                    const yearSelect = document.getElementById('year-select');
+                    const opt = Array.from(yearSelect.options).find(o => o.value === detectedYear);
+                    if (opt) {
+                        yearSelect.value = detectedYear;
+                        changeYear(detectedYear);
+                        showToast('info', `已自動切換至 ${detectedYear} 學年度`);
+                    }
+                }
+            }
+
+            // Populate Filters
+            const courseDepts = new Set();
+            const studentDepts = new Set();
+
+            // Group by Student ID
+            allRawData.forEach((row, idx) => {
+                const sid = row['student_id'] || row['學號'] || row['id'];
+                const sname = row['student_name'] || row['姓名'] || row['name'];
+                const sdept = row['student_dept'] || row['系所'] || row['department'];
+                const cdept = row['course_dept'] || row['開課系所'];
+                
+                if (sdept) studentDepts.add(sdept);
+                if (cdept) courseDepts.add(cdept);
+
+                if (!sid) return;
+
+                if (!groupedStudents[sid]) {
+                    let deptDisplay = sdept;
+                    if (deptMasterData && deptMasterData[sdept]) {
+                        const y = activeYear || '114';
+                        const master = deptMasterData[sdept];
+                        deptDisplay = (master.historical_names && master.historical_names[y]) || master.short_name || master.name || sdept;
+                    }
+
+                    groupedStudents[sid] = {
+                        id: sid,
+                        name: sname || '未知',
+                        dept: deptDisplay || '',
+                        courses: [],
+                        applications: [] 
+                    };
+                }
+                
+                row._internal_id = `c_${idx}`;
+                row._app_id = null; 
+                groupedStudents[sid].courses.push(row);
+            });
+
+            // Render Filter Options
+            const renderOpts = (elId, set) => {
+                const el = document.getElementById(elId);
+                const current = el.value;
+                el.innerHTML = el.options[0].outerHTML; // Keep first option
+                Array.from(set).sort().forEach(v => {
+                    el.innerHTML += `<option value="${v}">${v}</option>`;
+                });
+                el.value = current;
+            };
+            renderOpts('filter-course-dept', courseDepts);
+            renderOpts('filter-student-dept', studentDepts);
+
+            renderStudentList();
+            showToast('success', `匯入 ${Object.keys(groupedStudents).length} 位學生資料`);
+        }
+
+        // --- Logic: Sidebar ---
+        function renderStudentList() {
+            const container = document.getElementById('student-list');
+            container.innerHTML = '';
+            
+            const term = document.getElementById('search-input').value.toLowerCase();
+            const fCourseDept = document.getElementById('filter-course-dept').value;
+            const fStudentDept = document.getElementById('filter-student-dept').value;
+            const fStatus = document.getElementById('filter-status').value;
+
+            let students = Object.values(groupedStudents);
+            
+            // Filter
+            students = students.filter(s => {
+                const matchText = s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term);
+                if (!matchText) return false;
+
+                const hasStudentDept = !fStudentDept || s.courses.some(c => (c['student_dept'] || c['系所']) === fStudentDept);
+                if(!hasStudentDept) return false;
+
+                const hasCourseDept = !fCourseDept || s.courses.some(c => (c['course_dept'] || c['開課系所']) === fCourseDept);
+                if(!hasCourseDept) return false;
+
+                if (fStatus === 'completed' && s.applications.length === 0) return false;
+                if (fStatus === 'pending' && s.applications.length > 0) return false;
+
+                return true;
+            });
+            
+            // Sorting logic
+            students.sort((a, b) => {
+                let valA = a[sortConfig.key];
+                let valB = b[sortConfig.key];
+                const comp = valA.localeCompare(valB, undefined, {numeric: true, sensitivity: 'base'});
+                return sortConfig.direction === 'asc' ? comp : -comp;
+            });
+
+            document.getElementById('student-count').innerText = students.length;
+
+            if (students.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">無符合資料</div>';
+                return;
+            }
+
+            students.forEach(s => {
+                const el = document.createElement('div');
+                el.className = `student-item p-3 pl-4 border-b border-slate-100 ${currentStudentId === s.id ? 'active' : ''}`;
+                el.onclick = () => selectStudent(s.id);
+                
+                const appCount = s.applications.length;
+                const totalCourses = s.courses.length;
+                const statusHtml = appCount > 0 
+                    ? `<span class="bg-green-100 text-success text-[10px] px-1.5 py-0.5 rounded font-bold">${appCount} 筆填報</span>` 
+                    : `<span class="bg-slate-100 text-slate-400 text-[10px] px-1.5 py-0.5 rounded">未開始</span>`;
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-slate-700 text-sm student-name">${s.name}</div>
+                            <div class="text-xs text-slate-500 font-mono">${s.id}</div>
+                        </div>
+                        <div class="text-right">
+                            ${statusHtml}
+                            <div class="text-[10px] text-slate-400 mt-1">${totalCourses} 門課</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        function filterStudentList() { renderStudentList(); }
+        
+        function toggleSort(key) {
+            if (sortConfig.key === key) {
+                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.key = key;
+                sortConfig.direction = 'asc';
+            }
+            
+            const iconClass = sortConfig.direction === 'asc' ? 
+                (key === 'id' ? 'fa-sort-numeric-down' : 'fa-sort-alpha-down') : 
+                (key === 'id' ? 'fa-sort-numeric-up' : 'fa-sort-alpha-up');
+            
+            document.querySelectorAll('#sort-id-btn i, #sort-name-btn i').forEach(i => {
+                if (i.parentElement.id === `sort-${key}-btn`) {
+                    i.className = `fas ${iconClass}`;
+                    i.parentElement.classList.add('text-primary', 'bg-slate-100');
+                } else {
+                    const otherKey = key === 'id' ? 'name' : 'id';
+                    const defaultIcon = otherKey === 'id' ? 'fa-sort-numeric-down' : 'fa-sort-alpha-down';
+                    i.className = `fas ${defaultIcon} opacity-50`;
+                    i.parentElement.classList.remove('text-primary', 'bg-slate-100');
+                }
+            });
+
+            renderStudentList();
+        }
+
+        // --- Logic: Student Workspace ---
+        function selectStudent(sid) {
+            currentStudentId = sid;
+            renderStudentList(); // Update active highlight
+            
+            const student = groupedStudents[sid];
+            document.getElementById('form-empty-state').classList.add('hidden');
+            document.getElementById('form-container').classList.remove('hidden');
+            
+            // Header Info
+            document.getElementById('header-name').innerText = student.name;
+            document.getElementById('header-id').innerText = student.id;
+            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
+            document.getElementById('header-avatar').innerText = student.name[0] || '?';
+            
+            const appCount = student.applications.length;
+            const statusEl = document.getElementById('header-status');
+            statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
+            statusEl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${appCount > 0 ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
+
+            renderTabs(student);
+            
+            // If student has apps, show first one, else show settings
+            if (appCount > 0) switchTab(student.applications[0].id);
+            else switchTab('settings');
+            
+            renderSettingsTab(student);
+        }
+
+        function renderTabs(student) {
+            const container = document.getElementById('tabs-container');
+            // Keep Settings Tab
+            container.innerHTML = `<button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>`;
+            
+            student.applications.forEach((app, idx) => {
+                const btn = document.createElement('button');
+                btn.className = 'tab-btn';
+                btn.dataset.tab = app.id;
+                btn.onclick = () => switchTab(app.id);
+                
+                // Try to find a name for the tab
+                const name = app.formData['internship_institution_name'] || `實習 ${idx+1}`;
+                btn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${name}`;
+                container.appendChild(btn);
+            });
+        }
+
+        function switchTab(tabId) {
+            // UI Toggle
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
+            if(btn) btn.classList.add('active');
+            
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.getElementById('dynamic-tabs-area').style.display = 'none';
+
+            if (tabId === 'settings') {
+                document.getElementById('tab-settings').classList.add('active');
+                if(currentStudentId) renderSettingsTab(groupedStudents[currentStudentId]);
+            } else {
+                document.getElementById('dynamic-tabs-area').style.display = 'block';
+                // Find or Create Tab Content
+                let content = document.getElementById(`content-${tabId}`);
+                if (!content) {
+                    content = createApplicationContent(tabId);
+                    document.getElementById('dynamic-tabs-area').appendChild(content);
+                }
+                
+                // Hide all dynamic contents first
+                document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
+                content.style.display = 'block';
+            }
+        }
+
+        // --- Logic: Consolidation Settings ---
+        function renderSettingsTab(student) {
+            const listContainer = document.getElementById('settings-course-list');
+            const appsContainer = document.getElementById('app-management-list');
+            listContainer.innerHTML = '';
+            appsContainer.innerHTML = '';
+
+            // Unassigned Courses
+            const unassigned = student.courses.filter(c => !c._app_id);
+            if (unassigned.length === 0) {
+                listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
+            } else {
+                unassigned.forEach(c => {
+                    const el = document.createElement('div');
+                    el.className = 'course-card';
+                    el.innerHTML = `
+                        <div>
+                            <div class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</div>
+                            <div class="text-xs text-slate-500">${c['semester'] ? `第${c['semester']}學期` : ''} <span class="mx-1">|</span> ${c['course_id'] || c['選課代號']}</div>
+                        </div>
+                        <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
+                    `;
+                    el.onclick = (e) => {
+                        if(e.target.type !== 'checkbox') {
+                            const cb = el.querySelector('input');
+                            cb.checked = !cb.checked;
+                            el.classList.toggle('selected', cb.checked);
+                        }
+                    };
+                    el.querySelector('input').onclick = (e) => {
+                        e.target.parentElement.classList.toggle('selected', e.target.checked);
+                        e.stopPropagation();
+                    };
+                    listContainer.appendChild(el);
+                });
+            }
+
+            // Existing Applications
+            if (student.applications.length === 0) {
+                appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
+            } else {
+                student.applications.forEach((app, idx) => {
+                    const el = document.createElement('div');
+                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-start shadow-sm';
+                    
+                    const name = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
+                    const courses = app.courseIds.map(cid => {
+                        const c = student.courses.find(x => x._internal_id === cid);
+                        return c ? (c['course_name'] || c['課程名稱']) : 'Unknown';
+                    });
+
+                    el.innerHTML = `
+                        <div>
+                            <h4 class="font-bold text-primary text-sm mb-1">${name}</h4>
+                            <div class="flex flex-wrap gap-1">
+                                ${courses.map(c => `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${c}</span>`).join('')}
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button onclick="switchTab('${app.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1.5 rounded transition"><i class="fas fa-edit"></i> 編輯</button>
+                            <button onclick="deleteApplication('${app.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1.5 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button>
+                        </div>
+                    `;
+                    appsContainer.appendChild(el);
+                });
+            }
+        }
+
+        function createApplication() {
+            const student = groupedStudents[currentStudentId];
+            const checkboxes = document.querySelectorAll('.course-select-check:checked');
+            if (checkboxes.length === 0) return showToast('error', '請先勾選至少一門課程');
+
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            const appId = 'app_' + Date.now();
+            
+            // Auto-fill from first course
+            const firstC = student.courses.find(c => c._internal_id === ids[0]);
+            const initData = {};
+            
+            // Map common fields from course data to form data if they match
+            // Simple heuristic: if field ID exists in course data, copy it
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.forEach(f => {
+                    if (!CORE_FIELDS.includes(f.id) && !f.isSystem) {
+                        const val = firstC[f.id] || firstC[f.label];
+                        if (val) initData[f.id] = val;
+                    }
+                });
+            }
+
+            const newApp = {
+                id: appId,
+                courseIds: ids,
+                formData: initData
+            };
+
+            // Link courses
+            ids.forEach(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if(c) c._app_id = appId;
+            });
+
+            student.applications.push(newApp);
+            
+            renderTabs(student);
+            renderSettingsTab(student);
+            // 修正 2: 建立填報單後，不自動跳轉，保留在歸戶設定頁面
+            // switchTab(appId); 
+            renderStudentList(); 
+            showToast('success', '已建立填報單，可繼續建立其他填報單或切換上方頁籤進行填報');
+        }
+
+        function deleteApplication(appId) {
+            if (!confirm('確定要解除此歸戶嗎？填寫的資料將會遺失。')) return;
+            
+            const student = groupedStudents[currentStudentId];
+            const idx = student.applications.findIndex(a => a.id === appId);
+            if (idx === -1) return;
+
+            const app = student.applications[idx];
+            app.courseIds.forEach(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if(c) c._app_id = null;
+            });
+
+            student.applications.splice(idx, 1);
+            
+            // Remove DOM
+            const dom = document.getElementById(`content-${appId}`);
+            if(dom) dom.remove();
+
+            renderTabs(student);
+            renderSettingsTab(student);
+            renderStudentList();
+            showToast('success', '歸戶已解除');
+        }
+
+        // --- Logic: Dynamic Form Generation ---
+        function createApplicationContent(appId) {
+            const student = groupedStudents[currentStudentId];
+            const app = student.applications.find(a => a.id === appId);
+            
+            const div = document.createElement('div');
+            div.id = `content-${appId}`;
+            div.className = 'dynamic-tab-content max-w-5xl mx-auto';
+            
+            // 修正 1: 移除卡片外框，直接使用透明背景
+            // 移除 bg-white, border 等樣式，只保留邊距
+            const formContainer = document.createElement('div');
+            formContainer.className = 'form-body';
+            
+            renderFields(formContainer, app);
+            div.appendChild(formContainer);
+
+            return div;
+        }
+
+        // 修正 4: 自製民國年日期選擇器 (可選 + 可手輸，Pop-over Style)
+        function createRocDatePicker(appId, fieldId, initialValue, onChange) {
+            const wrapper = document.createElement('div');
+            wrapper.className = 'date-picker-wrapper';
+            wrapper.id = `roc-container-${appId}-${fieldId}`;
+
+            // Main Input Group (Text + Button)
+            const inputGroup = document.createElement('div');
+            inputGroup.className = 'date-input-group';
+            
+            const input = document.createElement('input');
+            input.type = 'text';
+            input.className = 'input-stylish';
+            input.placeholder = '例: 114/01/01';
+            input.maxLength = 10; // 114/01/01 is 9 chars, allowing buffer
+            input.style.flex = "1";
+            input.style.paddingRight = "35px"; // Space for icon
+
+            const trigger = document.createElement('div');
+            trigger.className = 'date-picker-trigger';
+            trigger.innerHTML = '<i class="fas fa-calendar-alt"></i>';
+            trigger.onclick = (e) => {
+                e.stopPropagation();
+                toggleCalendar();
+            };
+
+            inputGroup.appendChild(input);
+            inputGroup.appendChild(trigger);
+
+            // Calendar Popover
+            const popover = document.createElement('div');
+            popover.className = 'calendar-popover';
+            
+            // Popover State
+            let currentYear = new Date().getFullYear();
+            let currentMonth = new Date().getMonth(); // 0-11
+            let selectedDate = null; // Date Obj
+
+            // Render Calendar
+            const renderCalendar = () => {
+                const rocYear = currentYear - 1911;
+                const monthName = currentMonth + 1;
+                
+                let html = `
+                    <div class="cal-header">
+                        <div class="cal-btn" id="prev-month"><i class="fas fa-chevron-left"></i></div>
+                        <div class="cal-title">${rocYear}年 ${monthName}月</div>
+                        <div class="cal-btn" id="next-month"><i class="fas fa-chevron-right"></i></div>
+                    </div>
+                    <div class="cal-grid">
+                        <div class="cal-day-header">日</div><div class="cal-day-header">一</div><div class="cal-day-header">二</div><div class="cal-day-header">三</div><div class="cal-day-header">四</div><div class="cal-day-header">五</div><div class="cal-day-header">六</div>
+                `;
+
+                const firstDay = new Date(currentYear, currentMonth, 1).getDay();
+                const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+                const today = new Date();
+
+                // Empty cells
+                for(let i=0; i<firstDay; i++) html += `<div class="cal-day empty"></div>`;
+
+                // Days
+                for(let d=1; d<=daysInMonth; d++) {
+                    let classes = 'cal-day';
+                    
+                    // Check today
+                    if(currentYear === today.getFullYear() && currentMonth === today.getMonth() && d === today.getDate()) {
+                        classes += ' today';
+                    }
+                    
+                    // Check selected
+                    if(selectedDate && currentYear === selectedDate.getFullYear() && currentMonth === selectedDate.getMonth() && d === selectedDate.getDate()) {
+                        classes += ' selected';
+                    }
+
+                    html += `<div class="${classes}" data-day="${d}">${d}</div>`;
+                }
+
+                html += `</div>`; // Close grid
+                popover.innerHTML = html;
+
+                // Bind Events
+                popover.querySelector('#prev-month').onclick = (e) => { e.stopPropagation(); currentMonth--; if(currentMonth<0){currentMonth=11;currentYear--;} renderCalendar(); };
+                popover.querySelector('#next-month').onclick = (e) => { e.stopPropagation(); currentMonth++; if(currentMonth>11){currentMonth=0;currentYear++;} renderCalendar(); };
+                
+                popover.querySelectorAll('.cal-day:not(.empty)').forEach(el => {
+                    el.onclick = (e) => {
+                        e.stopPropagation();
+                        const d = parseInt(el.dataset.day);
+                        selectedDate = new Date(currentYear, currentMonth, d);
+                        const rocY = currentYear - 1911;
+                        const mm = String(currentMonth + 1).padStart(2, '0');
+                        const dd = String(d).padStart(2, '0');
+                        
+                        // Format: YYY/MM/DD
+                        const formatted = `${rocY}/${mm}/${dd}`;
+                        input.value = formatted;
+                        
+                        // Convert to standard YYYY-MM-DD for storage
+                        const stdVal = `${currentYear}-${mm}-${dd}`;
+                        onChange(stdVal); // Save logic
+                        
+                        popover.classList.remove('active');
+                    };
+                });
+            };
+
+            const toggleCalendar = () => {
+                const isActive = popover.classList.contains('active');
+                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); // Close others
+                
+                if(!isActive) {
+                    // Try to parse current input for initial calendar view
+                    if(input.value) {
+                        // Support 114/01/01 or 1140101
+                        let y, m, d;
+                        const val = input.value.replace(/\//g, '');
+                        if(val.length >= 6) { // Loose check
+                            // Try to parse ROC
+                            if(val.includes('-')) {
+                                // Assume YYYY-MM-DD standard if dash present (rare in display but possible)
+                                const p = val.split('-');
+                                y = parseInt(p[0]); m = parseInt(p[1])-1; d = parseInt(p[2]);
+                            } else {
+                                // Assume ROC string
+                                if(val.length === 7) {
+                                    y = parseInt(val.substring(0,3)) + 1911;
+                                    m = parseInt(val.substring(3,5)) - 1;
+                                    d = parseInt(val.substring(5,7));
+                                } else if (val.length === 6) { // 990101
+                                    y = parseInt(val.substring(0,2)) + 1911;
+                                    m = parseInt(val.substring(2,4)) - 1;
+                                    d = parseInt(val.substring(4,6));
+                                }
+                            }
+                            if(y && !isNaN(m) && d) {
+                                currentYear = y;
+                                currentMonth = m;
+                                selectedDate = new Date(y, m, d);
+                            }
+                        }
+                    }
+                    renderCalendar();
+                    popover.classList.add('active');
+                }
+            };
+
+            // Input Handling (Manual Typing)
+            input.onchange = (e) => {
+                const val = e.target.value.trim();
+                // Validate and Convert
+                // Accepted formats: 114/01/01, 1140101
+                const cleanVal = val.replace(/\//g, '');
+                
+                if (cleanVal.length === 7 && !isNaN(cleanVal)) {
+                    const rocY = parseInt(cleanVal.substring(0,3));
+                    const mm = cleanVal.substring(3,5);
+                    const dd = cleanVal.substring(5,7);
+                    
+                    // Format display
+                    input.value = `${rocY}/${mm}/${dd}`;
+                    
+                    // Save standard
+                    const westY = rocY + 1911;
+                    onChange(`${westY}-${mm}-${dd}`);
+                } else if (val === "") {
+                    onChange("");
+                } else {
+                    // Invalid or unknown format, save as is but might break logic
+                    // Better to clear or warn, but let's keep raw
+                    onChange(val); 
+                }
+            };
+
+            // Initial Value Display Logic
+            if(initialValue) {
+                // Should be YYYY-MM-DD from storage
+                if(initialValue.includes('-')) {
+                    const p = initialValue.split('-');
+                    if(p.length === 3) {
+                        const roc = parseInt(p[0]) - 1911;
+                        input.value = `${roc}/${p[1]}/${p[2]}`;
+                    } else {
+                        input.value = initialValue;
+                    }
+                } else {
+                    input.value = initialValue;
+                }
+            }
+
+            // Close on click outside
+            document.addEventListener('click', (e) => {
+                if(!wrapper.contains(e.target)) {
+                    popover.classList.remove('active');
+                }
+            });
+
+            wrapper.appendChild(inputGroup);
+            wrapper.appendChild(popover);
+            return wrapper;
+        }
+        
+        // 【新增】中文數字轉換輔助函式 (處理一到九十九)
+        function cnToNum(cnStr) {
+            const units = { '': 1, '十': 10 };
+            const nums = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '零': 0 };
+            let result = 0;
+            let temp = 0;
+
+            for (let i = 0; i < cnStr.length; i++) {
+                const char = cnStr[i];
+                if (nums[char] !== undefined) {
+                    temp = nums[char];
+                } else if (units[char] === 10) {
+                    // 處理 '十' 字。如 '三十七' (3*10) + 7 或 '十七' (1*10) + 7
+                    result += (temp || 1) * units[char];
+                    temp = 0;
+                }
+            }
+            result += temp;
+            return result;
+        }
+
+
+        // 【修改】 processAddress 函式 (替換原有的)
+        function processAddress(inputEl, settings) {
+            let val = inputEl.value;
+            if(!val) return;
+
+            // 1. 全形轉半形 (toHalf)
+            if(settings.toHalf) {
+                val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
+                        .replace(/　/g, " ");
+            }
+
+            // 2. 強制台轉臺 (forceTai) - 修改為全域替換
+            if(settings.forceTai) {
+                // 替換字串中所有出現的 '台' -> '臺'
+                val = val.replace(/台/g, '臺'); 
+            }
+
+            // 3. 拉丁文轉英文 (latinToEng)
+            if(settings.latinToEng) {
+                val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+            }
+
+            // 4. 智慧路名數字轉換 (smartFormat) - 處理複合數字
+            if(settings.smartFormat) {
+                // 中文數字，處理 '一'到'九十九'
+                const cnNumsPattern = '(一|二|三|四|五|六|七|八|九|十)+';
+                const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街', '巷', '弄', '號', '樓'];
+                
+                keywords.forEach(k => {
+                    // 匹配中文數字 + 關鍵字 (例如: 三十七段)
+                    const regex = new RegExp(`(${cnNumsPattern})${k}`, 'g');
+                    
+                    val = val.replace(regex, (match, p1) => {
+                        // p1: 匹配到的中文數字字串 (例如: 三十七)
+                        let num = cnToNum(p1); 
+                        // 檢查是否在保護名單 (Whitelist) 內，避免像 "五權" 這種地名被轉換
+                        const isProtected = (globalConfig.addressRules && globalConfig.addressRules.protected) ? 
+                                            globalConfig.addressRules.protected.includes(match.replace(p1, '').trim()) : false;
+                        
+                        if (num > 0 && !isProtected) {
+                            return `${num}${k}`;
+                        }
+                        return match;
+                    });
+                });
+            }
+
+            // 更新值
+            if(val !== inputEl.value) {
+                inputEl.value = val;
+                // 觸發 change 事件以保存到 formData
+                inputEl.dispatchEvent(new Event('change'));
+            }
+        }
+
+        function renderFields(container, app) {
+            const fields = currentYearConfig.fields || [];
+            
+            const visibleFields = fields.filter(f => 
+                !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info' && f.category !== 'sys_student_info'
+            );
+
+            if (visibleFields.length === 0) {
+                container.innerHTML = '<div class="text-center text-slate-400">無須填報欄位</div>';
+                return;
+            }
+
+            const categories = globalConfig.templateCategories || [];
+            const fieldsByCat = {};
+            const sortedFields = [...visibleFields].sort((a,b) => (a.order||0) - (b.order||0));
+
+            sortedFields.forEach(f => {
+                const cat = f.category || 'uncategorized';
+                if(!fieldsByCat[cat]) fieldsByCat[cat] = [];
+                fieldsByCat[cat].push(f);
+            });
+
+            const sortedCats = [...categories].sort((a,b) => a.order - b.order);
+            if(fieldsByCat['uncategorized']) sortedCats.push({id: 'uncategorized', name: '其他資訊'});
+
+            sortedCats.forEach(catDef => {
+                const catFields = fieldsByCat[catDef.id];
+                if(!catFields || catFields.length === 0) return;
+
+                const title = document.createElement('h4');
+                title.className = 'form-section-title';
+                title.innerText = catDef.name;
+                container.appendChild(title);
+
+                const grid = document.createElement('div');
+                grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'; 
+
+                catFields.forEach(f => {
+                    const wrapper = document.createElement('div');
+                    wrapper.className = `field-group ${f.id}-wrapper`; 
+                    wrapper.id = `wrapper-${app.id}-${f.id}`;
+                    
+                    const label = document.createElement('label');
+                    label.className = "block text-sm font-bold text-slate-700 mb-1 flex items-center";
+                    label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
+                    
+                    if(f.description) {
+                        label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${f.description}</span></div>`;
+                    }
+                    wrapper.appendChild(label);
+
+                    const val = app.formData[f.id] || '';
+                    let input;
+
+                    if (f.type === 'date' && f.inputFormat === 'ROC') {
+                        input = createRocDatePicker(app.id, f.id, val, (newValue) => {
+                            app.formData[f.id] = newValue;
+                            evaluateLogic(app);
+                        });
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.id = `input-${app.id}-${f.id}`;
+                        wrapper.appendChild(hidden);
+                    } else {
+                        if (f.type === 'single_select' || f.type === 'list') {
+                            input = document.createElement('select');
+                            input.className = "input-stylish cursor-pointer";
+                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
+                        } else if (f.type === 'date') {
+                            input = document.createElement('input');
+                            input.type = 'date';
+                            input.className = "input-stylish";
+                            input.value = val;
+                        } else if (f.type === 'number') {
+                            input = document.createElement('input');
+                            input.type = 'number';
+                            input.className = "input-stylish";
+                            input.step = f.decimal ? '0.01' : '1';
+                            input.value = val;
+                        } else {
+                            input = document.createElement('input');
+                            input.type = 'text';
+                            input.className = "input-stylish";
+                            input.value = val;
+                        }
+
+                        input.id = `input-${app.id}-${f.id}`; 
+
+                        // 修正 2: 綁定 blur 事件，確保地址邏輯能被觸發
+                        if (f.type === 'address') {
+                            input.addEventListener('blur', (e) => {
+                                processAddress(e.target, f);
+                                let newVal = e.target.value;
+                                app.formData[f.id] = newVal;
+                                evaluateLogic(app);
+                            });
+                        }
+
+                        input.addEventListener('change', (e) => {
+                            let newVal = e.target.value;
+                            // 地址類型在 change 時也處理一次
+                            if (f.type === 'address') {
+                                processAddress(e.target, f);
+                                newVal = e.target.value;
+                            }
+                            
+                            app.formData[f.id] = newVal;
+                            evaluateLogic(app);
+                            
+                            if (f.id === 'internship_institution_name') {
+                                const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
+                                if(tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${e.target.value || '未命名'}`;
+                            }
+                        });
+                    }
+
+                    wrapper.appendChild(input);
+                    grid.appendChild(wrapper);
+                });
+                container.appendChild(grid);
+            });
+
+            setTimeout(() => evaluateLogic(app), 0);
+        }
+
+        // --- Logic: Visibility (Locked) & Filters ---
+        function evaluateLogic(app) {
+            const fields = currentYearConfig.fields || [];
+            
+            fields.forEach(f => {
+                if (f.visibilityRule && f.visibilityRule.dep) {
+                    const depVal = app.formData[f.visibilityRule.dep];
+                    const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
+                    const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
+                    const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
+                    
+                    if (wrapper) {
+                        let shouldEnable = f.visibilityRule.action === 'show' 
+                            ? depVal === f.visibilityRule.val 
+                            : depVal !== f.visibilityRule.val;
+                        
+                        if (inputEl && inputEl.type !== 'hidden') inputEl.disabled = !shouldEnable;
+                        
+                        if (rocContainer) {
+                            rocContainer.querySelector('input').disabled = !shouldEnable;
+                            const btn = rocContainer.querySelector('.date-toggle-btn');
+                            if(btn) {
+                                btn.style.pointerEvents = shouldEnable ? 'auto' : 'none';
+                                btn.style.opacity = shouldEnable ? '1' : '0.5';
+                            }
+                        }
+                        
+                        if (!shouldEnable) {
+                            wrapper.classList.add('field-locked');
+                            if (inputEl && inputEl.type !== 'hidden') inputEl.value = "";
+                            if (rocContainer) rocContainer.querySelector('input').value = "";
+                            app.formData[f.id] = "";
+                        } else {
+                            wrapper.classList.remove('field-locked');
+                        }
+                    }
+                }
+                
+                if (f.filterRules && f.filterRules.length > 0) {
+                    const input = document.getElementById(`input-${app.id}-${f.id}`);
+                    if (input && input.tagName === 'SELECT') {
+                        const rule = f.filterRules.find(r => app.formData[r.dep] === r.val);
+                        Array.from(input.options).forEach(opt => {
+                            if (opt.value === "") return;
+                            if (rule && rule.limitTo) {
+                                opt.hidden = !rule.limitTo.includes(opt.value);
+                            } else {
+                                opt.hidden = false;
+                            }
+                        });
+                        if (input.selectedOptions[0]?.hidden) {
+                            input.value = "";
+                            app.formData[f.id] = "";
+                        }
+                    }
+                }
+            });
+        }
+
+        // --- Logic: Preview & Export ---
+        function openPreviewModal() {
+            if (!currentStudentId) return;
+            const student = groupedStudents[currentStudentId];
+            const thead = document.getElementById('modal-preview-head');
+            const tbody = document.getElementById('modal-preview-body');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const headers = [];
+            (currentYearConfig.fields || []).sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
+                headers.push({id: f.id, label: f.label});
+            });
+            if(headers.length === 0) CORE_FIELDS.forEach(k => headers.push({id:k, label:k}));
+
+            headers.forEach(h => {
+                const th = document.createElement('th');
+                th.innerText = h.label;
+                thead.appendChild(th);
+            });
+
+            student.applications.forEach(app => {
+                const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+                const courseCount = courses.length;
+
+                courses.forEach((c, idx) => {
+                    const tr = document.createElement('tr');
+                    headers.forEach(h => {
+                        const td = document.createElement('td');
+                        let val = app.formData[h.id];
+                        
+                        const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                        if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                            const totalVal = parseFloat(val);
+                            const baseVal = Math.floor(totalVal / courseCount);
+                            const remainder = totalVal % courseCount;
+                            
+                            if (idx === courses.length - 1) {
+                                val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                            } else {
+                                val = baseVal.toFixed(fieldDef.decimal || 0);
+                            }
+                        }
+
+                        if (val === undefined || val === "") {
+                            val = c[h.id] || c[h.label] || "";
+                        } else {
+                            td.className = "text-indigo-600 font-bold bg-indigo-50"; 
+                        }
+                        
+                        if (fieldDef && fieldDef.type === 'date' && fieldDef.inputFormat === 'ROC' && val && val.includes('-')) {
+                             const parts = val.split('-');
+                             if (parts.length === 3) {
+                                 const roc = parseInt(parts[0]) - 1911;
+                                 val = `${roc}/${parts[1]}/${parts[2]}`;
+                             }
+                        }
+
+                        td.innerText = val;
+                        tr.appendChild(td);
+                    });
+                    tbody.appendChild(tr);
+                });
+            });
+
+            const unassigned = student.courses.filter(c => !c._app_id);
+            unassigned.forEach(c => {
+                const tr = document.createElement('tr');
+                tr.className = "opacity-50"; 
+                headers.forEach(h => {
+                    const td = document.createElement('td');
+                    let val = c[h.id] || c[h.label] || "";
+                    td.innerText = val;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('preview-modal').classList.remove('hidden');
+        }
+
+        function exportData() {
+            if(Object.keys(groupedStudents).length === 0) return showToast('error', '無資料可匯出');
+
+            const exportRows = [];
+            const headers = [];
+            
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => headers.push({id:f.id, label:f.label}));
+            }
+
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
+                    const courseCount = courses.length;
+
+                    courses.forEach((c, idx) => {
+                        const row = {};
+                        headers.forEach(h => {
+                            let val = app.formData[h.id];
+                            
+                            const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                            if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                                const totalVal = parseFloat(val);
+                                const baseVal = Math.floor(totalVal / courseCount);
+                                const remainder = totalVal % courseCount;
+                                if (idx === courses.length - 1) {
+                                    val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                                } else {
+                                    val = baseVal.toFixed(fieldDef.decimal || 0);
+                                }
+                            }
+
+                            if (val === undefined || val === "") val = c[h.id] || c[h.label] || "";
+                            
+                            if (fieldDef && fieldDef.type === 'date' && fieldDef.outputFormat === 'ROC' && val && val.includes('-')) {
+                                 const parts = val.split('-');
+                                 if (parts.length === 3) {
+                                     const roc = parseInt(parts[0]) - 1911;
+                                     val = `${roc}${parts[1]}${parts[2]}`;
+                                 }
+                            }
+
+                            row[h.label] = val;
+                        });
+                        exportRows.push(row);
+                    });
+                });
+
+                const unassigned = s.courses.filter(c => !c._app_id);
+                unassigned.forEach(c => {
+                    const row = {};
+                    headers.forEach(h => {
+                        row[h.label] = c[h.id] || c[h.label] || "";
+                    });
+                    exportRows.push(row);
+                });
+            });
+
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(exportRows);
+            XLSX.utils.book_append_sheet(wb, ws, "填報資料");
+            
+            const fname = `實習填報_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`;
+            XLSX.writeFile(wb, fname);
+            showToast('success', '匯出成功');
+        }
+
+        // --- UI Utils (Fixed: Proper Toast Dismiss) ---
+        let toastTimeout;
+        function showToast(type, msg) {
+            const el = document.getElementById('toast');
+            // Remove pointer-events-none to allow clicking close button
+            el.classList.remove('pointer-events-none');
+            
+            el.innerHTML = `
+                <i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> 
+                <span>${msg}</span>
+                <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
+            `;
+            el.className = `fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} toast-enter-active`;
+            
+            if(toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => hideToast(), 3000);
+        }
+
+        function hideToast(e) {
+            if(e) e.stopPropagation();
+            const el = document.getElementById('toast');
+            el.classList.replace('toast-enter-active', 'toast-exit-active');
+            el.classList.add('pointer-events-none');
+        }
+    </script>
 </body>
 </html>
