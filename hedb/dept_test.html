@@ -967,11 +967,40 @@
             
             student.applications.forEach(app => {
                 const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-                courses.forEach(c => {
+                const courseCount = courses.length; // 取得課程總數用於分母
+
+                courses.forEach((c, idx) => {
                     let rowData = { ...c, _source: 'app', _appData: app.formData };
+                    
                     allFields.forEach(f => {
+                        // 檢查 App Data 是否有值
                         if (app.formData[f.id] !== undefined && app.formData[f.id] !== "") {
-                            rowData[f.id] = app.formData[f.id];
+                            let val = app.formData[f.id];
+                            
+                            // ★★★ 新增：處理數值分配邏輯 (calcMode="average") ★★★
+                            // 找出欄位設定
+                            const fieldDef = currentYearConfig.fields?.find(cfg => cfg.id === f.id);
+                            
+                            if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                                const totalVal = parseFloat(val);
+                                // 計算分配值：將總和 (Total) 除以課程數 (Count)
+                                // 使用 Math.floor 確保整數運算，餘數加在最後一筆
+                                const baseVal = Math.floor(totalVal / courseCount);
+                                const remainder = totalVal % courseCount;
+                                
+                                let calculatedVal = 0;
+                                if (idx === courses.length - 1) {
+                                    calculatedVal = baseVal + remainder; // 最後一筆吸收餘數
+                                } else {
+                                    calculatedVal = baseVal;
+                                }
+                                
+                                // 依照設定的小數位數格式化
+                                val = calculatedVal.toFixed(fieldDef.decimal || 0);
+                            }
+                            // ★★★ 結束 ★★★
+
+                            rowData[f.id] = val;
                         }
                     });
                     rows.push(rowData);
