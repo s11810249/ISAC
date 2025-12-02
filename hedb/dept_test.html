@@ -1218,8 +1218,34 @@
                 return;
             }
 
+            // ★★★ 1. 請在此處補上這段計算 RowSpan 的程式碼 ★★★
+            // 規則：連續相同的 appId 視為一組
+            const rowSpans = new Array(flatRows.length).fill(1);
+            const hiddenRows = new Array(flatRows.length).fill(false); // 標記被合併隱藏的列
+
+            for (let i = 0; i < flatRows.length; i++) {
+                if (hiddenRows[i]) continue; // 已經被前一列合併了
+                
+                const currentAppId = flatRows[i].appId;
+                if (!currentAppId) continue; // 未歸戶的不合併
+
+                // 往後找相同 AppId 的列
+                let span = 1;
+                for (let j = i + 1; j < flatRows.length; j++) {
+                    if (flatRows[j].appId === currentAppId) {
+                        span++;
+                        hiddenRows[j] = true; // 標記為隱藏 (它是被合併的一份子)
+                    } else {
+                        break; // 遇到不同的就停止
+                    }
+                }
+                rowSpans[i] = span;
+            }
+            // ★★★ 補上結束 ★★★
+
             // --- 4. 建立內容 (渲染) ---
-            flatRows.forEach(row => {
+            // ★★★ 2. 請修改這一行，加入 idx 參數 ★★★
+            flatRows.forEach((row, idx) => { 
                 const { student, course, appData, appId } = row;
                 
                 const tr = document.createElement('tr');
