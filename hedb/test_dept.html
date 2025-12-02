@@ -949,7 +949,7 @@
             const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
             const courseCount = courses.length; // 修正 3: 用於平均計算
 
-            courses.forEach(c => {
+            courses.forEach((c, idx) => {
                 const tr = document.createElement('tr');
                 headers.forEach(h => {
                     const td = document.createElement('td');
@@ -959,9 +959,17 @@
                     // 修正 3: 實作平均分配邏輯 (如果該欄位設定了 calcMode='average' 且是數字)
                     const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
                     if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
-                        val = (parseFloat(val) / courseCount).toFixed(fieldDef.decimal || 2);
-                        // 去除多餘的 .00
-                        if (val.endsWith('.00')) val = val.substring(0, val.length - 3);
+                        // FIX: Logic for distributing remainder
+                        const totalVal = parseFloat(val);
+                        const baseVal = Math.floor(totalVal / courseCount);
+                        const remainder = totalVal % courseCount;
+                        
+                        // Last course gets the remainder if any
+                        if (idx === courses.length - 1) {
+                            val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                        } else {
+                            val = baseVal.toFixed(fieldDef.decimal || 0);
+                        }
                     }
 
                     if (val === undefined || val === "") {
@@ -992,7 +1000,7 @@
                     const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
                     const courseCount = courses.length;
 
-                    courses.forEach(c => {
+                    courses.forEach((c, idx) => {
                         const row = {};
                         headers.forEach(h => {
                             let val = app.formData[h.id];
@@ -1000,7 +1008,17 @@
                             // 修正 3: 匯出時也應用平均分配
                             const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
                             if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
-                                val = (parseFloat(val) / courseCount).toFixed(fieldDef.decimal || 2);
+                                // FIX: Logic for distributing remainder
+                                const totalVal = parseFloat(val);
+                                const baseVal = Math.floor(totalVal / courseCount);
+                                const remainder = totalVal % courseCount;
+                                
+                                // Last course gets the remainder if any
+                                if (idx === courses.length - 1) {
+                                    val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                                } else {
+                                    val = baseVal.toFixed(fieldDef.decimal || 0);
+                                }
                             }
 
                             if (val === undefined || val === "") val = c[h.id] || c[h.label] || "";
