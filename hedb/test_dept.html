@@ -534,29 +534,20 @@
         </main>
     <div id="grid-view-container" class="hidden absolute top-0 left-0 right-0 bottom-12 z-10 bg-white flex">
         
-        <aside id="grid-sidebar"> 
-            <div class="p-4 border-b border-slate-100 bg-slate-50">
+        <aside id="grid-sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0 relative">
+             <div class="p-4 border-b border-slate-100 bg-slate-50">
                 <h3 class="font-bold text-slate-700 flex items-center gap-2">
-                    <i class="fas fa-layer-group text-primary"></i> 批次歸戶
+                    <i class="fas fa-users text-primary"></i> 學生列表
                 </h3>
-                <p class="text-xs text-slate-500 mt-1">勾選右側課程進行合併</p>
+                <p class="text-xs text-slate-500 mt-1">點擊學生以管理其歸戶設定</p>
             </div>
             
-            <div class="flex-grow overflow-y-auto custom-scroll p-3" id="grid-selected-list">
-                <div class="text-center text-slate-400 text-xs py-10">
-                    尚未勾選任何課程
-                </div>
+            <div class="p-3 border-b border-slate-100 bg-slate-50">
+                 <input type="text" id="grid-sidebar-search" oninput="renderGridStudentList()" placeholder="搜尋姓名..." class="w-full px-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none">
             </div>
 
-            <div class="p-4 border-t border-slate-100 bg-slate-50">
-                <div class="flex justify-between items-center mb-3 text-xs font-bold text-slate-600">
-                    <span>已選: <span id="grid-select-count" class="text-primary">0</span> 筆</span>
-                    <button onclick="clearGridSelection()" class="text-red-400 hover:text-red-600">清空</button>
+            <div id="grid-student-list" class="flex-grow overflow-y-auto custom-scroll p-2 space-y-1">
                 </div>
-                <button onclick="executeGridMerge()" id="btn-grid-merge" disabled class="w-full bg-slate-300 text-white py-2 rounded-lg font-bold shadow-sm transition cursor-not-allowed">
-                    執行歸戶
-                </button>
-            </div>
         </aside>
 
         <div id="grid-sidebar-toggle" onclick="toggleGridSidebar()">
@@ -654,6 +645,37 @@
                     <button onclick="processMergeAndSwitch()" class="px-5 py-2 rounded-lg font-bold text-sm text-white bg-primary hover:opacity-90 shadow-lg">
                         確認歸戶並切換 <i class="fas fa-arrow-right ml-1"></i>
                     </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div id="student-settings-modal" class="fixed inset-0 z-[130] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-cog text-primary"></i> <span id="modal-student-name">歸戶設定</span>
+                </h3>
+                <button onclick="document.getElementById('student-settings-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="flex-grow overflow-y-auto custom-scroll p-6 bg-white">
+                <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center rounded-t-lg mb-4">
+                    <div>
+                        <h3 class="font-bold text-indigo-800 text-lg">實習歸戶設定</h3>
+                        <p class="text-xs text-indigo-600 mt-1">請勾選同一實習機構的課程，合併建立為一份填報單。</p>
+                    </div>
+                    <button onclick="createApplicationFromModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
+                        <i class="fas fa-plus"></i> 建立實習填報單
+                    </button>
+                </div>
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
+                        <h4 class="text-sm font-bold text-slate-700 mb-3 border-b border-slate-200 pb-2">尚未歸戶的課程</h4>
+                        <div id="modal-settings-course-list" class="space-y-2"></div>
+                    </div>
+                    <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
+                        <h4 class="text-sm font-bold text-slate-700 mb-3 border-b border-indigo-200 pb-2">已建立的填報單</h4>
+                        <div id="modal-app-management-list" class="space-y-3"></div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -949,6 +971,7 @@
                 
                 // 進入 Grid 模式時，因為 renderGlobalGrid 會重繪，所以資料一定是最新的
                 renderGlobalGrid();
+                renderGridStudentList(); // <--- 新增這一行
             }
         }
 
@@ -993,7 +1016,7 @@
                     f.category !== 'sys_course_info' && 
                     f.category !== 'sys_student_info'
                 )
-                .sort((a,b) => (a.order||0)-(b.order||0));
+                .sort((a, b) => parseInt(a.order || 999) - parseInt(b.order || 999));
 
             // --- 2. 建立表頭 ---
             let trHead = document.createElement('tr');
@@ -2544,7 +2567,7 @@
             const el = document.getElementById('toast');
             el.classList.remove('pointer-events-none');
             el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> <span>${msg}</span><button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>`;
-            el.className = `fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} toast-enter-active`;
+            el.className = `fixed bottom-16 right-5 px-6 py-3 rounded-lg shadow-lg z-[200] flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} toast-enter-active`;
             if(toastTimeout) clearTimeout(toastTimeout);
             toastTimeout = setTimeout(() => hideToast(), 3000);
         }
@@ -3331,7 +3354,202 @@
             showToast('success', '歸戶完成');
             logChange('GridMerge', newAppId, '', `Merged ${selectedCourses.length} items`, student.id);
         }
+    
+        // --- 新增：Grid 模式側邊欄與歸戶視窗邏輯 ---
 
+        // 1. 渲染 Grid 模式左側學生列表
+        function renderGridStudentList() {
+            const container = document.getElementById('grid-student-list');
+            if(!container) return;
+            container.innerHTML = '';
+            
+            const term = document.getElementById('grid-sidebar-search')?.value.toLowerCase() || '';
+            
+            let students = Object.values(groupedStudents);
+            
+            // 簡單篩選
+            if(term) {
+                students = students.filter(s => s.name.toLowerCase().includes(term) || s.id.includes(term));
+            }
+            
+            // 排序 (預設依學號)
+            students.sort((a, b) => a.id.localeCompare(b.id));
+
+            students.forEach(s => {
+                const el = document.createElement('div');
+                el.className = `student-item p-3 pl-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition`;
+                el.onclick = () => openStudentSettingsModal(s.id); // 點擊開啟設定視窗
+                
+                const appCount = s.applications.length;
+                const totalCourses = s.courses.length;
+                const statusHtml = appCount > 0 
+                    ? `<span class="bg-green-100 text-success text-[10px] px-1.5 py-0.5 rounded font-bold">${appCount} 筆歸戶</span>` 
+                    : `<span class="bg-slate-100 text-slate-400 text-[10px] px-1.5 py-0.5 rounded">未歸戶</span>`;
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start pointer-events-none">
+                        <div>
+                            <div class="font-bold text-slate-700 text-sm student-name">${s.name}</div>
+                            <div class="text-xs text-slate-500 font-mono">${s.id}</div>
+                        </div>
+                        <div class="text-right">
+                            ${statusHtml}
+                            <div class="text-[10px] text-slate-400 mt-1">${totalCourses} 門課</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // 2. 開啟學生歸戶設定視窗
+        function openStudentSettingsModal(sid) {
+            currentStudentId = sid; 
+            const student = groupedStudents[sid];
+            if(!student) return;
+
+            document.getElementById('modal-student-name').innerHTML = `${student.name} <span class="text-slate-400 text-sm font-normal">(${student.id})</span> - 歸戶設定`;
+            
+            renderModalSettingsTab(student);
+            document.getElementById('student-settings-modal').classList.remove('hidden');
+        }
+
+        // 3. 渲染視窗內的歸戶設定內容
+        function renderModalSettingsTab(student) {
+            const listContainer = document.getElementById('modal-settings-course-list');
+            const appsContainer = document.getElementById('modal-app-management-list');
+            listContainer.innerHTML = '';
+            appsContainer.innerHTML = '';
+
+            // 左側：尚未歸戶課程
+            const unassigned = student.courses.filter(c => !c._app_id);
+            if (unassigned.length === 0) {
+                listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
+            } else {
+                unassigned.forEach(c => {
+                    const el = document.createElement('div');
+                    el.className = 'course-card flex justify-between items-center p-3 border border-slate-200 rounded mb-2 hover:bg-slate-50 cursor-pointer';
+                    el.innerHTML = `
+                        <div>
+                            <div class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</div>
+                            <div class="text-xs text-slate-500">${c['semester'] ? `第${c['semester']}學期` : ''} | ${c['course_code'] || '無代號'}</div>
+                        </div>
+                        <input type="checkbox" class="modal-course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
+                    `;
+                    el.onclick = (e) => { 
+                        if(e.target.type !== 'checkbox') { 
+                            const cb = el.querySelector('input'); 
+                            cb.checked = !cb.checked; 
+                            el.classList.toggle('selected', cb.checked); 
+                        } 
+                    };
+                    el.querySelector('input').onclick = (e) => {
+                        e.target.parentElement.classList.toggle('selected', e.target.checked);
+                        e.stopPropagation();
+                    };
+                    listContainer.appendChild(el);
+                });
+            }
+            
+            // 右側：已建立的填報單
+            if (student.applications.length === 0) {
+                appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
+            } else {
+                student.applications.forEach((app, idx) => {
+                   const el = document.createElement('div');
+                   el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col gap-3 mb-2';
+                   
+                   let label = `${student.id}_實習紀錄_${idx+1}`;
+                   if(app.formData['internship_institution_name']) label = app.formData['internship_institution_name'];
+                   
+                   // 顯示包含的課程代碼
+                   const coursesHtml = app.courseIds.map(cid => {
+                        const c = student.courses.find(x => x._internal_id === cid);
+                        return c ? `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${c['course_code']||''}</span>` : '';
+                   }).join(' ');
+
+                   el.innerHTML = `
+                       <div class="flex justify-between items-start">
+                           <div>
+                               <h4 class="font-bold text-primary text-sm">${label}</h4>
+                               <div class="mt-1 flex flex-wrap gap-1">${coursesHtml}</div>
+                           </div>
+                           <button onclick="deleteApplicationFromModal('${app.id}', '${student.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button>
+                       </div>
+                   `;
+                   appsContainer.appendChild(el);
+                });
+            }
+        }
+
+        // 4. 從視窗建立歸戶 (實作邏輯)
+        function createApplicationFromModal() {
+            const student = groupedStudents[currentStudentId];
+            const checkboxes = document.querySelectorAll('.modal-course-select-check:checked');
+            if (checkboxes.length === 0) return showToast('error', '請先勾選至少一門課程');
+
+            const ids = Array.from(checkboxes).map(cb => cb.value);
+            const appId = 'app_' + Date.now();
+            
+            // 複製第一門課資料作為預設
+            const firstC = student.courses.find(c => c._internal_id === ids[0]);
+            const initData = {};
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.forEach(f => {
+                    if (!CORE_FIELDS.includes(f.id) && !f.isSystem) {
+                        const val = firstC[f.id] || firstC[f.label];
+                        if (val) initData[f.id] = val;
+                    }
+                });
+            }
+
+            const newApp = { id: appId, courseIds: ids, formData: initData };
+            ids.forEach(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if(c) c._app_id = appId;
+            });
+
+            student.applications.push(newApp);
+            hasUnsavedChanges = true;
+            
+            // 更新介面
+            renderModalSettingsTab(student);
+            renderGridStudentList(); // 更新側邊欄狀態
+            renderGlobalGrid(); // 更新主表格背景色
+            
+            showToast('success', '已建立填報單');
+            logChange('CreateApp', appId, '', 'Created from Grid Modal', student.id);
+        }
+
+        // 5. 從視窗刪除歸戶 (Wrapper)
+        async function deleteApplicationFromModal(appId, studentId) {
+            // 呼叫原本的刪除函式 (會跳出確認視窗)
+            // 為了避免重複渲染問題，我們這裡手動處理確認，直接操作資料
+            const confirmed = await showConfirm('確認刪除？', '確定要解除此歸戶嗎？填寫的資料將會遺失。');
+            if (!confirmed) return;
+
+            const student = groupedStudents[studentId];
+            const idx = student.applications.findIndex(a => a.id === appId);
+            if (idx === -1) return;
+
+            const app = student.applications[idx];
+            app.courseIds.forEach(cid => {
+                const c = student.courses.find(x => x._internal_id === cid);
+                if(c) c._app_id = null;
+            });
+
+            student.applications.splice(idx, 1);
+            hasUnsavedChanges = true;
+
+            // 更新介面
+            renderModalSettingsTab(student);
+            renderGridStudentList();
+            renderGlobalGrid();
+            
+            showToast('success', '歸戶已解除');
+            logChange('DeleteApp', appId, 'Existing', 'Deleted from Grid Modal', studentId);
+        }
+        
     </script>
 </body>
 </html>
