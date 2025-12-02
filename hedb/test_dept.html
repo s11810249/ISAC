@@ -204,6 +204,32 @@
             box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
             text-align: center;
         }
+
+        /* Grid View & Modal Styles */
+        .sortable-header { cursor: pointer; user-select: none; transition: background 0.2s; }
+        .sortable-header:hover { background-color: #e2e8f0; }
+        .sort-icon { margin-left: 4px; color: #94a3b8; font-size: 0.8em; }
+        .sort-icon.active { color: #002E5D; }
+        
+        /* Grid Input Styles */
+        .grid-input { 
+            width: 100%; border: 1px solid transparent; background: transparent; 
+            padding: 4px; font-size: 14px; border-radius: 2px;
+        }
+        .grid-input:focus { border-color: #002E5D; background: white; outline: none; }
+        .grid-input:disabled { background-color: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
+        
+        /* Linked Data Indicator */
+        .is-linked { background-color: #eff6ff !important; color: #1e40af; } /* Light Blue for consolidated */
+        .is-raw { background-color: #fff !important; }
+        
+        /* Toggle Checkbox Label */
+        .col-toggle-label { 
+            display: inline-flex; items-center; gap: 4px; background: white; padding: 2px 8px; 
+            border: 1px solid #cbd5e1; rounded: 4px; cursor: pointer; user-select: none;
+        }
+        .col-toggle-label:hover { border-color: #64748b; }
+        .col-toggle-label input:checked + span { color: #002E5D; font-weight: bold; }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -249,6 +275,16 @@
 
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
 
+            <div class="flex bg-slate-100 p-1 rounded-lg mr-3">
+                <button onclick="switchViewMode('app')" id="btn-view-app" class="px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary">
+                    <i class="fas fa-layer-group"></i> 歸戶填報
+                </button>
+                <button onclick="switchViewMode('grid')" id="btn-view-grid" class="px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition">
+                    <i class="fas fa-th"></i> 傳統總表
+                </button>
+            </div>
+            
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
             <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
                 <i class="fas fa-file-export"></i> 匯出結果
             </button>
@@ -398,11 +434,29 @@
                     <div id="dynamic-tabs-area"></div>
 
                 </div>
-            </div>
         </main>
+    </div> <div id="grid-view-container" class="hidden absolute inset-0 top-16 z-10 bg-white flex flex-col">
+        <div class="px-6 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-shrink-0">
+            <div class="flex items-center gap-4">
+                <h2 class="font-bold text-slate-700"><i class="fas fa-th text-primary"></i> 全校課程總表 (傳統模式)</h2>
+                <div class="text-xs text-slate-500 bg-yellow-50 text-yellow-700 px-2 py-1 rounded border border-yellow-200">
+                    <i class="fas fa-link"></i> 資料與歸戶系統連動中：修改已歸戶的課程，將同步更新其所屬的填報單。
+                </div>
+            </div>
+            <div class="flex gap-2">
+                 <input type="text" id="grid-search" placeholder="篩選學號/姓名/課程..." class="px-3 py-1.5 border border-slate-300 rounded text-sm w-64" oninput="renderGlobalGrid()">
+            </div>
+        </div>
+        <div class="flex-grow overflow-auto custom-scroll relative">
+            <table class="excel-table w-full relative">
+                <thead class="sticky top-0 z-20 bg-slate-100 shadow-sm" id="grid-thead"></thead>
+                <tbody id="grid-tbody"></tbody>
+            </table>
+        </div>
     </div>
-
     <!-- Preview Modal -->
+    <div class="px-6 py-2 bg-slate-100 border-b border-slate-200 flex flex-wrap gap-2 text-xs" id="preview-column-toggles">
+        </div>
     <div id="preview-modal" class="fixed inset-0 z-[100] hidden flex items-center justify-center modal-overlay p-4">
         <div class="bg-white w-full max-w-7xl rounded-2xl shadow-2xl overflow-hidden flex flex-col transform scale-95 transition-transform duration-300 h-[85vh]">
             <div class="px-6 py-4 border-b border-slate-100 flex justify-between items-center bg-slate-50/50 flex-shrink-0">
@@ -496,6 +550,311 @@
 
                 cancelBtn.onclick = () => close(false);
                 okBtn.onclick = () => close(true);
+            });
+        }
+        
+        // --- 預覽視窗增強 (排序/開關) ---
+        let previewState = {
+            hiddenCols: [],
+            sortKey: null,
+            sortDir: 'asc'
+        };
+
+        function openPreviewModal() {
+            if (!currentStudentId) return;
+            document.getElementById('preview-modal').classList.remove('hidden');
+            renderPreviewControls();
+            renderPreviewTable();
+        }
+
+        function renderPreviewControls() {
+            const container = document.getElementById('preview-column-toggles');
+            container.innerHTML = '<span class="text-slate-500 py-1">顯示欄位:</span>';
+            
+            const fields = getAllExportFields();
+            fields.forEach(f => {
+                const lbl = document.createElement('label');
+                lbl.className = 'col-toggle-label';
+                const checked = !previewState.hiddenCols.includes(f.id);
+                lbl.innerHTML = `
+                    <input type="checkbox" onchange="togglePreviewCol('${f.id}')" ${checked ? 'checked' : ''}>
+                    <span>${f.label}</span>
+                `;
+                container.appendChild(lbl);
+            });
+        }
+
+        function togglePreviewCol(fieldId) {
+            if (previewState.hiddenCols.includes(fieldId)) {
+                previewState.hiddenCols = previewState.hiddenCols.filter(id => id !== fieldId);
+            } else {
+                previewState.hiddenCols.push(fieldId);
+            }
+            renderPreviewTable();
+        }
+
+        function setPreviewSort(key) {
+            if (previewState.sortKey === key) {
+                previewState.sortDir = previewState.sortDir === 'asc' ? 'desc' : 'asc';
+            } else {
+                previewState.sortKey = key;
+                previewState.sortDir = 'asc';
+            }
+            renderPreviewTable();
+        }
+
+        function renderPreviewTable() {
+            const student = groupedStudents[currentStudentId];
+            const thead = document.getElementById('modal-preview-head');
+            const tbody = document.getElementById('modal-preview-body');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const allFields = getAllExportFields();
+            const visibleFields = allFields.filter(f => !previewState.hiddenCols.includes(f.id));
+
+            // Render Header
+            visibleFields.forEach(h => {
+                const th = document.createElement('th');
+                th.className = 'sortable-header';
+                th.onclick = () => setPreviewSort(h.id);
+                let icon = '';
+                if (previewState.sortKey === h.id) {
+                    icon = previewState.sortDir === 'asc' ? '<i class="fas fa-sort-up sort-icon active"></i>' : '<i class="fas fa-sort-down sort-icon active"></i>';
+                } else {
+                    icon = '<i class="fas fa-sort sort-icon"></i>';
+                }
+                th.innerHTML = `${h.label} ${icon}`;
+                thead.appendChild(th);
+            });
+
+            // Prepare Data Rows
+            let rows = [];
+            // 1. Consolidated Rows
+            student.applications.forEach(app => {
+                const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+                courses.forEach(c => {
+                    let rowData = { ...c, _source: 'app', _appData: app.formData };
+                    // Merge app data
+                    allFields.forEach(f => {
+                        if (app.formData[f.id] !== undefined && app.formData[f.id] !== "") {
+                            rowData[f.id] = app.formData[f.id];
+                        }
+                    });
+                    rows.push(rowData);
+                });
+            });
+            // 2. Unassigned Rows
+            student.courses.filter(c => !c._app_id).forEach(c => {
+                rows.push({ ...c, _source: 'raw' });
+            });
+
+            // Sort
+            if (previewState.sortKey) {
+                rows.sort((a, b) => {
+                    const valA = (a[previewState.sortKey] || '').toString();
+                    const valB = (b[previewState.sortKey] || '').toString();
+                    return previewState.sortDir === 'asc' ? valA.localeCompare(valB, 'zh-Hant') : -valB.localeCompare(valA, 'zh-Hant');
+                });
+            }
+
+            // Render Body
+            rows.forEach(r => {
+                const tr = document.createElement('tr');
+                visibleFields.forEach(h => {
+                    const td = document.createElement('td');
+                    let val = r[h.id];
+                    // Handle specific logic like Average calculation (simplified for preview)
+                    if (val === undefined || val === null) val = "";
+                    
+                    if (r._source === 'app' && r._appData[h.id]) {
+                        td.className = "text-indigo-600 font-bold bg-indigo-50";
+                    }
+                    td.innerText = val;
+                    tr.appendChild(td);
+                });
+                tbody.appendChild(tr);
+            });
+        }
+
+        function getAllExportFields() {
+            let headers = [];
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => headers.push({id: f.id, label: f.label}));
+            }
+            if(headers.length === 0) CORE_FIELDS.forEach(k => headers.push({id:k, label:k}));
+            return headers;
+        }
+
+        // --- 傳統填報模式 (Grid View) ---
+        
+        function switchViewMode(mode) {
+            const appView = document.getElementById('sidebar').parentElement; // Main layout
+            const gridView = document.getElementById('grid-view-container');
+            const btnApp = document.getElementById('btn-view-app');
+            const btnGrid = document.getElementById('btn-view-grid');
+
+            if (mode === 'grid') {
+                document.getElementById('sidebar').style.display = 'none';
+                document.getElementById('main-content').style.display = 'none';
+                document.getElementById('sidebar-toggle-strip').style.display = 'none';
+                gridView.classList.remove('hidden');
+                
+                btnApp.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition";
+                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary";
+                
+                renderGlobalGrid();
+            } else {
+                document.getElementById('sidebar').style.display = 'flex';
+                document.getElementById('main-content').style.display = 'flex';
+                document.getElementById('sidebar-toggle-strip').style.display = 'flex';
+                gridView.classList.add('hidden');
+                
+                btnApp.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary";
+                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition";
+                
+                // Refresh current view in case data changed
+                if(currentStudentId) selectStudent(currentStudentId);
+            }
+        }
+
+        function renderGlobalGrid() {
+            const thead = document.getElementById('grid-thead');
+            const tbody = document.getElementById('grid-tbody');
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const searchTerm = document.getElementById('grid-search').value.toLowerCase();
+            const fields = currentYearConfig.fields || [];
+            
+            // 1. Build Header
+            // Fixed columns: Student ID, Name, Course Name
+            const fixedCols = [
+                { id: 'student_id', label: '學號', width: '100px' },
+                { id: 'student_name', label: '姓名', width: '100px' },
+                { id: 'course_name', label: '課程名稱', width: '200px' }
+            ];
+            // Dynamic columns (writable)
+            const dynamicCols = fields.filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id));
+
+            let trHead = document.createElement('tr');
+            [...fixedCols, ...dynamicCols].forEach(col => {
+                const th = document.createElement('th');
+                th.innerText = col.label;
+                th.style.minWidth = col.width || '120px';
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+
+            // 2. Build Rows (Flatten all students -> courses)
+            const allRows = [];
+            Object.values(groupedStudents).forEach(student => {
+                student.courses.forEach(course => {
+                    // Search filter
+                    const searchText = `${student.id} ${student.name} ${course.course_name||''} ${course.course_code||''}`.toLowerCase();
+                    if (searchTerm && !searchText.includes(searchTerm)) return;
+
+                    allRows.push({ student, course });
+                });
+            });
+
+            // Render limit for performance (optional, simple render here)
+            allRows.forEach(({ student, course }) => {
+                const tr = document.createElement('tr');
+                const appId = course._app_id;
+                let appData = {};
+                
+                // 取得資料來源：如果有歸戶，從 App 拿；如果沒有，從 Course 本身拿
+                if (appId) {
+                    const app = student.applications.find(a => a.id === appId);
+                    if (app) appData = app.formData;
+                }
+
+                // Render Fixed Cols
+                fixedCols.forEach(col => {
+                    const td = document.createElement('td');
+                    td.innerText = course[col.id] || student[col.id === 'student_id' ? 'id' : 'name'] || '';
+                    td.className = "bg-slate-50 font-medium text-slate-600";
+                    tr.appendChild(td);
+                });
+
+                // Render Input Cols
+                dynamicCols.forEach(f => {
+                    const td = document.createElement('td');
+                    
+                    // Value priority: App Data > Course Temp Data
+                    let val = "";
+                    if (appId) {
+                        val = appData[f.id] || "";
+                        td.className = "is-linked"; // Visual cue for linked data
+                    } else {
+                        val = course[f.id] || ""; // Assuming we store manual edits on course obj directly
+                        td.className = "is-raw";
+                    }
+                    
+                    // Create Input based on type (Simplified text input for grid for speed, or select)
+                    let input;
+                    if (f.type === 'single_select' || f.type === 'list') {
+                        input = document.createElement('select');
+                        input.className = "grid-input";
+                        input.innerHTML = `<option value="">-</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                    } else {
+                        input = document.createElement('input');
+                        input.type = "text";
+                        input.className = "grid-input";
+                        input.value = val;
+                    }
+
+                    // --- Logic & Locking for Grid ---
+                    // We need to check visibility rules based on the *current row context*
+                    // To do this efficiently, we build a pseudo-object combining course + app data
+                    const rowContext = appId ? { ...appData } : { ...course };
+                    
+                    if (f.visibilityRule) {
+                        const depVal = rowContext[f.visibilityRule.dep];
+                        let show = f.visibilityRule.action === 'show' ? depVal === f.visibilityRule.val : depVal !== f.visibilityRule.val;
+                        if (!show) {
+                            input.disabled = true;
+                            input.value = ""; // Clear if hidden
+                        }
+                    }
+
+                    // --- Event Handler: The Linkage Magic ---
+                    input.onchange = (e) => {
+                        const newVal = e.target.value;
+                        hasUnsavedChanges = true;
+
+                        if (appId) {
+                            // Scenario 1: Linked Course
+                            // Update the App Data -> This affects ALL courses in this app
+                            const app = student.applications.find(a => a.id === appId);
+                            if (app) {
+                                const oldVal = app.formData[f.id];
+                                app.formData[f.id] = newVal;
+                                logChange(f.id, appId, oldVal, newVal, student.id);
+                                
+                                // Re-render logic needed? 
+                                // Yes, because changing this might affect other fields in THIS row or OTHER rows
+                                // For simplicity, we just re-render the whole grid or this row. 
+                                // Re-rendering whole grid is safest for dependencies.
+                                renderGlobalGrid(); 
+                                showToast('info', '已更新歸戶資料 (連動生效)');
+                            }
+                        } else {
+                            // Scenario 2: Traditional (Unassigned)
+                            // Save directly to course object
+                            const oldVal = course[f.id];
+                            course[f.id] = newVal;
+                            // Also need to support logic check for this row
+                            renderGlobalGrid(); 
+                        }
+                    };
+
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
             });
         }
 
