@@ -300,7 +300,27 @@
             color: transparent;
             text-shadow: 0 0 0 #000;
         }
-
+        
+        /* Grid Sidebar Styles */
+        #grid-sidebar { transition: width 0.3s ease; width: 280px; flex-shrink: 0; border-right: 1px solid #e2e8f0; background: white; display: flex; flex-direction: column; }
+        #grid-sidebar.collapsed { width: 0; overflow: hidden; border: none; }
+        
+        /* Grid Toggle Strip */
+        #grid-sidebar-toggle {
+            width: 12px; background: #f1f5f9; border-right: 1px solid #e2e8f0; cursor: pointer;
+            display: flex; align-items: center; justify-content: center; z-index: 20;
+        }
+        #grid-sidebar-toggle:hover { background: #e2e8f0; }
+        
+        /* Selected Item Chip */
+        .selected-item-chip {
+            background: #f0f9ff; border: 1px solid #bae6fd; padding: 8px; border-radius: 6px;
+            font-size: 0.85em; margin-bottom: 8px; position: relative;
+        }
+        .selected-item-chip .remove-btn {
+            position: absolute; top: 4px; right: 4px; color: #94a3b8; cursor: pointer;
+        }
+        .selected-item-chip .remove-btn:hover { color: #ef4444; }
 
     </style>
 </head>
@@ -507,24 +527,55 @@
 
                 </div>
         </main>
-    </div> <div id="grid-view-container" class="hidden absolute inset-0 top-16 z-10 bg-white flex flex-col">
-        <div class="px-6 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-shrink-0">
-            <div class="flex items-center gap-4">
-                <h2 class="font-bold text-slate-700"><i class="fas fa-th text-primary"></i> 全校課程總表 (傳統模式)</h2>
-                <div class="text-xs text-slate-500 bg-yellow-50 text-yellow-700 px-2 py-1 rounded border border-yellow-200">
-                    <i class="fas fa-link"></i> 資料與歸戶系統連動中：修改已歸戶的課程，將同步更新其所屬的填報單。
+    </div> <div id="grid-view-container" class="hidden absolute inset-0 top-16 z-10 bg-white flex">
+        
+        <aside id="grid-sidebar" class="collapsed"> <div class="p-4 border-b border-slate-100 bg-slate-50">
+                <h3 class="font-bold text-slate-700 flex items-center gap-2">
+                    <i class="fas fa-layer-group text-primary"></i> 批次歸戶
+                </h3>
+                <p class="text-xs text-slate-500 mt-1">勾選右側課程進行合併</p>
+            </div>
+            
+            <div class="flex-grow overflow-y-auto custom-scroll p-3" id="grid-selected-list">
+                <div class="text-center text-slate-400 text-xs py-10">
+                    尚未勾選任何課程
                 </div>
             </div>
-            <div class="flex gap-2">
-                 <input type="text" id="grid-search" placeholder="篩選學號/姓名/課程..." class="px-3 py-1.5 border border-slate-300 rounded text-sm w-64" oninput="renderGlobalGrid()">
+
+            <div class="p-4 border-t border-slate-100 bg-slate-50">
+                <div class="flex justify-between items-center mb-3 text-xs font-bold text-slate-600">
+                    <span>已選: <span id="grid-select-count" class="text-primary">0</span> 筆</span>
+                    <button onclick="clearGridSelection()" class="text-red-400 hover:text-red-600">清空</button>
+                </div>
+                <button onclick="executeGridMerge()" id="btn-grid-merge" disabled class="w-full bg-slate-300 text-white py-2 rounded-lg font-bold shadow-sm transition cursor-not-allowed">
+                    執行歸戶
+                </button>
             </div>
+        </aside>
+
+        <div id="grid-sidebar-toggle" onclick="toggleGridSidebar()">
+            <i class="fas fa-chevron-right text-slate-400 text-[10px]"></i>
         </div>
 
-        <div class="flex-grow overflow-auto custom-scroll relative pb-24">
-            <table class="excel-table w-full relative">
-                <thead class="sticky top-0 z-20 bg-slate-100 shadow-sm" id="grid-thead"></thead>
-                <tbody id="grid-tbody"></tbody>
-            </table>
+        <div class="flex-grow flex flex-col min-w-0 bg-white">
+            <div class="px-6 py-3 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-shrink-0">
+                <div class="flex items-center gap-4">
+                    <h2 class="font-bold text-slate-700"><i class="fas fa-th text-primary"></i> 全校課程總表</h2>
+                    <div class="text-xs text-slate-500 bg-yellow-50 text-yellow-700 px-2 py-1 rounded border border-yellow-200">
+                        <i class="fas fa-info-circle"></i> 勾選左側方框即可進行歸戶操作
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                     <input type="text" id="grid-search" placeholder="篩選..." class="px-3 py-1.5 border border-slate-300 rounded text-sm w-64" oninput="renderGlobalGrid()">
+                </div>
+            </div>
+
+            <div class="flex-grow overflow-auto custom-scroll relative pb-24">
+                <table class="excel-table w-full relative">
+                    <thead class="sticky top-0 z-20 bg-slate-100 shadow-sm" id="grid-thead"></thead>
+                    <tbody id="grid-tbody"></tbody>
+                </table>
+            </div>
         </div>
     </div>
     <!-- Preview Modal -->
@@ -920,7 +971,9 @@
 
         // --- 傳統填報模式 (Grid View) 核心邏輯 ---
 
-        // --- 傳統填報模式 (Grid View) 核心邏輯 (重構版) ---
+        // --- 傳統填報模式 (Grid View) 核心邏輯 (完全重構：含系統欄位與勾選) ---
+        let gridSelection = new Set(); // 儲存被勾選的 course _internal_id
+
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
@@ -930,27 +983,63 @@
             const searchTerm = document.getElementById('grid-search').value.toLowerCase();
             const fields = currentYearConfig.fields || [];
             
-            // 1. Build Header
-            const fixedCols = [
-                { id: 'student_id', label: '學號', width: '90px' },
-                { id: 'student_name', label: '姓名', width: '80px' },
-                { id: 'course_name', label: '課程名稱', width: '180px' }
-            ];
-            const dynamicCols = fields.filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id));
+            // --- 1. 定義欄位順序 ---
+            // A. 勾選欄 (最前)
+            // B. 學生基本資料 (sys_student_info)
+            // C. 課程基本資料 (sys_course_info)
+            // D. 填報欄位 (Writable Fields)
 
+            const sysStudentFields = fields.filter(f => f.category === 'sys_student_info').sort((a,b) => (a.order||0)-(b.order||0));
+            const sysCourseFields = fields.filter(f => f.category === 'sys_course_info').sort((a,b) => (a.order||0)-(b.order||0));
+            
+            // 為了防呆，如果 config 沒有設 sys_student_info，我們手動補上核心欄位
+            let displayStudentCols = sysStudentFields;
+            if (displayStudentCols.length === 0) {
+                displayStudentCols = [
+                    { id: 'student_id', label: '學號' },
+                    { id: 'student_name', label: '姓名' }
+                ];
+            }
+
+            const dynamicCols = fields.filter(f => 
+                !f.isSystem && 
+                !CORE_FIELDS.includes(f.id) && 
+                f.category !== 'sys_course_info' && 
+                f.category !== 'sys_student_info'
+            );
+
+            // --- 2. 建立表頭 ---
             let trHead = document.createElement('tr');
-            [...fixedCols, ...dynamicCols].forEach(col => {
+            
+            // Checkbox Header
+            let thCheck = document.createElement('th');
+            thCheck.style.width = "40px";
+            thCheck.className = "text-center";
+            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)">`;
+            trHead.appendChild(thCheck);
+
+            // System Columns
+            [...displayStudentCols, ...sysCourseFields].forEach(col => {
                 const th = document.createElement('th');
                 th.innerText = col.label;
-                th.style.minWidth = col.width || '100px';
+                th.style.minWidth = col.width || '90px'; // 預設寬度
+                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200"; // 區隔線
+                trHead.appendChild(th);
+            });
+
+            // Writable Columns
+            dynamicCols.forEach(col => {
+                const th = document.createElement('th');
+                th.innerText = col.label;
+                th.style.minWidth = '120px';
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
 
-            // 2. Build Rows
+            // --- 3. 建立內容 ---
             Object.values(groupedStudents).forEach(student => {
                 student.courses.forEach(course => {
-                    const searchText = `${student.id} ${student.name} ${course.course_name||''} ${course.course_code||''}`.toLowerCase();
+                    const searchText = Object.values(course).join(' ').toLowerCase() + student.name.toLowerCase() + student.id.toLowerCase();
                     if (searchTerm && !searchText.includes(searchTerm)) return;
 
                     const tr = document.createElement('tr');
@@ -958,8 +1047,7 @@
                     tr.dataset.cid = course._internal_id; 
 
                     const appId = course._app_id;
-                    let rowContext = {}; // 這一列的資料上下文 (可能是 AppData 或 Course)
-                    
+                    let rowContext = {}; 
                     if (appId) {
                         const app = student.applications.find(a => a.id === appId);
                         rowContext = app ? app.formData : {};
@@ -967,26 +1055,34 @@
                         rowContext = course;
                     }
 
-                    // A. Fixed Columns
-                    fixedCols.forEach(col => {
+                    // A. Checkbox Cell
+                    const tdCheck = document.createElement('td');
+                    tdCheck.className = "text-center bg-slate-50 border-r border-slate-200";
+                    // 如果已歸戶，為了避免邏輯複雜，這裡可以選擇 Disable 勾選，或是允許勾選來做「解除歸戶」(目前先做合併功能)
+                    // 為了單純化：只允許勾選「未歸戶」或「已歸戶但想再合併」的項目
+                    // 這裡開放全部勾選
+                    const isChecked = gridSelection.has(course._internal_id);
+                    tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this, '${student.id}')">`;
+                    tr.appendChild(tdCheck);
+
+                    // B. System Columns (Student + Course)
+                    [...displayStudentCols, ...sysCourseFields].forEach(col => {
                         const td = document.createElement('td');
-                        const val = course[col.id] || student[col.id === 'student_id' ? 'id' : 'name'] || '';
+                        // 嘗試從 Course 找，找不到從 Student 找
+                        let val = course[col.id] || student[col.id === 'student_id' ? 'id' : (col.id === 'student_name' ? 'name' : col.id)] || '';
                         td.innerText = val;
-                        td.title = val; // Hover 顯示完整文字
-                        td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 flex items-center"; // 微調樣式
+                        td.title = val;
+                        td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 text-xs truncate border-r border-slate-200"; 
                         tr.appendChild(td);
                     });
 
-                    // B. Input Columns
+                    // C. Writable Columns
                     dynamicCols.forEach(f => {
                         const td = document.createElement('td');
                         const val = rowContext[f.id] || "";
                         
-                        if (appId) {
-                            td.className = "is-linked"; 
-                        } else {
-                            td.className = "is-raw";
-                        }
+                        if (appId) td.className = "is-linked"; 
+                        else td.className = "is-raw";
                         
                         let input;
                         if (f.type === 'single_select' || f.type === 'list') {
@@ -999,16 +1095,12 @@
                         }
 
                         input.className = "grid-input";
-                        input.dataset.field = f.id; // ★ 重要：標記欄位 ID
-                        input.title = val; // ★ 重要：Hover 顯示完整內容
+                        input.dataset.field = f.id;
+                        input.title = val; 
                         
-                        // 標記 class 方便連動更新找到它 (如果是歸戶)
                         if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
                         
-                        // Event Handler
                         input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                        
-                        // 即時更新 Title (UX)
                         input.oninput = (e) => { e.target.title = e.target.value; };
 
                         td.appendChild(input);
@@ -1016,8 +1108,6 @@
                     });
                     
                     tbody.appendChild(tr);
-
-                    // ★★★ 3. 立即執行一次邏輯檢查 (初始化鎖定狀態與選項) ★★★
                     updateRowLogic(tr, rowContext);
                 });
             });
@@ -1609,36 +1699,14 @@
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
-            // --- 修改處：增加自動歸戶按鈕區塊 ---
-            const leftHeader = document.createElement('div');
-            leftHeader.className = "flex justify-between items-center mb-3 pb-2 border-b border-slate-200";
-            leftHeader.innerHTML = `
-                <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2">
-                    <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程
-                </h4>
-                <button onclick="autoGroupCourses()" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded border border-slate-300 transition" title="將相同名稱的課程自動合併">
-                    <i class="fas fa-magic text-yellow-500"></i> 自動歸戶
-                </button>
-            `;
+            // --- 修改：移除自動歸戶按鈕，只保留簡單標題 ---
+            // 由於之前的版本有動態插入 header，現在我們要恢復原本的單純列表渲染
+            // 為了保持 DOM 乾淨，我們只清除 listContainer 的內容
             
-            // 清空舊標題並加入新標題
-            const leftCol = document.querySelector('#settings-course-list').parentElement;
-            // 這裡為了避免重複添加，我們只清空 listContainer，標題部分動態插入
-            // 比較安全的做法是直接操作 settings-course-list 的父層，但為了簡單，我們這裡直接重寫 listContainer 的內容
-            // 為了讓按鈕顯示在正確位置，我們把標題區塊放在 listContainer 的前面
-            // 注意：原本 HTML 結構裡已有 h4，我們需要隱藏原本的 h4 或用 JS 取代它
-            // 簡單解法：直接把這個 header 插入到 listContainer 裡面最上方
+            // 如果您之前用了 insertBefore 插入 header，這裡建議直接操作 innerHTML 重建結構
+            // 但為了相容性，我們只處理 listContainer 內部
             
-            // 修正：更乾淨的做法是直接修改 HTML 結構，或是用 JS 替換掉原本的 h4
-            // 這裡我們用 JS 替換原本的 h4
-            const oldHeader = leftCol.querySelector('h4');
-            if(oldHeader) oldHeader.remove();
-            
-            // 確保不會重複插入 header
-            if(!leftCol.querySelector('.flex.justify-between')) {
-                 leftCol.insertBefore(leftHeader, listContainer);
-            }
-
+            // 這裡不插入任何按鈕，直接渲染列表
             const unassigned = student.courses.filter(c => !c._app_id);
             if (unassigned.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
@@ -1668,7 +1736,7 @@
                 });
             }
 
-            // --- 右側：已建立的填報單 ---
+            // --- 右側邏輯保持不變 ---
             if (student.applications.length === 0) {
                 appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
             } else {
@@ -3061,6 +3129,175 @@
                     }
                 }
             });
+        }
+        
+        // --- Grid Sidebar Logic ---
+        
+        function toggleGridSidebar() {
+            const sidebar = document.getElementById('grid-sidebar');
+            const toggle = document.getElementById('grid-sidebar-toggle');
+            const icon = toggle.querySelector('i');
+            
+            sidebar.classList.toggle('collapsed');
+            
+            if (sidebar.classList.contains('collapsed')) {
+                icon.className = 'fas fa-chevron-right text-slate-400 text-[10px]';
+            } else {
+                icon.className = 'fas fa-chevron-left text-slate-400 text-[10px]';
+            }
+        }
+
+        function updateGridSelection(chk, studentId) {
+            if (chk.checked) {
+                gridSelection.add(chk.value);
+            } else {
+                gridSelection.delete(chk.value);
+            }
+            renderGridSidebarContent();
+        }
+
+        function toggleAllGridSelection(mainChk) {
+            const chks = document.querySelectorAll('.grid-row-chk');
+            chks.forEach(c => {
+                c.checked = mainChk.checked;
+                if(mainChk.checked) gridSelection.add(c.value);
+                else gridSelection.delete(c.value);
+            });
+            renderGridSidebarContent();
+        }
+        
+        function clearGridSelection() {
+            gridSelection.clear();
+            renderGlobalGrid(); // Re-render to clear checkboxes
+            renderGridSidebarContent();
+        }
+
+        function renderGridSidebarContent() {
+            const list = document.getElementById('grid-selected-list');
+            const countEl = document.getElementById('grid-select-count');
+            const btn = document.getElementById('btn-grid-merge');
+            const sidebar = document.getElementById('grid-sidebar');
+            const toggle = document.getElementById('grid-sidebar-toggle');
+
+            list.innerHTML = '';
+            countEl.innerText = gridSelection.size;
+
+            // 自動展開/收合側欄
+            if (gridSelection.size > 0 && sidebar.classList.contains('collapsed')) {
+                toggleGridSidebar();
+            }
+
+            if (gridSelection.size === 0) {
+                list.innerHTML = '<div class="text-center text-slate-400 text-xs py-10">尚未勾選任何課程</div>';
+                btn.disabled = true;
+                btn.className = "w-full bg-slate-300 text-white py-2 rounded-lg font-bold shadow-sm transition cursor-not-allowed";
+                return;
+            }
+
+            // 啟用按鈕
+            btn.disabled = false;
+            btn.className = "w-full bg-primary hover:bg-indigo-900 text-white py-2 rounded-lg font-bold shadow-md transition transform hover:scale-[1.02]";
+
+            // 顯示已選清單
+            gridSelection.forEach(cid => {
+                // 找出對應的課程資料 (需要遍歷)
+                let course, student;
+                for (const s of Object.values(groupedStudents)) {
+                    const c = s.courses.find(x => x._internal_id === cid);
+                    if (c) { course = c; student = s; break; }
+                }
+
+                if (course) {
+                    const name = getCourseValue(course, ['course_name', '課程名稱']);
+                    const div = document.createElement('div');
+                    div.className = "selected-item-chip";
+                    div.innerHTML = `
+                        <div class="font-bold text-slate-700 truncate">${student.name}</div>
+                        <div class="text-xs text-slate-500 truncate">${name}</div>
+                        <i class="fas fa-times remove-btn" onclick="removeGridSelection('${cid}')"></i>
+                    `;
+                    list.appendChild(div);
+                }
+            });
+        }
+
+        function removeGridSelection(cid) {
+            gridSelection.delete(cid);
+            // Update checkbox in DOM
+            const chk = document.querySelector(`.grid-row-chk[value="${cid}"]`);
+            if(chk) chk.checked = false;
+            renderGridSidebarContent();
+        }
+
+        async function executeGridMerge() {
+            if (gridSelection.size < 2) {
+                showToast('error', '請至少勾選 2 筆課程進行歸戶');
+                return;
+            }
+
+            // 檢查是否所有勾選的課程都屬於同一位學生
+            let targetStudentId = null;
+            const selectedCourses = [];
+            
+            for (const cid of gridSelection) {
+                let found = false;
+                for (const s of Object.values(groupedStudents)) {
+                    const c = s.courses.find(x => x._internal_id === cid);
+                    if (c) {
+                        if (targetStudentId === null) targetStudentId = s.id;
+                        else if (targetStudentId !== s.id) {
+                            showToast('error', '歸戶失敗：您勾選了不同學生的課程！請只勾選同一位學生的課。');
+                            return;
+                        }
+                        selectedCourses.push(c);
+                        found = true; 
+                        break;
+                    }
+                }
+            }
+
+            const confirm = await showConfirm('確認歸戶', `確定將這 ${gridSelection.size} 筆課程合併為同一份實習紀錄嗎？\n(將使用第一筆課程的資料覆蓋其他筆)`);
+            if (!confirm) return;
+
+            // 執行歸戶
+            const student = groupedStudents[targetStudentId];
+            const newAppId = 'app_grid_' + Date.now();
+            
+            // 複製第一筆課程的資料作為預設值
+            const firstC = selectedCourses[0];
+            const initData = {};
+            
+            // 優先使用 App Data (如果第一筆已經歸戶)
+            if (firstC._app_id) {
+                const existApp = student.applications.find(a => a.id === firstC._app_id);
+                if (existApp) Object.assign(initData, existApp.formData);
+            } else {
+                // 使用 Raw Data
+                (currentYearConfig.fields||[]).forEach(f => {
+                    if (firstC[f.id]) initData[f.id] = firstC[f.id];
+                });
+            }
+
+            // 建立 App
+            const newApp = {
+                id: newAppId,
+                courseIds: Array.from(gridSelection),
+                formData: initData
+            };
+
+            // 清除舊的 App 關聯 (如果這些課原本屬於別的 App)
+            selectedCourses.forEach(c => {
+                // 如果原本所屬的 App 只剩這一門課，那個 App 應該被刪除嗎？
+                // 為了簡單，我們這裡不做複雜的垃圾回收，只更新指標
+                c._app_id = newAppId;
+            });
+
+            student.applications.push(newApp);
+            
+            hasUnsavedChanges = true;
+            clearGridSelection();
+            showToast('success', '歸戶完成');
+            logChange('GridMerge', newAppId, '', `Merged ${selectedCourses.length} items`, student.id);
         }
         
     </script>
