@@ -39,6 +39,10 @@
         .student-item.active { background-color: #eff6ff; border-left-color: #002E5D; }
         .student-item.active .student-name { color: #002E5D; font-weight: bold; }
 
+        /* Import Button (Admin Style) */
+        .import-btn { border: 2px dashed #bbf7d0; color: #219653; background-color: #f0fdf4; transition: all 0.2s; border-radius: 0.75rem; text-align: center; padding: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.875rem; width: 100%; }
+        .import-btn:hover { border-color: #219653; background-color: #dcfce7; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
         /* Course Card in Settings Tab */
         .course-card { 
             background: #fff; border: 1px solid #e2e8f0; border-radius: 0.5rem; padding: 0.75rem; 
@@ -52,6 +56,7 @@
         .field-locked label { color: #94a3b8; }
         .field-locked .input-stylish { background-color: #f8fafc; color: #cbd5e1; border-color: #f1f5f9; }
         .field-locked select.date-select { background-color: #f8fafc; color: #cbd5e1; border-color: #f1f5f9; pointer-events: none; }
+        .field-locked .date-toggle-btn { display: none; } /* Hide toggle button when locked */
         
         .spinner { border: 3px solid rgba(0,46,93,0.1); border-radius: 50%; border-top: 3px solid #002E5D; width: 24px; height: 24px; animation: spin 1s linear infinite; }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
@@ -115,15 +120,35 @@
         /* Modal Overlay */
         .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
 
-        /* Custom Date Picker Styles */
-        .date-picker-group { display: flex; gap: 0.5rem; }
-        .date-select { 
-            flex: 1; 
-            border: 1px solid #e2e8f0; border-radius: 0.375rem; padding: 0.4rem; 
-            font-size: 0.9rem; background-color: #fff; outline: none; height: 2.25rem;
+        /* Custom Date Picker Styles (Popover) */
+        .date-picker-wrapper { position: relative; width: 100%; display: flex; gap: 0.5rem; }
+        .date-toggle-btn {
+            color: #64748b; cursor: pointer; padding: 0.4rem; border-radius: 0.375rem; border: 1px solid #e2e8f0; 
+            background: #fff; transition: all 0.2s; height: 2.25rem; width: 2.25rem; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0;
         }
-        .date-select:focus { border-color: #002E5D; box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
-        .date-label { display: flex; align-items: center; color: #64748b; font-size: 0.8rem; margin-right: 0.2rem; }
+        .date-toggle-btn:hover { color: #002E5D; border-color: #cbd5e1; background: #f8fafc; }
+        
+        .date-picker-popover {
+            position: absolute; top: 100%; right: 0; margin-top: 0.5rem;
+            background: #fff; border: 1px solid #e2e8f0; border-radius: 0.5rem;
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            padding: 1rem; z-index: 50; width: 280px;
+            display: none; /* Hidden by default */
+        }
+        .date-picker-popover.active { display: block; animation: fadeIn 0.2s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-5px); } to { opacity: 1; transform: translateY(0); } }
+        
+        .date-picker-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0.5rem; }
+        .date-select-label { font-size: 0.75rem; color: #64748b; margin-bottom: 0.25rem; text-align: center; }
+        .popover-select { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.375rem; padding: 0.25rem; font-size: 0.875rem; }
+        .popover-actions { margin-top: 0.75rem; display: flex; justify-content: flex-end; gap: 0.5rem; border-top: 1px solid #f1f5f9; padding-top: 0.75rem; }
+        
+        /* Toast Animation */
+        .toast-enter { transform: translateY(20px); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-out; }
+        .toast-exit { transform: translateY(0); opacity: 1; }
+        .toast-exit-active { transform: translateY(20px); opacity: 0; transition: all 0.3s ease-in; }
     </style>
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -146,7 +171,7 @@
                     <i class="fas fa-calendar-alt text-slate-400"></i>
                 </div>
                 <select id="year-select" onchange="changeYear(this.value)" class="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none hover:bg-white transition shadow-sm">
-                    <option value="">載入中...</option>
+                    <option value="">請選擇學年度...</option>
                 </select>
                 <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
                     <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
@@ -155,12 +180,6 @@
 
             <div class="h-6 w-px bg-slate-200 mx-2"></div>
 
-            <!-- Action Buttons -->
-            <label class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-4 py-2 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2 cursor-pointer">
-                <i class="fas fa-file-import"></i> 匯入名單
-                <input type="file" id="file-upload" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event)">
-            </label>
-            
             <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
                 <i class="fas fa-file-export"></i> 匯出結果
             </button>
@@ -172,6 +191,14 @@
         
         <!-- Sidebar: Student List -->
         <aside class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0">
+            <!-- Import Button -->
+            <div class="p-4 pb-0 bg-slate-50">
+                <label class="import-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success">
+                    <i class="fas fa-file-import text-lg"></i> 匯入學生名單 (Excel)
+                    <input type="file" id="file-upload" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event)">
+                </label>
+            </div>
+
             <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
                 <div class="relative">
                     <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
@@ -298,10 +325,11 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
-    <div id="toast" class="fixed bottom-5 right-5 bg-slate-800 text-white px-6 py-3 rounded-lg shadow-lg transform translate-y-20 opacity-0 transition-all duration-300 z-50 flex items-center gap-3">
+    <!-- Toast Notification (Fixed) -->
+    <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
         <i id="toast-icon" class="fas fa-info-circle"></i>
         <span id="toast-msg">Notification</span>
+        <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
     </div>
 
     <script>
@@ -311,12 +339,11 @@
         let departmentData = [];     
         let deptMasterData = {};     
         
-        let allRawData = [];         // Raw excel data
-        let groupedStudents = {};    // { studentId: { id, name, courses: [], applications: [] } }
+        let allRawData = [];         
+        let groupedStudents = {};    
         let currentStudentId = null; 
         let activeYear = "";         
-
-        // Core fields that are always present in raw data but managed specially
+        
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
 
         // --- Initialization ---
@@ -335,7 +362,7 @@
 
                 // Setup Year Selector
                 const yearSelect = document.getElementById('year-select');
-                yearSelect.innerHTML = '';
+                yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
                 
                 if (globalConfig.academicYears && globalConfig.academicYears.length > 0) {
                     globalConfig.academicYears.sort((a,b) => b.year.localeCompare(a.year));
@@ -345,11 +372,6 @@
                         opt.innerText = `${y.year} 學年度`;
                         yearSelect.appendChild(opt);
                     });
-                    
-                    // Default selection
-                    const def = globalConfig.academicYears.find(y => y.isDefault) || globalConfig.academicYears[0];
-                    yearSelect.value = def.year;
-                    changeYear(def.year);
                 } else {
                     yearSelect.innerHTML = '<option value="">無設定</option>';
                 }
@@ -409,9 +431,23 @@
             allRawData = data;
             groupedStudents = {};
 
+            // 嘗試從資料中偵測學年度並自動套用
+            if (data.length > 0) {
+                let detectedYear = data[0]['school_year'] || data[0]['學年'];
+                if (detectedYear) {
+                    detectedYear = detectedYear.toString().trim();
+                    const yearSelect = document.getElementById('year-select');
+                    const opt = Array.from(yearSelect.options).find(o => o.value === detectedYear);
+                    if (opt) {
+                        yearSelect.value = detectedYear;
+                        changeYear(detectedYear);
+                        showToast('info', `已自動切換至 ${detectedYear} 學年度`);
+                    }
+                }
+            }
+
             // Group by Student ID
             allRawData.forEach((row, idx) => {
-                // Heuristic to find ID/Name columns
                 const sid = row['student_id'] || row['學號'] || row['id'];
                 const sname = row['student_name'] || row['姓名'] || row['name'];
                 const sdept = row['student_dept'] || row['系所'] || row['department'];
@@ -419,15 +455,11 @@
                 if (!sid) return;
 
                 if (!groupedStudents[sid]) {
-                    // Try to resolve Department Name from ID if possible
                     let deptDisplay = sdept;
                     if (deptMasterData && deptMasterData[sdept]) {
-                        // Priority: Year specific name -> Short name -> Master name -> ID
+                        const y = activeYear || '114';
                         const master = deptMasterData[sdept];
-                        deptDisplay = (master.historical_names && master.historical_names[activeYear]) || master.short_name || master.name || sdept;
-                    } else if (deptMasterData) {
-                        // Maybe sdept IS the name, try to find ID? No, display as is.
-                        // Or reverse lookup? Skip for now.
+                        deptDisplay = (master.historical_names && master.historical_names[y]) || master.short_name || master.name || sdept;
                     }
 
                     groupedStudents[sid] = {
@@ -435,13 +467,12 @@
                         name: sname || '未知',
                         dept: deptDisplay || '',
                         courses: [],
-                        applications: [] // Stores consolidated applications
+                        applications: [] 
                     };
                 }
                 
-                // Add internal ID to track this specific course record
                 row._internal_id = `c_${idx}`;
-                row._app_id = null; // Which application does this belong to?
+                row._app_id = null; 
                 groupedStudents[sid].courses.push(row);
             });
 
@@ -457,7 +488,6 @@
             const term = document.getElementById('search-input').value.toLowerCase();
             let students = Object.values(groupedStudents);
             
-            // Filter
             students = students.filter(s => s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term));
             
             document.getElementById('student-count').innerText = students.length;
@@ -507,13 +537,12 @@
         // --- Logic: Student Workspace ---
         function selectStudent(sid) {
             currentStudentId = sid;
-            renderStudentList(); // Update active highlight
+            renderStudentList(); 
             
             const student = groupedStudents[sid];
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // Header Info
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
@@ -526,7 +555,6 @@
 
             renderTabs(student);
             
-            // If student has apps, show first one, else show settings
             if (appCount > 0) switchTab(student.applications[0].id);
             else switchTab('settings');
             
@@ -535,7 +563,6 @@
 
         function renderTabs(student) {
             const container = document.getElementById('tabs-container');
-            // Keep Settings Tab
             container.innerHTML = `<button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>`;
             
             student.applications.forEach((app, idx) => {
@@ -543,8 +570,6 @@
                 btn.className = 'tab-btn';
                 btn.dataset.tab = app.id;
                 btn.onclick = () => switchTab(app.id);
-                
-                // Try to find a name for the tab
                 const name = app.formData['internship_institution_name'] || `實習 ${idx+1}`;
                 btn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${name}`;
                 container.appendChild(btn);
@@ -552,7 +577,6 @@
         }
 
         function switchTab(tabId) {
-            // UI Toggle
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
             if(btn) btn.classList.add('active');
@@ -565,14 +589,11 @@
                 if(currentStudentId) renderSettingsTab(groupedStudents[currentStudentId]);
             } else {
                 document.getElementById('dynamic-tabs-area').style.display = 'block';
-                // Find or Create Tab Content
                 let content = document.getElementById(`content-${tabId}`);
                 if (!content) {
                     content = createApplicationContent(tabId);
                     document.getElementById('dynamic-tabs-area').appendChild(content);
                 }
-                
-                // Hide all dynamic contents first
                 document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
                 content.style.display = 'block';
             }
@@ -585,7 +606,6 @@
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
-            // Unassigned Courses
             const unassigned = student.courses.filter(c => !c._app_id);
             if (unassigned.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-slate-50 rounded border border-dashed">所有課程皆已歸戶</div>';
@@ -615,14 +635,12 @@
                 });
             }
 
-            // Existing Applications
             if (student.applications.length === 0) {
                 appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm">尚未建立任何實習填報單</div>';
             } else {
                 student.applications.forEach((app, idx) => {
                     const el = document.createElement('div');
                     el.className = 'bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-start shadow-sm';
-                    
                     const name = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
                     const courses = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
@@ -653,13 +671,9 @@
 
             const ids = Array.from(checkboxes).map(cb => cb.value);
             const appId = 'app_' + Date.now();
-            
-            // Auto-fill from first course
             const firstC = student.courses.find(c => c._internal_id === ids[0]);
             const initData = {};
             
-            // Map common fields from course data to form data if they match
-            // Simple heuristic: if field ID exists in course data, copy it
             if (currentYearConfig.fields) {
                 currentYearConfig.fields.forEach(f => {
                     if (!CORE_FIELDS.includes(f.id) && !f.isSystem) {
@@ -669,30 +683,22 @@
                 });
             }
 
-            const newApp = {
-                id: appId,
-                courseIds: ids,
-                formData: initData
-            };
-
-            // Link courses
+            const newApp = { id: appId, courseIds: ids, formData: initData };
             ids.forEach(cid => {
                 const c = student.courses.find(x => x._internal_id === cid);
                 if(c) c._app_id = appId;
             });
 
             student.applications.push(newApp);
-            
             renderTabs(student);
             renderSettingsTab(student);
-            switchTab(appId); // Jump to edit
-            renderStudentList(); // Update badge
+            switchTab(appId); 
+            renderStudentList(); 
             showToast('success', '已建立填報單');
         }
 
         function deleteApplication(appId) {
             if (!confirm('確定要解除此歸戶嗎？填寫的資料將會遺失。')) return;
-            
             const student = groupedStudents[currentStudentId];
             const idx = student.applications.findIndex(a => a.id === appId);
             if (idx === -1) return;
@@ -704,8 +710,6 @@
             });
 
             student.applications.splice(idx, 1);
-            
-            // Remove DOM
             const dom = document.getElementById(`content-${appId}`);
             if(dom) dom.remove();
 
@@ -724,8 +728,6 @@
             div.id = `content-${appId}`;
             div.className = 'dynamic-tab-content max-w-5xl mx-auto';
             
-            // 修正 1: 移除卡片外框，直接使用透明背景
-            // 移除 bg-white, border 等樣式，只保留邊距
             const formContainer = document.createElement('div');
             formContainer.className = 'form-body';
             
@@ -735,81 +737,174 @@
             return div;
         }
 
-        // 修正 3: 自製民國年日期選擇器生成函式
+        // 修正 4: 民國年日期選擇器 (可選 + 可手輸，Pop-over Style)
         function createRocDatePicker(appId, fieldId, initialValue, onChange) {
             const container = document.createElement('div');
-            container.className = 'date-picker-group';
-            container.id = `roc-group-${appId}-${fieldId}`;
+            container.className = 'date-picker-wrapper';
+            container.id = `roc-container-${appId}-${fieldId}`;
 
-            // Parse initial value (YYYY-MM-DD) or empty
-            let y = '', m = '', d = '';
-            if (initialValue && initialValue.includes('-')) {
-                const parts = initialValue.split('-');
-                if (parts.length === 3) {
-                    y = parseInt(parts[0]) - 1911;
-                    m = parseInt(parts[1]);
-                    d = parseInt(parts[2]);
-                }
-            }
+            // Text Input (Always visible)
+            const manualInput = document.createElement('input');
+            manualInput.type = 'text';
+            manualInput.className = 'input-stylish';
+            manualInput.placeholder = '例: 1140101';
+            manualInput.maxLength = 7;
+            manualInput.style.flex = "1";
 
-            // Create Selects
-            const ySel = document.createElement('select'); ySel.className = 'date-select';
-            const mSel = document.createElement('select'); mSel.className = 'date-select';
-            const dSel = document.createElement('select'); dSel.className = 'date-select';
+            // Popover Toggle Button
+            const toggleBtn = document.createElement('button');
+            toggleBtn.className = 'date-toggle-btn';
+            toggleBtn.title = '選擇日期';
+            toggleBtn.innerHTML = '<i class="fas fa-calendar-alt"></i>';
+            
+            // Popover Panel (Hidden by default)
+            const popover = document.createElement('div');
+            popover.className = 'date-picker-popover';
+            
+            const grid = document.createElement('div');
+            grid.className = 'date-picker-grid';
 
-            ySel.innerHTML = '<option value="">年</option>';
-            // Generate years (e.g. 110-120) based on current year
+            // Selects inside Popover
+            const createSelect = (label) => {
+                const wrapper = document.createElement('div');
+                wrapper.innerHTML = `<div class="date-select-label">${label}</div>`;
+                const sel = document.createElement('select');
+                sel.className = 'popover-select';
+                wrapper.appendChild(sel);
+                return { wrapper, sel };
+            };
+
+            const yObj = createSelect('民國年');
+            const mObj = createSelect('月');
+            const dObj = createSelect('日');
+
+            grid.appendChild(yObj.wrapper);
+            grid.appendChild(mObj.wrapper);
+            grid.appendChild(dObj.wrapper);
+
+            // Populate Years
+            yObj.sel.innerHTML = '<option value="">請選擇</option>';
             const currentRoc = new Date().getFullYear() - 1911;
-            for(let i = currentRoc - 5; i <= currentRoc + 2; i++) {
-                ySel.innerHTML += `<option value="${i}" ${i==y?'selected':''}>${i}</option>`;
+            for(let i = currentRoc - 5; i <= currentRoc + 3; i++) {
+                yObj.sel.innerHTML += `<option value="${i}">${i}</option>`;
             }
 
-            mSel.innerHTML = '<option value="">月</option>';
+            // Populate Months
+            mObj.sel.innerHTML = '<option value="">請選擇</option>';
             for(let i = 1; i <= 12; i++) {
-                mSel.innerHTML += `<option value="${i}" ${i==m?'selected':''}>${i}</option>`;
+                mObj.sel.innerHTML += `<option value="${i}">${i}</option>`;
+            }
+            
+            // Days updated dynamically
+            dObj.sel.innerHTML = '<option value="">請選擇</option>';
+
+            // Actions
+            const actions = document.createElement('div');
+            actions.className = 'popover-actions';
+            actions.innerHTML = `
+                <button type="button" class="px-3 py-1 text-xs font-bold text-slate-500 hover:bg-slate-100 rounded btn-cancel">取消</button>
+                <button type="button" class="px-3 py-1 text-xs font-bold text-white bg-primary hover:bg-blue-900 rounded btn-confirm">確定</button>
+            `;
+
+            popover.appendChild(grid);
+            popover.appendChild(actions);
+
+            // Logic Helpers
+            const updateDays = () => {
+                const y = parseInt(yObj.sel.value);
+                const m = parseInt(mObj.sel.value);
+                const oldD = dObj.sel.value;
+                dObj.sel.innerHTML = '<option value="">請選擇</option>';
+                if(y && m) {
+                    const days = new Date(y+1911, m, 0).getDate();
+                    for(let i=1; i<=days; i++) dObj.sel.innerHTML += `<option value="${i}">${i}</option>`;
+                    if(oldD && oldD <= days) dObj.sel.value = oldD;
+                }
+            };
+
+            const syncFromInput = () => {
+                const val = manualInput.value;
+                if(val.length === 7 && !isNaN(val)) {
+                    yObj.sel.value = parseInt(val.substring(0,3));
+                    mObj.sel.value = parseInt(val.substring(3,5));
+                    updateDays();
+                    dObj.sel.value = parseInt(val.substring(5,7));
+                }
+            };
+
+            const syncToInput = () => {
+                const y = yObj.sel.value;
+                const m = mObj.sel.value.padStart(2,'0');
+                const d = dObj.sel.value.padStart(2,'0');
+                if(y && m && d) {
+                    manualInput.value = `${y}${m}${d}`;
+                    manualInput.dispatchEvent(new Event('change')); // Trigger validation/save
+                }
+            };
+
+            // Event Listeners
+            yObj.sel.onchange = updateDays;
+            mObj.sel.onchange = updateDays;
+
+            toggleBtn.onclick = (e) => {
+                e.preventDefault();
+                const isVisible = popover.classList.contains('active');
+                
+                // Close others
+                document.querySelectorAll('.date-picker-popover.active').forEach(p => p.classList.remove('active'));
+                
+                if(!isVisible) {
+                    syncFromInput();
+                    popover.classList.add('active');
+                }
+            };
+
+            actions.querySelector('.btn-cancel').onclick = (e) => {
+                e.preventDefault();
+                popover.classList.remove('active');
+            };
+
+            actions.querySelector('.btn-confirm').onclick = (e) => {
+                e.preventDefault();
+                syncToInput();
+                popover.classList.remove('active');
+            };
+
+            // Initial Value Parse
+            if (initialValue) {
+                if(initialValue.includes('-')) {
+                    const p = initialValue.split('-');
+                    const roc = parseInt(p[0]) - 1911;
+                    manualInput.value = `${roc}${p[1]}${p[2]}`;
+                } else {
+                    manualInput.value = initialValue;
+                }
             }
 
-            // Day generation logic
-            const updateDays = () => {
-                const selY = parseInt(ySel.value) + 1911;
-                const selM = parseInt(mSel.value);
-                const currentD = dSel.value;
-                
-                dSel.innerHTML = '<option value="">日</option>';
-                
-                if (selY && selM) {
-                    const daysInMonth = new Date(selY, selM, 0).getDate();
-                    for(let i = 1; i <= daysInMonth; i++) {
-                        dSel.innerHTML += `<option value="${i}" ${i==currentD?'selected':''}>${i}</option>`;
-                    }
-                }
-            };
-
-            // Combine logic
-            const combineDate = () => {
-                const yy = ySel.value ? parseInt(ySel.value) + 1911 : '';
-                const mm = mSel.value ? mSel.value.padStart(2, '0') : '';
-                const dd = dSel.value ? dSel.value.padStart(2, '0') : '';
-                
-                if (yy && mm && dd) {
-                    onChange(`${yy}-${mm}-${dd}`);
+            // Sync manual changes to data
+            manualInput.onchange = (e) => {
+                const val = e.target.value;
+                // Save logic: try to convert to YYYY-MM-DD for consistency if valid
+                if(val.length === 7 && !isNaN(val)) {
+                    const y = parseInt(val.substring(0,3)) + 1911;
+                    const m = val.substring(3,5);
+                    const d = val.substring(5,7);
+                    onChange(`${y}-${m}-${d}`);
                 } else {
-                    onChange('');
+                    onChange(val); // Raw save
                 }
             };
 
-            ySel.onchange = () => { updateDays(); combineDate(); };
-            mSel.onchange = () => { updateDays(); combineDate(); };
-            dSel.onchange = () => { combineDate(); };
+            // Close on click outside
+            document.addEventListener('click', (e) => {
+                if(!container.contains(e.target)) {
+                    popover.classList.remove('active');
+                }
+            });
 
-            // Initial day population if value exists
-            if (y && m) updateDays();
-            // Restore day selection after repopulating options
-            if (d) dSel.value = d;
-
-            container.appendChild(ySel);
-            container.appendChild(mSel);
-            container.appendChild(dSel);
+            container.appendChild(manualInput);
+            container.appendChild(toggleBtn);
+            container.appendChild(popover);
 
             return container;
         }
@@ -817,7 +912,6 @@
         function renderFields(container, app) {
             const fields = currentYearConfig.fields || [];
             
-            // Filter out system/core fields to simplify form
             const visibleFields = fields.filter(f => 
                 !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info' && f.category !== 'sys_student_info'
             );
@@ -827,36 +921,28 @@
                 return;
             }
 
-            // Group fields by category
             const categories = globalConfig.templateCategories || [];
             const fieldsByCat = {};
-            
-            // Sort fields by order
             const sortedFields = [...visibleFields].sort((a,b) => (a.order||0) - (b.order||0));
 
-            // Distribute to buckets
             sortedFields.forEach(f => {
                 const cat = f.category || 'uncategorized';
                 if(!fieldsByCat[cat]) fieldsByCat[cat] = [];
                 fieldsByCat[cat].push(f);
             });
 
-            // Get Sorted Category List
             const sortedCats = [...categories].sort((a,b) => a.order - b.order);
-            // Append Uncategorized
             if(fieldsByCat['uncategorized']) sortedCats.push({id: 'uncategorized', name: '其他資訊'});
 
             sortedCats.forEach(catDef => {
                 const catFields = fieldsByCat[catDef.id];
                 if(!catFields || catFields.length === 0) return;
 
-                // Render Section Title
                 const title = document.createElement('h4');
                 title.className = 'form-section-title';
                 title.innerText = catDef.name;
                 container.appendChild(title);
 
-                // Render Grid Container - Changed to grid-cols-3 based on user request
                 const grid = document.createElement('div');
                 grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'; 
 
@@ -865,40 +951,30 @@
                     wrapper.className = `field-group ${f.id}-wrapper`; 
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
-                    // Label with Tooltip for description
                     const label = document.createElement('label');
                     label.className = "block text-sm font-bold text-slate-700 mb-1 flex items-center";
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
                     
                     if(f.description) {
-                        label.innerHTML += `
-                            <div class="tooltip-container">
-                                <i class="fas fa-info-circle tooltip-icon"></i>
-                                <span class="tooltip-text">${f.description}</span>
-                            </div>
-                        `;
+                        label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${f.description}</span></div>`;
                     }
                     wrapper.appendChild(label);
 
                     const val = app.formData[f.id] || '';
                     let input;
 
-                    // 修正 3: 使用自製民國年選擇器
+                    // 修正 4: 使用新的 Popover Date Picker
                     if (f.type === 'date' && f.inputFormat === 'ROC') {
                         input = createRocDatePicker(app.id, f.id, val, (newValue) => {
                             app.formData[f.id] = newValue;
                             evaluateLogic(app);
                         });
-                        // 注意：createRocDatePicker 返回的是 div，沒有 onchange，邏輯已內建在 callback 中
-                        // 我們需要為 wrapper 加上 id 以便 evaluateLogic 鎖定時使用，
-                        // 但對於這種複合元件，我們可能需要鎖定內部的 select
-                        // 這裡為了讓 evaluateLogic 正常運作，我們可以加一個隱藏 input 來模擬 ID
-                        const hiddenInput = document.createElement('input');
-                        hiddenInput.type = 'hidden';
-                        hiddenInput.id = `input-${app.id}-${f.id}`; // Logic engine looks for this ID
-                        wrapper.appendChild(hiddenInput); 
+                        // Hidden input for logic engine disabling
+                        const hidden = document.createElement('input');
+                        hidden.type = 'hidden';
+                        hidden.id = `input-${app.id}-${f.id}`;
+                        wrapper.appendChild(hidden);
                     } else {
-                        // Standard Inputs
                         if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.className = "input-stylish cursor-pointer";
@@ -921,14 +997,12 @@
                             input.value = val;
                         }
 
-                        // Attach ID for logic helper
                         input.id = `input-${app.id}-${f.id}`; 
 
-                        // Event Listener for Data & Logic
                         input.onchange = (e) => {
                             let newVal = e.target.value;
                             app.formData[f.id] = newVal;
-                            evaluateLogic(app); // Run Logic
+                            evaluateLogic(app);
                             
                             if (f.id === 'internship_institution_name') {
                                 const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
@@ -943,7 +1017,6 @@
                 container.appendChild(grid);
             });
 
-            // Initial Logic Run
             setTimeout(() => evaluateLogic(app), 0);
         }
 
@@ -952,36 +1025,32 @@
             const fields = currentYearConfig.fields || [];
             
             fields.forEach(f => {
-                // Visibility -> Lock Logic
                 if (f.visibilityRule && f.visibilityRule.dep) {
                     const depVal = app.formData[f.visibilityRule.dep];
-                    // 修正 3: 針對 ROC Date Picker 的特殊處理 (它是一組 select)
                     const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
-                    const inputEl = document.getElementById(`input-${app.id}-${f.id}`); // Standard inputs or hidden input
+                    const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
+                    const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
                     
                     if (wrapper) {
                         let shouldEnable = f.visibilityRule.action === 'show' 
                             ? depVal === f.visibilityRule.val 
                             : depVal !== f.visibilityRule.val;
                         
-                        // Handle disabling
                         if (inputEl && inputEl.type !== 'hidden') inputEl.disabled = !shouldEnable;
                         
-                        // Handle ROC Date Picker disabling (disable all selects inside)
-                        const rocGroup = wrapper.querySelector('.date-picker-group');
-                        if (rocGroup) {
-                            rocGroup.querySelectorAll('select').forEach(sel => sel.disabled = !shouldEnable);
+                        if (rocContainer) {
+                            rocContainer.querySelector('input').disabled = !shouldEnable;
+                            const btn = rocContainer.querySelector('.date-toggle-btn');
+                            if(btn) {
+                                btn.style.pointerEvents = shouldEnable ? 'auto' : 'none';
+                                btn.style.opacity = shouldEnable ? '1' : '0.5';
+                            }
                         }
                         
-                        // Visual Feedback for Locked Field
                         if (!shouldEnable) {
                             wrapper.classList.add('field-locked');
-                            // Clear value
                             if (inputEl && inputEl.type !== 'hidden') inputEl.value = "";
-                            // Clear ROC
-                            if (rocGroup) {
-                                rocGroup.querySelectorAll('select').forEach(sel => sel.value = "");
-                            }
+                            if (rocContainer) rocContainer.querySelector('input').value = "";
                             app.formData[f.id] = "";
                         } else {
                             wrapper.classList.remove('field-locked');
@@ -989,11 +1058,9 @@
                     }
                 }
                 
-                // Filter (Simple Implementation)
                 if (f.filterRules && f.filterRules.length > 0) {
                     const input = document.getElementById(`input-${app.id}-${f.id}`);
                     if (input && input.tagName === 'SELECT') {
-                        // Find matching rule
                         const rule = f.filterRules.find(r => app.formData[r.dep] === r.val);
                         Array.from(input.options).forEach(opt => {
                             if (opt.value === "") return;
@@ -1003,7 +1070,6 @@
                                 opt.hidden = false;
                             }
                         });
-                        // Reset if hidden
                         if (input.selectedOptions[0]?.hidden) {
                             input.value = "";
                             app.formData[f.id] = "";
@@ -1022,12 +1088,10 @@
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            // Generate Headers
             const headers = [];
             (currentYearConfig.fields || []).sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
                 headers.push({id: f.id, label: f.label});
             });
-            // Fallback if no template
             if(headers.length === 0) CORE_FIELDS.forEach(k => headers.push({id:k, label:k}));
 
             headers.forEach(h => {
@@ -1036,7 +1100,6 @@
                 thead.appendChild(th);
             });
 
-            // Iterate over all applications for the student
             student.applications.forEach(app => {
                 const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
                 const courseCount = courses.length;
@@ -1045,17 +1108,14 @@
                     const tr = document.createElement('tr');
                     headers.forEach(h => {
                         const td = document.createElement('td');
-                        // Priority: Form Data > Course Data
                         let val = app.formData[h.id];
                         
-                        // Average Calculation Logic
                         const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
                         if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
                             const totalVal = parseFloat(val);
                             const baseVal = Math.floor(totalVal / courseCount);
                             const remainder = totalVal % courseCount;
                             
-                            // Last course gets the remainder if any
                             if (idx === courses.length - 1) {
                                 val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
                             } else {
@@ -1069,7 +1129,6 @@
                             td.className = "text-indigo-600 font-bold bg-indigo-50"; 
                         }
                         
-                        // 修正 3: 預覽時顯示民國年
                         if (fieldDef && fieldDef.type === 'date' && fieldDef.inputFormat === 'ROC' && val && val.includes('-')) {
                              const parts = val.split('-');
                              if (parts.length === 3) {
@@ -1085,11 +1144,10 @@
                 });
             });
 
-            // Also show unassigned courses? Maybe just show what will be exported
             const unassigned = student.courses.filter(c => !c._app_id);
             unassigned.forEach(c => {
                 const tr = document.createElement('tr');
-                tr.className = "opacity-50"; // Dim unassigned rows
+                tr.className = "opacity-50"; 
                 headers.forEach(h => {
                     const td = document.createElement('td');
                     let val = c[h.id] || c[h.label] || "";
@@ -1100,11 +1158,6 @@
             });
 
             document.getElementById('preview-modal').classList.remove('hidden');
-        }
-
-        function updatePreview(card, app, student) {
-            // This function is kept but effectively unused now that we moved to modal preview
-            // Or we could update a hidden preview card if needed for other logic
         }
 
         function exportData() {
@@ -1118,7 +1171,6 @@
             }
 
             Object.values(groupedStudents).forEach(s => {
-                // Process Apps
                 s.applications.forEach(app => {
                     const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
                     const courseCount = courses.length;
@@ -1128,15 +1180,11 @@
                         headers.forEach(h => {
                             let val = app.formData[h.id];
                             
-                            // 修正 3: 匯出時也應用平均分配
                             const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
                             if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
-                                // FIX: Logic for distributing remainder
                                 const totalVal = parseFloat(val);
                                 const baseVal = Math.floor(totalVal / courseCount);
                                 const remainder = totalVal % courseCount;
-                                
-                                // Last course gets the remainder if any
                                 if (idx === courses.length - 1) {
                                     val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
                                 } else {
@@ -1146,13 +1194,10 @@
 
                             if (val === undefined || val === "") val = c[h.id] || c[h.label] || "";
                             
-                            // 修正 3: 匯出時檢查是否需轉民國年 (視需求，通常校庫匯出要民國年)
                             if (fieldDef && fieldDef.type === 'date' && fieldDef.outputFormat === 'ROC' && val && val.includes('-')) {
                                  const parts = val.split('-');
                                  if (parts.length === 3) {
                                      const roc = parseInt(parts[0]) - 1911;
-                                     // 校庫通常格式: 1140101 或 114/01/01，這裡依據 config 或預設
-                                     // 這裡簡單轉為 1140101 格式
                                      val = `${roc}${parts[1]}${parts[2]}`;
                                  }
                             }
@@ -1163,7 +1208,6 @@
                     });
                 });
 
-                // Process Unassigned
                 const unassigned = s.courses.filter(c => !c._app_id);
                 unassigned.forEach(c => {
                     const row = {};
@@ -1183,12 +1227,29 @@
             showToast('success', '匯出成功');
         }
 
-        // --- UI Utils ---
+        // --- UI Utils (Fixed: Proper Toast Dismiss) ---
+        let toastTimeout;
         function showToast(type, msg) {
             const el = document.getElementById('toast');
-            el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> ${msg}`;
-            el.className = `fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg transform transition-all duration-300 z-50 flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} translate-y-0 opacity-100`;
-            setTimeout(() => el.classList.add('translate-y-20', 'opacity-0'), 3000);
+            // Remove pointer-events-none to allow clicking close button
+            el.classList.remove('pointer-events-none');
+            
+            el.innerHTML = `
+                <i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> 
+                <span>${msg}</span>
+                <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
+            `;
+            el.className = `fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} toast-enter-active`;
+            
+            if(toastTimeout) clearTimeout(toastTimeout);
+            toastTimeout = setTimeout(() => hideToast(), 3000);
+        }
+
+        function hideToast(e) {
+            if(e) e.stopPropagation();
+            const el = document.getElementById('toast');
+            el.classList.replace('toast-enter-active', 'toast-exit-active');
+            el.classList.add('pointer-events-none');
         }
     </script>
 </body>
