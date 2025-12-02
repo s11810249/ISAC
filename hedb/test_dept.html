@@ -1014,7 +1014,7 @@
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
-            // --- 左側：未歸戶課程列表 (保持原樣，或視需要微調) ---
+            // --- 左側：未歸戶課程列表 ---
             const unassigned = student.courses.filter(c => !c._app_id);
             if (unassigned.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
@@ -1029,7 +1029,6 @@
                         </div>
                         <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
                     `;
-                    // 點擊卡片也能勾選
                     el.onclick = (e) => {
                         if(e.target.type !== 'checkbox') {
                             const cb = el.querySelector('input');
@@ -1045,7 +1044,7 @@
                 });
             }
 
-            // --- 右側：已建立的填報單 (大幅修改顯示方式) ---
+            // --- 右側：已建立的填報單 ---
             if (student.applications.length === 0) {
                 appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
             } else {
@@ -1053,21 +1052,21 @@
                     const el = document.createElement('div');
                     el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col gap-3';
                     
-                    // 1. 標題邏輯修改
+                    // 標題邏輯
                     const instName = app.formData['internship_institution_name'];
                     const titleText = instName ? `實習紀錄${idx+1}：${instName}` : `實習紀錄${idx+1}`;
                     
-                    // 2. 課程列表改為表格呈現
-                    // 收集課程資料
+                    // 產生課程表格 Row (使用 Helper 抓取欄位)
                     const courseRows = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
                         if (!c) return '';
                         
-                        const sem = c['semester'] || c['學期'] || '-';
-                        const code = c['course_code'] || c['選課代號'] || '-';
-                        const name = c['course_name'] || c['課程名稱'] || '未知課程';
-                        const type = c['course_type'] || c['修別'] || c['選必修'] || '-'; // 嘗試多種欄位名稱
-                        const credits = c['credits'] || c['學分'] || '-';
+                        const sem = getCourseValue(c, ['semester', '學期']);
+                        const code = getCourseValue(c, ['course_code', '選課代號']);
+                        const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']);
+                        // 增加多種關鍵字偵測
+                        const type = getCourseValue(c, ['course_type', '修別', '選必修', '必選修', '部別']); 
+                        const credits = getCourseValue(c, ['credits', '學分', '學分數']);
 
                         return `
                             <tr class="border-t border-slate-100 hover:bg-slate-50">
@@ -1191,48 +1190,70 @@
             
             const div = document.createElement('div');
             div.id = `content-${appId}`;
-            div.className = 'dynamic-tab-content max-w-5xl mx-auto space-y-6'; // 加入 space-y-6 增加間距
+            div.className = 'dynamic-tab-content max-w-5xl mx-auto space-y-6';
             
-            // --- 新增：頂部課程資訊區塊 (Info Block) ---
-            const infoBlock = document.createElement('div');
-            infoBlock.className = 'bg-white p-5 rounded-xl border border-slate-200 shadow-sm';
+            // --- 課程資訊區塊 (可收合) ---
+            // 使用 <details> 標籤實現收合，預設 open
+            const details = document.createElement('details');
+            details.className = 'group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden';
+            details.open = true; // 預設展開
             
-            // 產生課程表格 Row
+            // Summary (標題列)
+            // list-none 用於隱藏預設的三角形 (某些瀏覽器需要 CSS 輔助)
+            const summary = document.createElement('summary');
+            summary.className = 'flex items-center justify-between px-6 py-4 cursor-pointer bg-slate-50 hover:bg-slate-100 transition select-none list-none';
+            summary.style.listStyle = 'none'; // 強制隱藏預設 marker
+            summary.innerHTML = `
+                <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2">
+                    <i class="fas fa-info-circle text-primary"></i> 此紀錄包含之課程資訊
+                </h3>
+                <span class="transition-transform duration-300 group-open:rotate-180 text-slate-400">
+                    <i class="fas fa-chevron-down"></i>
+                </span>
+            `;
+            
+            // 隱藏 Chrome 預設的 details marker
+            const style = document.createElement('style');
+            style.innerHTML = 'summary::-webkit-details-marker { display: none; }';
+            details.appendChild(style);
+            details.appendChild(summary);
+
+            // Table Content
+            const tableContainer = document.createElement('div');
+            tableContainer.className = 'p-0 border-t border-slate-200';
+
             const courseRows = app.courseIds.map(cid => {
                 const c = student.courses.find(x => x._internal_id === cid);
                 if (!c) return '';
                 
-                const sem = c['semester'] || c['學期'] || '-';
-                const code = c['course_code'] || c['選課代號'] || '-';
-                const name = c['course_name'] || c['課程名稱'] || '未知課程';
-                const type = c['course_type'] || c['修別'] || c['選必修'] || '-';
-                const credits = c['credits'] || c['學分'] || '-';
+                // 使用 Helper 抓取值
+                const sem = getCourseValue(c, ['semester', '學期']);
+                const code = getCourseValue(c, ['course_code', '選課代號']);
+                const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']);
+                const type = getCourseValue(c, ['course_type', '修別', '選必修', '必選修']);
+                const credits = getCourseValue(c, ['credits', '學分', '學分數']);
 
                 return `
                     <tr class="border-t border-slate-100 hover:bg-slate-50">
-                        <td class="px-3 py-2 text-center text-slate-600">${sem}</td>
-                        <td class="px-3 py-2 font-mono text-slate-600">${code}</td>
-                        <td class="px-3 py-2 font-bold text-slate-800">${name}</td>
-                        <td class="px-3 py-2 text-center text-slate-600">${type}</td>
-                        <td class="px-3 py-2 text-center text-slate-600">${credits}</td>
+                        <td class="px-4 py-2 text-center text-slate-600">${sem}</td>
+                        <td class="px-4 py-2 font-mono text-slate-600">${code}</td>
+                        <td class="px-4 py-2 font-bold text-slate-800">${name}</td>
+                        <td class="px-4 py-2 text-center text-slate-600">${type}</td>
+                        <td class="px-4 py-2 text-center text-slate-600">${credits}</td>
                     </tr>
                 `;
             }).join('');
 
-            infoBlock.innerHTML = `
-                <div class="mb-3 flex items-center gap-2 text-slate-700">
-                    <i class="fas fa-info-circle text-primary"></i>
-                    <h3 class="font-bold text-sm">此紀錄包含之課程資訊</h3>
-                </div>
-                <div class="overflow-x-auto border border-slate-200 rounded-lg">
+            tableContainer.innerHTML = `
+                <div class="overflow-x-auto">
                     <table class="w-full text-sm text-left">
                         <thead class="bg-slate-50 text-slate-500 font-bold">
                             <tr>
-                                <th class="px-3 py-2 text-center w-16">學期</th>
-                                <th class="px-3 py-2 w-24">選課代號</th>
-                                <th class="px-3 py-2">課程名稱</th>
-                                <th class="px-3 py-2 text-center w-20">課程屬性</th>
-                                <th class="px-3 py-2 text-center w-16">學分</th>
+                                <th class="px-4 py-2 text-center w-20">學期</th>
+                                <th class="px-4 py-2 w-28">選課代號</th>
+                                <th class="px-4 py-2">課程名稱</th>
+                                <th class="px-4 py-2 text-center w-24">課程屬性</th>
+                                <th class="px-4 py-2 text-center w-20">學分</th>
                             </tr>
                         </thead>
                         <tbody class="bg-white">
@@ -1241,12 +1262,13 @@
                     </table>
                 </div>
             `;
-            
-            div.appendChild(infoBlock);
+            details.appendChild(tableContainer);
+            div.appendChild(details);
 
-            // --- 原有的表單區塊 ---
+            // --- 表單區塊 (恢復舊版全寬樣式) ---
             const formContainer = document.createElement('div');
-            formContainer.className = 'form-body bg-white p-6 rounded-xl border border-slate-200 shadow-sm'; // 增加一點樣式讓它看起來像卡片
+            // 移除 bg-white, shadow, border 等樣式，只保留 layout 必要的
+            formContainer.className = 'form-body pt-2'; 
             
             renderFields(formContainer, app);
             div.appendChild(formContainer);
@@ -1932,6 +1954,24 @@
             el.classList.replace('toast-enter-active', 'toast-exit-active');
             el.classList.add('pointer-events-none');
         }
+
+        // --- Helper: 寬鬆搜尋課程欄位值 ---
+        function getCourseValue(courseObj, keys) {
+            // 優先找完全符合的 key
+            for (const k of keys) {
+                if (courseObj[k] !== undefined && courseObj[k] !== null && courseObj[k] !== "") 
+                    return courseObj[k];
+            }
+            // 若找不到，嘗試模糊比對 (忽略大小寫與空白)
+            const rowKeys = Object.keys(courseObj);
+            for (const k of keys) {
+                const target = k.toLowerCase();
+                const foundKey = rowKeys.find(rk => rk.toLowerCase().includes(target) || rk.replace(/\s/g,'') === target);
+                if (foundKey && courseObj[foundKey]) return courseObj[foundKey];
+            }
+            return '-';
+        }
+
     </script>
 </body>
 </html>
