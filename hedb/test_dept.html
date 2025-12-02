@@ -344,6 +344,20 @@
             position: absolute; top: 4px; right: 4px; color: #94a3b8; cursor: pointer; padding: 2px;
         }
         .selected-item-chip .remove-btn:hover { color: #ef4444; }
+        
+        /* Toggle Checkbox Label & Chip Style */
+        .col-toggle-label, .toggle-chip { 
+            display: inline-flex; align-items: center; gap: 4px; 
+            background: white; padding: 2px 8px; 
+            border: 1px solid #cbd5e1; border-radius: 4px; 
+            cursor: pointer; user-select: none; font-size: 12px;
+            transition: all 0.2s;
+        }
+        .col-toggle-label:hover, .toggle-chip:hover { border-color: #64748b; background-color: #f8fafc; }
+        .col-toggle-label input:checked + span, .toggle-chip input:checked + span { color: #002E5D; font-weight: bold; }
+        
+        /* 隱藏預設 Checkbox 改用自定義顏色 (選用，讓介面更統一) */
+        .toggle-chip input[type="checkbox"] { accent-color: #002E5D; }
 
     </style>
 </head>
@@ -3842,6 +3856,7 @@
         };
 
         // 1. 渲染欄位選擇器 (參考 Preview Modal 設計)
+        // 1. 渲染欄位選擇器 (參考 Preview Modal 設計)
         function renderGridColumnPicker() {
             const container = document.getElementById('grid-column-picker-container');
             if(!container) return;
@@ -3852,9 +3867,6 @@
                 .filter(f => !['course_id', '_internal_id'].includes(f.id))
                 .sort((a,b) => (a.order||999)-(b.order||999));
                 
-            // 加入預設欄位 (學號/姓名) 若 config 沒定義
-            // 這裡簡化：直接用 allCols，因為 renderGlobalGrid 會處理預設值
-            
             const total = allCols.length;
             const currentHidden = gridState.hiddenCols.length;
             const currentVisible = total - currentHidden;
@@ -3862,45 +3874,50 @@
             container.innerHTML = '';
 
             const details = document.createElement('details');
-            details.className = "group relative"; // relative for dropdown positioning
+            details.className = "group relative"; 
             
             const summary = document.createElement('summary');
-            summary.className = "flex items-center gap-2 cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded text-sm hover:bg-slate-50 transition select-none text-slate-600 list-none";
+            // ★★★ 修改：使用與預覽視窗一致的 Summary 樣式 (含 Badge) ★★★
+            summary.className = "flex items-center gap-3 cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition select-none text-slate-600 list-none shadow-sm";
             summary.innerHTML = `
-                <i class="fas fa-sliders-h"></i>
-                <span>顯示欄位 (${currentVisible}/${total})</span>
-                <i class="fas fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform"></i>
+                <div class="flex items-center gap-2 font-bold text-sm">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>顯示欄位</span>
+                    <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full border border-slate-200 group-open:bg-slate-200 transition">
+                        ${currentVisible} / ${total}
+                    </span>
+                </div>
+                <i class="fas fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform duration-300"></i>
             `;
-            // 隱藏預設三角形
             summary.style.listStyle = 'none';
 
             const dropdown = document.createElement('div');
-            dropdown.className = "absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50 hidden group-open:block";
+            dropdown.className = "absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50 hidden group-open:block animate-fade-in-down";
             
-            // 全選/全不選按鈕
+            // ★★★ 修改：使用與預覽視窗一致的按鈕 (含 Icon) ★★★
             const actions = document.createElement('div');
             actions.className = "flex gap-2 mb-3 pb-3 border-b border-slate-100";
             actions.innerHTML = `
-                <button type="button" id="grid-show-all" class="text-xs px-2 py-1 rounded hover:bg-slate-100 text-primary font-bold transition flex-1">
-                    全部顯示
+                <button type="button" id="grid-show-all" class="text-xs px-3 py-1.5 rounded hover:bg-blue-50 text-primary font-bold transition flex-1 border border-transparent hover:border-blue-100">
+                    <i class="fas fa-check-double mr-1"></i> 全部顯示
                 </button>
-                <button type="button" id="grid-hide-all" class="text-xs px-2 py-1 rounded hover:bg-slate-100 text-slate-500 transition flex-1">
-                    全部隱藏
+                <button type="button" id="grid-hide-all" class="text-xs px-3 py-1.5 rounded hover:bg-slate-100 text-slate-500 transition flex-1 border border-transparent hover:border-slate-200">
+                    <i class="fas fa-times mr-1"></i> 全部隱藏
                 </button>
             `;
             dropdown.appendChild(actions);
 
             // 欄位開關列表
             const tagsContainer = document.createElement('div');
-            tagsContainer.className = "flex flex-wrap gap-2 max-h-[300px] overflow-y-auto custom-scroll";
+            tagsContainer.className = "flex flex-wrap gap-2 max-h-[300px] overflow-y-auto custom-scroll p-1";
 
             allCols.forEach(f => {
                 const lbl = document.createElement('label');
-                lbl.className = 'col-toggle-label text-xs'; 
+                lbl.className = 'toggle-chip'; // ★ 使用新樣式
                 const checked = !gridState.hiddenCols.includes(f.id);
                 
                 lbl.innerHTML = `
-                    <input type="checkbox" class="accent-primary" onchange="toggleGridCol('${f.id}')" ${checked ? 'checked' : ''}>
+                    <input type="checkbox" onchange="toggleGridCol('${f.id}')" ${checked ? 'checked' : ''}>
                     <span>${f.label}</span>
                 `;
                 tagsContainer.appendChild(lbl);
@@ -3925,7 +3942,7 @@
                 renderGlobalGrid();
             };
             
-            // 點擊外部關閉選單 (Optional)
+            // 點擊外部關閉選單
             document.addEventListener('click', function closeMenu(e) {
                 if (!details.contains(e.target)) {
                     details.removeAttribute('open');
