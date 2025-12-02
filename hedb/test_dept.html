@@ -634,7 +634,7 @@
     </div>
     
     <!-- Custom Confirmation Modal -->
-    <div id="confirm-modal" class="fixed inset-0 z-[110] hidden flex items-center justify-center modal-overlay p-4">
+    <div id="confirm-modal" class="fixed inset-0 z-[140] hidden flex items-center justify-center modal-overlay p-4">
         <div class="confirm-modal-content">
             <div class="mb-4 text-red-500">
                 <i class="fas fa-exclamation-triangle text-4xl"></i>
@@ -1020,9 +1020,11 @@
             // 解決問題：完全依照後台 order 排序
             // 解決問題：移除強制加入學號姓名的 fallback，只顯示 config 有設定的欄位
             const allColumns = fields
-                .filter(f => true) // 顯示所有 config 定義的欄位 (含系統與填報)
-                .filter(f => !['course_id', '_internal_id'].includes(f.id)) // 排除純技術用 ID，保留 student_id (如果 config 有)
-                .sort((a,b) => (a.order || 999) - (b.order || 999));
+                .filter(f => true) 
+                .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
+                /* ★★★ 修改開始：修正 0 被視為 false 導致排序錯誤的問題 ★★★ */
+                .sort((a,b) => (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999));
+                /* ★★★ 修改結束 ★★★ */
 
             if (allColumns.length === 0) {
                 thead.innerHTML = '<tr><th class="p-4 text-center text-slate-400">無顯示欄位設定</th></tr>';
@@ -1031,13 +1033,6 @@
 
             // --- 2. 建立表頭 ---
             let trHead = document.createElement('tr');
-            
-            // 加入 Checkbox 表頭 (歸戶用)
-            let thCheck = document.createElement('th');
-            thCheck.style.width = "40px";
-            thCheck.className = "text-center bg-slate-100 border-r border-slate-200 p-0";
-            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)" class="accent-primary cursor-pointer">`;
-            trHead.appendChild(thCheck);
 
             allColumns.forEach(col => {
                 const th = document.createElement('th');
@@ -1073,13 +1068,6 @@
                         if(app) appData = app.formData;
                     }
 
-                    // A. Checkbox Cell
-                    const tdCheck = document.createElement('td');
-                    tdCheck.className = "text-center bg-slate-50 border-r border-slate-200 p-0";
-                    const isChecked = gridSelection.has(course._internal_id);
-                    tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk accent-primary cursor-pointer" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this)">`;
-                    tr.appendChild(tdCheck);
-
                     // B. Data Cells
                     allColumns.forEach(f => {
                         const td = document.createElement('td');
@@ -1112,22 +1100,46 @@
                                 input = document.createElement('input');
                                 input.type = "text";
                                 input.value = val || "";
+                                
+                                /* ★★★ 新增：日期欄位自動格式化邏輯 ★★★ */
+                                if (f.type === 'date' && f.inputFormat === 'ROC') {
+                                    input.placeholder = "yyy/mm/dd"; // 提示格式
+                                    input.addEventListener('change', (e) => {
+                                        // 自動將純數字轉為日期格式 (1140101 -> 114/01/01)
+                                        let v = e.target.value.trim().replace(/\//g, '');
+                                        if (!isNaN(v) && v.length >= 6) {
+                                            if (v.length === 7) { // 1140101
+                                                e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
+                                            } else if (v.length === 6) { // 990101
+                                                e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
+                                            }
+                                        }
+                                        // 格式化後再觸發原本的 handleGridChange
+                                        handleGridChange(e.target, student, course, f);
+                                    });
+                                }
+                                /* ★★★ 新增結束 ★★★ */
                             }
                             
                             input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
                             input.dataset.field = f.id;
-                            input.title = val || ""; // Hover 提示
+                            input.title = val || ""; 
                             
                             if(appId) {
                                 input.classList.add(`app-input-${appId}-${f.id}`);
-                                td.classList.add('is-linked'); // 藍色背景提示已歸戶
+                                td.classList.add('is-linked'); 
                             } else {
                                 td.classList.add('is-raw');
                             }
 
                             // 綁定事件
-                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                            input.oninput = (e) => { e.target.title = e.target.value; }; // 即時更新 Title
+                            /* ★★★ 修改：若已經是日期欄位，上面的 addEventListener 會處理，這裡改為通用綁定 ★★★ */
+                            if (!(f.type === 'date' && f.inputFormat === 'ROC')) {
+                                input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                            }
+                            /* ★★★ 修改結束 ★★★ */
+                            
+                            input.oninput = (e) => { e.target.title = e.target.value; }; 
 
                             td.appendChild(input);
                         }
