@@ -209,7 +209,7 @@
         </div>
         <div class="flex items-center gap-3">
             
-            <!-- 修正 1: 下拉式字體選擇 -->
+            <!-- Font Size Toggle -->
             <div class="relative group">
                 <select id="font-size-select" onchange="setFontSize(this.value)" class="pl-3 pr-8 py-2 bg-slate-100 border-none rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary outline-none appearance-none hover:bg-slate-200 transition">
                     <option value="14px">字體: 標準 (A)</option>
@@ -400,6 +400,7 @@
                 </div>
                 <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
             </div>
+            <!-- 修改 2: 增加 overflow-x-auto 讓表格可水平滑動 -->
             <div class="flex-grow overflow-auto custom-scroll p-0 relative">
                 <table class="excel-table w-full relative">
                     <thead class="sticky top-0 z-10"><tr id="modal-preview-head"></tr></thead>
@@ -412,7 +413,7 @@
         </div>
     </div>
 
-    <!-- Toast Notification -->
+    <!-- Toast Notification (Fixed) -->
     <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
         <i id="toast-icon" class="fas fa-info-circle"></i>
         <span id="toast-msg">Notification</span>
@@ -431,7 +432,9 @@
         let currentStudentId = null; 
         let activeYear = "";         
         
+        // Sorting State
         let sortConfig = { key: 'id', direction: 'asc' }; 
+
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
 
         // --- Initialization ---
@@ -448,7 +451,10 @@
                 departmentData = deptRes;
                 deptMasterData = masterRes;
 
+                // Setup Year Selector
                 const yearSelect = document.getElementById('year-select');
+                
+                // 修正 2: 保持 "請選擇學年度" 為預設，不自動載入
                 yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
                 
                 if (globalConfig.academicYears && globalConfig.academicYears.length > 0) {
@@ -490,6 +496,7 @@
                 if (!res.ok) throw new Error("Template not found");
                 currentYearConfig = await res.json();
                 
+                // If we have data, re-render current view
                 if (currentStudentId) {
                     selectStudent(currentStudentId); 
                 }
@@ -515,7 +522,7 @@
                     if (jsonData.length === 0) throw new Error("檔案無內容");
                     
                     processUploadedData(jsonData);
-                    event.target.value = ''; 
+                    event.target.value = ''; // Reset
                 } catch (err) {
                     showToast('error', `讀取失敗: ${err.message}`);
                 }
@@ -527,6 +534,7 @@
             allRawData = data;
             groupedStudents = {};
 
+            // 嘗試從資料中偵測學年度並自動套用
             if (data.length > 0) {
                 let detectedYear = data[0]['school_year'] || data[0]['學年'];
                 if (detectedYear) {
@@ -541,9 +549,11 @@
                 }
             }
 
+            // Populate Filters
             const courseDepts = new Set();
             const studentDepts = new Set();
 
+            // Group by Student ID
             allRawData.forEach((row, idx) => {
                 const sid = row['student_id'] || row['學號'] || row['id'];
                 const sname = row['student_name'] || row['姓名'] || row['name'];
@@ -577,10 +587,11 @@
                 groupedStudents[sid].courses.push(row);
             });
 
+            // Render Filter Options
             const renderOpts = (elId, set) => {
                 const el = document.getElementById(elId);
                 const current = el.value;
-                el.innerHTML = el.options[0].outerHTML; 
+                el.innerHTML = el.options[0].outerHTML; // Keep first option
                 Array.from(set).sort().forEach(v => {
                     el.innerHTML += `<option value="${v}">${v}</option>`;
                 });
@@ -605,6 +616,7 @@
 
             let students = Object.values(groupedStudents);
             
+            // Filter
             students = students.filter(s => {
                 const matchText = s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term);
                 if (!matchText) return false;
@@ -621,6 +633,7 @@
                 return true;
             });
             
+            // Sorting logic
             students.sort((a, b) => {
                 let valA = a[sortConfig.key];
                 let valB = b[sortConfig.key];
@@ -694,12 +707,13 @@
         // --- Logic: Student Workspace ---
         function selectStudent(sid) {
             currentStudentId = sid;
-            renderStudentList(); 
+            renderStudentList(); // Update active highlight
             
             const student = groupedStudents[sid];
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
+            // Header Info
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
@@ -712,6 +726,7 @@
 
             renderTabs(student);
             
+            // If student has apps, show first one, else show settings
             if (appCount > 0) switchTab(student.applications[0].id);
             else switchTab('settings');
             
@@ -720,6 +735,7 @@
 
         function renderTabs(student) {
             const container = document.getElementById('tabs-container');
+            // Keep Settings Tab
             container.innerHTML = `<button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>`;
             
             student.applications.forEach((app, idx) => {
@@ -727,6 +743,8 @@
                 btn.className = 'tab-btn';
                 btn.dataset.tab = app.id;
                 btn.onclick = () => switchTab(app.id);
+                
+                // Try to find a name for the tab
                 const name = app.formData['internship_institution_name'] || `實習 ${idx+1}`;
                 btn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${name}`;
                 container.appendChild(btn);
@@ -734,6 +752,7 @@
         }
 
         function switchTab(tabId) {
+            // UI Toggle
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
             if(btn) btn.classList.add('active');
@@ -746,11 +765,14 @@
                 if(currentStudentId) renderSettingsTab(groupedStudents[currentStudentId]);
             } else {
                 document.getElementById('dynamic-tabs-area').style.display = 'block';
+                // Find or Create Tab Content
                 let content = document.getElementById(`content-${tabId}`);
                 if (!content) {
                     content = createApplicationContent(tabId);
                     document.getElementById('dynamic-tabs-area').appendChild(content);
                 }
+                
+                // Hide all dynamic contents first
                 document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
                 content.style.display = 'block';
             }
@@ -763,6 +785,7 @@
             listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
 
+            // Unassigned Courses
             const unassigned = student.courses.filter(c => !c._app_id);
             if (unassigned.length === 0) {
                 listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
@@ -792,12 +815,14 @@
                 });
             }
 
+            // Existing Applications
             if (student.applications.length === 0) {
                 appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
             } else {
                 student.applications.forEach((app, idx) => {
                     const el = document.createElement('div');
                     el.className = 'bg-white border border-slate-200 rounded-lg p-4 flex justify-between items-start shadow-sm';
+                    
                     const name = app.formData['internship_institution_name'] || `實習填報單 ${idx+1}`;
                     const courses = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
@@ -828,9 +853,13 @@
 
             const ids = Array.from(checkboxes).map(cb => cb.value);
             const appId = 'app_' + Date.now();
+            
+            // Auto-fill from first course
             const firstC = student.courses.find(c => c._internal_id === ids[0]);
             const initData = {};
             
+            // Map common fields from course data to form data if they match
+            // Simple heuristic: if field ID exists in course data, copy it
             if (currentYearConfig.fields) {
                 currentYearConfig.fields.forEach(f => {
                     if (!CORE_FIELDS.includes(f.id) && !f.isSystem) {
@@ -840,22 +869,31 @@
                 });
             }
 
-            const newApp = { id: appId, courseIds: ids, formData: initData };
+            const newApp = {
+                id: appId,
+                courseIds: ids,
+                formData: initData
+            };
+
+            // Link courses
             ids.forEach(cid => {
                 const c = student.courses.find(x => x._internal_id === cid);
                 if(c) c._app_id = appId;
             });
 
             student.applications.push(newApp);
+            
             renderTabs(student);
             renderSettingsTab(student);
-            
+            // 修正 2: 建立填報單後，不自動跳轉，保留在歸戶設定頁面
+            // switchTab(appId); 
             renderStudentList(); 
             showToast('success', '已建立填報單，可繼續建立其他填報單或切換上方頁籤進行填報');
         }
 
         function deleteApplication(appId) {
             if (!confirm('確定要解除此歸戶嗎？填寫的資料將會遺失。')) return;
+            
             const student = groupedStudents[currentStudentId];
             const idx = student.applications.findIndex(a => a.id === appId);
             if (idx === -1) return;
@@ -867,6 +905,8 @@
             });
 
             student.applications.splice(idx, 1);
+            
+            // Remove DOM
             const dom = document.getElementById(`content-${appId}`);
             if(dom) dom.remove();
 
@@ -876,6 +916,7 @@
             showToast('success', '歸戶已解除');
         }
 
+        // --- Logic: Dynamic Form Generation ---
         function createApplicationContent(appId) {
             const student = groupedStudents[currentStudentId];
             const app = student.applications.find(a => a.id === appId);
@@ -884,6 +925,8 @@
             div.id = `content-${appId}`;
             div.className = 'dynamic-tab-content max-w-5xl mx-auto';
             
+            // 修正 1: 移除卡片外框，直接使用透明背景
+            // 移除 bg-white, border 等樣式，只保留邊距
             const formContainer = document.createElement('div');
             formContainer.className = 'form-body';
             
@@ -893,12 +936,13 @@
             return div;
         }
 
-        // 修正 2: 仿西元樣式的民國日期選擇器 (即時修正)
+        // 修正 4: 自製民國年日期選擇器 (可選 + 可手輸，Pop-over Style)
         function createRocDatePicker(appId, fieldId, initialValue, onChange) {
             const wrapper = document.createElement('div');
             wrapper.className = 'date-picker-wrapper';
-            wrapper.id = `roc-wrapper-${appId}-${fieldId}`;
+            wrapper.id = `roc-container-${appId}-${fieldId}`;
 
+            // Main Input Group (Text + Button)
             const inputGroup = document.createElement('div');
             inputGroup.className = 'date-input-group';
             
@@ -906,9 +950,9 @@
             input.type = 'text';
             input.className = 'input-stylish';
             input.placeholder = '例: 114/01/01';
-            input.maxLength = 10; 
+            input.maxLength = 10; // 114/01/01 is 9 chars, allowing buffer
             input.style.flex = "1";
-            input.style.paddingRight = "35px"; 
+            input.style.paddingRight = "35px"; // Space for icon
 
             const trigger = document.createElement('div');
             trigger.className = 'date-picker-trigger';
@@ -921,13 +965,16 @@
             inputGroup.appendChild(input);
             inputGroup.appendChild(trigger);
 
+            // Calendar Popover
             const popover = document.createElement('div');
             popover.className = 'calendar-popover';
             
+            // Popover State
             let currentYear = new Date().getFullYear();
-            let currentMonth = new Date().getMonth(); 
-            let selectedDate = null; 
+            let currentMonth = new Date().getMonth(); // 0-11
+            let selectedDate = null; // Date Obj
 
+            // Render Calendar
             const renderCalendar = () => {
                 const rocYear = currentYear - 1911;
                 const monthName = currentMonth + 1;
@@ -946,13 +993,19 @@
                 const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
                 const today = new Date();
 
+                // Empty cells
                 for(let i=0; i<firstDay; i++) html += `<div class="cal-day empty"></div>`;
 
+                // Days
                 for(let d=1; d<=daysInMonth; d++) {
                     let classes = 'cal-day';
+                    
+                    // Check today
                     if(currentYear === today.getFullYear() && currentMonth === today.getMonth() && d === today.getDate()) {
                         classes += ' today';
                     }
+                    
+                    // Check selected
                     if(selectedDate && currentYear === selectedDate.getFullYear() && currentMonth === selectedDate.getMonth() && d === selectedDate.getDate()) {
                         classes += ' selected';
                     }
@@ -960,9 +1013,10 @@
                     html += `<div class="${classes}" data-day="${d}">${d}</div>`;
                 }
 
-                html += `</div>`; 
+                html += `</div>`; // Close grid
                 popover.innerHTML = html;
 
+                // Bind Events
                 popover.querySelector('#prev-month').onclick = (e) => { e.stopPropagation(); currentMonth--; if(currentMonth<0){currentMonth=11;currentYear--;} renderCalendar(); };
                 popover.querySelector('#next-month').onclick = (e) => { e.stopPropagation(); currentMonth++; if(currentMonth>11){currentMonth=0;currentYear++;} renderCalendar(); };
                 
@@ -975,11 +1029,13 @@
                         const mm = String(currentMonth + 1).padStart(2, '0');
                         const dd = String(d).padStart(2, '0');
                         
+                        // Format: YYY/MM/DD
                         const formatted = `${rocY}/${mm}/${dd}`;
                         input.value = formatted;
                         
+                        // Convert to standard YYYY-MM-DD for storage
                         const stdVal = `${currentYear}-${mm}-${dd}`;
-                        onChange(stdVal); 
+                        onChange(stdVal); // Save logic
                         
                         popover.classList.remove('active');
                     };
@@ -988,22 +1044,27 @@
 
             const toggleCalendar = () => {
                 const isActive = popover.classList.contains('active');
-                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); 
+                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); // Close others
                 
                 if(!isActive) {
+                    // Try to parse current input for initial calendar view
                     if(input.value) {
+                        // Support 114/01/01 or 1140101
                         let y, m, d;
                         const val = input.value.replace(/\//g, '');
-                        if(val.length >= 6) { 
+                        if(val.length >= 6) { // Loose check
+                            // Try to parse ROC
                             if(val.includes('-')) {
+                                // Assume YYYY-MM-DD standard if dash present (rare in display but possible)
                                 const p = val.split('-');
                                 y = parseInt(p[0]); m = parseInt(p[1])-1; d = parseInt(p[2]);
                             } else {
+                                // Assume ROC string
                                 if(val.length === 7) {
                                     y = parseInt(val.substring(0,3)) + 1911;
                                     m = parseInt(val.substring(3,5)) - 1;
                                     d = parseInt(val.substring(5,7));
-                                } else if (val.length === 6) { 
+                                } else if (val.length === 6) { // 990101
                                     y = parseInt(val.substring(0,2)) + 1911;
                                     m = parseInt(val.substring(2,4)) - 1;
                                     d = parseInt(val.substring(4,6));
@@ -1021,25 +1082,36 @@
                 }
             };
 
+            // Input Handling (Manual Typing)
             input.onchange = (e) => {
                 const val = e.target.value.trim();
+                // Validate and Convert
+                // Accepted formats: 114/01/01, 1140101
                 const cleanVal = val.replace(/\//g, '');
                 
                 if (cleanVal.length === 7 && !isNaN(cleanVal)) {
                     const rocY = parseInt(cleanVal.substring(0,3));
                     const mm = cleanVal.substring(3,5);
                     const dd = cleanVal.substring(5,7);
+                    
+                    // Format display
                     input.value = `${rocY}/${mm}/${dd}`;
+                    
+                    // Save standard
                     const westY = rocY + 1911;
                     onChange(`${westY}-${mm}-${dd}`);
                 } else if (val === "") {
                     onChange("");
                 } else {
+                    // Invalid or unknown format, save as is but might break logic
+                    // Better to clear or warn, but let's keep raw
                     onChange(val); 
                 }
             };
 
+            // Initial Value Display Logic
             if(initialValue) {
+                // Should be YYYY-MM-DD from storage
                 if(initialValue.includes('-')) {
                     const p = initialValue.split('-');
                     if(p.length === 3) {
@@ -1053,6 +1125,7 @@
                 }
             }
 
+            // Close on click outside
             document.addEventListener('click', (e) => {
                 if(!wrapper.contains(e.target)) {
                     popover.classList.remove('active');
@@ -1063,40 +1136,80 @@
             wrapper.appendChild(popover);
             return wrapper;
         }
+        
+        // 【新增】中文數字轉換輔助函式 (處理一到九十九)
+        function cnToNum(cnStr) {
+            const units = { '': 1, '十': 10 };
+            const nums = { '一': 1, '二': 2, '三': 3, '四': 4, '五': 5, '六': 6, '七': 7, '八': 8, '九': 9, '零': 0 };
+            let result = 0;
+            let temp = 0;
 
+            for (let i = 0; i < cnStr.length; i++) {
+                const char = cnStr[i];
+                if (nums[char] !== undefined) {
+                    temp = nums[char];
+                } else if (units[char] === 10) {
+                    // 處理 '十' 字。如 '三十七' (3*10) + 7 或 '十七' (1*10) + 7
+                    result += (temp || 1) * units[char];
+                    temp = 0;
+                }
+            }
+            result += temp;
+            return result;
+        }
+
+
+        // 【修改】 processAddress 函式 (替換原有的)
         function processAddress(inputEl, settings) {
             let val = inputEl.value;
             if(!val) return;
 
+            // 1. 全形轉半形 (toHalf)
             if(settings.toHalf) {
                 val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
-                         .replace(/　/g, " ");
+                        .replace(/　/g, " ");
             }
 
+            // 2. 強制台轉臺 (forceTai) - 修改為全域替換
             if(settings.forceTai) {
-                if(val.startsWith('台')) {
-                    val = '臺' + val.substring(1);
-                }
+                // 替換字串中所有出現的 '台' -> '臺'
+                val = val.replace(/台/g, '臺'); 
             }
 
+            // 3. 拉丁文轉英文 (latinToEng)
             if(settings.latinToEng) {
-                 val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             }
 
+            // 4. 智慧路名數字轉換 (smartFormat) - 處理複合數字
             if(settings.smartFormat) {
-                const cnNums = {'一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9, '十':10};
-                const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街'];
+                // 中文數字，處理 '一'到'九十九'
+                const cnNumsPattern = '(一|二|三|四|五|六|七|八|九|十)+';
+                const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街', '巷', '弄', '號', '樓'];
+                
                 keywords.forEach(k => {
-                    const regex = new RegExp(`([一二三四五六七八九十]+)${k}`, 'g');
+                    // 匹配中文數字 + 關鍵字 (例如: 三十七段)
+                    const regex = new RegExp(`(${cnNumsPattern})${k}`, 'g');
+                    
                     val = val.replace(regex, (match, p1) => {
-                        let num = cnNums[p1];
-                        return num ? `${num}${k}` : match;
+                        // p1: 匹配到的中文數字字串 (例如: 三十七)
+                        let num = cnToNum(p1); 
+                        // 檢查是否在保護名單 (Whitelist) 內，避免像 "五權" 這種地名被轉換
+                        const isProtected = (globalConfig.addressRules && globalConfig.addressRules.protected) ? 
+                                            globalConfig.addressRules.protected.includes(match.replace(p1, '').trim()) : false;
+                        
+                        if (num > 0 && !isProtected) {
+                            return `${num}${k}`;
+                        }
+                        return match;
                     });
                 });
             }
 
+            // 更新值
             if(val !== inputEl.value) {
                 inputEl.value = val;
+                // 觸發 change 事件以保存到 formData
                 inputEl.dispatchEvent(new Event('change'));
             }
         }
@@ -1226,6 +1339,7 @@
             setTimeout(() => evaluateLogic(app), 0);
         }
 
+        // --- Logic: Visibility (Locked) & Filters ---
         function evaluateLogic(app) {
             const fields = currentYearConfig.fields || [];
             
@@ -1234,7 +1348,7 @@
                     const depVal = app.formData[f.visibilityRule.dep];
                     const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
                     const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
-                    const rocContainer = document.getElementById(`roc-wrapper-${app.id}-${f.id}`);
+                    const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
                     
                     if (wrapper) {
                         let shouldEnable = f.visibilityRule.action === 'show' 
@@ -1284,6 +1398,7 @@
             });
         }
 
+        // --- Logic: Preview & Export ---
         function openPreviewModal() {
             if (!currentStudentId) return;
             const student = groupedStudents[currentStudentId];
@@ -1431,9 +1546,11 @@
             showToast('success', '匯出成功');
         }
 
+        // --- UI Utils (Fixed: Proper Toast Dismiss) ---
         let toastTimeout;
         function showToast(type, msg) {
             const el = document.getElementById('toast');
+            // Remove pointer-events-none to allow clicking close button
             el.classList.remove('pointer-events-none');
             
             el.innerHTML = `
