@@ -1018,16 +1018,7 @@
                 )
                 .sort((a, b) => parseInt(a.order || 999) - parseInt(b.order || 999));
 
-            // --- 2. 建立表頭 ---
-            let trHead = document.createElement('tr');
             
-            // Checkbox
-            let thCheck = document.createElement('th');
-            thCheck.style.width = "40px";
-            thCheck.className = "text-center";
-            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)">`;
-            trHead.appendChild(thCheck);
-
             // System Columns
             [...displayStudentCols, ...sysCourseFields].forEach(col => {
                 const th = document.createElement('th');
@@ -1065,13 +1056,6 @@
                     } else {
                         rowContext = course;
                     }
-
-                    // A. Checkbox Cell
-                    const tdCheck = document.createElement('td');
-                    tdCheck.className = "text-center bg-slate-50 border-r border-slate-200";
-                    const isChecked = gridSelection.has(course._internal_id);
-                    tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this, '${student.id}')">`;
-                    tr.appendChild(tdCheck);
 
                     // B. System Columns
                     [...displayStudentCols, ...sysCourseFields].forEach(col => {
@@ -3549,7 +3533,7 @@
             showToast('success', '歸戶已解除');
             logChange('DeleteApp', appId, 'Existing', 'Deleted from Grid Modal', studentId);
         }
-        
+
     </script>
 </body>
 </html>
