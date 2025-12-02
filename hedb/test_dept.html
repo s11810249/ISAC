@@ -314,20 +314,21 @@
         
         /* 6. Grid Toggle Strip (開合按鈕) - 顏色同步修正 */
         #grid-sidebar-toggle {
-            width: 12px; /* 保持與 App 模式一致的寬度，或者您希望的寬度 */
-            background: #f1f5f9; /* 使用與 App 模式一致的背景色 */
+            width: 16px; /* 稍微加寬 */
+            background: #f1f5f9; 
             border-right: 1px solid #e2e8f0; 
-            /* border-left: 1px solid #fff;  <-- 如果有這行，建議移除，避免視覺變窄 */
+            border-left: 1px solid #fff; /* 增加左側邊線，提升立體感 */
             cursor: pointer;
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            z-index: 50; /* 提高層級，確保浮在表格之上 */
+            z-index: 50; /* 提高層級，確保不被蓋住 */
+            flex-shrink: 0; /* ★★★ 關鍵：防止被壓縮 ★★★ */
             transition: background 0.2s;
-            position: relative; /* 確保 z-index 生效 */
+            position: relative;
         }
-        #grid-sidebar-toggle:hover { background-color: #e2e8f0; }
-        #grid-sidebar-toggle i { 
+        #grid-sidebar-toggle:hover { background: #e2e8f0; }
+        #grid-sidebar-toggle i { color: #94a3b8; font-size: 10px; }
             color: #94a3b8; /* 修改: 由 #64748b 改為 #94a3b8 (Slate-400) */
             font-size: 10px; /* 修改: 由 12px 改為 10px */
             transition: transform 0.3s;
@@ -974,33 +975,27 @@
             const btnGrid = document.getElementById('btn-view-grid');
 
             if (mode === 'app') {
-                // 1. 檢查未歸戶資料 (維持上一段的邏輯)
+                // ... (App 模式邏輯不變) ...
                 const hasRaw = checkForRawData(); 
-                if (hasRaw) {
-                    openMergeModal();
-                    return; 
-                }
-                
-                // 2. ★★★ 關鍵修正：清除歸戶填報頁籤的暫存 DOM ★★★
-                // 這會強制系統在點擊頁籤時，重新從 formData 讀取最新資料來產生畫面
+                if (hasRaw) { openMergeModal(); return; }
                 document.getElementById('dynamic-tabs-area').innerHTML = '';
-
-                // 3. 執行切換
                 executeSwitchToApp();
-
             } else {
-                // 切換到 Grid 模式
+                // --- 切換到 Grid 模式 ---
                 document.getElementById('sidebar').style.display = 'none';
                 document.getElementById('main-content').style.display = 'none';
                 document.getElementById('sidebar-toggle-strip').style.display = 'none';
+                
+                const gridView = document.getElementById('grid-view-container');
                 gridView.classList.remove('hidden');
                 
-                btnApp.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition";
-                btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary";
+                // 更新按鈕樣式
+                document.getElementById('btn-view-app').className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition";
+                document.getElementById('btn-view-grid').className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary";
                 
-                // 進入 Grid 模式時，因為 renderGlobalGrid 會重繪，所以資料一定是最新的
-                renderGlobalGrid();
-                renderGridStudentList(); // <--- 新增這一行
+                // ★★★ 執行渲染 ★★★
+                renderGlobalGrid();      // 渲染右側表格
+                renderGridStudentList(); // 渲染左側列表 (修復列表不見的問題)
             }
         }
 
@@ -1012,123 +1007,137 @@
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
-            if (!thead || !tbody) return; // 防呆
+            if (!thead || !tbody) return;
             
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
             const searchTerm = document.getElementById('grid-search').value.toLowerCase();
             const fields = currentYearConfig.fields || [];
-            
-            // --- 1. 定義欄位順序 ---
-            const sysStudentFields = fields
-                .filter(f => f.category === 'sys_student_info')
-                .sort((a,b) => (a.order||0)-(b.order||0));
-                
-            const sysCourseFields = fields
-                .filter(f => f.category === 'sys_course_info')
-                .sort((a,b) => (a.order||0)-(b.order||0));
-            
-            let displayStudentCols = sysStudentFields;
-            if (displayStudentCols.length === 0) {
-                displayStudentCols = [
-                    { id: 'student_id', label: '學號' },
-                    { id: 'student_name', label: '姓名' }
-                ];
-            }
 
-            const dynamicCols = fields
-                .filter(f => 
-                    !f.isSystem && 
-                    !CORE_FIELDS.includes(f.id) && 
-                    f.category !== 'sys_course_info' && 
-                    f.category !== 'sys_student_info'
-                )
-                // 強制轉型並給予預設值，確保排序正確
-                .sort((a,b) => {
-                    const oA = (a.order !== undefined && a.order !== null) ? Number(a.order) : 9999;
-                    const oB = (b.order !== undefined && b.order !== null) ? Number(b.order) : 9999;
-                    return oA - oB;
-                });
+            // --- 1. 欄位準備 (解決排序與預設顯示問題) ---
+            // 取消分群，統一過濾並依照 order 排序
+            // 解決問題：完全依照後台 order 排序
+            // 解決問題：移除強制加入學號姓名的 fallback，只顯示 config 有設定的欄位
+            const allColumns = fields
+                .filter(f => true) // 顯示所有 config 定義的欄位 (含系統與填報)
+                .filter(f => !['course_id', '_internal_id'].includes(f.id)) // 排除純技術用 ID，保留 student_id (如果 config 有)
+                .sort((a,b) => (a.order || 999) - (b.order || 999));
+
+            if (allColumns.length === 0) {
+                thead.innerHTML = '<tr><th class="p-4 text-center text-slate-400">無顯示欄位設定</th></tr>';
+                return;
+            }
 
             // --- 2. 建立表頭 ---
             let trHead = document.createElement('tr');
             
-            // (已移除 Checkbox 表頭)
+            // 加入 Checkbox 表頭 (歸戶用)
+            let thCheck = document.createElement('th');
+            thCheck.style.width = "40px";
+            thCheck.className = "text-center bg-slate-100 border-r border-slate-200 p-0";
+            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)" class="accent-primary cursor-pointer">`;
+            trHead.appendChild(thCheck);
 
-            // System Columns
-            [...displayStudentCols, ...sysCourseFields].forEach(col => {
+            allColumns.forEach(col => {
                 const th = document.createElement('th');
                 th.innerText = col.label;
-                th.style.minWidth = col.width || '100px';
-                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200";
-                trHead.appendChild(th);
-            });
-
-            // Writable Columns
-            dynamicCols.forEach(col => {
-                const th = document.createElement('th');
-                th.innerText = col.label;
-                th.style.minWidth = '140px';
+                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap sticky top-0";
+                th.style.minWidth = col.width || (col.category?.startsWith('sys_') ? '100px' : '140px');
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
 
-            // --- 3. 建立內容 ---
-            Object.values(groupedStudents).forEach(student => {
+            // --- 3. 建立內容 (解決右側無產出問題) ---
+            const students = Object.values(groupedStudents);
+            if (students.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="p-8 text-center text-slate-400">無資料</td></tr>`;
+                return;
+            }
+
+            students.forEach(student => {
                 student.courses.forEach(course => {
-                    // ... (省略搜尋與 appId 判斷代碼) ...
+                    // 搜尋過濾
+                    const fullText = Object.values(course).join(' ') + student.name + student.id;
+                    if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
 
                     const tr = document.createElement('tr');
-                    // ... (省略 tr dataset 設定) ...
+                    tr.className = "hover:bg-slate-50 transition border-b border-slate-100 group";
+                    tr.dataset.cid = course._internal_id; // 用於連動更新
 
-                    // ... (省略 Checkbox 內容格建立代碼) ...
+                    // 判斷歸戶狀態
+                    const appId = course._app_id;
+                    let appData = {};
+                    if(appId) {
+                        const app = student.applications.find(a => a.id === appId);
+                        if(app) appData = app.formData;
+                    }
 
-                    // 統一建立所有內容格
-                    allDisplayFields.forEach(f => {
+                    // A. Checkbox Cell
+                    const tdCheck = document.createElement('td');
+                    tdCheck.className = "text-center bg-slate-50 border-r border-slate-200 p-0";
+                    const isChecked = gridSelection.has(course._internal_id);
+                    tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk accent-primary cursor-pointer" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this)">`;
+                    tr.appendChild(tdCheck);
+
+                    // B. Data Cells
+                    allColumns.forEach(f => {
                         const td = document.createElement('td');
+                        td.className = "border-r border-slate-200 p-0 relative h-[40px]";
                         
-                        // 判斷是系統欄位 (唯讀) 還是填報欄位 (可寫)
-                        const isSystemCol = (f.category === 'sys_student_info' || f.category === 'sys_course_info');
-                        
-                        if (isSystemCol) {
-                            // 系統欄位：顯示文字
-                            let val = course[f.id] || student[f.id === 'student_id' ? 'id' : (f.id === 'student_name' ? 'name' : f.id)] || '';
-                            td.innerText = val;
-                            td.title = val;
-                            td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 text-sm truncate border-r border-slate-200";
+                        // 數值解析：優先取歸戶資料(若有)，否則取原始資料
+                        let val = "";
+                        if (appId && appData[f.id] !== undefined) {
+                            val = appData[f.id];
                         } else {
-                            // 填報欄位：顯示輸入框
-                            // ... (這裡放原本 dynamicCols 的輸入框建立邏輯) ...
-                            const val = rowContext[f.id] || "";
-                            if (appId) td.className = "is-linked"; 
-                            else td.className = "is-raw";
-                            
+                            val = course[f.id];
+                            // 補救：如果 Excel 欄位名稱沒對應到，嘗試從 student 物件取基本資料
+                            if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
+                            if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
+                            if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
+                        }
+                        
+                        // 判斷唯讀 (系統欄位) vs 可寫 (填報欄位)
+                        const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
+                        
+                        if (isReadOnly) {
+                            td.innerHTML = `<div class="px-3 py-0 flex items-center h-full truncate text-slate-600 select-none bg-slate-50 text-sm" title="${val}">${val||''}</div>`;
+                        } else {
+                            // 建立輸入框
                             let input;
-                            // ... (輸入框建立代碼保持不變) ...
                             if (f.type === 'single_select' || f.type === 'list') {
                                 input = document.createElement('select');
                                 input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                             } else {
                                 input = document.createElement('input');
                                 input.type = "text";
-                                input.value = val;
+                                input.value = val || "";
                             }
                             
-                            input.className = "grid-input";
+                            input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
                             input.dataset.field = f.id;
-                            input.title = val;
-                            if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
-                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                            input.oninput = (e) => { e.target.title = e.target.value; };
+                            input.title = val || ""; // Hover 提示
                             
+                            if(appId) {
+                                input.classList.add(`app-input-${appId}-${f.id}`);
+                                td.classList.add('is-linked'); // 藍色背景提示已歸戶
+                            } else {
+                                td.classList.add('is-raw');
+                            }
+
+                            // 綁定事件
+                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                            input.oninput = (e) => { e.target.title = e.target.value; }; // 即時更新 Title
+
                             td.appendChild(input);
                         }
                         tr.appendChild(td);
                     });
                     
                     tbody.appendChild(tr);
-                    updateRowLogic(tr, rowContext);
+                    
+                    // 觸發該列的鎖定邏輯檢查
+                    updateRowLogic(tr, appId ? appData : course);
                 });
             });
         }
@@ -3359,22 +3368,27 @@
             if(!container) return;
             container.innerHTML = '';
             
-            const term = document.getElementById('grid-sidebar-search')?.value.toLowerCase() || '';
+            const students = Object.values(groupedStudents);
             
-            let students = Object.values(groupedStudents);
-            
-            // 簡單篩選
-            if(term) {
-                students = students.filter(s => s.name.toLowerCase().includes(term) || s.id.includes(term));
+            // 處理無資料情況
+            if(students.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">請先匯入資料</div>';
+                return;
             }
             
-            // 排序 (預設依學號)
-            students.sort((a, b) => a.id.localeCompare(b.id));
+            // 搜尋與排序
+            const term = document.getElementById('grid-sidebar-search')?.value.toLowerCase() || '';
+            let filtered = students;
+            if(term) {
+                filtered = students.filter(s => s.name.toLowerCase().includes(term) || s.id.includes(term));
+            }
+            filtered.sort((a,b) => a.id.localeCompare(b.id));
 
-            students.forEach(s => {
+            // 產生列表
+            filtered.forEach(s => {
                 const el = document.createElement('div');
                 el.className = `student-item p-3 pl-4 border-b border-slate-100 hover:bg-slate-50 cursor-pointer transition`;
-                el.onclick = () => openStudentSettingsModal(s.id); // 點擊開啟設定視窗
+                el.onclick = () => openStudentSettingsModal(s.id); 
                 
                 const appCount = s.applications.length;
                 const totalCourses = s.courses.length;
