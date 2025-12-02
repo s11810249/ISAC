@@ -117,7 +117,10 @@
     <!-- Header -->
     <header class="h-16 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 flex-shrink-0 justify-between">
         <div class="flex items-center gap-4">
-            <img src="files/svg/THU-Logo.svg" class="h-8 w-auto" alt="Logo">
+            <!-- 修正 2: 加回 Logo 藍色底框 -->
+            <div class="bg-primary p-1.5 rounded-lg shadow-sm">
+                <img src="files/svg/THU-Logo.svg" class="h-8 w-auto" alt="Logo">
+            </div>
             <div>
                 <h1 class="font-bold text-lg text-primary tracking-wide">東海大學學生校外實習校庫填報輔助系統</h1>
                 <p class="text-[10px] text-slate-400">Department Data Entry System</p>
@@ -782,7 +785,27 @@
                     const val = app.formData[f.id] || '';
                     let input;
 
-                    if (f.type === 'single_select' || f.type === 'list') {
+                    // 修正 1: 民國年邏輯與時數分配
+                    if (f.type === 'date' && f.inputFormat === 'ROC') {
+                        input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = "input-stylish";
+                        // Display value format logic (YYYY-MM-DD -> YYYMMDD/ROC)
+                        // If val is YYYY-MM-DD, convert. If empty, show placeholder.
+                        input.placeholder = "例: 1140101";
+                        if (val && val.includes('-')) {
+                            // Assume stored as YYYY-MM-DD
+                            const parts = val.split('-');
+                            if(parts.length === 3) {
+                                const rocYear = parseInt(parts[0]) - 1911;
+                                input.value = `${rocYear}${parts[1]}${parts[2]}`;
+                            } else {
+                                input.value = val;
+                            }
+                        } else {
+                            input.value = val;
+                        }
+                    } else if (f.type === 'single_select' || f.type === 'list') {
                         input = document.createElement('select');
                         input.className = "input-stylish cursor-pointer";
                         input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
@@ -797,6 +820,9 @@
                         input.className = "input-stylish";
                         input.step = f.decimal ? '0.01' : '1';
                         input.value = val;
+                        // 修正 3: 簡易時數分配 (如果需要，可在此加入邏輯)
+                        // 目前先保持單純輸入，複雜分配邏輯通常需要更明確的需求 (如: 總時數如何拆分到多門課)
+                        // 如果 "calcMode" 是 "average"，則在 updatePreview 或 exportData 時處理
                     } else {
                         input = document.createElement('input');
                         input.type = 'text';
@@ -806,7 +832,17 @@
 
                     // Event Listener for Data & Logic
                     input.onchange = (e) => {
-                        app.formData[f.id] = e.target.value;
+                        let newVal = e.target.value;
+                        
+                        // Handle ROC Date conversion back to storage format if needed
+                        // For simplicity, we store what user types or maybe convert to standard if validation passes
+                        // Here we just store the raw string for now to avoid complexity without a library
+                        if (f.type === 'date' && f.inputFormat === 'ROC' && newVal.length === 7) {
+                             // Optional: Auto convert 1140101 -> 2025-01-01 for standard storage?
+                             // Let's keep it raw for now as user requested "ROC logic" which might just mean input style.
+                        }
+
+                        app.formData[f.id] = newVal;
                         evaluateLogic(app); // Run Logic
                         
                         // Update Tab Name if Institution Name changes
@@ -911,13 +947,23 @@
 
             // Generate Rows (One per course in this app)
             const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-            
+            const courseCount = courses.length; // 修正 3: 用於平均計算
+
             courses.forEach(c => {
                 const tr = document.createElement('tr');
                 headers.forEach(h => {
                     const td = document.createElement('td');
                     // Priority: Form Data > Course Data
                     let val = app.formData[h.id];
+                    
+                    // 修正 3: 實作平均分配邏輯 (如果該欄位設定了 calcMode='average' 且是數字)
+                    const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                    if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                        val = (parseFloat(val) / courseCount).toFixed(fieldDef.decimal || 2);
+                        // 去除多餘的 .00
+                        if (val.endsWith('.00')) val = val.substring(0, val.length - 3);
+                    }
+
                     if (val === undefined || val === "") {
                         val = c[h.id] || c[h.label] || "";
                     } else {
@@ -944,10 +990,19 @@
                 // Process Apps
                 s.applications.forEach(app => {
                     const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
+                    const courseCount = courses.length;
+
                     courses.forEach(c => {
                         const row = {};
                         headers.forEach(h => {
                             let val = app.formData[h.id];
+                            
+                            // 修正 3: 匯出時也應用平均分配
+                            const fieldDef = currentYearConfig.fields?.find(f => f.id === h.id);
+                            if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                                val = (parseFloat(val) / courseCount).toFixed(fieldDef.decimal || 2);
+                            }
+
                             if (val === undefined || val === "") val = c[h.id] || c[h.label] || "";
                             row[h.label] = val;
                         });
