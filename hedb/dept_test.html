@@ -3481,7 +3481,6 @@
             const selectedCourses = [];
             
             for (const cid of gridSelection) {
-                let found = false;
                 for (const s of Object.values(groupedStudents)) {
                     const c = s.courses.find(x => x._internal_id === cid);
                     if (c) {
@@ -3491,53 +3490,73 @@
                             return;
                         }
                         selectedCourses.push(c);
-                        found = true; 
                         break;
                     }
                 }
             }
 
-            const confirm = await showConfirm('確認歸戶', `確定將這 ${gridSelection.size} 筆課程合併為同一份實習紀錄嗎？\n(將使用第一筆課程的資料覆蓋其他筆)`);
+            const confirm = await showConfirm('確認歸戶', `確定將這 ${selectedCourses.length} 筆課程合併為同一份實習紀錄嗎？\n(數值欄位將自動加總，文字欄位將使用第一筆資料)`);
             if (!confirm) return;
 
             // 執行歸戶
             const student = groupedStudents[targetStudentId];
             const newAppId = 'app_grid_' + Date.now();
             
-            // 複製第一筆課程的資料作為預設值
+            // 1. 準備基礎資料 (優先複製第一筆課程的文字資料)
             const firstC = selectedCourses[0];
             const initData = {};
             
-            // 優先使用 App Data (如果第一筆已經歸戶)
+            // 若第一筆已經有歸戶資料，優先沿用 (例如機構名稱可能已填好)
             if (firstC._app_id) {
                 const existApp = student.applications.find(a => a.id === firstC._app_id);
                 if (existApp) Object.assign(initData, existApp.formData);
             } else {
-                // 使用 Raw Data
+                // 否則使用原始資料
                 (currentYearConfig.fields||[]).forEach(f => {
                     if (firstC[f.id]) initData[f.id] = firstC[f.id];
                 });
             }
 
-            // 建立 App
+            // 2. ★★★ 核心修正：自動加總數值欄位 ★★★
+            // 針對設定為 calcMode='average' (平均/加總) 的欄位，重新計算總和
+            (currentYearConfig.fields||[]).forEach(f => {
+                if (f.type === 'number' && f.calcMode === 'average') {
+                    let sum = 0;
+                    let hasVal = false;
+                    
+                    selectedCourses.forEach(c => {
+                        // 務必使用原始課程資料(Raw Data)來加總，避免重複計算已合併的數值
+                        const v = parseFloat(c[f.id]);
+                        if (!isNaN(v)) {
+                            sum += v;
+                            hasVal = true;
+                        }
+                    });
+
+                    if (hasVal) {
+                        // 依照小數點設定寫入
+                        initData[f.id] = f.decimal ? sum.toFixed(2) : String(sum);
+                    }
+                }
+            });
+
+            // 3. 建立 App 物件
             const newApp = {
                 id: newAppId,
                 courseIds: Array.from(gridSelection),
                 formData: initData
             };
 
-            // 清除舊的 App 關聯 (如果這些課原本屬於別的 App)
+            // 4. 清除舊的 App 關聯並更新指標
             selectedCourses.forEach(c => {
-                // 如果原本所屬的 App 只剩這一門課，那個 App 應該被刪除嗎？
-                // 為了簡單，我們這裡不做複雜的垃圾回收，只更新指標
                 c._app_id = newAppId;
             });
 
             student.applications.push(newApp);
             
             hasUnsavedChanges = true;
-            clearGridSelection();
-            showToast('success', '歸戶完成');
+            clearGridSelection(); // 清空勾選並重繪
+            showToast('success', '歸戶完成 (數值已自動加總)');
             logChange('GridMerge', newAppId, '', `Merged ${selectedCourses.length} items`, student.id);
         }
     
