@@ -1103,7 +1103,7 @@
                                 
                                 /* ★★★ 新增：日期欄位自動格式化邏輯 ★★★ */
                                 if (f.type === 'date' && f.inputFormat === 'ROC') {
-                                    input.placeholder = "yyy/mm/dd"; // 提示格式
+                                    input.placeholder = "(民國)YYY/MM/DD"; // 提示格式
                                     input.addEventListener('change', (e) => {
                                         // 自動將純數字轉為日期格式 (1140101 -> 114/01/01)
                                         let v = e.target.value.trim().replace(/\//g, '');
@@ -1199,13 +1199,13 @@
                     // 2. ★★★ 觸發連動邏輯檢查 (不重繪表格) ★★★
                     // 找出目前畫面上所有屬於這個 App 的列 (TR)
                     const relatedRows = [];
-                    // 這裡用簡單的方式找：遍歷 tbody 的 tr，看 dataset.cid 是否在 app.courseIds 裡
-                    // 為了效能，我們可以只針對目前操作的這一列，但為了完整連動(改A課，B課也要解鎖)，需遍歷
-                    // 效能優化：只針對有顯示在畫面上的列
                     const allRows = document.getElementById('grid-tbody').querySelectorAll('tr');
                     allRows.forEach(tr => {
                         const cid = tr.dataset.cid;
-                        if (app.courseIds.includes(cid)) {
+                        const sid = tr.dataset.sid; // 取得該列的學生 ID
+                        
+                        // ★★★ 修正：增加 sid === student.id 比對，確保只更新該位學生的列 ★★★
+                        if (sid === student.id && app.courseIds.includes(cid)) {
                             updateRowLogic(tr, app.formData);
                         }
                     });
