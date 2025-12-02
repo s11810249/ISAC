@@ -209,13 +209,15 @@
         </div>
         <div class="flex items-center gap-3">
             
-            <!-- Font Size Toggle -->
-            <div class="flex bg-slate-100 rounded-lg p-1 border border-slate-200">
-                <button onclick="setFontSize('14px')" class="px-2 py-1 text-xs font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="標準字體">A</button>
-                <button onclick="setFontSize('16px')" class="px-2 py-1 text-sm font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="加大字體">A+</button>
-                <button onclick="setFontSize('18px')" class="px-2 py-1 text-base font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="特大字體">A++</button>
-                <!-- New Larger Sizes -->
-                <button onclick="setFontSize('20px')" class="px-2 py-1 text-lg font-bold rounded hover:bg-white hover:shadow-sm text-slate-600 transition" title="超大字體">A+++</button>
+            <!-- 修正 1: 下拉式字體選擇 -->
+            <div class="relative group">
+                <select id="font-size-select" onchange="setFontSize(this.value)" class="pl-3 pr-8 py-2 bg-slate-100 border-none rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary outline-none appearance-none hover:bg-slate-200 transition">
+                    <option value="14px">字體: 標準 (A)</option>
+                    <option value="16px">字體: 加大 (A+)</option>
+                    <option value="18px">字體: 特大 (A++)</option>
+                    <option value="24px">字體: 超大 (A++++)</option>
+                </select>
+                <i class="fas fa-text-height absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs pointer-events-none"></i>
             </div>
 
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
@@ -296,7 +298,7 @@
             </div>
         </aside>
 
-        <!-- Sidebar Toggle Strip (Replaces Button) -->
+        <!-- Sidebar Toggle Strip -->
         <div id="sidebar-toggle-strip" onclick="toggleSidebar()" title="收合/展開側邊欄">
             <i class="fas fa-chevron-left text-slate-400"></i>
         </div>
@@ -347,8 +349,8 @@
                 <!-- Tab Contents Scrollable Area -->
                 <div class="flex-grow overflow-y-auto custom-scroll p-6 pb-24 relative">
                     
-                    <!-- Tab: Settings (Consolidation) - Updated Layout -->
-                    <div id="tab-settings" class="tab-content active max-w-7xl mx-auto"> <!-- Increased max-width -->
+                    <!-- Tab: Settings (Consolidation) -->
+                    <div id="tab-settings" class="tab-content active max-w-7xl mx-auto">
                         <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
                             <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
                                 <div>
@@ -360,7 +362,7 @@
                                 </button>
                             </div>
                             
-                            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8"> <!-- Two column layout -->
+                            <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 <!-- Left Column: Unassigned Courses -->
                                 <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
                                     <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 pb-2 border-b border-slate-200">
@@ -398,7 +400,6 @@
                 </div>
                 <button onclick="document.getElementById('preview-modal').classList.add('hidden')" class="text-slate-400 hover:text-slate-600 w-8 h-8 rounded-full hover:bg-slate-200 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
             </div>
-            <!-- 修改 2: 增加 overflow-x-auto 讓表格可水平滑動 -->
             <div class="flex-grow overflow-auto custom-scroll p-0 relative">
                 <table class="excel-table w-full relative">
                     <thead class="sticky top-0 z-10"><tr id="modal-preview-head"></tr></thead>
@@ -411,7 +412,7 @@
         </div>
     </div>
 
-    <!-- Toast Notification (Fixed) -->
+    <!-- Toast Notification -->
     <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
         <i id="toast-icon" class="fas fa-info-circle"></i>
         <span id="toast-msg">Notification</span>
@@ -430,9 +431,7 @@
         let currentStudentId = null; 
         let activeYear = "";         
         
-        // Sorting State
         let sortConfig = { key: 'id', direction: 'asc' }; 
-
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
 
         // --- Initialization ---
@@ -449,7 +448,6 @@
                 departmentData = deptRes;
                 deptMasterData = masterRes;
 
-                // Setup Year Selector
                 const yearSelect = document.getElementById('year-select');
                 yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
                 
@@ -478,12 +476,7 @@
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
-            // Use the new strip toggle
             sidebar.classList.toggle('collapsed');
-            
-            // No need to update icon here as it's handled by CSS relative to the sidebar state
-            // but if we want to force redraw of icon if css fails for some reason:
-            // CSS sibling selector handles it.
         }
 
         // --- Logic: Year Template ---
@@ -497,7 +490,6 @@
                 if (!res.ok) throw new Error("Template not found");
                 currentYearConfig = await res.json();
                 
-                // If we have data, re-render current view
                 if (currentStudentId) {
                     selectStudent(currentStudentId); 
                 }
@@ -523,7 +515,7 @@
                     if (jsonData.length === 0) throw new Error("檔案無內容");
                     
                     processUploadedData(jsonData);
-                    event.target.value = ''; // Reset
+                    event.target.value = ''; 
                 } catch (err) {
                     showToast('error', `讀取失敗: ${err.message}`);
                 }
@@ -535,7 +527,6 @@
             allRawData = data;
             groupedStudents = {};
 
-            // 嘗試從資料中偵測學年度並自動套用
             if (data.length > 0) {
                 let detectedYear = data[0]['school_year'] || data[0]['學年'];
                 if (detectedYear) {
@@ -550,11 +541,9 @@
                 }
             }
 
-            // Populate Filters
             const courseDepts = new Set();
             const studentDepts = new Set();
 
-            // Group by Student ID
             allRawData.forEach((row, idx) => {
                 const sid = row['student_id'] || row['學號'] || row['id'];
                 const sname = row['student_name'] || row['姓名'] || row['name'];
@@ -588,11 +577,10 @@
                 groupedStudents[sid].courses.push(row);
             });
 
-            // Render Filter Options
             const renderOpts = (elId, set) => {
                 const el = document.getElementById(elId);
                 const current = el.value;
-                el.innerHTML = el.options[0].outerHTML; // Keep first option
+                el.innerHTML = el.options[0].outerHTML; 
                 Array.from(set).sort().forEach(v => {
                     el.innerHTML += `<option value="${v}">${v}</option>`;
                 });
@@ -617,7 +605,6 @@
 
             let students = Object.values(groupedStudents);
             
-            // Filter
             students = students.filter(s => {
                 const matchText = s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term);
                 if (!matchText) return false;
@@ -634,7 +621,6 @@
                 return true;
             });
             
-            // Sorting logic
             students.sort((a, b) => {
                 let valA = a[sortConfig.key];
                 let valB = b[sortConfig.key];
@@ -863,8 +849,7 @@
             student.applications.push(newApp);
             renderTabs(student);
             renderSettingsTab(student);
-            // 修正 2: 建立填報單後，不自動跳轉，保留在歸戶設定頁面
-            // switchTab(appId); 
+            
             renderStudentList(); 
             showToast('success', '已建立填報單，可繼續建立其他填報單或切換上方頁籤進行填報');
         }
@@ -891,7 +876,6 @@
             showToast('success', '歸戶已解除');
         }
 
-        // --- Logic: Dynamic Form Generation ---
         function createApplicationContent(appId) {
             const student = groupedStudents[currentStudentId];
             const app = student.applications.find(a => a.id === appId);
@@ -909,13 +893,12 @@
             return div;
         }
 
-        // 修正 2: 仿西元樣式的民國日期選擇器
+        // 修正 2: 仿西元樣式的民國日期選擇器 (即時修正)
         function createRocDatePicker(appId, fieldId, initialValue, onChange) {
             const wrapper = document.createElement('div');
             wrapper.className = 'date-picker-wrapper';
             wrapper.id = `roc-wrapper-${appId}-${fieldId}`;
 
-            // Main Input Group (Text + Button)
             const inputGroup = document.createElement('div');
             inputGroup.className = 'date-input-group';
             
@@ -923,9 +906,9 @@
             input.type = 'text';
             input.className = 'input-stylish';
             input.placeholder = '例: 114/01/01';
-            input.maxLength = 10; // 114/01/01 is 9 chars, allowing buffer
+            input.maxLength = 10; 
             input.style.flex = "1";
-            input.style.paddingRight = "35px"; // Space for icon
+            input.style.paddingRight = "35px"; 
 
             const trigger = document.createElement('div');
             trigger.className = 'date-picker-trigger';
@@ -938,16 +921,13 @@
             inputGroup.appendChild(input);
             inputGroup.appendChild(trigger);
 
-            // Calendar Popover
             const popover = document.createElement('div');
             popover.className = 'calendar-popover';
             
-            // Popover State
             let currentYear = new Date().getFullYear();
-            let currentMonth = new Date().getMonth(); // 0-11
-            let selectedDate = null; // Date Obj
+            let currentMonth = new Date().getMonth(); 
+            let selectedDate = null; 
 
-            // Render Calendar
             const renderCalendar = () => {
                 const rocYear = currentYear - 1911;
                 const monthName = currentMonth + 1;
@@ -966,19 +946,13 @@
                 const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
                 const today = new Date();
 
-                // Empty cells
                 for(let i=0; i<firstDay; i++) html += `<div class="cal-day empty"></div>`;
 
-                // Days
                 for(let d=1; d<=daysInMonth; d++) {
                     let classes = 'cal-day';
-                    
-                    // Check today
                     if(currentYear === today.getFullYear() && currentMonth === today.getMonth() && d === today.getDate()) {
                         classes += ' today';
                     }
-                    
-                    // Check selected
                     if(selectedDate && currentYear === selectedDate.getFullYear() && currentMonth === selectedDate.getMonth() && d === selectedDate.getDate()) {
                         classes += ' selected';
                     }
@@ -986,10 +960,9 @@
                     html += `<div class="${classes}" data-day="${d}">${d}</div>`;
                 }
 
-                html += `</div>`; // Close grid
+                html += `</div>`; 
                 popover.innerHTML = html;
 
-                // Bind Events
                 popover.querySelector('#prev-month').onclick = (e) => { e.stopPropagation(); currentMonth--; if(currentMonth<0){currentMonth=11;currentYear--;} renderCalendar(); };
                 popover.querySelector('#next-month').onclick = (e) => { e.stopPropagation(); currentMonth++; if(currentMonth>11){currentMonth=0;currentYear++;} renderCalendar(); };
                 
@@ -1002,13 +975,11 @@
                         const mm = String(currentMonth + 1).padStart(2, '0');
                         const dd = String(d).padStart(2, '0');
                         
-                        // Format: YYY/MM/DD
                         const formatted = `${rocY}/${mm}/${dd}`;
                         input.value = formatted;
                         
-                        // Convert to standard YYYY-MM-DD for storage
                         const stdVal = `${currentYear}-${mm}-${dd}`;
-                        onChange(stdVal); // Save logic
+                        onChange(stdVal); 
                         
                         popover.classList.remove('active');
                     };
@@ -1017,27 +988,22 @@
 
             const toggleCalendar = () => {
                 const isActive = popover.classList.contains('active');
-                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); // Close others
+                document.querySelectorAll('.calendar-popover.active').forEach(p => p.classList.remove('active')); 
                 
                 if(!isActive) {
-                    // Try to parse current input for initial calendar view
                     if(input.value) {
-                        // Support 114/01/01 or 1140101
                         let y, m, d;
                         const val = input.value.replace(/\//g, '');
-                        if(val.length >= 6) { // Loose check
-                            // Try to parse ROC
+                        if(val.length >= 6) { 
                             if(val.includes('-')) {
-                                // Assume YYYY-MM-DD standard if dash present (rare in display but possible)
                                 const p = val.split('-');
                                 y = parseInt(p[0]); m = parseInt(p[1])-1; d = parseInt(p[2]);
                             } else {
-                                // Assume ROC string
                                 if(val.length === 7) {
                                     y = parseInt(val.substring(0,3)) + 1911;
                                     m = parseInt(val.substring(3,5)) - 1;
                                     d = parseInt(val.substring(5,7));
-                                } else if (val.length === 6) { // 990101
+                                } else if (val.length === 6) { 
                                     y = parseInt(val.substring(0,2)) + 1911;
                                     m = parseInt(val.substring(2,4)) - 1;
                                     d = parseInt(val.substring(4,6));
@@ -1055,22 +1021,15 @@
                 }
             };
 
-            // Input Handling (Manual Typing)
             input.onchange = (e) => {
                 const val = e.target.value.trim();
-                // Validate and Convert
-                // Accepted formats: 114/01/01, 1140101
                 const cleanVal = val.replace(/\//g, '');
                 
                 if (cleanVal.length === 7 && !isNaN(cleanVal)) {
                     const rocY = parseInt(cleanVal.substring(0,3));
                     const mm = cleanVal.substring(3,5);
                     const dd = cleanVal.substring(5,7);
-                    
-                    // Format display
                     input.value = `${rocY}/${mm}/${dd}`;
-                    
-                    // Save standard
                     const westY = rocY + 1911;
                     onChange(`${westY}-${mm}-${dd}`);
                 } else if (val === "") {
@@ -1080,9 +1039,7 @@
                 }
             };
 
-            // Initial Value Display Logic
             if(initialValue) {
-                // Should be YYYY-MM-DD from storage
                 if(initialValue.includes('-')) {
                     const p = initialValue.split('-');
                     if(p.length === 3) {
@@ -1096,7 +1053,6 @@
                 }
             }
 
-            // Close on click outside
             document.addEventListener('click', (e) => {
                 if(!wrapper.contains(e.target)) {
                     popover.classList.remove('active');
@@ -1107,51 +1063,40 @@
             wrapper.appendChild(popover);
             return wrapper;
         }
-        
-        // 修正 3: 強化地址智慧處理功能 (Smart Address)
+
         function processAddress(inputEl, settings) {
             let val = inputEl.value;
             if(!val) return;
 
-            // 1. 全形轉半形 (toHalf)
             if(settings.toHalf) {
                 val = val.replace(/[\uff01-\uff5e]/g, function(ch) { return String.fromCharCode(ch.charCodeAt(0) - 0xfee0); })
                          .replace(/　/g, " ");
             }
 
-            // 2. 強制台轉臺 (forceTai)
             if(settings.forceTai) {
                 if(val.startsWith('台')) {
                     val = '臺' + val.substring(1);
                 }
             }
 
-            // 3. 拉丁文轉英文 (latinToEng)
             if(settings.latinToEng) {
                  val = val.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
             }
 
-            // 4. 智慧路名數字轉換 (smartFormat)
             if(settings.smartFormat) {
-                // 中文數字對照表
                 const cnNums = {'一':1, '二':2, '三':3, '四':4, '五':5, '六':6, '七':7, '八':8, '九':9, '十':10};
-                // 簡單範例：將「五段」轉為「5段」
-                // 使用 config 中的 keywords
                 const keywords = (globalConfig.addressRules && globalConfig.addressRules.keywords) ? globalConfig.addressRules.keywords : ['段', '路', '街'];
                 keywords.forEach(k => {
                     const regex = new RegExp(`([一二三四五六七八九十]+)${k}`, 'g');
                     val = val.replace(regex, (match, p1) => {
-                        // 簡單轉換 1-10
                         let num = cnNums[p1];
                         return num ? `${num}${k}` : match;
                     });
                 });
             }
 
-            // 更新值
             if(val !== inputEl.value) {
                 inputEl.value = val;
-                // 觸發 change 事件以保存到 formData
                 inputEl.dispatchEvent(new Event('change'));
             }
         }
@@ -1244,15 +1189,24 @@
 
                         input.id = `input-${app.id}-${f.id}`; 
 
-                        input.onchange = (e) => {
+                        // 修正 2: 綁定 blur 事件，確保地址邏輯能被觸發
+                        if (f.type === 'address') {
+                            input.addEventListener('blur', (e) => {
+                                processAddress(e.target, f);
+                                let newVal = e.target.value;
+                                app.formData[f.id] = newVal;
+                                evaluateLogic(app);
+                            });
+                        }
+
+                        input.addEventListener('change', (e) => {
                             let newVal = e.target.value;
-                            
-                            // 修正 3: 呼叫智慧地址處理
+                            // 地址類型在 change 時也處理一次
                             if (f.type === 'address') {
                                 processAddress(e.target, f);
-                                newVal = e.target.value; // update value after processing
+                                newVal = e.target.value;
                             }
-
+                            
                             app.formData[f.id] = newVal;
                             evaluateLogic(app);
                             
@@ -1260,7 +1214,7 @@
                                 const tabBtn = document.querySelector(`.tab-btn[data-tab="${app.id}"]`);
                                 if(tabBtn) tabBtn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${e.target.value || '未命名'}`;
                             }
-                        };
+                        });
                     }
 
                     wrapper.appendChild(input);
@@ -1272,7 +1226,6 @@
             setTimeout(() => evaluateLogic(app), 0);
         }
 
-        // --- Logic: Visibility (Locked) & Filters ---
         function evaluateLogic(app) {
             const fields = currentYearConfig.fields || [];
             
@@ -1290,25 +1243,19 @@
                         
                         if (inputEl && inputEl.type !== 'hidden') inputEl.disabled = !shouldEnable;
                         
-                        // Handle Custom Date Picker disabling
                         if (rocContainer) {
-                            const textInput = rocContainer.querySelector('input[type="text"]');
-                            if (textInput) textInput.disabled = !shouldEnable;
-                            // Toggle btn visual
-                            const trigger = rocContainer.querySelector('.date-picker-trigger');
-                             if (trigger) {
-                                trigger.style.pointerEvents = shouldEnable ? 'auto' : 'none';
-                                trigger.style.opacity = shouldEnable ? '1' : '0.5';
+                            rocContainer.querySelector('input').disabled = !shouldEnable;
+                            const btn = rocContainer.querySelector('.date-toggle-btn');
+                            if(btn) {
+                                btn.style.pointerEvents = shouldEnable ? 'auto' : 'none';
+                                btn.style.opacity = shouldEnable ? '1' : '0.5';
                             }
                         }
                         
                         if (!shouldEnable) {
                             wrapper.classList.add('field-locked');
                             if (inputEl && inputEl.type !== 'hidden') inputEl.value = "";
-                            if (rocContainer) {
-                                const textInput = rocContainer.querySelector('input[type="text"]');
-                                if (textInput) textInput.value = "";
-                            }
+                            if (rocContainer) rocContainer.querySelector('input').value = "";
                             app.formData[f.id] = "";
                         } else {
                             wrapper.classList.remove('field-locked');
@@ -1337,7 +1284,6 @@
             });
         }
 
-        // --- Logic: Preview & Export ---
         function openPreviewModal() {
             if (!currentStudentId) return;
             const student = groupedStudents[currentStudentId];
@@ -1485,11 +1431,9 @@
             showToast('success', '匯出成功');
         }
 
-        // --- UI Utils (Fixed: Proper Toast Dismiss) ---
         let toastTimeout;
         function showToast(type, msg) {
             const el = document.getElementById('toast');
-            // Remove pointer-events-none to allow clicking close button
             el.classList.remove('pointer-events-none');
             
             el.innerHTML = `
