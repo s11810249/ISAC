@@ -297,15 +297,27 @@
         
         select.grid-input:-moz-focusring { color: transparent; text-shadow: 0 0 0 #000; }
         
-        /* 5. Grid Sidebar Styles (側欄) */
-        #grid-sidebar { transition: width 0.3s ease; width: 280px; flex-shrink: 0; border-right: 1px solid #e2e8f0; background: white; display: flex; flex-direction: column; }
+        /* 5. Grid Sidebar Styles (側欄) - 樣式同步修正 */
+        #grid-sidebar { 
+            transition: width 0.3s ease; 
+            width: 20rem; /* 與歸戶模式 w-80 (20rem) 一致 */
+            flex-shrink: 0; 
+            border-right: 1px solid #e2e8f0; 
+            background: white; 
+            display: flex; 
+            flex-direction: column;
+            box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.05); /* 新增: shadow-sm */
+            z-index: 20; /* 提高層級 */
+            position: relative;
+        }
         #grid-sidebar.collapsed { width: 0; overflow: hidden; border: none; }
         
-        /* 6. Grid Toggle Strip (開合按鈕加大) */
+        /* 6. Grid Toggle Strip (開合按鈕) - 顏色同步修正 */
         #grid-sidebar-toggle {
-            width: 18px; /* 從 12px 加寬到 18px，更好點 */
-            background: #f8fafc; 
+            width: 12px; /* 與歸戶模式一致 */
+            background: #f1f5f9; /* 修改: 由 #f8fafc 改為 #f1f5f9 (Slate-100) */
             border-right: 1px solid #e2e8f0; 
+            border-left: 1px solid #fff; /* 新增: 左側白線，與歸戶模式一致 */
             cursor: pointer;
             display: flex; 
             align-items: center; 
@@ -313,9 +325,13 @@
             z-index: 20;
             transition: background 0.2s;
         }
-        #grid-sidebar-toggle:hover { background: #e2e8f0; }
-        #grid-sidebar-toggle i { color: #64748b; font-size: 12px; } /* 圖示也稍微加大 */
-        
+        #grid-sidebar-toggle:hover { background-color: #e2e8f0; }
+        #grid-sidebar-toggle i { 
+            color: #94a3b8; /* 修改: 由 #64748b 改為 #94a3b8 (Slate-400) */
+            font-size: 10px; /* 修改: 由 12px 改為 10px */
+            transition: transform 0.3s;
+        }
+
         /* Selected Item Chip */
         .selected-item-chip {
             background: #f0f9ff; border: 1px solid #bae6fd; padding: 8px; border-radius: 6px;
@@ -532,7 +548,7 @@
 
                 </div>
         </main>
-    <div id="grid-view-container" class="hidden absolute top-0 left-0 right-0 bottom-12 z-10 bg-white flex">
+    <div id="grid-view-container" class="hidden absolute top-0 left-0 right-0 bottom-0 z-10 bg-white flex">
         
         <aside id="grid-sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0 relative">
              <div class="p-4 border-b border-slate-100 bg-slate-50">
@@ -664,7 +680,7 @@
                         <p class="text-xs text-indigo-600 mt-1">請勾選同一實習機構的課程，合併建立為一份填報單。</p>
                     </div>
                     <button onclick="createApplicationFromModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
-                        <i class="fas fa-plus"></i> 建立實習填報單
+                        <i class="fas fa-plus"></i> 建立歸戶
                     </button>
                 </div>
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
@@ -983,14 +999,15 @@
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
+            if (!thead || !tbody) return; // 防呆
+            
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
             const searchTerm = document.getElementById('grid-search').value.toLowerCase();
             const fields = currentYearConfig.fields || [];
             
-            // --- 1. 定義欄位順序 (加入 Sort) ---
-            // 系統欄位與填報欄位都必須依照 order 排序
+            // --- 1. 定義欄位順序 ---
             const sysStudentFields = fields
                 .filter(f => f.category === 'sys_student_info')
                 .sort((a,b) => (a.order||0)-(b.order||0));
@@ -999,7 +1016,6 @@
                 .filter(f => f.category === 'sys_course_info')
                 .sort((a,b) => (a.order||0)-(b.order||0));
             
-            // 防呆：若無設定 sys_student_info，補上預設
             let displayStudentCols = sysStudentFields;
             if (displayStudentCols.length === 0) {
                 displayStudentCols = [
@@ -1008,7 +1024,6 @@
                 ];
             }
 
-            // ★★★ 關鍵修改：填報欄位也要 sort 排序 ★★★
             const dynamicCols = fields
                 .filter(f => 
                     !f.isSystem && 
@@ -1016,14 +1031,23 @@
                     f.category !== 'sys_course_info' && 
                     f.category !== 'sys_student_info'
                 )
-                .sort((a, b) => parseInt(a.order || 999) - parseInt(b.order || 999));
+                // 強制轉型並給予預設值，確保排序正確
+                .sort((a,b) => {
+                    const oA = (a.order !== undefined && a.order !== null) ? Number(a.order) : 9999;
+                    const oB = (b.order !== undefined && b.order !== null) ? Number(b.order) : 9999;
+                    return oA - oB;
+                });
 
+            // --- 2. 建立表頭 ---
+            let trHead = document.createElement('tr');
             
+            // (已移除 Checkbox 表頭)
+
             // System Columns
             [...displayStudentCols, ...sysCourseFields].forEach(col => {
                 const th = document.createElement('th');
                 th.innerText = col.label;
-                th.style.minWidth = col.width || '100px'; // 稍微加寬
+                th.style.minWidth = col.width || '100px';
                 th.className = "bg-slate-100 text-slate-600 border-r border-slate-200";
                 trHead.appendChild(th);
             });
@@ -1032,7 +1056,7 @@
             dynamicCols.forEach(col => {
                 const th = document.createElement('th');
                 th.innerText = col.label;
-                th.style.minWidth = '140px'; // 稍微加寬以容納大字體
+                th.style.minWidth = '140px';
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
@@ -1040,7 +1064,6 @@
             // --- 3. 建立內容 ---
             Object.values(groupedStudents).forEach(student => {
                 student.courses.forEach(course => {
-                    // 簡易搜尋
                     const searchText = Object.values(course).join(' ').toLowerCase() + student.name.toLowerCase() + student.id.toLowerCase();
                     if (searchTerm && !searchText.includes(searchTerm)) return;
 
@@ -1057,13 +1080,15 @@
                         rowContext = course;
                     }
 
+                    // (已移除 Checkbox 內容格)
+
                     // B. System Columns
                     [...displayStudentCols, ...sysCourseFields].forEach(col => {
                         const td = document.createElement('td');
                         let val = course[col.id] || student[col.id === 'student_id' ? 'id' : (col.id === 'student_name' ? 'name' : col.id)] || '';
                         td.innerText = val;
                         td.title = val;
-                        td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 text-sm truncate border-r border-slate-200"; // text-sm (14px) for sys info
+                        td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 text-sm truncate border-r border-slate-200";
                         tr.appendChild(td);
                     });
 
