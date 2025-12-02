@@ -314,16 +314,17 @@
         
         /* 6. Grid Toggle Strip (開合按鈕) - 顏色同步修正 */
         #grid-sidebar-toggle {
-            width: 12px; /* 與歸戶模式一致 */
-            background: #f1f5f9; /* 修改: 由 #f8fafc 改為 #f1f5f9 (Slate-100) */
+            width: 12px; /* 保持與 App 模式一致的寬度，或者您希望的寬度 */
+            background: #f1f5f9; /* 使用與 App 模式一致的背景色 */
             border-right: 1px solid #e2e8f0; 
-            border-left: 1px solid #fff; /* 新增: 左側白線，與歸戶模式一致 */
+            /* border-left: 1px solid #fff;  <-- 如果有這行，建議移除，避免視覺變窄 */
             cursor: pointer;
             display: flex; 
             align-items: center; 
             justify-content: center; 
-            z-index: 20;
+            z-index: 50; /* 提高層級，確保浮在表格之上 */
             transition: background 0.2s;
+            position: relative; /* 確保 z-index 生效 */
         }
         #grid-sidebar-toggle:hover { background-color: #e2e8f0; }
         #grid-sidebar-toggle i { 
@@ -373,21 +374,6 @@
 
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
 
-            <!-- Year Selector -->
-            <div class="relative group">
-                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                    <i class="fas fa-calendar-alt text-slate-400"></i>
-                </div>
-                <select id="year-select" onchange="changeYear(this.value)" class="pl-9 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-lg text-sm font-bold text-slate-700 cursor-pointer focus:ring-2 focus:ring-primary focus:border-primary outline-none appearance-none hover:bg-white transition shadow-sm">
-                    <option value="">請選擇學年度...</option>
-                </select>
-                <div class="absolute inset-y-0 right-0 pr-3 flex items-center pointer-events-none">
-                    <i class="fas fa-chevron-down text-slate-400 text-xs"></i>
-                </div>
-            </div>
-
-            <div class="h-6 w-px bg-slate-200 mx-1"></div>
-
             <div class="flex bg-slate-100 p-1 rounded-lg mr-3">
                 <button onclick="switchViewMode('app')" id="btn-view-app" class="px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary">
                     <i class="fas fa-layer-group"></i> 歸戶填報
@@ -396,7 +382,34 @@
                     <i class="fas fa-th"></i> 傳統總表
                 </button>
             </div>
-            
+
+            <div class="relative group mr-2">
+                <button class="flex items-center gap-2 text-slate-600 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition">
+                    <i class="fas fa-toolbox"></i> 輔助工具 <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
+                </button>
+                
+                <div class="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl hidden group-hover:block z-50 p-1">
+                    <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">批次處理</div>
+                    
+                    <button onclick="toolAutoFill()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fas fa-magic"></i></div>
+                        <span>智慧填入預設值</span>
+                    </button>
+                    
+                    <button onclick="toolCheckData()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fas fa-check-double"></i></div>
+                        <span>資料完整性檢查</span>
+                    </button>
+
+                    <div class="border-t border-slate-100 my-1"></div>
+                    
+                    <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">分析</div>
+                    <button onclick="toolStats()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fas fa-chart-pie"></i></div>
+                        <span>目前填報統計</span>
+                    </button>
+                </div>
+            </div>
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
             <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
                 <i class="fas fa-file-export"></i> 匯出結果
@@ -1064,62 +1077,53 @@
             // --- 3. 建立內容 ---
             Object.values(groupedStudents).forEach(student => {
                 student.courses.forEach(course => {
-                    const searchText = Object.values(course).join(' ').toLowerCase() + student.name.toLowerCase() + student.id.toLowerCase();
-                    if (searchTerm && !searchText.includes(searchTerm)) return;
+                    // ... (省略搜尋與 appId 判斷代碼) ...
 
                     const tr = document.createElement('tr');
-                    tr.dataset.sid = student.id;
-                    tr.dataset.cid = course._internal_id; 
+                    // ... (省略 tr dataset 設定) ...
 
-                    const appId = course._app_id;
-                    let rowContext = {}; 
-                    if (appId) {
-                        const app = student.applications.find(a => a.id === appId);
-                        rowContext = app ? app.formData : {};
-                    } else {
-                        rowContext = course;
-                    }
+                    // ... (省略 Checkbox 內容格建立代碼) ...
 
-                    // (已移除 Checkbox 內容格)
-
-                    // B. System Columns
-                    [...displayStudentCols, ...sysCourseFields].forEach(col => {
+                    // 統一建立所有內容格
+                    allDisplayFields.forEach(f => {
                         const td = document.createElement('td');
-                        let val = course[col.id] || student[col.id === 'student_id' ? 'id' : (col.id === 'student_name' ? 'name' : col.id)] || '';
-                        td.innerText = val;
-                        td.title = val;
-                        td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 text-sm truncate border-r border-slate-200";
-                        tr.appendChild(td);
-                    });
-
-                    // C. Writable Columns
-                    dynamicCols.forEach(f => {
-                        const td = document.createElement('td');
-                        const val = rowContext[f.id] || "";
                         
-                        if (appId) td.className = "is-linked"; 
-                        else td.className = "is-raw";
+                        // 判斷是系統欄位 (唯讀) 還是填報欄位 (可寫)
+                        const isSystemCol = (f.category === 'sys_student_info' || f.category === 'sys_course_info');
                         
-                        let input;
-                        if (f.type === 'single_select' || f.type === 'list') {
-                            input = document.createElement('select');
-                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                        if (isSystemCol) {
+                            // 系統欄位：顯示文字
+                            let val = course[f.id] || student[f.id === 'student_id' ? 'id' : (f.id === 'student_name' ? 'name' : f.id)] || '';
+                            td.innerText = val;
+                            td.title = val;
+                            td.className = "bg-slate-50 font-medium text-slate-600 select-none px-2 text-sm truncate border-r border-slate-200";
                         } else {
-                            input = document.createElement('input');
-                            input.type = "text";
-                            input.value = val;
+                            // 填報欄位：顯示輸入框
+                            // ... (這裡放原本 dynamicCols 的輸入框建立邏輯) ...
+                            const val = rowContext[f.id] || "";
+                            if (appId) td.className = "is-linked"; 
+                            else td.className = "is-raw";
+                            
+                            let input;
+                            // ... (輸入框建立代碼保持不變) ...
+                            if (f.type === 'single_select' || f.type === 'list') {
+                                input = document.createElement('select');
+                                input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                            } else {
+                                input = document.createElement('input');
+                                input.type = "text";
+                                input.value = val;
+                            }
+                            
+                            input.className = "grid-input";
+                            input.dataset.field = f.id;
+                            input.title = val;
+                            if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
+                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                            input.oninput = (e) => { e.target.title = e.target.value; };
+                            
+                            td.appendChild(input);
                         }
-
-                        input.className = "grid-input";
-                        input.dataset.field = f.id;
-                        input.title = val; 
-                        
-                        if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
-                        
-                        input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                        input.oninput = (e) => { e.target.title = e.target.value; };
-
-                        td.appendChild(input);
                         tr.appendChild(td);
                     });
                     
@@ -1223,21 +1227,6 @@
                 globalConfig = cfgRes;
                 departmentData = deptRes;
                 deptMasterData = masterRes;
-
-                const yearSelect = document.getElementById('year-select');
-                yearSelect.innerHTML = '<option value="">請選擇學年度...</option>';
-                
-                if (globalConfig.academicYears && globalConfig.academicYears.length > 0) {
-                    globalConfig.academicYears.sort((a,b) => b.year.localeCompare(a.year));
-                    globalConfig.academicYears.forEach(y => {
-                        const opt = document.createElement('option');
-                        opt.value = y.year;
-                        opt.innerText = `${y.year} 學年度`;
-                        yearSelect.appendChild(opt);
-                    });
-                } else {
-                    yearSelect.innerHTML = '<option value="">無設定</option>';
-                }
 
                 updateFooterYear();
 
@@ -1417,14 +1406,12 @@
 
                 if (detectedYear) {
                     detectedYear = detectedYear.toString().trim();
-                    const yearSelect = document.getElementById('year-select');
-                    const opt = Array.from(yearSelect.options).find(o => o.value === detectedYear);
-                    if (opt) {
-                        yearSelect.value = detectedYear;
-                        // 必須使用 await 確保配置檔載入完畢，否則後續 ID 命名會使用舊的配置
-                        await changeYear(detectedYear); 
-                        showToast('info', `已自動切換至 ${detectedYear} 學年度`);
-                    }
+                    
+                    // 直接切換學年度設定
+                    await changeYear(detectedYear); 
+                    showToast('info', `已自動辨識並切換至 ${detectedYear} 學年度`);
+                } else {
+                    showToast('warning', '無法從檔案中偵測學年度，請確認欄位名稱 (例如: 學年)');
                 }
             }
 
@@ -3557,6 +3544,112 @@
             
             showToast('success', '歸戶已解除');
             logChange('DeleteApp', appId, 'Existing', 'Deleted from Grid Modal', studentId);
+        }
+    function toolAutoFill() {
+            let count = 0;
+            // 遍歷所有已建立的歸戶資料
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    // 檢查國別欄位 (internship_country)
+                    if (!app.formData['internship_country']) {
+                        app.formData['internship_country'] = '中華民國';
+                        // 這裡可以連帶觸發其他預設值 (例如: 幣別 -> 新台幣)
+                        count++;
+                    }
+                });
+            });
+            
+            if (count > 0) {
+                hasUnsavedChanges = true;
+                // 若當前有選中學生，重新渲染畫面以顯示變更
+                if(currentStudentId) selectStudent(currentStudentId);
+                // 若在 Grid 模式，也要重繪
+                if(!document.getElementById('grid-view-container').classList.contains('hidden')) {
+                    renderGlobalGrid();
+                }
+                showToast('success', `已自動為 ${count} 筆歸戶資料填入預設國別 (中華民國)`);
+                logChange('ToolAutoFill', '', '', `Auto-filled ${count} items`, 'System');
+            } else {
+                showToast('info', '所有歸戶資料皆已填寫國別，無需處理');
+            }
+        }
+
+        /**
+         * 工具 2: 資料完整性檢查
+         * 掃描所有「已建立的歸戶」，檢查是否有「必填」欄位未填寫
+         */
+        function toolCheckData() {
+            let issueCount = 0;
+            const fields = currentYearConfig.fields || [];
+            
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    let isComplete = true;
+                    for (const f of fields) {
+                        // 只檢查非系統、且為必填的欄位
+                        if (f.required && !f.isSystem && f.category !== 'sys_course_info') {
+                            
+                            // 檢查是否被隱藏 (Visibility Rule)
+                            let isVisible = true;
+                            if (f.visibilityRule) {
+                                const depVal = app.formData[f.visibilityRule.dep];
+                                isVisible = f.visibilityRule.action === 'show' ? depVal === f.visibilityRule.val : depVal !== f.visibilityRule.val;
+                            }
+                            
+                            // 若欄位可見，且值為空，則標記為缺失
+                            if (isVisible) {
+                                const val = app.formData[f.id];
+                                if (val === undefined || val === null || String(val).trim() === "") {
+                                    isComplete = false;
+                                    break; // 只要有一個沒填就算該筆資料不完整
+                                }
+                            }
+                        }
+                    }
+                    if(!isComplete) issueCount++;
+                });
+            });
+
+            if(issueCount > 0) {
+                showToast('warning', `檢查完成：偵測到 ${issueCount} 筆歸戶資料有必填欄位缺漏`);
+            } else {
+                showToast('success', '檢查完成：所有已建立的歸戶資料皆符合必填規則');
+            }
+        }
+
+        /**
+         * 工具 3: 目前填報統計
+         * 簡單的 Alert 視窗顯示統計數據
+         */
+        function toolStats() {
+            const totalStudents = Object.values(groupedStudents).length;
+            let totalApps = 0;
+            let totalCourses = 0;
+            let coveredCourses = 0;
+
+            Object.values(groupedStudents).forEach(s => {
+                totalApps += s.applications.length;
+                totalCourses += s.courses.length;
+                
+                // 計算已被歸戶的課程數
+                s.courses.forEach(c => {
+                    if (c._app_id) coveredCourses++;
+                });
+            });
+
+            const coverage = totalCourses > 0 ? Math.round((coveredCourses / totalCourses) * 100) : 0;
+            const appAvg = totalApps > 0 ? (coveredCourses / totalApps).toFixed(1) : 0;
+
+            alert(
+                `📊 目前填報統計概覽\n` +
+                `━━━━━━━━━━━━━━━━\n` +
+                `👥 學生總數：${totalStudents} 人\n` +
+                `📚 課程總數：${totalCourses} 門\n\n` +
+                `✅ 已建立歸戶：${totalApps} 筆\n` +
+                `🔗 已歸戶課程：${coveredCourses} 門\n` +
+                `📈 填報覆蓋率：${coverage}%\n` +
+                `🔄 平均每筆歸戶包含：${appAvg} 門課程`
+            );
         }
 
     </script>
