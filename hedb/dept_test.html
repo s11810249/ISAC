@@ -485,25 +485,22 @@
         .excel-table { 
             border-collapse: separate; 
             border-spacing: 0;
-            position: relative; /* 建立表格層級 */
         }
         
-        /* 一般格線 */
         .excel-table th, .excel-table td { 
             border-right: 1px solid #f1f5f9; 
             border-bottom: 1px solid #f1f5f9; 
             box-sizing: border-box;
-            background-clip: padding-box; /* 防止背景蓋住邊框 */
+            background-clip: padding-box;
         }
 
-        /* 2. 層級設定 (Z-Index Hierarchy) - 嚴格分層 */
-        /* 規則：下拉選單(100) > 表頭凍結(90) > 一般表頭(80) > 內容凍結(70) > 一般內容(auto) */
+        /* 2. 層級設定 (Z-Index Hierarchy) - 修正版 */
+        /* 層級邏輯：左上角凍結頭(50) > 一般表頭(40) > 內容凍結欄(30) > 一般內容(auto) */
 
-        /* 強制表頭區塊最高 */
         thead {
             position: sticky;
             top: 0;
-            z-index: 80;
+            z-index: 40; /* 確保整個表頭層級高於內容 */
         }
 
         /* 一般表頭 */
@@ -511,30 +508,33 @@
             position: sticky;
             top: 0;
             background-color: #f8fafc;
-            z-index: 80; /* ★ 必須高於 td.sticky-col (70) */
-            border-bottom: 2px solid #94a3b8 !important; 
             color: #475569;
+            border-bottom: 2px solid #94a3b8 !important; 
+            z-index: 40; 
         }
         
-        /* 表頭的凍結欄位 (左上角) */
+        /* 表頭的凍結欄位 (左上角) - 最高層級 */
         th.sticky-col {
+            position: sticky;
+            left: 0; /* JS 會動態計算 left，但在 CSS 先宣告 position */
             background-color: #f8fafc !important;
-            z-index: 90 !important; /* ★ 最高層級，高於一般表頭 */
+            z-index: 50 !important; 
             border-bottom: 2px solid #94a3b8 !important;
         }
 
-        /* 內容的凍結欄位 */
+        /* 內容的凍結欄位 (左側) - 比表頭低，但比一般內容高 */
         td.sticky-col {
             position: sticky;
-            background-color: #fff !important;
-            z-index: 70 !important; /* ★ 必須比表頭(80)低，確保滑入下方 */
+            left: 0;
+            background-color: #fff !important; /* 必須有背景色才不會透過去 */
+            z-index: 30 !important; 
         }
 
-        /* 3. 凍結列最右邊加粗 */
+        /* 3. 凍結列最右邊加粗陰影 */
         .sticky-border-right {
             border-right: 2px solid #94a3b8 !important;
             box-shadow: 4px 0 6px -3px rgba(0,0,0,0.1);
-            clip-path: inset(0 -15px 0 0);
+            clip-path: inset(0 -15px 0 0); /* 防止陰影被裁切 */
         }
 
         /* 4. 欄位說明圖示 */
@@ -1452,22 +1452,40 @@
 
             // 排序資料
             if (gridState.sortKey) {
+                const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
                 allFlatData.sort((rowA, rowB) => {
                     const getVal = (row) => {
                         let v = "";
                         const key = gridState.sortKey;
+                        // 優先取 App Data，沒有則取 Course Data
                         if (row.appId && row.appData[key] !== undefined) v = row.appData[key];
                         else v = row.course[key];
+                        
+                        // 處理 Fallback 值
                         if ((v === undefined || v === "") && key === 'student_id') v = row.student.id;
                         if ((v === undefined || v === "") && key === 'student_name') v = row.student.name;
-                        return v === undefined || v === null ? "" : String(v);
+                        
+                        return v === undefined || v === null ? "" : String(v).trim();
                     };
+
                     const valA = getVal(rowA);
                     const valB = getVal(rowB);
-                    const numA = parseFloat(valA.replace(/,/g, ''));
-                    const numB = parseFloat(valB.replace(/,/g, ''));
-                    if (!isNaN(numA) && !isNaN(numB) && valA.trim() !== '' && valB.trim() !== '') return gridState.sortDir === 'asc' ? numA - numB : numB - numA;
-                    return gridState.sortDir === 'asc' ? valA.localeCompare(valB, 'zh-Hant') : -valB.localeCompare(valA, 'zh-Hant');
+
+                    // 針對純數值欄位嘗試轉數字 (如成績、學分)，學號則走字串自然排序
+                    const isPureNumberCol = ['credit', 'score', 'grade', 'hours', 'point'].some(k => gridState.sortKey.includes(k));
+                    
+                    if (isPureNumberCol) {
+                        const numA = parseFloat(valA.replace(/,/g, ''));
+                        const numB = parseFloat(valB.replace(/,/g, ''));
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                            return gridState.sortDir === 'asc' ? numA - numB : numB - numA;
+                        }
+                    }
+
+                    // 使用自然排序比較字串 (解決 S1 vs S10 問題)
+                    const comp = collator.compare(valA, valB);
+                    return gridState.sortDir === 'asc' ? comp : -comp;
                 });
             }
 
@@ -2256,9 +2274,13 @@
             });
             
             students.sort((a, b) => {
-                let valA = a[sortConfig.key];
-                let valB = b[sortConfig.key];
-                const comp = valA.localeCompare(valB, undefined, {numeric: true, sensitivity: 'base'});
+                let valA = String(a[sortConfig.key] || '');
+                let valB = String(b[sortConfig.key] || '');
+                
+                // 使用 Intl.Collator 進行自然排序 (支援 S1, S2, S10 這種邏輯)
+                const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+                const comp = collator.compare(valA, valB);
+                
                 return sortConfig.direction === 'asc' ? comp : -comp;
             });
 
