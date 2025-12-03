@@ -1468,71 +1468,152 @@
                 // 1. 基礎標題寬度 (含 icon 與 padding)
                 const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 20 + iconWidth;
 
-                [cite_start]// 定義唯讀欄位：系統欄位 或 課程/學生基本資料 [cite: 401]
+                // 定義唯讀欄位
                 const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
 
-                // --- 邏輯 A: 日期 (Date) 欄位 ---
-                // 依據提示字元 (Placeholder) 動態計算
+                // --- 分流邏輯開始 ---
                 if (f.type === 'date') {
+                    // 邏輯 A: 日期欄位 (依提示字元)
                     const placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                    const phWidth = getTextWidth(placeholder, "15px 'Noto Sans TC'"); // 模擬輸入框字體
-                    maxW = phWidth + 30; // 30px = 左右 padding + 緩衝
-                }
-                
-                // --- 邏輯 B: 時數 (Hours) 欄位 ---
-                // 判斷方式：ID 或 Label 包含 'hours'/'時數'
-                else if (f.id.toLowerCase().includes('hours') || f.label.includes('時數')) {
-                    // 假設時數通常為 3-4 位數，設定動態 placeholder 寬度
-                    // 若有特定最大值需求，可修改此處字串，例如 "8888"
+                    const phWidth = getTextWidth(placeholder, "15px 'Noto Sans TC'");
+                    maxW = phWidth + 30; 
+                } else if (f.id && (f.id.toLowerCase().includes('hours') || f.label.includes('時數'))) {
+                    // 邏輯 B: 時數欄位 (依 4 位數寬度)
                     const phWidth = getTextWidth("8888", "15px 'Noto Sans TC'"); 
                     maxW = phWidth + 30; 
+                } else if (isReadOnly) {
+                    // 邏輯 C: 唯讀欄位 (掃描該欄所有內容，取最寬者)
+                    // 注意：這裡需要用到外部的 allFlatData 變數
+                    if (typeof allFlatData !== 'undefined') {
+                        allFlatData.forEach(row => {
+                            let val = row.course[f.id];
+                            if (val === undefined) {
+                                if (f.id === 'student_id') val = row.student.id;
+                                else if (f.id === 'student_name') val = row.student.name;
+                                else if (f.id === 'student_dept') val = row.student.dept;
+                            }
+                            if (val) {
+                                const w = getTextWidth(String(val), "14px 'Noto Sans TC'");
+                                if (w > maxW) maxW = w;
+                            }
+                        });
+                    }
+                    maxW += 30; 
+                } else {
+                    // 邏輯 D: 一般可輸入欄位 (依標題寬度)
+                    maxW = headerW;
+                    
+                    // 下拉選單微調 (選用：若選項很長，稍微撐開以免切到，但以標題為主)
+                    if (f.type === 'single_select' || f.type === 'list') {
+                         if (f.options && f.options.length > 0) {
+                             f.options.forEach(opt => {
+                                 const w = getTextWidth(opt, "14px 'Noto Sans TC'");
+                                 if (w > maxW) maxW = w; 
+                             });
+                             maxW += 45; 
+                        }
+                    }
                 }
+                
+                // 最終寬度計算 (至少顯示標題，且不小於 80px)
+                columnWidths[f.id] = Math.max(maxW, headerW, 80);
+            });
 
-                // --- 邏輯 C: 唯讀欄位 (Read-Only) ---
-                [cite_start]// 依據「該欄最寬的內容」調整 [cite: 401]
-                else if (isReadOnly) {
-                    allFlatData.forEach(row => {
+            // 排序資料
+            if (gridState.sortKey) {
+                const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+
+                allFlatData.sort((rowA, rowB) => {
+                    const getVal = (row) => {
+                        let v = "";
+                        const key = gridState.sortKey;
+                        // 優先取 App Data，沒有則取 Course Data
+                        if (row.appId && row.appData[key] !== undefined) v = row.appData[key];
+                        else v = row.course[key];
+                        
+                        // 處理 Fallback 值
+                        if ((v === undefined || v === "") && key === 'student_id') v = row.student.id;
+                        if ((v === undefined || v === "") && key === 'student_name') v = row.student.name;
+                        
+                        return v === undefined || v === null ? "" : String(v).trim();
+                    };
+
+                    const valA = getVal(rowA);
+                    const valB = getVal(rowB);
+
+                    // 針對純數值欄位嘗試轉數字 (如成績、學分)，學號則走字串自然排序
+                    const isPureNumberCol = ['credit', 'score', 'grade', 'hours', 'point'].some(k => gridState.sortKey.includes(k));
+                    
+                    if (isPureNumberCol) {
+                        const numA = parseFloat(valA.replace(/,/g, ''));
+                        const numB = parseFloat(valB.replace(/,/g, ''));
+                        if (!isNaN(numA) && !isNaN(numB)) {
+                            return gridState.sortDir === 'asc' ? numA - numB : numB - numA;
+                        }
+                    }
+
+                    // 使用自然排序比較字串 (解決 S1 vs S10 問題)
+                    const comp = collator.compare(valA, valB);
+                    return gridState.sortDir === 'asc' ? comp : -comp;
+                });
+            }
+
+            const sampleData = allFlatData.slice(0, 50);
+
+            allColumns.forEach(f => {
+                let maxW = 0;
+                const hasDesc = !!f.description;
+                const iconWidth = hasDesc ? 25 : 0;
+                
+                // 表頭寬度
+                const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 20 + iconWidth;
+
+                if (f.type === 'single_select' || f.type === 'list') {
+                    if (f.options && f.options.length > 0) {
+                        f.options.forEach(opt => {
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'");
+                            if (w > maxW) maxW = w;
+                        });
+                    }
+                    maxW += 45; 
+                } 
+                // ★ 新增：日期欄位依據提示字元 (Placeholder) 計算寬度
+                else if (f.type === 'date') {
+                    // 若設定檔有強制指定 width 則優先使用，否則依提示字元計算
+                    if (f.width) {
+                        maxW = parseInt(f.width);
+                    } else {
+                        // 判斷提示字元格式
+                        const placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
+                        // 使用與 CSS .grid-input 一致的 15px 字體測量 
+                        const phWidth = getTextWidth(placeholder, "15px 'Noto Sans TC'");
+                        // 加上左右 Padding (各10px)  + 緩衝空間 (約 10px)
+                        maxW = phWidth + 30;
+                    }
+                }
+                else if (f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info') {
+                    sampleData.forEach(row => {
                         let val = row.course[f.id];
-                        [cite_start]// 處理 Fallback 值 [cite: 402]
                         if (val === undefined) {
                             if (f.id === 'student_id') val = row.student.id;
                             else if (f.id === 'student_name') val = row.student.name;
                             else if (f.id === 'student_dept') val = row.student.dept;
                         }
-                        
                         if (val) {
-                            // 計算內容寬度
-                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'"); // 唯讀內容字體
+                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'");
                             if (w > maxW) maxW = w;
                         }
                     });
-                    maxW += 30; // 加上 padding 緩衝
+                    maxW += 30;
                 }
-
-                // --- 邏輯 D: 其他非唯讀/可輸入欄位 (Editable) ---
-                // 依據「該欄的標題」設定寬度，不掃描內容
+                else if (f.type === 'text' || f.type === 'address' || f.id.includes('name')) {
+                    maxW = f.width ? parseInt(f.width) : 200; 
+                }
                 else {
-                    // 直接使用 headerW，不進行內容掃描
                     maxW = headerW;
-                    
-                    // 特別處理：若是下拉選單 (Select)，為了避免選項被切掉，
-                    // 雖然您指定依據標題，但通常建議保留選項寬度偵測。
-                    // 若您希望能嚴格執行「依標題寬度」，請刪除下方這段 if 區塊。
-                    if (f.type === 'single_select' || f.type === 'list') {
-                        if (f.options && f.options.length > 0) {
-                             f.options.forEach(opt => {
-                                 const w = getTextWidth(opt, "14px 'Noto Sans TC'");
-                                 // 這裡我們取一個平衡：如果選項真的太長，還是稍微撐開一點，但以標題為主
-                                 if (w > maxW) maxW = w; 
-                             });
-                             maxW += 45; // Select 箭頭空間
-                        }
-                    }
                 }
                 
-                // 最終寬度計算：
-                // 1. 至少要能顯示標題 (headerW)
-                [cite_start]// 2. 至少要有 80px (避免過窄無法操作) [cite: 408]
+                // 最終寬度：取 (內容寬度, 表頭寬度, 最小寬度80) 之最大值
                 columnWidths[f.id] = Math.max(maxW, headerW, 80);
             });
 
