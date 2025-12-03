@@ -1329,12 +1329,11 @@
 
                         if (fieldDef.calcMode === 'weighted') {
                             // === 修正：加權分配模式 (Weighted Distribution) ===
-                            // 動作：算出新總和 -> 依照權重重新分配給所有課程 -> 更新畫面
                             
                             // A. 計算目前的「新總和」與「總權重」
                             let currentTotalValue = 0;
                             let totalWeight = 0;
-                            const weightKey = fieldDef.weightField; // 設定檔必須指定 (如 credits)
+                            const weightKey = fieldDef.weightField; 
 
                             linkedCourses.forEach(c => {
                                 const v = parseFloat(c[fieldDef.id]) || 0;
@@ -1360,16 +1359,16 @@
                                     // B-3. 更新資料物件
                                     c[fieldDef.id] = formattedVal;
 
-                                    // B-4. ★關鍵：同步更新畫面上其他課程的 Input★
-                                    // 我們需要找到這門課在畫面上的 Input 元素
-                                    const row = document.querySelector(`tr[data-cid="${c._internal_id}"]`);
+                                    // B-4. ★關鍵修正★：同步更新畫面時，必須同時指定 cid 和 sid
+                                    // 這樣才不會抓到別的學生修同一門課的格子
+                                    const row = document.querySelector(`tr[data-cid="${c._internal_id}"][data-sid="${student.id}"]`);
                                     if(row) {
                                         const targetInput = row.querySelector(`input[data-field="${fieldDef.id}"]`);
                                         if (targetInput) {
                                             targetInput.value = formattedVal;
                                             targetInput.title = formattedVal;
                                             
-                                            // 視覺回饋：閃爍背景提示使用者數值被自動調整
+                                            // 視覺回饋
                                             if (targetInput !== inputEl) { 
                                                 targetInput.style.transition = 'background-color 0.3s';
                                                 targetInput.style.backgroundColor = '#fff7ed'; // 淡橘色
@@ -1381,7 +1380,7 @@
                             }
 
                         } else {
-                            // === 一般平均/加總模式 (既有邏輯) ===
+                            // === 一般平均/加總模式 ===
                             let sum = 0;
                             linkedCourses.forEach(c => {
                                 const v = parseFloat(c[fieldDef.id]);
@@ -1395,8 +1394,6 @@
 
                         logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
 
-                        // 注意：weighted 模式下，上面已經手動同步畫面了
-
                     } else {
                         // 1. 一般共用欄位：更新 App Data
                         const oldVal = app.formData[fieldDef.id];
@@ -1404,6 +1401,9 @@
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
                         // 2. 同步數值到所有共用此 App 的格子
+                        // 這裡也要修正，加上 data-sid 確保只更新該學生的格子
+                        // 雖然 class selector 比較難加屬性，但通常 app-input class 是用 appId 生成的，appId 若唯一則沒問題。
+                        // 但為了保險，建議依賴 appId 即可 (appId 是每次建立歸戶時生成的唯一亂數，不會跨學生重複)
                         document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
                             if (el !== inputEl) {
                                 el.value = newVal;
@@ -1433,7 +1433,7 @@
                 }
             }
         }
-
+        
         // --- Initialization ---
         window.onload = async function() {
             try {
