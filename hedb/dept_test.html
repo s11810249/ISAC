@@ -3909,7 +3909,7 @@
 
             // 1. 定義固定欄位 (左側基礎資訊)
             const fixedHeaders = [
-                { id: 'student_id', label: '學號', width: '80px' },
+                { id: 'student_id', label: '學號', width: '100px' }, // 稍微加寬以容納正常字體
                 { id: 'student_name', label: '姓名', width: '80px' },
                 { id: 'course_name', label: '課程名稱', width: '150px' },
                 { id: 'semester', label: '學期', width: '50px' }
@@ -3918,13 +3918,11 @@
             const fixedIds = new Set(fixedHeaders.map(h => h.id));
 
             // 2. 準備動態欄位 & 排序
-            // 取得設定檔中的欄位，並執行過濾與排序
             const fields = currentYearConfig.fields || [];
             const visibleFields = fields
                 .filter(f => !gridState.hiddenCols.includes(f.id) && f.id !== '_internal_id' && !fixedIds.has(f.id))
                 .sort((a, b) => {
-                    // ★★★ 修正 4：依照後台設定 order 從 0 開始排序 ★★★
-                    // 若沒有設定 order，預設給 9999 排在最後面
+                    // ★★★ 修正 3：嚴格依照後台 order 排序 (0, 1, 2...) ★★★
                     const o1 = (a.order !== undefined && a.order !== null) ? parseInt(a.order) : 9999;
                     const o2 = (b.order !== undefined && b.order !== null) ? parseInt(b.order) : 9999;
                     return o1 - o2;
@@ -3964,7 +3962,6 @@
                         : '<i class="fas fa-sort-down sort-icon active"></i>';
                 }
                 
-                // 必填標記
                 const reqSpan = f.required ? '<span class="text-red-500 ml-1">*</span>' : '';
                 th.innerHTML = `${f.label}${reqSpan} ${icon}`;
                 trHead.appendChild(th);
@@ -3983,7 +3980,7 @@
                 });
             });
 
-            // 5. 篩選 (搜尋)
+            // 5. 篩選
             const term = document.getElementById('grid-search')?.value.toLowerCase() || '';
             if (term) {
                 rows = rows.filter(r => 
@@ -4027,10 +4024,10 @@
 
                 if (app) tr.classList.add('is-linked');
                 
-                // --- ★★★ 修正 1 & 2：移除 Checkbox，學號正常顯示 ★★★ ---
+                // --- ★★★ 修正 1：學號文字樣式還原 (移除 font-mono, text-xs) ★★★ ---
                 const tdId = document.createElement('td');
-                tdId.className = "px-2 py-0 text-slate-600 font-mono text-xs"; // 設定樣式
-                tdId.innerText = student.id; // 直接顯示學號
+                tdId.className = "px-2 text-slate-600"; // 與其他文字一致
+                tdId.innerText = student.id;
                 tr.appendChild(tdId);
 
                 const tdName = document.createElement('td');
@@ -4078,19 +4075,16 @@
                         input.classList.add(`app-input-${app.id}-${f.id}`);
                     }
 
-                    // --- ★★★ 修正 3：後台設定唯讀欄位要鎖住 ★★★ ---
-                    // 檢查 f.readOnly 是否為 true
+                    // --- ★★★ 修正 2：檢查唯讀設定並鎖定 ★★★ ---
                     if (f.readOnly) {
                         input.disabled = true;
-                        // 額外增加鎖定樣式 (灰底、滑鼠禁用)
                         input.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
-                        td.classList.add('bg-slate-100'); // 讓整個格子也變灰
+                        td.classList.add('bg-slate-100');
                     } else {
-                        // 只有非唯讀欄位才綁定變更事件
                         input.onchange = (e) => handleGridChange(e.target, student, course, f);
                     }
 
-                    // 處理 Visibility (連動隱藏)
+                    // 處理 Visibility
                     const dataContext = app ? app.formData : course;
                     checkGridInputVisibility(input, f, dataContext);
 
