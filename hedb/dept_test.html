@@ -1692,46 +1692,13 @@
                 trHead.appendChild(th);
             });
 
-            // ★★★ 新增：最右側凍結內容「歸戶狀態」 (美化版 V2) ★★★
-                const tdStatus = document.createElement('td');
-                tdStatus.className = "border-l-2 border-slate-300 p-0 relative sticky-col-right";
-                tdStatus.style.minWidth = "140px"; // 稍微加寬一點點以容納新設計
-                tdStatus.style.backgroundColor = bgBase;
-
-                let statusHtml = '';
-                if (!appId) {
-                    // --- 未歸戶樣式：灰色虛線膠囊，表示「待連結」 ---
-                    statusHtml = `
-                        <div class="px-3 py-1 rounded-full border border-dashed border-slate-300 bg-slate-50 text-slate-400 text-xs font-bold flex items-center gap-1.5 select-none hover:bg-slate-100 transition cursor-default" title="此課程尚未歸戶">
-                            <i class="fas fa-unlink text-[10px]"></i> 未歸戶
-                        </div>
-                    `;
-                } else {
-                    // --- 已歸戶樣式：卡片式標籤 ---
-                    // 在 student.applications 中尋找此 appId 的 index
-                    const appIdx = student.applications.findIndex(a => a.id === appId);
-                    const seq = appIdx >= 0 ? appIdx + 1 : '?';
-                    
-                    statusHtml = `
-                        <div class="flex flex-col items-center gap-1 w-full px-3 py-1 select-none">
-                            <div class="w-full bg-indigo-50 border border-indigo-200 rounded text-indigo-700 py-0.5 px-2 flex items-center justify-center gap-1.5 shadow-sm">
-                                <i class="fas fa-link text-[10px] opacity-70"></i>
-                                <span class="text-xs font-bold tracking-wide">紀錄 ${seq}</span>
-                            </div>
-                            <span class="text-[10px] text-slate-400 font-mono tracking-tighter scale-95 opacity-80">${student.id}</span>
-                        </div>
-                    `;
-                }
-
-                // 使用 cell-read-only 容器確保置中
-                const divStatus = document.createElement('div');
-                divStatus.className = "cell-read-only";
-                // 確保容器本身是 Flex Column 且置中
-                divStatus.style.flexDirection = 'column'; 
-                divStatus.innerHTML = statusHtml;
-                tdStatus.appendChild(divStatus);
-
-                tr.appendChild(tdStatus);
+            // ★★★ 新增：最右側凍結表頭「歸戶狀態」 ★★★
+            const thStatus = document.createElement('th');
+            thStatus.className = "bg-slate-100 text-slate-600 px-2 py-2 text-sm font-bold whitespace-nowrap select-none sticky-col-right";
+            thStatus.style.minWidth = "140px"; // 給予固定寬度
+            thStatus.style.textAlign = 'center';
+            thStatus.innerHTML = "歸戶狀態";
+            trHead.appendChild(thStatus);
 
             theadFragment.appendChild(trHead);
 
