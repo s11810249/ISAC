@@ -322,47 +322,100 @@
         /* 2. 輸入框與選單：字體加大 */
         .grid-input { 
             width: 100%; 
-            height: 100%;
+            height: 100%;          
+            min-height: 34px;
             border: none; 
-            background: transparent; 
-            padding: 0 10px; /* 內距稍微加大 */
-            font-size: 15px; /* 從 13px 加大到 15px */
-            border-radius: 0;
-            line-height: 40px; /* 配合 TD 高度 */
+            background: transparent;
+            padding: 4px 8px; 
+            font-size: 14px;  
+            line-height: 1.25;     /* ★ 修改：調降行高 (原本 1.5 -> 1.25)，讓換行更緊湊 */
             color: #334155;
-            
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            transition: all 0.2s;
+            box-sizing: border-box;
+            vertical-align: top;
+            display: block;        
         }
-
-        .grid-input:focus { 
-            outline: none;
-            box-shadow: inset 0 0 0 2px #002E5D; 
-            background-color: #fff;
-            z-index: 10;
+        
+        /* 文字區域專用 */
+        textarea.grid-input {
+            white-space: pre-wrap; 
+            word-break: break-all; 
+            overflow: hidden;      
+            resize: none;
+            padding-top: 6px;      /* 微調內距，讓第一行文字位置更好看 */
         }
-
-        /* 3. 鎖定狀態 */
-        .grid-input:disabled { 
-            background-color: #cbd5e1; /* 修改這裡：顏色加深 */
-            color: #64748b;            /* 選用：文字顏色也可以稍微加深一點以便閱讀 */
-            cursor: not-allowed;
-        }
-        td:has(.grid-input:disabled) {
-            background-color: #cbd5e1; /* 修改這裡：顏色加深 */
-        }
-
-        /* 4. 下拉選單美化 */
+        
+        /* 4. 下拉選單美化 (V2: 按鈕固定右側 + 防重疊) */
         select.grid-input { 
             appearance: none; 
             -webkit-appearance: none;
-            padding-right: 24px; 
+            width: 100%;             
+            height: 100%;            
+            border: none;
+            background: transparent; /* 確保背景透明，讓 TD 顏色透出 */
             cursor: pointer;
+            
+            /* 自定義箭頭圖示 */
             background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
             background-repeat: no-repeat;
-            background-position: right 6px center;
-            background-size: 16px; /* 箭頭稍微加大 */
+            background-size: 16px;
+            
+            /* ★ 關鍵修正 1：將箭頭死死釘在右側 (靠右 8px)，不隨文字移動 */
+            background-position: right 8px center; 
+            
+            /* ★ 關鍵修正 2：右側內距加大到 30px，確保文字絕對不會跟箭頭重疊 */
+            padding-right: 30px !important; 
+            padding-left: 8px;
+            
+            /* 文字置中 */
+            text-align: center;
+            text-align-last: center; 
+            
+            /* 禁止換行，過長省略 */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            
+            font-size: 14px;
+            color: #334155;
+        }
+        
+        /* Firefox 修正 */
+        select.grid-input:-moz-focusring { color: transparent; text-shadow: 0 0 0 #000; }
+
+        .grid-input:disabled {
+            color: #cbd5e1; 
+            cursor: not-allowed;
+            background-color: transparent !important; 
+        }
+
+        .grid-input:focus { 
+            outline: none; box-shadow: inset 0 0 0 2px #002E5D; background-color: #ffffff; z-index: 10;
+        }
+
+        /* 3. 表格儲存格 */
+        .excel-table td { 
+            padding: 0 !important; 
+            height: 1px;           
+            min-height: 34px;      
+            border-right: 1px solid #f1f5f9; 
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;   
+        }
+
+        /* 4. 唯讀儲存格內容容器 */
+        .cell-read-only {
+            width: 100%; 
+            height: 100%;          
+            min-height: 34px;
+            display: flex;         
+            align-items: center;   
+            justify-content: center; 
+            padding: 4px 8px; 
+            color: #64748b; 
+            white-space: nowrap;   
+            text-align: center;
+            line-height: 1.25;     /* ★ 修改：唯讀欄位也同步調降行高 */
         }
         
         select.grid-input:-moz-focusring { color: transparent; text-shadow: 0 0 0 #000; }
@@ -1523,9 +1576,10 @@
             // ------------------------------------
 
             allColumns.forEach(f => {
-                // A. 基準寬度：絕對優先計算「標題 + Info Icon」
+                // A. 基準寬度：標題 + Info Icon
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
+                // 使用 15px 計算標題寬度 + 30px 緩衝
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
@@ -1537,16 +1591,17 @@
                     // 1.1 掃描「設定檔中的選項」
                     if (f.options && f.options.length > 0) {
                         f.options.forEach(opt => {
-                            // ★ 修正：文字寬度 + 50px (包含左右 Padding + 下拉箭頭圖示寬度)
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 50; 
+                            // ★ 修改：文字寬度 + 65px (確保容納箭頭與左右留白)
+                            // 使用 15px 字體計算，比實際顯示(14px)稍寬，確保不換行
+                            const w = getTextWidth(opt, "15px 'Noto Sans TC'") + 65; 
                             finalW = Math.max(finalW, w);
                         });
                     }
-                    // 1.2 也要掃描「實際資料值」
+                    // 1.2 掃描「實際資料值」
                     allFlatData.forEach(row => {
                          let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
                          if (val) {
-                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 50;
+                             const w = getTextWidth(String(val), "15px 'Noto Sans TC'") + 65;
                              finalW = Math.max(finalW, w);
                          }
                     });
@@ -1563,6 +1618,7 @@
                         if (row.appId && row.appData[f.id] !== undefined) val = row.appData[f.id];
 
                         if (val) {
+                            // 唯讀欄位 + 24px 緩衝
                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24; 
                             finalW = Math.max(finalW, w);
                         }
@@ -1574,12 +1630,12 @@
                     finalW = Math.max(finalW, defaultTextW);
                 }
                 
-                // C. 提示字元 Placeholder 優先 (移除單選的預設提示)
+                // C. 提示字元 Placeholder 優先
                 let placeholderText = "";
                 if (f.type === 'date') placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
                 else if (f.calcMode === 'weighted') placeholderText = "(點擊填寫)";
                 else if (f.placeholder) placeholderText = f.placeholder;
-                // ★ 移除 else if (f.type === 'single_select') ... "請選擇"
+                // 單選不使用 placeholder 計算，因為上面已經掃描所有選項了
 
                 if (placeholderText) {
                     const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 30;
