@@ -976,69 +976,94 @@
             container.innerHTML = '';
 
             const details = document.createElement('details');
-            details.className = "column-picker w-full group";
+            details.className = "column-picker w-full group relative";
             
+            // 1. 觸發按鈕 (Trigger)
             const summary = document.createElement('summary');
-            summary.className = "flex items-center justify-between cursor-pointer p-2 rounded-lg hover:bg-slate-200 transition text-slate-600 select-none";
+            summary.className = "custom-picker-trigger flex items-center justify-between cursor-pointer px-4 py-2 bg-white border border-slate-300 rounded-lg hover:border-primary hover:text-primary transition shadow-sm select-none text-slate-600";
             summary.innerHTML = `
-                <div class="flex items-center gap-2 font-bold text-sm">
-                    <i class="fas fa-sliders-h"></i>
-                    <span>設定顯示欄位</span>
-                    <span class="bg-slate-200 text-slate-600 text-[10px] px-2 py-0.5 rounded-full group-open:bg-slate-300">
-                        顯示中: ${currentVisible} / ${total}
-                    </span>
+                <div class="flex items-center gap-3">
+                    <div class="bg-primary/10 text-primary w-8 h-8 rounded-full flex items-center justify-center">
+                        <i class="fas fa-sliders-h"></i>
+                    </div>
+                    <div class="flex flex-col items-start leading-tight">
+                        <span class="font-bold text-sm">顯示欄位設定</span>
+                        <span class="text-[10px] text-slate-400">目前顯示 ${currentVisible} / ${total} 個欄位</span>
+                    </div>
                 </div>
-                <div class="text-xs text-slate-400 group-open:rotate-180 transition-transform duration-300">
-                    <i class="fas fa-chevron-down"></i>
-                </div>
+                <i class="fas fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform duration-300"></i>
             `;
-
+            
+            // 2. 下拉內容容器 (Dropdown)
             const content = document.createElement('div');
-            content.className = "mt-3 p-4 bg-white border border-slate-200 rounded-xl shadow-sm";
-
+            content.className = "picker-dropdown absolute top-full left-0 mt-2 w-full max-w-4xl bg-white border border-slate-200 rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden";
+            
+            // 2.1 操作區 (Header Actions)
             const actions = document.createElement('div');
-            actions.className = "flex gap-2 mb-3 pb-3 border-b border-slate-100";
+            actions.className = "flex justify-between items-center px-4 py-3 border-b border-slate-100 bg-slate-50/50";
             actions.innerHTML = `
-                <button type="button" id="btn-show-all" class="text-xs px-2 py-1 rounded hover:bg-slate-100 text-primary font-bold transition">
-                    <i class="fas fa-check-double mr-1"></i> 全部顯示
-                </button>
-                <button type="button" id="btn-hide-all" class="text-xs px-2 py-1 rounded hover:bg-slate-100 text-slate-500 transition">
-                    <i class="fas fa-times mr-1"></i> 全部隱藏
-                </button>
+                <span class="text-xs font-bold text-slate-500">請勾選欲顯示的欄位</span>
+                <div class="flex gap-2">
+                    <button type="button" id="btn-show-all" class="text-xs px-2 py-1 rounded hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-sm text-primary font-bold transition">
+                        <i class="fas fa-check-double mr-1"></i> 全選
+                    </button>
+                    <button type="button" id="btn-hide-all" class="text-xs px-2 py-1 rounded hover:bg-white border border-transparent hover:border-slate-200 hover:shadow-sm text-slate-500 transition">
+                        <i class="fas fa-times mr-1"></i> 全隱藏
+                    </button>
+                </div>
             `;
             content.appendChild(actions);
 
+            // 2.2 選項區 (Grid Layout)
             const tagsContainer = document.createElement('div');
-            tagsContainer.className = "flex flex-wrap gap-2 max-h-[200px] overflow-y-auto custom-scroll pr-2"; 
+            tagsContainer.className = "p-4 grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-2 max-h-[300px] overflow-y-auto custom-scroll bg-slate-50/30";
 
             allFields.forEach(f => {
                 const lbl = document.createElement('label');
-                lbl.className = 'toggle-chip'; 
+                lbl.className = 'field-chip-label'; 
                 const checked = !previewState.hiddenCols.includes(f.id);
                 
                 lbl.innerHTML = `
                     <input type="checkbox" onchange="togglePreviewCol('${f.id}')" ${checked ? 'checked' : ''}>
-                    <span>${f.label}</span>
+                    <div class="chip-check-icon"></div>
+                    <span class="truncate" title="${f.label}">${f.label}</span>
                 `;
                 tagsContainer.appendChild(lbl);
             });
             content.appendChild(tagsContainer);
 
+            // 2.3 底部 (Footer) - 點擊收合
+            const footer = document.createElement('div');
+            footer.className = "px-4 py-2 border-t border-slate-100 bg-white flex justify-center cursor-pointer hover:bg-slate-50 transition";
+            footer.innerHTML = `<i class="fas fa-chevron-up text-slate-300"></i>`;
+            footer.onclick = () => details.removeAttribute('open');
+            content.appendChild(footer);
+
             details.appendChild(summary);
             details.appendChild(content);
             container.appendChild(details);
 
-            content.querySelector('#btn-show-all').onclick = () => {
+            // 綁定全選/全不選事件
+            content.querySelector('#btn-show-all').onclick = (e) => {
+                e.preventDefault();
                 previewState.hiddenCols = []; 
                 renderPreviewControls(); 
                 renderPreviewTable();    
             };
 
-            content.querySelector('#btn-hide-all').onclick = () => {
+            content.querySelector('#btn-hide-all').onclick = (e) => {
+                e.preventDefault();
                 previewState.hiddenCols = allFields.map(f => f.id);
                 renderPreviewControls();
                 renderPreviewTable();
             };
+            
+            // 點擊外部關閉選單 (新增)
+            document.addEventListener('click', function closeMenu(e) {
+                if (!details.contains(e.target)) {
+                    details.removeAttribute('open');
+                }
+            }, { once: true }); // 用 once: true 避免重複綁定，但這裡簡單處理，實際可能需要更嚴謹的綁定
         }
 
         function togglePreviewCol(fieldId) {
@@ -4127,59 +4152,74 @@
             const details = document.createElement('details');
             details.className = "group relative"; 
             
+            // 1. 觸發按鈕 (更加精緻)
             const summary = document.createElement('summary');
-            // ★★★ 修改：使用與預覽視窗一致的 Summary 樣式 (含 Badge) ★★★
-            summary.className = "flex items-center gap-3 cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:bg-slate-50 transition select-none text-slate-600 list-none shadow-sm";
+            summary.className = "custom-picker-trigger flex items-center gap-3 cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:border-primary hover:text-primary transition select-none text-slate-600 shadow-sm";
             summary.innerHTML = `
                 <div class="flex items-center gap-2 font-bold text-sm">
                     <i class="fas fa-sliders-h"></i>
                     <span>顯示欄位</span>
-                    <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full border border-slate-200 group-open:bg-slate-200 transition">
-                        ${currentVisible} / ${total}
+                    <span class="bg-slate-100 text-slate-600 text-[10px] px-2 py-0.5 rounded-full border border-slate-200 group-open:bg-primary group-open:text-white group-open:border-primary transition">
+                        ${currentVisible}
                     </span>
                 </div>
                 <i class="fas fa-chevron-down text-xs text-slate-400 group-open:rotate-180 transition-transform duration-300"></i>
             `;
-            summary.style.listStyle = 'none';
-
-            const dropdown = document.createElement('div');
-            dropdown.className = "absolute right-0 top-full mt-2 w-72 bg-white border border-slate-200 rounded-xl shadow-xl p-4 z-50 hidden group-open:block animate-fade-in-down";
             
-            // ★★★ 修改：使用與預覽視窗一致的按鈕 (含 Icon) ★★★
+            // 2. 下拉選單
+            const dropdown = document.createElement('div');
+            // 注意：這裡寬度設為 w-[600px] 以容納 Grid
+            dropdown.className = "picker-dropdown absolute right-0 top-full mt-2 w-[600px] bg-white border border-slate-200 rounded-xl shadow-2xl z-50 flex flex-col overflow-hidden";
+            
+            // 2.1 頂部操作區
             const actions = document.createElement('div');
-            actions.className = "flex gap-2 mb-3 pb-3 border-b border-slate-100";
+            actions.className = "flex justify-between items-center px-4 py-3 border-b border-slate-100 bg-slate-50";
             actions.innerHTML = `
-                <button type="button" id="grid-show-all" class="text-xs px-3 py-1.5 rounded hover:bg-blue-50 text-primary font-bold transition flex-1 border border-transparent hover:border-blue-100">
-                    <i class="fas fa-check-double mr-1"></i> 全部顯示
-                </button>
-                <button type="button" id="grid-hide-all" class="text-xs px-3 py-1.5 rounded hover:bg-slate-100 text-slate-500 transition flex-1 border border-transparent hover:border-slate-200">
-                    <i class="fas fa-times mr-1"></i> 全部隱藏
-                </button>
+                <div class="text-xs font-bold text-slate-500 flex items-center gap-2">
+                    <i class="fas fa-eye text-slate-400"></i> 勾選以顯示欄位
+                </div>
+                <div class="flex gap-2">
+                    <button type="button" id="grid-show-all" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 hover:border-primary hover:text-primary shadow-sm transition font-bold">
+                        全選
+                    </button>
+                    <button type="button" id="grid-hide-all" class="text-xs px-2 py-1 rounded bg-white border border-slate-200 hover:border-slate-400 hover:text-slate-600 shadow-sm transition">
+                        全隱藏
+                    </button>
+                </div>
             `;
             dropdown.appendChild(actions);
 
-            // 欄位開關列表
+            // 2.2 選項區 (Grid Layout)
             const tagsContainer = document.createElement('div');
-            tagsContainer.className = "flex flex-wrap gap-2 max-h-[300px] overflow-y-auto custom-scroll p-1";
+            // 使用 Grid 排列，每列 3 個
+            tagsContainer.className = "p-4 grid grid-cols-3 gap-2 max-h-[350px] overflow-y-auto custom-scroll";
 
             allCols.forEach(f => {
                 const lbl = document.createElement('label');
-                lbl.className = 'toggle-chip'; // ★ 使用新樣式
+                lbl.className = 'field-chip-label'; // 使用新樣式
                 const checked = !gridState.hiddenCols.includes(f.id);
                 
                 lbl.innerHTML = `
                     <input type="checkbox" onchange="toggleGridCol('${f.id}')" ${checked ? 'checked' : ''}>
-                    <span>${f.label}</span>
+                    <div class="chip-check-icon"></div>
+                    <span class="truncate font-medium" title="${f.label}">${f.label}</span>
                 `;
                 tagsContainer.appendChild(lbl);
             });
             dropdown.appendChild(tagsContainer);
 
+            // 2.3 底部收合條
+            const footer = document.createElement('div');
+            footer.className = "bg-slate-50 border-t border-slate-100 py-1 flex justify-center cursor-pointer hover:bg-slate-100 transition";
+            footer.innerHTML = `<i class="fas fa-angle-up text-slate-300"></i>`;
+            footer.onclick = () => details.removeAttribute('open');
+            dropdown.appendChild(footer);
+
             details.appendChild(summary);
             details.appendChild(dropdown);
             container.appendChild(details);
 
-            // 綁定全選按鈕事件
+            // 事件綁定
             dropdown.querySelector('#grid-show-all').onclick = (e) => {
                 e.preventDefault();
                 gridState.hiddenCols = [];
