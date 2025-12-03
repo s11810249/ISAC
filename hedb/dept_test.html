@@ -219,56 +219,54 @@
         .grid-input:focus { border-color: #002E5D; background: white; outline: none; }
         .grid-input:disabled { background-color: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
         
-        /* 1. 移除原本歸戶的藍色背景，改為透明讓 TR 背景透出來 */
+        /* Linked Data Indicator */
         .is-linked { 
             background-color: transparent !important; 
             color: inherit; 
         } 
         
-        /* 2. 輸入框設定：平時透明，聚焦變白 */
+        /* 2. 輸入框預設透明，獲得焦點時才變白 */
         .grid-input { 
-            width: 100%; height: 100%; border: none; 
-            background: transparent; 
-            padding: 0 10px; font-size: 15px; line-height: 40px; color: #334155;
-            transition: all 0.2s;
+            width: 100%; 
+            height: 100%;
+            border: none; 
+            background: transparent; /* 關鍵：透明背景 */
+            padding: 0 10px;
+            font-size: 15px;
+            line-height: 40px;
+            color: #334155;
+            transition: background-color 0.2s;
         }
+
         .grid-input:focus { 
-            outline: none; box-shadow: inset 0 0 0 2px #002E5D; 
-            background-color: #ffffff; z-index: 10;
+            outline: none;
+            box-shadow: inset 0 0 0 2px #002E5D; 
+            background-color: #ffffff; /* 聚焦時變白 */
+            z-index: 10;
         }
 
-        /* 3. 背景色管理 (解決灰色混淆問題) */
-        
-        /* A. 交替列 (偶數群組)：使用極淺灰 */
-        tr.row-group-alt td {
-            background-color: #f8fafc; 
+        /* 3. 交替顏色設定 (淺灰 vs 白) - 視覺疲勞減緩版 */
+        tr.row-group-alt {
+            background-color: #f8fafc; /* Slate-50: 極淺的灰，不刺眼 */
+        }
+        tr.row-group-alt:hover {
+            background-color: #f1f5f9; /* Slate-100: Hover 時稍微深一點 */
         }
         
-        /* B. 滑鼠懸停 (Hover)：改用「淺藍色」，與淺灰做出區隔 */
-        tr.hover-highlight:hover td {
-            background-color: #eff6ff !important; /* Blue-50 */
-        }
-
-        /* 4. 唯讀欄位樣式 */
-        
-        /* A. 一般唯讀 (未歸戶)：淺灰底 */
-        .cell-multiline {
-            background-color: #f1f5f9; /* Slate-100 */
-            color: #64748b;
+        /* 一般列的 Hover */
+        tr.bg-white:hover {
+            background-color: #f8fafc;
         }
 
-        /* B. ★ 強化版：歸戶後的唯讀欄位 (顏色加深 + 邊條) */
-        .group-readonly {
-            background-color: #cbd5e1 !important; /* Slate-300: 明顯加深 */
-            color: #1e293b !important;            /* Slate-800: 文字加深 */
-            font-weight: 600;                     /* 字體加粗 */
-            border-left: 4px solid #94a3b8 !important; /* 左側深灰邊條 */
-        }
-        
-        /* 唯讀輸入框 (如加權欄位) */
+        /* 4. 唯讀欄位保持原本的灰色，以示區別 */
         .grid-input:disabled { 
-            background-color: rgba(226, 232, 240, 0.5); /* 半透明灰 */
-            color: #94a3b8; cursor: not-allowed;
+            background-color: #e2e8f0; /* 稍微深一點的灰表示唯讀 */
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        /* 修正唯讀儲存格背景 */
+        td:has(.grid-input:disabled), td:has(.cell-multiline) {
+            background-color: #f1f5f9; 
         }
         
         /* =========================================
@@ -1617,6 +1615,7 @@
                 return;
             }
 
+            // 用於追蹤歸戶群組的變數
             let lastAppId = null;
             let isAltRow = false;
 
@@ -1624,18 +1623,21 @@
                 const { student, course, appData, appId } = row;
                 
                 // --- 顏色交替邏輯 ---
+                // 只有當「有歸戶」且「歸戶ID改變」時，才切換顏色
                 if (appId) {
-                    if (appId !== lastAppId) isAltRow = !isAltRow;
+                    if (appId !== lastAppId) {
+                        isAltRow = !isAltRow; // 切換顏色
+                    }
                 } else {
-                    isAltRow = false; 
+                    isAltRow = false; // 未歸戶的資料一律使用白色底 (或視為獨立群組)
                 }
                 lastAppId = appId;
 
                 const tr = document.createElement('tr');
-                // 加入 hover-highlight
+                // 根據狀態套用背景色 Class
                 tr.className = isAltRow 
-                    ? "row-group-alt hover-highlight transition border-b border-slate-100 group" 
-                    : "bg-white hover-highlight transition border-b border-slate-100 group";
+                    ? "row-group-alt transition border-b border-slate-100 group" 
+                    : "bg-white transition border-b border-slate-100 group";
                 
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
@@ -1655,7 +1657,7 @@
                         td.style.left = currentStickyLeft + "px";
                         currentStickyLeft += finalWidth;
                         
-                        // 設定凍結欄位的預設背景 (會被 tr hover 覆蓋)
+                        // 凍結欄位背景色需強制指定，否則會透明
                         td.style.backgroundColor = isAltRow ? '#f8fafc' : '#ffffff';
 
                         if (index === freezeLimit - 1) {
@@ -1663,7 +1665,7 @@
                         }
                     }
 
-                    // 取得值
+                    // 取得內容值
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -1676,21 +1678,20 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
                     
+                    // 判斷是否為唯讀/系統欄位
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
                     if (isReadOnly) {
-                        // ★★★ 修改重點：判斷是否為歸戶群組，若是則加上 group-readonly ★★★
-                        const extraClass = appId ? 'group-readonly' : '';
-                        
-                        td.innerHTML = `<div class="px-3 py-0 flex items-center justify-center h-full select-none text-sm cell-multiline ${extraClass}" title="${val}">${val||''}</div>`;
+                        // 唯讀欄位：保持淺灰色背景
+                        td.innerHTML = `<div class="px-3 py-0 flex items-center justify-center h-full text-slate-500 select-none bg-slate-100 text-sm cell-multiline" title="${val}">${val||''}</div>`;
                     } else {
-                        // (輸入框邏輯保持不變)
+                        // 可編輯欄位：建立 Input
                         let input;
                         
                         if (f.type === 'text' || f.type === 'address') {
                             input = document.createElement('textarea');
                             input.rows = 1;
-                            input.className = "grid-input";
+                            input.className = "grid-input"; // CSS 已設定背景透明
                             input.style.resize = "none";
                             input.style.textAlign = 'left';
                             input.addEventListener('input', function() {
@@ -1711,6 +1712,7 @@
                             
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
+                                // ... (日期處理邏輯保持不變) ...
                                 input.addEventListener('change', (e) => {
                                     let v = e.target.value.trim().replace(/[^\d]/g, '');
                                     if (f.inputFormat === 'ROC') {
@@ -1730,11 +1732,13 @@
                         
                         if(appId) {
                             input.classList.add(`app-input-${appId}-${f.id}`);
+                            // ★ 移除這裡的 td.classList.add('is-linked')，不再強制變色
                             
+                            // 特殊處理：權重分配欄位 (唯讀)
                             if (f.calcMode === 'weighted') {
                                 input.readOnly = true;
                                 input.style.cursor = 'pointer';
-                                input.disabled = true;
+                                input.disabled = true; // 使用 disabled 樣式 (灰色)
                                 input.style.textAlign = 'center';
                                 input.placeholder = "(點擊填寫)";
                                 input.onclick = (e) => {
@@ -1756,6 +1760,7 @@
                 
                 tbodyFragment.appendChild(tr);
                 
+                // 文字框高度自動調整
                 setTimeout(() => {
                     tr.querySelectorAll('textarea').forEach(ta => {
                         ta.style.height = 'auto';
