@@ -1266,6 +1266,23 @@
                         if(appId) {
                             input.classList.add(`app-input-${appId}-${f.id}`);
                             td.classList.add('is-linked'); 
+
+                            // ★ 新增：如果是加權欄位，顯示分配按鈕
+                            if (f.calcMode === 'weighted') {
+                                // 調整 Input 寬度留空間給按鈕
+                                input.style.width = "calc(100% - 24px)";
+                                input.style.display = "inline-block";
+                                
+                                const distBtn = document.createElement('button');
+                                distBtn.className = "w-6 h-full absolute right-0 top-0 text-indigo-400 hover:text-indigo-700 hover:bg-indigo-50 transition flex items-center justify-center z-10";
+                                distBtn.innerHTML = '<i class="fas fa-calculator text-xs"></i>';
+                                distBtn.title = "點擊輸入總數並自動分配";
+                                distBtn.onclick = (e) => {
+                                    e.stopPropagation(); // 防止觸發其他 Row 點擊
+                                    openDistributionModal(student.id, appId, f.id);
+                                };
+                                td.appendChild(distBtn);
+                            }
                         } else {
                             td.classList.add('is-raw');
                         }
@@ -1433,7 +1450,6 @@
                 }
             }
         }
-        
         // --- Initialization ---
         window.onload = async function() {
             try {
@@ -4091,7 +4107,129 @@
             }
             renderGlobalGrid();
         }
+
+    // --- Weighted Distribution Logic (總數分配邏輯) ---
+        
+        let distContext = null; // 暫存目前的分配上下文
+
+        function openDistributionModal(studentId, appId, fieldId) {
+            const student = groupedStudents[studentId];
+            const app = student.applications.find(a => a.id === appId);
+            const fieldDef = currentYearConfig.fields.find(f => f.id === fieldId);
             
+            if (!student || !app || !fieldDef) return;
+
+            // 1. 找出相關課程與總權重
+            const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+            const weightKey = fieldDef.weightField;
+            
+            let totalWeight = 0;
+            const courseWeights = linkedCourses.map(c => {
+                const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
+                totalWeight += w;
+                return { 
+                    course: c, 
+                    weight: w,
+                    name: getCourseValue(c, ['course_name', '課程名稱'])
+                };
+            });
+
+            // 2. 設定 Modal 內容
+            distContext = { student, app, fieldDef, linkedCourses, totalWeight, courseWeights };
+            
+            document.getElementById('dist-modal-title').innerText = `分配：${fieldDef.label}`;
+            document.getElementById('dist-weight-info').innerText = `總權重: ${totalWeight}`;
+            
+            // 預設填入目前的總和值
+            const currentTotal = app.formData[fieldId] || "";
+            const inputEl = document.getElementById('dist-total-input');
+            inputEl.value = currentTotal;
+            inputEl.oninput = updateDistPreview; // 綁定即時預覽
+
+            // 重置預覽
+            updateDistPreview();
+
+            // 3. 顯示 Modal
+            document.getElementById('distribute-modal').classList.remove('hidden');
+            setTimeout(() => inputEl.focus(), 100);
+        }
+
+        function updateDistPreview() {
+            if (!distContext) return;
+            const totalVal = parseFloat(document.getElementById('dist-total-input').value) || 0;
+            const listEl = document.getElementById('dist-preview-list');
+            listEl.innerHTML = '';
+
+            const { totalWeight, courseWeights, fieldDef } = distContext;
+
+            if (totalWeight <= 0) {
+                listEl.innerHTML = '<div class="p-3 text-red-500 text-center">無法計算：總權重為 0</div>';
+                return;
+            }
+
+            courseWeights.forEach(item => {
+                const ratio = item.weight / totalWeight;
+                const distVal = totalVal * ratio;
+                const displayVal = fieldDef.decimal ? distVal.toFixed(fieldDef.decimal) : Math.round(distVal);
+
+                const div = document.createElement('div');
+                div.className = "px-3 py-2 flex justify-between items-center hover:bg-slate-50";
+                div.innerHTML = `
+                    <div class="truncate w-2/3">
+                        <span class="font-bold text-slate-700">${item.name}</span>
+                        <span class="text-xs text-slate-400 ml-1">(權重 ${item.weight})</span>
+                    </div>
+                    <div class="font-mono font-bold text-indigo-600">${displayVal}</div>
+                `;
+                listEl.appendChild(div);
+            });
+        }
+
+        function confirmDistribution() {
+            if (!distContext) return;
+            const { student, app, fieldDef, linkedCourses, totalWeight, courseWeights } = distContext;
+            const totalVal = parseFloat(document.getElementById('dist-total-input').value) || 0;
+
+            if (totalWeight <= 0) {
+                showToast('error', '權重總和為 0，無法分配');
+                return;
+            }
+
+            // 1. 更新資料庫
+            courseWeights.forEach(item => {
+                const ratio = item.weight / totalWeight;
+                const distVal = totalVal * ratio;
+                const finalVal = fieldDef.decimal ? distVal.toFixed(fieldDef.decimal) : Math.round(distVal).toString();
+                
+                // 更新 Course Data
+                item.course[fieldDef.id] = finalVal;
+
+                // 2. 更新 Grid 畫面 (DOM)
+                // 這裡精確鎖定 studentId 與 courseId
+                const row = document.querySelector(`tr[data-cid="${item.course._internal_id}"][data-sid="${student.id}"]`);
+                if(row) {
+                    const input = row.querySelector(`input[data-field="${fieldDef.id}"]`);
+                    if(input) {
+                        input.value = finalVal;
+                        input.title = finalVal;
+                        // 閃爍效果
+                        input.style.backgroundColor = '#dcfce7'; // 淡綠色
+                        setTimeout(() => input.style.backgroundColor = '', 500);
+                    }
+                }
+            });
+
+            // 3. 更新 App Data (總和)
+            const formattedTotal = fieldDef.decimal ? totalVal.toFixed(fieldDef.decimal) : totalVal.toString();
+            app.formData[fieldDef.id] = formattedTotal;
+            
+            logChange(fieldDef.id, app.id, 'Batch Distribute', formattedTotal, student.id);
+            hasUnsavedChanges = true;
+
+            showToast('success', `已將 ${formattedTotal} 分配至 ${linkedCourses.length} 門課程`);
+            document.getElementById('distribute-modal').classList.add('hidden');
+        }
+                
     </script>
 </body>
 </html>
