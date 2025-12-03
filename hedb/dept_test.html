@@ -967,40 +967,11 @@
             
             student.applications.forEach(app => {
                 const courses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-                const courseCount = courses.length; // 取得課程總數用於分母
-
-                courses.forEach((c, idx) => {
+                courses.forEach(c => {
                     let rowData = { ...c, _source: 'app', _appData: app.formData };
-                    
                     allFields.forEach(f => {
-                        // 檢查 App Data 是否有值
                         if (app.formData[f.id] !== undefined && app.formData[f.id] !== "") {
-                            let val = app.formData[f.id];
-                            
-                            // ★★★ 新增：處理數值分配邏輯 (calcMode="average") ★★★
-                            // 找出欄位設定
-                            const fieldDef = currentYearConfig.fields?.find(cfg => cfg.id === f.id);
-                            
-                            if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
-                                const totalVal = parseFloat(val);
-                                // 計算分配值：將總和 (Total) 除以課程數 (Count)
-                                // 使用 Math.floor 確保整數運算，餘數加在最後一筆
-                                const baseVal = Math.floor(totalVal / courseCount);
-                                const remainder = totalVal % courseCount;
-                                
-                                let calculatedVal = 0;
-                                if (idx === courses.length - 1) {
-                                    calculatedVal = baseVal + remainder; // 最後一筆吸收餘數
-                                } else {
-                                    calculatedVal = baseVal;
-                                }
-                                
-                                // 依照設定的小數位數格式化
-                                val = calculatedVal.toFixed(fieldDef.decimal || 0);
-                            }
-                            // ★★★ 結束 ★★★
-
-                            rowData[f.id] = val;
+                            rowData[f.id] = app.formData[f.id];
                         }
                     });
                     rows.push(rowData);
@@ -1096,6 +1067,225 @@
         // --- 傳統填報模式 (Grid View) 核心邏輯 ---
         let gridSelection = new Set(); 
 
+        function renderGlobalGrid() {
+            const thead = document.getElementById('grid-thead');
+            const tbody = document.getElementById('grid-tbody');
+            if (!thead || !tbody) return;
+            
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            const searchTerm = document.getElementById('grid-search').value.toLowerCase();
+            const fields = currentYearConfig.fields || [];
+
+            // --- 1. 欄位準備 (過濾隱藏欄位 + 排序) ---
+            const allColumns = fields
+                .filter(f => !['course_id', '_internal_id'].includes(f.id)) // 排除內部ID
+                .filter(f => !gridState.hiddenCols.includes(f.id)) // ★ 排除使用者隱藏的欄位
+                .sort((a,b) => (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999));
+
+            if (allColumns.length === 0) {
+                thead.innerHTML = '<tr><th class="p-4 text-center text-slate-400">所有欄位已隱藏</th></tr>';
+                tbody.innerHTML = '';
+                return;
+            }
+
+            // --- 2. 建立表頭 (支援排序點擊) ---
+            let trHead = document.createElement('tr');
+            
+            // Checkbox 空表頭 (不可排序)
+            let thCheck = document.createElement('th');
+            thCheck.style.width = "40px";
+            thCheck.className = "text-center bg-slate-100 border-r border-slate-200 p-0";
+            // 這裡保留全選功能
+            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)" class="accent-primary cursor-pointer">`;
+            trHead.appendChild(thCheck);
+
+            allColumns.forEach(col => {
+                const th = document.createElement('th');
+                
+                // ★ 加入排序點擊事件與樣式
+                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap sticky top-0 cursor-pointer hover:bg-slate-200 transition select-none";
+                th.onclick = () => setGridSort(col.id);
+                
+                let icon = '<i class="fas fa-sort text-slate-300 ml-1 text-xs"></i>';
+                if (gridState.sortKey === col.id) {
+                    icon = gridState.sortDir === 'asc' 
+                        ? '<i class="fas fa-sort-up text-primary ml-1 text-xs"></i>' 
+                        : '<i class="fas fa-sort-down text-primary ml-1 text-xs"></i>';
+                    th.classList.add('text-primary'); // 標記當前排序欄位
+                }
+                
+                th.innerHTML = `${col.label} ${icon}`;
+                th.style.minWidth = col.width || (col.category?.startsWith('sys_') ? '100px' : '140px');
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+
+            // --- 3. 資料準備 (攤平 + 搜尋 + 排序) ---
+            let flatRows = [];
+            
+            Object.values(groupedStudents).forEach(student => {
+                student.courses.forEach(course => {
+                    // 1. 搜尋過濾
+                    const fullText = Object.values(course).join(' ') + student.name + student.id;
+                    if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
+
+                    // 2. 準備資料物件 (包含 AppData 整合)
+                    const appId = course._app_id;
+                    let appData = {};
+                    if(appId) {
+                        const app = student.applications.find(a => a.id === appId);
+                        if(app) appData = app.formData;
+                    }
+
+                    flatRows.push({
+                        student: student,
+                        course: course,
+                        appData: appData,
+                        appId: appId,
+                        internalId: course._internal_id
+                    });
+                });
+            });
+
+            // 3. 執行排序
+            if (gridState.sortKey) {
+                flatRows.sort((rowA, rowB) => {
+                    // 取得用於排序的值 (GetValue Helper Logic)
+                    const getVal = (row) => {
+                        let v = "";
+                        const key = gridState.sortKey;
+                        // 優先取 AppData -> Course -> Student info
+                        if (row.appId && row.appData[key] !== undefined) v = row.appData[key];
+                        else v = row.course[key];
+                        
+                        if ((v === undefined || v === "") && key === 'student_id') v = row.student.id;
+                        if ((v === undefined || v === "") && key === 'student_name') v = row.student.name;
+                        
+                        return v === undefined || v === null ? "" : String(v);
+                    };
+
+                    const valA = getVal(rowA);
+                    const valB = getVal(rowB);
+
+                    // 數字排序 vs 字串排序
+                    const numA = parseFloat(valA.replace(/,/g, ''));
+                    const numB = parseFloat(valB.replace(/,/g, ''));
+                    
+                    let result = 0;
+                    if (!isNaN(numA) && !isNaN(numB) && valA.trim() !== '' && valB.trim() !== '') {
+                        result = numA - numB;
+                    } else {
+                        result = valA.localeCompare(valB, 'zh-Hant');
+                    }
+                    
+                    return gridState.sortDir === 'asc' ? result : -result;
+                });
+            }
+
+            if (flatRows.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="p-8 text-center text-slate-400">無符合資料</td></tr>`;
+                return;
+            }
+
+            // --- 4. 建立內容 (渲染) ---
+            flatRows.forEach(row => {
+                const { student, course, appData, appId } = row;
+                
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-slate-50 transition border-b border-slate-100 group";
+                tr.dataset.cid = course._internal_id; 
+                tr.dataset.sid = student.id; 
+
+                // A. Checkbox Cell
+                const tdCheck = document.createElement('td');
+                tdCheck.className = "text-center bg-slate-50 border-r border-slate-200 p-0";
+                const isChecked = gridSelection.has(course._internal_id);
+                tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk accent-primary cursor-pointer" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this)">`;
+                tr.appendChild(tdCheck);
+
+                // B. Data Cells
+                allColumns.forEach(f => {
+                    const td = document.createElement('td');
+                    td.className = "border-r border-slate-200 p-0 relative h-[40px]";
+                    
+                    let val = "";
+                    
+                    // ★★★ 修改重點：優先判斷是否為獨立欄位 (average) ★★★
+                    if (f.calcMode === 'average') {
+                        // 若是加總型欄位，強制顯示「原始課程數值」，讓各列獨立顯示
+                        val = course[f.id];
+                    } 
+                    // 其他歸戶欄位：若有歸戶資料，則顯示共用資料
+                    else if (appId && appData[f.id] !== undefined) {
+                        val = appData[f.id];
+                    } 
+                    // 否則顯示原始資料 (Fallback)
+                    else {
+                        val = course[f.id];
+                        // 預設資料補救邏輯
+                        if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
+                        if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
+                        if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
+                    }
+                    
+                    const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
+                    
+                    if (isReadOnly) {
+                        td.innerHTML = `<div class="px-3 py-0 flex items-center h-full truncate text-slate-600 select-none bg-slate-50 text-sm" title="${val}">${val||''}</div>`;
+                    } else {
+                        let input;
+                        if (f.type === 'single_select' || f.type === 'list') {
+                            input = document.createElement('select');
+                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                        } else {
+                            input = document.createElement('input');
+                            input.type = "text";
+                            input.value = val || "";
+                            
+                            // 日期格式化邏輯 (ROC/西元)
+                            if (f.type === 'date') {
+                                input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
+                                input.addEventListener('change', (e) => {
+                                    let v = e.target.value.trim().replace(/[^\d]/g, '');
+                                    if (f.inputFormat === 'ROC') {
+                                        if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
+                                        else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
+                                    } else if (v.length === 8) { 
+                                        e.target.value = `${v.substring(0,4)}/${v.substring(4,6)}/${v.substring(6,8)}`;
+                                    }
+                                    handleGridChange(e.target, student, course, f);
+                                });
+                            }
+                        }
+                        
+                        input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
+                        input.dataset.field = f.id;
+                        input.title = val || ""; 
+                        
+                        if(appId) {
+                            input.classList.add(`app-input-${appId}-${f.id}`);
+                            td.classList.add('is-linked'); 
+                        } else {
+                            td.classList.add('is-raw');
+                        }
+
+                        if (f.type !== 'date') {
+                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                        }
+                        input.oninput = (e) => { e.target.title = e.target.value; }; 
+
+                        td.appendChild(input);
+                    }
+                    tr.appendChild(td);
+                });
+                
+                tbody.appendChild(tr);
+                updateRowLogic(tr, appId ? appData : course);
+            });
+        }
+
         // 檢查單一格子的顯示邏輯
         function checkGridInputVisibility(input, fieldDef, dataContext) {
             if (fieldDef.visibilityRule) {
@@ -1115,7 +1305,7 @@
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
             const newVal = inputEl.value;
-            inputEl.title = newVal; 
+            inputEl.title = newVal; // 更新 Hover 提示
             
             const appId = course._app_id;
             hasUnsavedChanges = true;
@@ -1127,92 +1317,44 @@
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
                     
-                    // ★★★ 修改：加總後再依權重分配 (Sum then Distribute) ★★★
-                    if (fieldDef.type === 'number' && (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted')) {
-                        
-                        // 1. 先更新「當前被編輯」的課程數值
+                    // ★★★ 修改重點：區分「獨立加總欄位」與「共用欄位」 ★★★
+                    if (fieldDef.calcMode === 'average') {
+                        // 1. 獨立欄位：只更新這門課的原始資料
                         course[fieldDef.id] = newVal;
-
-                        // 2. 重新計算 App 的「新總和」 (Sum of all courses)
+                        
+                        // 2. 重新計算 App 的總和 (Sum)
+                        // 找出歸戶內的所有課程
                         const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-                        let newTotal = 0;
+                        let sum = 0;
                         let hasVal = false;
-
+                        
                         linkedCourses.forEach(c => {
                             const v = parseFloat(c[fieldDef.id]);
                             if (!isNaN(v)) {
-                                newTotal += v;
+                                sum += v;
                                 hasVal = true;
                             }
                         });
-
-                        // 3. 更新 App Data (歸戶總數)
+                        
+                        // 3. 更新 App Data (總和)
+                        const oldAppVal = app.formData[fieldDef.id];
                         if (hasVal) {
-                            app.formData[fieldDef.id] = fieldDef.decimal ? newTotal.toFixed(fieldDef.decimal) : String(newTotal);
+                            app.formData[fieldDef.id] = fieldDef.decimal ? sum.toFixed(fieldDef.decimal) : String(sum);
                         } else {
                             app.formData[fieldDef.id] = "";
                         }
                         
-                        // 4. ★ 關鍵：依權重「重新分配」這個總和 (Re-distribute) ★
-                        // 這樣可以確保所有欄位都符合比例 (例如 A輸入10, B為0 -> 總10 -> A變成5, B變成5)
-                        if (hasVal) {
-                            let totalWeight = 0;
-                            const weights = linkedCourses.map(c => {
-                                let w = 1; // 預設權重 (average 模式)
-                                
-                                if (fieldDef.calcMode === 'weighted') {
-                                    const targetField = fieldDef.weightField || 'internship_credit'; 
-                                    let val = c[targetField];
-                                    if (!val && typeof getCourseValue === 'function') {
-                                        val = getCourseValue(c, [targetField, 'credits', '學分', '學分數']);
-                                    }
-                                    const parsedW = parseFloat(val);
-                                    if (!isNaN(parsedW) && parsedW > 0) w = parsedW;
-                                }
-                                totalWeight += w;
-                                return w;
-                            });
+                        logChange(fieldDef.id, appId, oldAppVal, app.formData[fieldDef.id], student.id);
 
-                            // 執行分配寫回
-                            let currentDistributedSum = 0;
-                            const decimals = fieldDef.decimal || 0;
-
-                            linkedCourses.forEach((c, idx) => {
-                                const weight = weights[idx];
-                                let distVal = 0;
-                                
-                                if (totalWeight === 0) {
-                                    distVal = newTotal / linkedCourses.length;
-                                } else if (idx === linkedCourses.length - 1) {
-                                    distVal = newTotal - currentDistributedSum;
-                                } else {
-                                    distVal = newTotal * (weight / totalWeight);
-                                }
-                                
-                                const finalValStr = distVal.toFixed(decimals);
-                                c[fieldDef.id] = finalValStr;
-                                currentDistributedSum += parseFloat(finalValStr);
-                            });
-
-                            // 5. 更新畫面上所有相關格子 (顯示分配後的結果)
-                            document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
-                                // 找出該格子對應的課程 ID (從 tr 取得)
-                                const rowCid = el.closest('tr')?.dataset.cid;
-                                const targetCourse = linkedCourses.find(lc => lc._internal_id === rowCid);
-                                if (targetCourse) {
-                                    el.value = targetCourse[fieldDef.id];
-                                    el.title = targetCourse[fieldDef.id];
-                                }
-                            });
-                        }
+                        // 注意：這裡【不】同步到其他格子，因為我們要讓它們保持獨立顯示
                         
                     } else {
-                        // === 一般共用欄位 (文字/日期等) ===
-                        // 修改一處，同步更新所有 (因為是共用的)
+                        // 1. 一般共用欄位：更新 App Data
                         const oldVal = app.formData[fieldDef.id];
                         app.formData[fieldDef.id] = newVal;
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
+                        // 2. 同步數值到所有共用此 App 的格子 (讓大家長一樣)
                         document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
                             if (el !== inputEl) {
                                 el.value = newVal;
@@ -1221,28 +1363,34 @@
                         });
                     }
 
-                    // 觸發連動檢查
+                    // 3. 觸發連動邏輯檢查 (例如填了依賴欄位後解鎖子欄位)
+                    // 找出目前畫面上所有屬於這個 App 的列 (TR)
                     const allRows = document.getElementById('grid-tbody').querySelectorAll('tr');
                     allRows.forEach(tr => {
                         const cid = tr.dataset.cid;
                         const sid = tr.dataset.sid; 
+                        
+                        // 只更新同一位學生的相關列
                         if (sid === student.id && app.courseIds.includes(cid)) {
                             updateRowLogic(tr, app.formData);
                         }
                     });
                 }
             } else {
-                // === 情境 B: 未歸戶 (直接更新) ===
+                // === 情境 B: 未歸戶 ===
                 course[fieldDef.id] = newVal;
                 
+                // 1. 觸發單列邏輯檢查
                 const tr = inputEl.closest('tr');
                 if (tr) updateRowLogic(tr, course);
 
+                // 2. 觸發智慧自動歸戶
                 if (!isScoreField && newVal && newVal.trim() !== "") {
                     tryAutoMerge(student, course);
                 }
             }
         }
+
         // --- Initialization ---
         window.onload = async function() {
             try {
@@ -2672,7 +2820,6 @@
 
         // --- Helper: 寬鬆搜尋課程欄位值 ---
         function getCourseValue(courseObj, keys) {
-            if (!courseObj) return null;
             // 優先找完全符合的 key
             for (const k of keys) {
                 if (courseObj[k] !== undefined && courseObj[k] !== null && courseObj[k] !== "") 
@@ -2685,7 +2832,7 @@
                 const foundKey = rowKeys.find(rk => rk.toLowerCase().includes(target) || rk.replace(/\s/g,'') === target);
                 if (foundKey && courseObj[foundKey]) return courseObj[foundKey];
             }
-            return null;
+            return '-';
         }
         // --- 智慧自動歸戶邏輯 ---
         function tryAutoMerge(student, currentCourse) {
@@ -3890,212 +4037,7 @@
             }
             renderGlobalGrid();
         }
-        
-        // --- 補上缺失的 Grid 渲染函式 (修正：重複顯示與無資料隱藏) ---
-        function renderGlobalGrid() {
-            const thead = document.getElementById('grid-thead');
-            const tbody = document.getElementById('grid-tbody');
-            if (!thead || !tbody) return;
-
-            // 若無學生資料，清空表格並直接結束
-            if (Object.keys(groupedStudents).length === 0) {
-                thead.innerHTML = '';
-                tbody.innerHTML = '';
-                return;
-            }
-
-            thead.innerHTML = '';
-            tbody.innerHTML = '';
-
-            // 1. 定義固定欄位 (左側基礎資訊)
-            const fixedHeaders = [
-                { id: 'student_id', label: '學號', width: '100px' }, // 稍微加寬以容納正常字體
-                { id: 'student_name', label: '姓名', width: '80px' },
-                { id: 'course_name', label: '課程名稱', width: '150px' },
-                { id: 'semester', label: '學期', width: '50px' }
-            ];
             
-            const fixedIds = new Set(fixedHeaders.map(h => h.id));
-
-            // 2. 準備動態欄位 & 排序
-            const fields = currentYearConfig.fields || [];
-            const visibleFields = fields
-                .filter(f => !gridState.hiddenCols.includes(f.id) && f.id !== '_internal_id' && !fixedIds.has(f.id))
-                .sort((a, b) => {
-                    // ★★★ 修正 3：嚴格依照後台 order 排序 (0, 1, 2...) ★★★
-                    const o1 = (a.order !== undefined && a.order !== null) ? parseInt(a.order) : 9999;
-                    const o2 = (b.order !== undefined && b.order !== null) ? parseInt(b.order) : 9999;
-                    return o1 - o2;
-                });
-
-            // 3. 建立表頭
-            const trHead = document.createElement('tr');
-
-            // 渲染固定表頭
-            fixedHeaders.forEach(h => {
-                const th = document.createElement('th');
-                th.className = 'sortable-header sticky left-0 z-30 bg-slate-100'; // 固定在左側
-                th.style.minWidth = h.width;
-                th.onclick = () => setGridSort(h.id);
-                
-                let icon = '<i class="fas fa-sort sort-icon"></i>';
-                if (gridState.sortKey === h.id) {
-                    icon = gridState.sortDir === 'asc' 
-                        ? '<i class="fas fa-sort-up sort-icon active"></i>' 
-                        : '<i class="fas fa-sort-down sort-icon active"></i>';
-                }
-                th.innerHTML = `${h.label} ${icon}`;
-                trHead.appendChild(th);
-            });
-
-            // 渲染動態表頭
-            visibleFields.forEach(f => {
-                const th = document.createElement('th');
-                th.className = 'sortable-header';
-                th.style.minWidth = f.excelWidth ? f.excelWidth + 'px' : '100px';
-                th.onclick = () => setGridSort(f.id);
-
-                let icon = '<i class="fas fa-sort sort-icon"></i>';
-                if (gridState.sortKey === f.id) {
-                    icon = gridState.sortDir === 'asc' 
-                        ? '<i class="fas fa-sort-up sort-icon active"></i>' 
-                        : '<i class="fas fa-sort-down sort-icon active"></i>';
-                }
-                
-                const reqSpan = f.required ? '<span class="text-red-500 ml-1">*</span>' : '';
-                th.innerHTML = `${f.label}${reqSpan} ${icon}`;
-                trHead.appendChild(th);
-            });
-            thead.appendChild(trHead);
-
-            // 4. 準備資料
-            let rows = [];
-            Object.values(groupedStudents).forEach(s => {
-                s.courses.forEach(c => {
-                    rows.push({
-                        student: s,
-                        course: c,
-                        app: c._app_id ? s.applications.find(a => a.id === c._app_id) : null
-                    });
-                });
-            });
-
-            // 5. 篩選
-            const term = document.getElementById('grid-search')?.value.toLowerCase() || '';
-            if (term) {
-                rows = rows.filter(r => 
-                    r.student.name.toLowerCase().includes(term) ||
-                    r.student.id.includes(term) ||
-                    (getCourseValue(r.course, ['course_name', '課程名稱']) || '').toLowerCase().includes(term)
-                );
-            }
-
-            // 6. 排序
-            if (gridState.sortKey) {
-                rows.sort((a, b) => {
-                    const getVal = (rowObj, key) => {
-                        if (fixedHeaders.find(h => h.id === key)) {
-                            if (key === 'student_id') return rowObj.student.id;
-                            if (key === 'student_name') return rowObj.student.name;
-                            if (key === 'course_name') return getCourseValue(rowObj.course, ['course_name', '課程名稱']) || '';
-                            if (key === 'semester') return getCourseValue(rowObj.course, ['semester', '學期']) || '';
-                        }
-                        let v = '';
-                        if (rowObj.app && rowObj.app.formData[key] !== undefined) v = rowObj.app.formData[key];
-                        else v = rowObj.course[key] || '';
-                        return String(v);
-                    };
-
-                    const valA = getVal(a, gridState.sortKey);
-                    const valB = getVal(b, gridState.sortKey);
-                    
-                    return gridState.sortDir === 'asc' 
-                        ? valA.localeCompare(valB, 'zh-Hant') 
-                        : -1 * valA.localeCompare(valB, 'zh-Hant');
-                });
-            }
-
-            // 7. 渲染內容列
-            rows.forEach(item => {
-                const { student, course, app } = item;
-                const tr = document.createElement('tr');
-                tr.dataset.cid = course._internal_id;
-                tr.dataset.sid = student.id;
-
-                if (app) tr.classList.add('is-linked');
-                
-                // --- ★★★ 修正 1：學號文字樣式還原 (移除 font-mono, text-xs) ★★★ ---
-                const tdId = document.createElement('td');
-                tdId.className = "px-2 text-slate-600"; // 與其他文字一致
-                tdId.innerText = student.id;
-                tr.appendChild(tdId);
-
-                const tdName = document.createElement('td');
-                tdName.className = "px-2 font-bold text-slate-700";
-                tdName.innerText = student.name;
-                tr.appendChild(tdName);
-
-                const tdCName = document.createElement('td');
-                tdCName.className = "px-2 text-slate-600 truncate max-w-[150px]";
-                tdCName.title = getCourseValue(course, ['course_name', '課程名稱']);
-                tdCName.innerText = getCourseValue(course, ['course_name', '課程名稱']);
-                tr.appendChild(tdCName);
-
-                const tdSem = document.createElement('td');
-                tdSem.className = "text-center";
-                tdSem.innerText = getCourseValue(course, ['semester', '學期']) || '-';
-                tr.appendChild(tdSem);
-
-                // --- 動態填報欄位 ---
-                visibleFields.forEach(f => {
-                    const td = document.createElement('td');
-                    
-                    let val = '';
-                    if (app && app.formData[f.id] !== undefined) {
-                        val = app.formData[f.id];
-                    } else {
-                        val = course[f.id] || '';
-                    }
-
-                    let input;
-                    if (f.type === 'single_select' || f.type === 'list') {
-                        input = document.createElement('select');
-                        input.innerHTML = `<option value=""></option>` + (f.options || []).map(o => `<option value="${o}">${o}</option>`).join('');
-                        input.value = val;
-                    } else {
-                        input = document.createElement('input');
-                        input.type = 'text';
-                        input.value = val;
-                    }
-                    
-                    input.className = "grid-input";
-                    input.dataset.field = f.id;
-                    
-                    if (app) {
-                        input.classList.add(`app-input-${app.id}-${f.id}`);
-                    }
-
-                    // --- ★★★ 修正 2：檢查唯讀設定並鎖定 ★★★ ---
-                    if (f.readOnly) {
-                        input.disabled = true;
-                        input.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
-                        td.classList.add('bg-slate-100');
-                    } else {
-                        input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                    }
-
-                    // 處理 Visibility
-                    const dataContext = app ? app.formData : course;
-                    checkGridInputVisibility(input, f, dataContext);
-
-                    td.appendChild(input);
-                    tr.appendChild(td);
-                });
-
-                tbody.appendChild(tr);
-            });
-        }
-
     </script>
 </body>
 </html>
