@@ -358,8 +358,90 @@
         
         /* 隱藏預設 Checkbox 改用自定義顏色 (選用，讓介面更統一) */
         .toggle-chip input[type="checkbox"] { accent-color: #002E5D; }
+    /* --- 欄位篩選器美化 (New Column Picker Styles) --- */
+        
+        /* 去除 summary 預設的三角形 */
+        summary.custom-picker-trigger {
+            list-style: none;
+        }
+        summary.custom-picker-trigger::-webkit-details-marker {
+            display: none;
+        }
 
-    </style>
+        /* 下拉選單容器動畫 */
+        details[open] .picker-dropdown {
+            animation: slideDownFade 0.2s ease-out forwards;
+        }
+        @keyframes slideDownFade {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* 選項按鈕 (Chip) 樣式 */
+        .field-chip-label {
+            cursor: pointer;
+            user-select: none;
+            transition: all 0.2s;
+            border: 1px solid #e2e8f0;
+            background-color: #ffffff;
+            color: #64748b;
+            border-radius: 6px;
+            padding: 6px 10px;
+            font-size: 0.85rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .field-chip-label:hover {
+            border-color: #cbd5e1;
+            background-color: #f8fafc;
+        }
+
+        /* 選中狀態 (利用 :has 或 input:checked + div) */
+        .field-chip-label:has(input:checked) {
+            background-color: #eff6ff; /* primary-50 */
+            border-color: #002E5D;     /* primary */
+            color: #002E5D;
+            font-weight: bold;
+            box-shadow: 0 1px 2px rgba(0, 46, 93, 0.05);
+        }
+
+        /* 隱藏原生 Checkbox，改用視覺樣式 */
+        .field-chip-label input[type="checkbox"] {
+            appearance: none;
+            width: 0;
+            height: 0;
+            position: absolute;
+        }
+        
+        /* 自定義 Checkbox icon */
+        .chip-check-icon {
+            width: 14px;
+            height: 14px;
+            border: 1.5px solid #cbd5e1;
+            border-radius: 3px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.2s;
+            color: white;
+            font-size: 10px;
+        }
+        
+        .field-chip-label input:checked + .chip-check-icon {
+            background-color: #002E5D;
+            border-color: #002E5D;
+        }
+        .field-chip-label input:checked + .chip-check-icon::after {
+            content: '\f00c'; /* FontAwesome Check */
+            font-family: "Font Awesome 6 Free";
+            font-weight: 900;
+        }
+
+    </style> 
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
 
@@ -1132,13 +1214,8 @@
             // --- 2. 建立表頭 (支援排序點擊) ---
             let trHead = document.createElement('tr');
             
-            // Checkbox 空表頭 (不可排序)
-            let thCheck = document.createElement('th');
-            thCheck.style.width = "40px";
-            thCheck.className = "text-center bg-slate-100 border-r border-slate-200 p-0";
-            // 這裡保留全選功能
-            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)" class="accent-primary cursor-pointer">`;
-            trHead.appendChild(thCheck);
+            // ★★★ 修改：移除了 checkbox 表頭 (thCheck) ★★★
+            // 原本這裡有 thCheck 的建立程式碼，已刪除
 
             allColumns.forEach(col => {
                 const th = document.createElement('th');
@@ -1237,12 +1314,8 @@
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
 
-                // A. Checkbox Cell
-                const tdCheck = document.createElement('td');
-                tdCheck.className = "text-center bg-slate-50 border-r border-slate-200 p-0";
-                const isChecked = gridSelection.has(course._internal_id);
-                tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk accent-primary cursor-pointer" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this)">`;
-                tr.appendChild(tdCheck);
+                // ★★★ 修改：移除了資料列 checkbox (tdCheck) ★★★
+                // 原本這裡有 tdCheck 的建立程式碼，已刪除
 
                 // B. Data Cells
                 allColumns.forEach(f => {
@@ -1308,10 +1381,9 @@
                                 input.style.cursor = 'pointer'; // 滑鼠變成手指
                                 input.style.backgroundColor = '#f8fafc'; // 淺灰底色
                                 input.style.color = '#64748b'; // 文字顏色
-                                input.style.textAlign = 'center'; // 文字置中更好看
+                                input.style.textAlign = 'center'; // 文字置中
                                 
                                 // 2. 移除計算機按鈕，改為點擊輸入框直接觸發
-                                // 修改提示文字
                                 input.placeholder = "(點擊填寫時數)";
 
                                 // 3. 綁定點擊事件：直接開啟分配視窗
@@ -1334,7 +1406,6 @@
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         }
                         
-                        // 修正：如果是 weighted 且已歸戶，不需要 oninput (因為唯讀)
                         if (!(appId && f.calcMode === 'weighted')) {
                             input.oninput = (e) => { e.target.title = e.target.value; }; 
                         }
