@@ -479,6 +479,55 @@
             position: sticky;
             left: 0;
         }
+        
+        /* --- Grid 寬度與凍結優化 (V3) --- */
+
+        /* 1. 解決透視感：確保凍結元素有不透明背景 */
+        thead th {
+            background-color: #f8fafc; /* Header 背景色 */
+            z-index: 20;
+        }
+        
+        .sticky-col {
+            background-color: #fff !important; /* 內容凍結欄位背景色 */
+            z-index: 30;
+        }
+        
+        th.sticky-col {
+            background-color: #f8fafc !important; /* 表頭凍結欄位背景色 */
+            z-index: 40 !important; /* 表頭凍結層級最高 */
+        }
+
+        /* 2. 凍結列最右邊加粗 (Sticky Right Border) */
+        .sticky-border-right {
+            border-right: 3px solid #cbd5e1 !important; /* 加粗顏色 */
+            box-shadow: 4px 0 4px -2px rgba(0, 0, 0, 0.1); /* 增加陰影強化層次 */
+        }
+
+        /* 3. 文字欄位換行設定 */
+        .cell-multiline {
+            white-space: normal !important; /* 允許換行 */
+            word-break: break-all;
+            line-height: 1.4;
+            padding: 4px 8px !important; /* 增加內距比較好看 */
+            height: auto !important;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+        }
+        
+        .cell-multiline textarea {
+            resize: none;
+            overflow: hidden;
+            min-height: 32px;
+            padding: 4px;
+        }
+
+        /* 讓一般儲存格內容垂直置中 */
+        .excel-table td {
+            vertical-align: middle;
+        }
+
         /* --- style結尾 --- */
     </style> 
 </head>
@@ -1286,6 +1335,16 @@
 
         // --- 傳統填報模式 (Grid View) 核心邏輯 ---
         let gridSelection = new Set(); 
+        
+        // --- Helper: 計算文字寬度 ---
+        function getTextWidth(text, font = "bold 14px 'Noto Sans TC'") {
+            // 使用 Canvas 測量文字實際渲染寬度
+            const canvas = getTextWidth.canvas || (getTextWidth.canvas = document.createElement("canvas"));
+            const context = canvas.getContext("2d");
+            context.font = font;
+            const metrics = context.measureText(text);
+            return metrics.width;
+        }
 
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
@@ -1298,12 +1357,11 @@
             const searchTerm = document.getElementById('grid-search').value.toLowerCase();
             const fields = currentYearConfig.fields || [];
 
-            // --- 1. 欄位準備 (過濾隱藏 + ★ 依照 gridState.columnOrder 排序) ---
+            // --- 1. 欄位準備與排序 ---
             let allColumns = fields
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
                 .filter(f => !gridState.hiddenCols.includes(f.id));
 
-            // 執行排序
             if (gridState.columnOrder.length > 0) {
                 allColumns.sort((a, b) => {
                     const idxA = gridState.columnOrder.indexOf(a.id);
@@ -1312,7 +1370,6 @@
                     return (a.order||999) - (b.order||999);
                 });
             } else {
-                // Fallback
                 allColumns.sort((a,b) => (a.order||999)-(b.order||999));
             }
 
@@ -1322,42 +1379,89 @@
                 return;
             }
 
-            // ★ 準備凍結計算
-            // Checkbox 寬度預設 40px (CSS設定)
-            let currentStickyLeft = 40; 
+            // --- 2. 寬度計算 (邏輯不變) ---
+            const columnWidths = {};
+            let allFlatData = [];
+            Object.values(groupedStudents).forEach(s => {
+                s.courses.forEach(c => {
+                    let appData = {};
+                    if(c._app_id) {
+                        const app = s.applications.find(a => a.id === c._app_id);
+                        if(app) appData = app.formData;
+                    }
+                    allFlatData.push({ course: c, appData: appData, student: s });
+                });
+            });
+
+            allColumns.forEach(f => {
+                let maxW = 0;
+                const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 40; 
+
+                if (f.type === 'single_select' || f.type === 'list') {
+                    if (f.options && f.options.length > 0) {
+                        f.options.forEach(opt => {
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'");
+                            if (w > maxW) maxW = w;
+                        });
+                    }
+                    maxW += 45; 
+                } 
+                else if (f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info') {
+                    allFlatData.forEach(row => {
+                        let val = row.course[f.id];
+                        if (val === undefined) {
+                            if (f.id === 'student_id') val = row.student.id;
+                            else if (f.id === 'student_name') val = row.student.name;
+                            else if (f.id === 'student_dept') val = row.student.dept;
+                        }
+                        if (val) {
+                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'");
+                            if (w > maxW) maxW = w;
+                        }
+                    });
+                    maxW += 30;
+                }
+                else if (f.type === 'text' || f.type === 'address' || f.id.includes('name')) {
+                    maxW = f.width ? parseInt(f.width) : 200; 
+                }
+                else {
+                    maxW = headerW;
+                }
+                columnWidths[f.id] = Math.max(maxW, headerW, 80);
+            });
+
+
+            // --- 3. 渲染表頭 (Header) ---
+            
+            // ★ 修改 1: 起始位置歸零 (因為移除了打勾框)
+            let currentStickyLeft = 0; 
             const freezeLimit = gridState.frozenCount;
 
-            // --- 2. 建立表頭 ---
             let trHead = document.createElement('tr');
             
-            // Checkbox 表頭 (永遠凍結)
-            let thCheck = document.createElement('th');
-            thCheck.style.width = "40px";
-            thCheck.style.left = "0px";
-            thCheck.style.zIndex = "41"; // 最高層級
-            thCheck.style.position = "sticky";
-            thCheck.className = "text-center bg-slate-100 border-r border-slate-200 p-0";
-            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)" class="accent-primary cursor-pointer">`;
-            trHead.appendChild(thCheck);
+            // ★ 修改 2: 這裡移除了原本產生 thCheck 的程式碼
 
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
-                
                 th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap sticky top-0 cursor-pointer hover:bg-slate-200 transition select-none";
                 th.onclick = () => setGridSort(col.id);
                 
-                // ★ 設定寬度與凍結樣式
-                // 為了計算準確，我們需要給每欄一個明確寬度
-                // 優先使用 config 設定的寬度，否則預設 140px (系統類 100px)
-                const colWidth = col.width ? parseInt(col.width) : (col.category?.startsWith('sys_') ? 100 : 140);
-                th.style.minWidth = colWidth + "px";
-                th.style.maxWidth = colWidth + "px"; // 鎖定寬度避免跑版
+                const finalWidth = columnWidths[col.id];
+                th.style.minWidth = finalWidth + "px";
+                th.style.maxWidth = finalWidth + "px";
 
-                // 處理凍結
+                // ★ 修改 3: 對齊判斷
+                const isTextType = col.type === 'text' || col.type === 'address';
+                th.style.textAlign = isTextType ? 'left' : 'center'; // 表頭也同步對齊
+
                 if (index < freezeLimit) {
                     th.classList.add('sticky-col');
                     th.style.left = currentStickyLeft + "px";
-                    currentStickyLeft += colWidth; // 累加下一個欄位的左邊距
+                    currentStickyLeft += finalWidth;
+                    
+                    if (index === freezeLimit - 1) {
+                        th.classList.add('sticky-border-right');
+                    }
                 }
 
                 let icon = '<i class="fas fa-sort text-slate-300 ml-1 text-xs"></i>';
@@ -1368,27 +1472,21 @@
                     th.classList.add('text-primary'); 
                 }
                 
-                th.innerHTML = `<div class="truncate">${col.label} ${icon}</div>`; // 確保內容不超出
+                th.innerHTML = `<div class="truncate">${col.label} ${icon}</div>`;
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
 
-            // --- 3. 資料準備 (邏輯不變) ---
+            // --- 4. 渲染內容 (Body) ---
             let flatRows = [];
-            Object.values(groupedStudents).forEach(student => {
-                student.courses.forEach(course => {
-                    const fullText = Object.values(course).join(' ') + student.name + student.id;
-                    if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
-
-                    const appId = course._app_id;
-                    let appData = {};
-                    if(appId) {
-                        const app = student.applications.find(a => a.id === appId);
-                        if(app) appData = app.formData;
-                    }
-
-                    flatRows.push({ student, course, appData, appId, internalId: course._internal_id });
-                });
+            allFlatData.forEach(row => {
+                const { student, course, appData } = row;
+                const fullText = Object.values(course).join(' ') + student.name + student.id;
+                if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
+                
+                row.appId = course._app_id;
+                row.internalId = course._internal_id;
+                flatRows.push(row);
             });
 
             if (gridState.sortKey) {
@@ -1396,7 +1494,7 @@
                     const getVal = (row) => {
                         let v = "";
                         const key = gridState.sortKey;
-                        if (row.appId && row.appData[key] !== undefined) v = row.appData[key];
+                        if (row.course._app_id && row.appData[key] !== undefined) v = row.appData[key];
                         else v = row.course[key];
                         
                         if ((v === undefined || v === "") && key === 'student_id') v = row.student.id;
@@ -1417,7 +1515,6 @@
                 return;
             }
 
-            // --- 4. 建立內容 ---
             flatRows.forEach(row => {
                 const { student, course, appData, appId } = row;
                 
@@ -1426,36 +1523,35 @@
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
 
-                // Checkbox Column (Always Sticky)
-                const tdCheck = document.createElement('td');
-                tdCheck.className = "text-center bg-slate-50 border-r border-slate-200 p-0";
-                tdCheck.style.width = "40px";
-                tdCheck.style.position = "sticky";
-                tdCheck.style.left = "0";
-                tdCheck.style.zIndex = "31"; // 比內容高一點
-                const isChecked = gridSelection.has(course._internal_id);
-                tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk accent-primary cursor-pointer" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this)">`;
-                tr.appendChild(tdCheck);
+                // ★ 修改 4: 這裡移除了原本產生 tdCheck 的程式碼
 
-                // 重置 sticky 左邊距計算
-                currentStickyLeft = 40;
+                // ★ 修改 5: 重置位置歸零
+                currentStickyLeft = 0;
 
                 allColumns.forEach((f, index) => {
                     const td = document.createElement('td');
                     td.className = "border-r border-slate-200 p-0 relative h-[40px]";
                     
-                    // ★ 設定寬度與凍結 (與 Header 一致)
-                    const colWidth = f.width ? parseInt(f.width) : (f.category?.startsWith('sys_') ? 100 : 140);
-                    td.style.minWidth = colWidth + "px";
-                    td.style.maxWidth = colWidth + "px";
+                    const finalWidth = columnWidths[f.id];
+                    td.style.minWidth = finalWidth + "px";
+                    td.style.maxWidth = finalWidth + "px";
+
+                    // ★ 修改 6: 設定內容對齊 (text類靠左，其他置中)
+                    const isTextType = f.type === 'text' || f.type === 'address';
+                    const textAlignClass = isTextType ? 'text-left' : 'text-center'; // 使用 Tailwind class 輔助
+                    td.style.textAlign = isTextType ? 'left' : 'center'; // 直接 style 設定
 
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
-                        currentStickyLeft += colWidth;
+                        currentStickyLeft += finalWidth;
+                        
+                        if (index === freezeLimit - 1) {
+                            td.classList.add('sticky-border-right');
+                        }
                     }
 
-                    // --- 以下為原本的渲染內容邏輯 ---
+                    // 數值
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -1471,16 +1567,40 @@
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
                     if (isReadOnly) {
-                        td.innerHTML = `<div class="px-3 py-0 flex items-center h-full truncate text-slate-600 select-none bg-slate-50 text-sm" title="${val}">${val||''}</div>`;
+                        // 唯讀欄位 (div) 對齊設定
+                        // justify-content: start (左) 或 center (中)
+                        const justifyClass = isTextType ? 'justify-start' : 'justify-center';
+                        td.innerHTML = `<div class="px-3 py-0 flex items-center ${justifyClass} h-full text-slate-600 select-none bg-slate-50 text-sm cell-multiline" title="${val}">${val||''}</div>`;
                     } else {
                         let input;
-                        if (f.type === 'single_select' || f.type === 'list') {
+                        
+                        if (f.type === 'text' || f.type === 'address') {
+                            input = document.createElement('textarea');
+                            input.rows = 1;
+                            input.className = "grid-input w-full px-2 py-1 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
+                            input.style.height = "100%";
+                            input.style.resize = "none";
+                            // 文字類保持靠左
+                            input.style.textAlign = 'left';
+                            
+                            input.addEventListener('input', function() {
+                                this.style.height = 'auto';
+                                this.style.height = (this.scrollHeight) + 'px';
+                            });
+                        } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                            input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
+                            // 選單置中
+                            input.style.textAlign = 'center';
+                            input.style.textAlignLast = 'center'; // 針對部分瀏覽器的選單置中
                         } else {
                             input = document.createElement('input');
                             input.type = "text";
-                            input.value = val || "";
+                            input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
+                            // 一般輸入框 (日期/數字等) 置中
+                            input.style.textAlign = 'center';
+                            
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
                                 input.addEventListener('change', (e) => {
@@ -1496,13 +1616,14 @@
                             }
                         }
                         
-                        input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
+                        input.value = val || "";
                         input.dataset.field = f.id;
                         input.title = val || ""; 
                         
                         if(appId) {
                             input.classList.add(`app-input-${appId}-${f.id}`);
                             td.classList.add('is-linked'); 
+                            
                             if (f.calcMode === 'weighted') {
                                 input.readOnly = true;
                                 input.style.cursor = 'pointer';
@@ -1532,6 +1653,11 @@
                 });
                 
                 tbody.appendChild(tr);
+                // Textarea 初始化高度
+                tr.querySelectorAll('textarea').forEach(ta => {
+                    ta.style.height = 'auto';
+                    ta.style.height = (ta.scrollHeight) + 'px';
+                });
                 updateRowLogic(tr, appId ? appData : course);
             });
         }
