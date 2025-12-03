@@ -3890,6 +3890,207 @@
             }
             renderGlobalGrid();
         }
+        
+        // --- 補上缺失的 Grid 渲染函式 ---
+        function renderGlobalGrid() {
+            const thead = document.getElementById('grid-thead');
+            const tbody = document.getElementById('grid-tbody');
+            if (!thead || !tbody) return;
+
+            thead.innerHTML = '';
+            tbody.innerHTML = '';
+
+            // 1. 準備欄位
+            // 取得設定檔中的欄位，並過濾掉被使用者隱藏的欄位
+            const fields = currentYearConfig.fields || [];
+            const visibleFields = fields
+                .filter(f => !gridState.hiddenCols.includes(f.id) && f.id !== '_internal_id')
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            // 2. 建立表頭
+            const trHead = document.createElement('tr');
+
+            // 固定欄位 (左側基礎資訊)
+            const fixedHeaders = [
+                { id: 'student_id', label: '學號', width: '80px' },
+                { id: 'student_name', label: '姓名', width: '80px' },
+                { id: 'course_name', label: '課程名稱', width: '150px' },
+                { id: 'semester', label: '學期', width: '50px' }
+            ];
+
+            // 渲染固定表頭
+            fixedHeaders.forEach(h => {
+                const th = document.createElement('th');
+                th.className = 'sortable-header sticky left-0 z-30 bg-slate-100'; // 固定在左側
+                th.style.minWidth = h.width;
+                th.onclick = () => setGridSort(h.id);
+                
+                let icon = '<i class="fas fa-sort sort-icon"></i>';
+                if (gridState.sortKey === h.id) {
+                    icon = gridState.sortDir === 'asc' 
+                        ? '<i class="fas fa-sort-up sort-icon active"></i>' 
+                        : '<i class="fas fa-sort-down sort-icon active"></i>';
+                }
+                th.innerHTML = `${h.label} ${icon}`;
+                trHead.appendChild(th);
+            });
+
+            // 渲染動態表頭 (填報欄位)
+            visibleFields.forEach(f => {
+                const th = document.createElement('th');
+                th.className = 'sortable-header';
+                th.style.minWidth = f.excelWidth ? f.excelWidth + 'px' : '100px';
+                th.onclick = () => setGridSort(f.id);
+
+                let icon = '<i class="fas fa-sort sort-icon"></i>';
+                if (gridState.sortKey === f.id) {
+                    icon = gridState.sortDir === 'asc' 
+                        ? '<i class="fas fa-sort-up sort-icon active"></i>' 
+                        : '<i class="fas fa-sort-down sort-icon active"></i>';
+                }
+                
+                // 必填標記
+                const reqSpan = f.required ? '<span class="text-red-500 ml-1">*</span>' : '';
+                th.innerHTML = `${f.label}${reqSpan} ${icon}`;
+                trHead.appendChild(th);
+            });
+            thead.appendChild(trHead);
+
+            // 3. 準備資料 (攤平所有學生的課程)
+            let rows = [];
+            Object.values(groupedStudents).forEach(s => {
+                s.courses.forEach(c => {
+                    rows.push({
+                        student: s,
+                        course: c,
+                        // 如果有歸戶，取得 Application 資料，否則為 null
+                        app: c._app_id ? s.applications.find(a => a.id === c._app_id) : null
+                    });
+                });
+            });
+
+            // 4. 篩選 (搜尋)
+            const term = document.getElementById('grid-search')?.value.toLowerCase() || '';
+            if (term) {
+                rows = rows.filter(r => 
+                    r.student.name.toLowerCase().includes(term) ||
+                    r.student.id.includes(term) ||
+                    (getCourseValue(r.course, ['course_name', '課程名稱']) || '').toLowerCase().includes(term)
+                );
+            }
+
+            // 5. 排序
+            if (gridState.sortKey) {
+                rows.sort((a, b) => {
+                    // 取得比較值 (優先從 App 取值，沒有則從 Course 取值)
+                    const getVal = (rowObj, key) => {
+                        if (fixedHeaders.find(h => h.id === key)) {
+                            // 固定欄位
+                            if (key === 'student_id') return rowObj.student.id;
+                            if (key === 'student_name') return rowObj.student.name;
+                            if (key === 'course_name') return getCourseValue(rowObj.course, ['course_name', '課程名稱']) || '';
+                            if (key === 'semester') return getCourseValue(rowObj.course, ['semester', '學期']) || '';
+                        }
+                        // 動態欄位
+                        let v = '';
+                        if (rowObj.app && rowObj.app.formData[key] !== undefined) v = rowObj.app.formData[key];
+                        else v = rowObj.course[key] || '';
+                        return String(v);
+                    };
+
+                    const valA = getVal(a, gridState.sortKey);
+                    const valB = getVal(b, gridState.sortKey);
+                    
+                    return gridState.sortDir === 'asc' 
+                        ? valA.localeCompare(valB, 'zh-Hant') 
+                        : -1 * valA.localeCompare(valB, 'zh-Hant');
+                });
+            }
+
+            // 6. 渲染內容列
+            rows.forEach(item => {
+                const { student, course, app } = item;
+                const tr = document.createElement('tr');
+                tr.dataset.cid = course._internal_id;
+                tr.dataset.sid = student.id;
+
+                // 如果已歸戶，背景顯示淺藍色
+                if (app) tr.classList.add('is-linked');
+                
+                // --- 固定欄位 ---
+                const tdId = document.createElement('td');
+                tdId.innerHTML = `
+                    <div class="flex items-center gap-2 pl-2">
+                        <input type="checkbox" class="grid-row-chk" value="${course._internal_id}" 
+                            ${gridSelection.has(course._internal_id) ? 'checked' : ''}
+                            onchange="updateGridSelection(this, '${student.id}')">
+                        <span class="font-mono text-xs">${student.id}</span>
+                    </div>`;
+                tr.appendChild(tdId);
+
+                const tdName = document.createElement('td');
+                tdName.className = "px-2 font-bold text-slate-700";
+                tdName.innerText = student.name;
+                tr.appendChild(tdName);
+
+                const tdCName = document.createElement('td');
+                tdCName.className = "px-2 text-slate-600 truncate max-w-[150px]";
+                tdCName.title = getCourseValue(course, ['course_name', '課程名稱']);
+                tdCName.innerText = getCourseValue(course, ['course_name', '課程名稱']);
+                tr.appendChild(tdCName);
+
+                const tdSem = document.createElement('td');
+                tdSem.className = "text-center";
+                tdSem.innerText = getCourseValue(course, ['semester', '學期']) || '-';
+                tr.appendChild(tdSem);
+
+                // --- 動態填報欄位 ---
+                visibleFields.forEach(f => {
+                    const td = document.createElement('td');
+                    
+                    // 決定數值：已歸戶優先讀取 app.formData，否則讀取 course
+                    let val = '';
+                    if (app && app.formData[f.id] !== undefined) {
+                        val = app.formData[f.id];
+                    } else {
+                        val = course[f.id] || '';
+                    }
+
+                    // 建立輸入元件
+                    let input;
+                    if (f.type === 'single_select' || f.type === 'list') {
+                        input = document.createElement('select');
+                        input.innerHTML = `<option value=""></option>` + (f.options || []).map(o => `<option value="${o}">${o}</option>`).join('');
+                        input.value = val;
+                    } else {
+                        input = document.createElement('input');
+                        input.type = 'text'; // Grid 模式統一用 text 以保持版面整齊，日期格式由 user 自行輸入或後續優化
+                        input.value = val;
+                    }
+                    
+                    input.className = "grid-input";
+                    input.dataset.field = f.id;
+                    
+                    // 標記歸戶關聯 class，用於連動更新
+                    if (app) {
+                        input.classList.add(`app-input-${app.id}-${f.id}`);
+                    }
+
+                    // 綁定事件
+                    input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                    
+                    // 處理 Locked / Visibility 狀態
+                    // 這裡先依據當前資料判斷一次
+                    const dataContext = app ? app.formData : course;
+                    checkGridInputVisibility(input, f, dataContext);
+
+                    td.appendChild(input);
+                    tr.appendChild(td);
+                });
+
+                tbody.appendChild(tr);
+            });
+        }
             
     </script>
 </body>
