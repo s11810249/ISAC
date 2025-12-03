@@ -227,8 +227,9 @@
         /* 2. 輸入框設定 */
         .grid-input { 
             width: 100%; 
-            height: 100%; 
-            min-height: 34px; /* 最小高度 */
+            /* height: 100%;  <-- 移除固定 height */
+            flex: 1;       /* ★ 新增：Flex 屬性，讓它自動填滿父層高度 */
+            min-height: 34px;
             border: none; 
             background: transparent;
             padding: 4px 8px; 
@@ -237,60 +238,62 @@
             color: #334155;
             transition: all 0.2s;
             box-sizing: border-box;
-            vertical-align: top; /* 對齊上方，方便閱讀多行文字 */
+            vertical-align: top;
         }
         
-        /* ★ 文字區域專用：允許換行 */
+        /* 文字區域專用 */
         textarea.grid-input {
-            white-space: pre-wrap; /* 保留換行符號並允許自動換行 */
-            word-break: break-all; /* 防止長單字撐爆 */
-            overflow: hidden;      /* 隱藏捲軸 (高度由 JS 自動調整) */
+            white-space: pre-wrap; 
+            word-break: break-all; 
+            overflow: hidden;      
+            resize: none;
         }
 
-        /* 其他單行輸入框：禁止換行 */
-        input.grid-input, select.grid-input {
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+        /* 鎖定狀態：背景透明 (顏色由 TD 負責)，文字變淡 */
+        .grid-input:disabled {
+            color: #cbd5e1; /* 淺灰色文字，讓它看起來像浮水印 */
+            cursor: not-allowed;
+            background-color: transparent !important; /* ★ 關鍵：讓 TD 的灰色透出來 */
         }
 
         .grid-input:focus { 
             outline: none; box-shadow: inset 0 0 0 2px #002E5D; background-color: #ffffff; z-index: 10;
         }
 
-        .grid-input:disabled {
-            color: #94a3b8;
-            cursor: not-allowed;
-            background-color: transparent; 
-        }
-
-        /* 3. 表格儲存格：高度自動 (auto) 以適應換行 */
+        /* 3. 表格儲存格：Flex 容器 (解決高度不滿問題) */
         .excel-table td { 
             padding: 0 !important; 
-            height: auto;          /* ★ 改回 auto，允許內容撐開高度 */
-            min-height: 34px;      /* 設定最小高度確保整齊 */
+            height: auto;          
+            min-height: 34px;      
             border-right: 1px solid #f1f5f9; 
             border-bottom: 1px solid #f1f5f9;
-            vertical-align: top;   /* 內容靠上對齊 */
+            
+            /* ★★★ 關鍵修改：將 TD 變為 Flex Container ★★★ */
+            display: flex;             
+            flex-direction: column;    /* 垂直排列 */
+            justify-content: center;   /* 內容垂直置中 (若有需要靠上可改 flex-start) */
+            align-items: stretch;      /* 內容水平拉伸填滿 */
         }
 
         /* 4. 唯讀儲存格內容容器 */
         .cell-read-only {
+            flex: 1;                 /* ★ 跟隨 TD 高度自動撐開 */
             width: 100%; 
             min-height: 34px;
             display: flex; 
-            align-items: center;   /* 唯讀欄位通常單行居多，維持垂直置中較美觀，若有長文需求可改 flex-start */
+            align-items: center;     
+            justify-content: center; 
             padding: 4px 8px; 
             color: #64748b; 
-            white-space: nowrap;   /* 唯讀欄位 (需求2) 是依據最寬值調整，所以這裡保持不換行 */
+            white-space: nowrap;
+            text-align: center;
         }
         
-        /* 5. 背景色設定 (保持不變) */
+        /* 5. 背景色設定 */
         tr.row-group-normal { background-color: #ffffff; }
         tr.row-group-alt { background-color: #f8fafc; }
         tr.row-group-normal:hover, tr.row-group-alt:hover { background-color: #eff6ff !important; }
-        tr.row-group-normal:hover td, tr.row-group-alt:hover td { background-color: #eff6ff !important; }
-        }
+        /* 注意：td 的背景色會覆蓋 tr，所以後面 JS 控制 td 背景色時要小心 */
         
         /* =========================================
            ★★★ Grid View 極致美化 (V2: 字體加大版) ★★★
@@ -1498,7 +1501,7 @@
             const columnWidths = {};
             let allFlatData = [];
             
-            // ... (資料扁平化邏輯保持不變) ...
+            // ... (資料扁平化邏輯保持不變，請保留原程式碼的 allFlatData 填充部分) ...
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
                     const fullText = Object.values(c).join(' ') + s.name + s.id;
@@ -1514,79 +1517,75 @@
             // ------------------------------------
 
             allColumns.forEach(f => {
-                // A. 基礎寬度：標題寬度 (需求4: 其他非唯讀欄位依據標題調整)
+                // A. 基準寬度：絕對優先計算「標題 + Info Icon」
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
-                let finalW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
+                // 使用 bold 15px 計算標題，並加上 30px 安全邊距
+                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
+                let finalW = headerW;
 
-                // B. 依據類型調整寬度
+                // B. 依據內容撐開 (針對不同類型策略)
                 const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
 
+                // --- 策略 1: 下拉選單 (Single Select) ---
                 if (f.type === 'single_select' || f.type === 'list') {
-                    // === 需求1: 單選依據最寬選項 ===
+                    // 1.1 掃描「設定檔中的選項」
                     if (f.options && f.options.length > 0) {
                         f.options.forEach(opt => {
-                            // 文字寬度 + 下拉箭頭預留空間 (約 35px)
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 35;
-                            if (w > finalW) finalW = w;
+                            // 文字寬度 + 40px (預留下拉箭頭與 padding)
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 40; 
+                            finalW = Math.max(finalW, w);
                         });
                     }
+                    // 1.2 也要掃描「實際資料值」 (防止匯入的資料不在選項清單中)
+                    allFlatData.forEach(row => {
+                         let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
+                         if (val) {
+                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 40;
+                             finalW = Math.max(finalW, w);
+                         }
+                    });
                 } 
+                // --- 策略 2: 唯讀欄位 (Read Only) ---
                 else if (isReadOnly) {
-                    // === 需求2: 唯讀欄位依據最寬的值 ===
-                    // 掃描所有資料 (allFlatData)
+                    // 掃描所有資料
                     allFlatData.forEach(row => {
                         let val = row.course[f.id];
-                        // Fallback 處理
+                        // Fallback
                         if (val === undefined) {
                             if (f.id === 'student_id') val = row.student.id;
                             else if (f.id === 'student_name') val = row.student.name;
                             else if (f.id === 'student_dept') val = row.student.dept;
                         }
-                        // 優先讀取 App Data (雖然唯讀通常不會有 App Data，但保持邏輯一致)
                         if (row.appId && row.appData[f.id] !== undefined) val = row.appData[f.id];
 
                         if (val) {
                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24; 
-                            if (w > finalW) finalW = w;
+                            finalW = Math.max(finalW, w);
                         }
                     });
                 }
+                // --- 策略 3: 文字欄位 (Text) ---
                 else if (f.type === 'text' || f.type === 'address') {
-                    // === 需求3: 文字欄位寬度不變 (依據設定檔 width 或預設) ===
-                    // 這裡直接設定為較寬的固定值，或者讀取 config 中的 width
-                    // 預設給 200px 讓它有空間換行，如果不夠寬會自動往下長
-                    finalW = f.width ? parseInt(f.width) : 200;
+                    // 取 (目前計算出的標題寬度) 與 (預設寬度) 的最大值
+                    // 這樣若標題很長，寬度就會自動被 finalW (headerW) 撐開
+                    const defaultTextW = f.width ? parseInt(f.width) : 200;
+                    finalW = Math.max(finalW, defaultTextW);
                 }
                 
-                // C. === 需求4 (補充): 提示字元 Placeholder 優先 ===
-                // 檢查是否有提示字元，若有，寬度至少要能顯示提示字元
+                // C. 提示字元 Placeholder 優先 (所有欄位都要檢查)
                 let placeholderText = "";
-                
-                if (f.type === 'date') {
-                    // 日期格式提示
-                    placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
-                } 
-                else if (f.calcMode === 'weighted') {
-                    // 權重分配提示
-                    placeholderText = "(點擊填寫)";
-                } 
-                else if (f.placeholder) {
-                    // 設定檔中的提示
-                    placeholderText = f.placeholder;
-                }
-                else if (f.type === 'single_select') {
-                    // 下拉選單預設提示
-                    placeholderText = "請選擇...";
-                }
+                if (f.type === 'date') placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
+                else if (f.calcMode === 'weighted') placeholderText = "(點擊填寫)";
+                else if (f.placeholder) placeholderText = f.placeholder;
+                else if (f.type === 'single_select') placeholderText = "請選擇...";
 
                 if (placeholderText) {
-                    const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 25; // +Buffer
-                    // 取最大值：目前的計算結果 vs 提示字元寬度
+                    const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 30;
                     finalW = Math.max(finalW, phWidth);
                 }
 
-                // D. 設定最終寬度 (給予極限最小值保護 80px)
+                // D. 設定最終寬度 (最小 80px)
                 columnWidths[f.id] = Math.max(finalW, 80);
             });
 
@@ -3897,11 +3896,10 @@
             const fields = currentYearConfig.fields || [];
             
             fields.forEach(f => {
-                // 找到該欄位的 input
                 const input = tr.querySelector(`[data-field="${f.id}"]`);
                 if (!input) return;
                 
-                // 找到父層 TD (這是消除白邊的關鍵)
+                // 找到父層 TD (這是填滿顏色的關鍵)
                 const td = input.closest('td');
 
                 let isLocked = false;
@@ -3936,7 +3934,7 @@
                         if (!rule) {
                             isLocked = true;
                         } else {
-                            // 更新選項可見性
+                            // 更新選項邏輯 (略，與之前相同)
                             const currentVal = input.value;
                             let isValid = false;
                             Array.from(input.options).forEach(opt => {
@@ -3955,36 +3953,35 @@
                     }
                 }
 
-                // --- 3. 執行 UI 更新 (解決白邊) ---
+                // --- 3. 執行 UI 更新 (確保整格變色) ---
                 if (isLocked) {
                     input.disabled = true;
                     if (lockReason) input.title = lockReason;
                     
-                    // 清空值
                     if (input.value !== "") {
                         input.value = "";
                         if (dataContext[f.id] !== "") dataContext[f.id] = "";
                     }
                     
-                    // ★ 關鍵：將背景色設定在 TD 上，填滿整個格子
-                    if (td) td.style.backgroundColor = "#e2e8f0"; // 鎖定灰色
+                    // ★ 關鍵：將背景色設定在 TD 上，並且設為 !important 效果的灰色
+                    // 使用 #e2e8f0 (Slate-200) 讓它看起來像無法編輯區域
+                    if (td) {
+                        td.style.backgroundColor = "#e2e8f0"; 
+                        // 如果需要強制覆蓋 hover 效果，可以考慮 inline css text，但通常這樣就夠了
+                    }
                     
                 } else {
                     input.disabled = false;
-                    input.title = input.value; // 恢復 title
+                    input.title = input.value; 
                     
-                    // ★ 恢復背景色
-                    // 注意：這裡簡單設為空字串，讓它吃 CSS 的 hover 或 tr 背景
-                    // 如果是凍結欄位 (sticky)，renderGlobalGrid 已經設定了 inline style，
-                    // 這裡設為空可能會導致凍結欄位變透明。
-                    // 為了完美，我們可以檢查是否有 sticky class
+                    // ★ 解鎖時，恢復背景色邏輯
                     if (td) {
                         if (td.classList.contains('sticky-col')) {
-                            // 如果是凍結欄位，恢復為淺灰或白 (依據 TR 的 class)
+                            // 凍結欄位：依據 TR 的 class 恢復背景 (避免透明導致透視)
                             const isAlt = tr.classList.contains('row-group-alt');
                             td.style.backgroundColor = isAlt ? '#f8fafc' : '#ffffff';
                         } else {
-                            // 非凍結欄位，移除 inline style，讓它透出 TR 的顏色
+                            // 一般欄位：清空背景色，讓它透出 TR 的 Hover 效果
                             td.style.backgroundColor = ""; 
                         }
                     }
