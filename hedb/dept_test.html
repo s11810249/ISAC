@@ -221,63 +221,70 @@
         
         /* Linked Data Indicator */
         /* 1. 移除歸戶連結色 */
+        /* 1. 移除歸戶連結色 */
         .is-linked { background-color: transparent !important; color: inherit; } 
         
-        /* 2. 輸入框設定：改回用 Padding 撐開高度，移除固定 line-height */
+        /* 2. 輸入框設定 */
         .grid-input { 
             width: 100%; 
             height: 100%; 
-            min-height: 38px; /* 保持適當的點擊區域 */
             border: none; 
             background: transparent;
-            padding: 8px 10px; /* 上下 padding 撐開高度，回復原本的排版感 */
-            font-size: 15px; 
-            line-height: 1.5;
+            padding: 4px 8px; /* 緊湊的內距 */
+            font-size: 14px;  /* 字體稍微縮小一點以配合緊湊高度 */
+            line-height: 26px; /* 配合 34px 高度 (34 - 4*2 = 26) */
             color: #334155;
             transition: all 0.2s;
-            box-sizing: border-box; /* 確保 padding 不會撐爆寬度 */
-        }
-        
-        /* 讓 Textarea 自動換行時也有正確間距 */
-        textarea.grid-input {
-            padding-top: 8px;
-            padding-bottom: 8px;
-            vertical-align: middle;
+            box-sizing: border-box;
+            white-space: nowrap; /* ★ 關鍵：禁止換行，防止高度被撐開 */
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
 
         .grid-input:focus { 
             outline: none; box-shadow: inset 0 0 0 2px #002E5D; background-color: #ffffff; z-index: 10;
         }
+        
+        /* 唯讀狀態的輸入框樣式 (針對沒有被 td 鎖定的情況) */
+        .grid-input:disabled {
+            color: #94a3b8;
+            cursor: not-allowed;
+            /* 背景色將由 JS 控制 td 來達成，這裡設透明即可 */
+            background-color: transparent; 
+        }
 
-        /* 3. 表格儲存格：移除固定高度 40px */
+        /* 3. 表格儲存格：固定高度 34px (原本的高度) */
         .excel-table td { 
-            padding: 0 !important; /* 保持 0，由內部的 input/div 負責 padding */
-            height: auto;          /* ★★★ 改回 auto，解決高度強制撐開導致的白邊 */
-            vertical-align: middle;
+            padding: 0 !important; 
+            height: 34px;          /* ★ 改回固定高度 */
             border-right: 1px solid #f1f5f9; 
-            border-bottom: 1px solid #f1f5f9; 
+            border-bottom: 1px solid #f1f5f9;
+            white-space: nowrap;   /* ★ 確保 TD 也不換行 */
+            overflow: hidden;      /* 超出隱藏 */
         }
 
         /* 4. 唯讀儲存格內容容器 */
         .cell-read-only {
             width: 100%; 
-            min-height: 38px; /* 與 input 保持一致 */
+            height: 100%;
             display: flex; 
             align-items: center; 
-            justify-content: center;
-            padding: 8px 10px; /* 與 input 保持一致 */
+            padding: 0 8px; /* 左右內距 */
             color: #64748b; 
-            white-space: normal; /* 允許換行 */
-            word-break: break-all;
+            white-space: nowrap; /* 不換行 */
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
+        
+        /* 內容置中設定 (針對 select 和短數字) */
+        .text-center-input { text-align: center; }
 
         /* 5. 懸停與背景色設定 */
         tr.row-group-normal { background-color: #ffffff; }
         tr.row-group-alt { background-color: #f8fafc; }
 
-        /* Hover 淺藍色 (使用 !important 覆蓋 td 的 inline style 背景) */
         tr.row-group-normal:hover, tr.row-group-alt:hover { background-color: #eff6ff !important; }
-        tr.row-group-normal:hover td, tr.row-group-alt:hover td { background-color: #eff6ff !important; 
+        tr.row-group-normal:hover td, tr.row-group-alt:hover td { background-color: #eff6ff !important;
         }
         
         /* =========================================
@@ -1486,6 +1493,7 @@
             const columnWidths = {};
             let allFlatData = [];
             
+            // ... (資料扁平化邏輯保持不變) ...
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
                     const fullText = Object.values(c).join(' ') + s.name + s.id;
@@ -1498,119 +1506,66 @@
                     allFlatData.push({ course: c, appData: appData, student: s, appId: c._app_id, internalId: c._internal_id });
                 });
             });
+            // ------------------------------------
 
-            // 排序資料
-            if (gridState.sortKey) {
-                const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-
-                allFlatData.sort((rowA, rowB) => {
-                    const getVal = (row) => {
-                        let v = "";
-                        const key = gridState.sortKey;
-                        // 優先取 App Data，沒有則取 Course Data
-                        if (row.appId && row.appData[key] !== undefined) v = row.appData[key];
-                        else v = row.course[key];
-                        
-                        // 處理 Fallback 值
-                        if ((v === undefined || v === "") && key === 'student_id') v = row.student.id;
-                        if ((v === undefined || v === "") && key === 'student_name') v = row.student.name;
-                        
-                        return v === undefined || v === null ? "" : String(v).trim();
-                    };
-
-                    const valA = getVal(rowA);
-                    const valB = getVal(rowB);
-
-                    // 針對純數值欄位嘗試轉數字 (如成績、學分)，學號則走字串自然排序
-                    const isPureNumberCol = ['credit', 'score', 'grade', 'hours', 'point'].some(k => gridState.sortKey.includes(k));
-                    
-                    if (isPureNumberCol) {
-                        const numA = parseFloat(valA.replace(/,/g, ''));
-                        const numB = parseFloat(valB.replace(/,/g, ''));
-                        if (!isNaN(numA) && !isNaN(numB)) {
-                            return gridState.sortDir === 'asc' ? numA - numB : numB - numA;
-                        }
-                    }
-
-                    // 使用自然排序比較字串 (解決 S1 vs S10 問題)
-                    const comp = collator.compare(valA, valB);
-                    return gridState.sortDir === 'asc' ? comp : -comp;
-                });
-            }
-
-            const sampleData = allFlatData.slice(0, 50); // 輸入框僅需取樣
+            // 輸入框取樣前 50 筆即可，唯讀欄位需要全掃
+            const sampleData = allFlatData.slice(0, 50); 
 
             allColumns.forEach(f => {
-                // 1. 基礎寬度 (表頭)
+                // 1. 表頭寬度
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
-                // 表頭文字 + icon + padding
                 let maxW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
 
-                // 2. 提示字元 (Placeholder) 寬度 - 針對輸入框
+                // 2. 提示字元寬度
                 let placeholderText = "";
-                if (f.type === 'date') {
-                    placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
-                } else if (f.calcMode === 'weighted') {
-                    placeholderText = "(點擊填寫)";
-                } else if (f.placeholder) {
-                    placeholderText = f.placeholder;
-                } else if (f.type === 'single_select') {
-                    placeholderText = "請選擇...";
-                }
+                if (f.type === 'date') placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
+                else if (f.calcMode === 'weighted') placeholderText = "(點擊填寫)";
+                else if (f.placeholder) placeholderText = f.placeholder;
+                else if (f.type === 'single_select') placeholderText = "請選擇...";
 
                 if (placeholderText) {
-                    // 計算提示字元寬度 + Buffer
                     const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 25;
                     maxW = Math.max(maxW, phWidth);
                 }
 
-                // 3. 內容寬度計算
-                // ★★★ 關鍵修正：唯讀欄位掃描所有資料，輸入欄位掃描取樣資料 ★★★
+                // 3. 內容寬度 (全掃描唯讀欄位)
                 const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                 
-                // 如果是唯讀欄位，必須掃描 allFlatData 以確保不會切到任何一個長字串
-                // 如果是下拉選單，檢查 options
-                // 其他輸入框使用 sampleData 即可
-                
+                // ★ 關鍵：如果是唯讀欄位，掃描所有資料 (allFlatData)
+                // ★ 如果是輸入欄位，掃描取樣資料 (sampleData)
+                const dataset = isReadOnly ? allFlatData : sampleData;
+
+                // 如果是下拉選單，掃描選項
                 if (f.type === 'single_select' || f.type === 'list') {
-                    if (f.options && f.options.length > 0) {
+                     if (f.options) {
                         f.options.forEach(opt => {
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 34; // 文字 + 下拉箭頭空間
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 34;
                             if (w > maxW) maxW = w;
                         });
-                    }
-                } 
-                else {
-                    // 決定掃描範圍
-                    const dataset = isReadOnly ? allFlatData : sampleData;
-
+                     }
+                } else {
                     dataset.forEach(row => {
                         let val = row.course[f.id];
-                        
-                        // 處理 Fallback 值 (學號、姓名等)
+                        // 處理 Fallback
                         if (val === undefined) {
                             if (f.id === 'student_id') val = row.student.id;
                             else if (f.id === 'student_name') val = row.student.name;
                             else if (f.id === 'student_dept') val = row.student.dept;
                         }
-                        
-                        // 優先讀取 App Data (因為使用者填寫的可能比較長)
-                        if (row.appId && row.appData[f.id] !== undefined) {
-                            val = row.appData[f.id];
-                        }
+                        // 優先讀取 App Data
+                        if (row.appId && row.appData[f.id] !== undefined) val = row.appData[f.id];
 
                         if (val) {
-                            // 計算文字寬度 + Padding (左右各約 10px + Buffer)
-                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24;
+                            // 計算寬度
+                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24; 
                             if (w > maxW) maxW = w;
                         }
                     });
                 }
                 
-                // 4. 設定最終寬度 (設定最小值保護)
+                // 4. 設定寬度 (給予最小值保護)
                 if (f.type === 'text' || f.type === 'address') {
-                    // 文字輸入框允許設定檔指定最小寬度 (例如地址欄)
                     columnWidths[f.id] = Math.max(maxW, f.width ? parseInt(f.width) : 100);
                 } else {
                     columnWidths[f.id] = Math.max(maxW, 80);
@@ -3924,50 +3879,46 @@
             const fields = currentYearConfig.fields || [];
             
             fields.forEach(f => {
+                // 找到該欄位的 input
                 const input = tr.querySelector(`[data-field="${f.id}"]`);
                 if (!input) return;
+                
+                // 找到父層 TD (這是消除白邊的關鍵)
+                const td = input.closest('td');
 
                 let isLocked = false;
+                let lockReason = "";
 
-                // --- 1. 處理 Visibility (顯示/隱藏) ---
+                // --- 1. Visibility 檢查 ---
                 if (f.visibilityRule) {
                     const depVal = dataContext[f.visibilityRule.dep];
-                    // 嚴謹檢查：依賴欄位必須有實質內容 (排除 undefined, null, 空字串)
                     const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
 
                     if (!hasDepValue) {
-                        // ★ 若依賴對象為空，強制不顯示 (鎖定) ★
                         isLocked = true;
                     } else {
-                        // 若依賴對象有值，檢查規則
                         let shouldShow = false;
-                        if (f.visibilityRule.action === 'show') {
-                            shouldShow = (depVal === f.visibilityRule.val);
-                        } else {
-                            // action: hide
-                            shouldShow = (depVal !== f.visibilityRule.val);
-                        }
+                        if (f.visibilityRule.action === 'show') shouldShow = (depVal === f.visibilityRule.val);
+                        else shouldShow = (depVal !== f.visibilityRule.val);
                         
                         if (!shouldShow) isLocked = true;
                     }
                 }
 
-                // --- 2. 處理 Filter Rules (下拉選單連動) ---
+                // --- 2. Option Logic 檢查 ---
                 if (!isLocked && f.filterRules && f.filterRules.length > 0 && input.tagName === 'SELECT') {
                     const parentId = f.filterRules[0].dep;
                     const parentVal = dataContext[parentId];
 
                     if (!parentVal || parentVal === "") {
-                        isLocked = true; // 父欄位無值 -> 鎖定
-                        input.title = "請先選擇關聯欄位";
+                        isLocked = true;
+                        lockReason = "請先選擇關聯欄位";
                     } else {
-                        // 有值 -> 執行過濾
                         const rule = f.filterRules.find(r => r.val === parentVal);
-                        
                         if (!rule) {
-                            isLocked = true; // 無對應規則 -> 鎖定
+                            isLocked = true;
                         } else {
-                            // 有規則 -> 更新選項
+                            // 更新選項可見性
                             const currentVal = input.value;
                             let isValid = false;
                             Array.from(input.options).forEach(opt => {
@@ -3986,17 +3937,39 @@
                     }
                 }
 
-                // --- 3. 執行 UI 更新 ---
+                // --- 3. 執行 UI 更新 (解決白邊) ---
                 if (isLocked) {
-                    if (!input.disabled) {
-                        input.disabled = true;
+                    input.disabled = true;
+                    if (lockReason) input.title = lockReason;
+                    
+                    // 清空值
+                    if (input.value !== "") {
                         input.value = "";
-                        if (dataContext[f.id] !== "") dataContext[f.id] = ""; // 清除資料
+                        if (dataContext[f.id] !== "") dataContext[f.id] = "";
                     }
-                    input.parentElement.style.backgroundColor = "#cbd5e1"; // 視覺灰底
+                    
+                    // ★ 關鍵：將背景色設定在 TD 上，填滿整個格子
+                    if (td) td.style.backgroundColor = "#e2e8f0"; // 鎖定灰色
+                    
                 } else {
                     input.disabled = false;
-                    input.parentElement.style.backgroundColor = ""; // 恢復背景
+                    input.title = input.value; // 恢復 title
+                    
+                    // ★ 恢復背景色
+                    // 注意：這裡簡單設為空字串，讓它吃 CSS 的 hover 或 tr 背景
+                    // 如果是凍結欄位 (sticky)，renderGlobalGrid 已經設定了 inline style，
+                    // 這裡設為空可能會導致凍結欄位變透明。
+                    // 為了完美，我們可以檢查是否有 sticky class
+                    if (td) {
+                        if (td.classList.contains('sticky-col')) {
+                            // 如果是凍結欄位，恢復為淺灰或白 (依據 TR 的 class)
+                            const isAlt = tr.classList.contains('row-group-alt');
+                            td.style.backgroundColor = isAlt ? '#f8fafc' : '#ffffff';
+                        } else {
+                            // 非凍結欄位，移除 inline style，讓它透出 TR 的顏色
+                            td.style.backgroundColor = ""; 
+                        }
+                    }
                 }
             });
         }
