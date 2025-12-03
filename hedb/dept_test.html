@@ -497,10 +497,11 @@
         /* 2. 層級設定 (Z-Index Hierarchy) - 修正版 */
         /* 層級邏輯：左上角凍結頭(50) > 一般表頭(40) > 內容凍結欄(30) > 一般內容(auto) */
 
+        /* 強制提升 thead 層級，並覆蓋 HTML 中的 class="z-20" */
         thead {
             position: sticky;
             top: 0;
-            z-index: 40; /* 確保整個表頭層級高於內容 */
+            z-index: 40 !important; 
         }
 
         /* 一般表頭 */
@@ -510,13 +511,13 @@
             background-color: #f8fafc;
             color: #475569;
             border-bottom: 2px solid #94a3b8 !important; 
-            z-index: 40; 
+            z-index: 40 !important; 
         }
         
-        /* 表頭的凍結欄位 (左上角) - 最高層級 */
+        /* 表頭的凍結欄位 (左上角) - 最高層級，確保不被捲動蓋住 */
         th.sticky-col {
             position: sticky;
-            left: 0; /* JS 會動態計算 left，但在 CSS 先宣告 position */
+            left: 0;
             background-color: #f8fafc !important;
             z-index: 50 !important; 
             border-bottom: 2px solid #94a3b8 !important;
@@ -526,7 +527,7 @@
         td.sticky-col {
             position: sticky;
             left: 0;
-            background-color: #fff !important; /* 必須有背景色才不會透過去 */
+            background-color: #fff !important;
             z-index: 30 !important; 
         }
 
@@ -534,7 +535,7 @@
         .sticky-border-right {
             border-right: 2px solid #94a3b8 !important;
             box-shadow: 4px 0 6px -3px rgba(0,0,0,0.1);
-            clip-path: inset(0 -15px 0 0); /* 防止陰影被裁切 */
+            clip-path: inset(0 -15px 0 0);
         }
 
         /* 4. 欄位說明圖示 */
