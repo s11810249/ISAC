@@ -1212,10 +1212,10 @@
                     let val = "";
                     
                     // ★★★ 修改重點：優先判斷是否為獨立欄位 (average) ★★★
-                    if (f.calcMode === 'average') {
-                        // 若是加總型欄位，強制顯示「原始課程數值」，讓各列獨立顯示
+                    if (f.calcMode === 'average' || f.calcMode === 'weighted') {
+                        // 若是運算型欄位，強制顯示「原始課程數值」，讓各列獨立顯示
                         val = course[f.id];
-                    } 
+                    }
                     // 其他歸戶欄位：若有歸戶資料，則顯示共用資料
                     else if (appId && appData[f.id] !== undefined) {
                         val = appData[f.id];
@@ -1316,37 +1316,57 @@
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
                     
-                    // ★★★ 修改重點：區分「獨立加總欄位」與「共用欄位」 ★★★
-                    if (fieldDef.calcMode === 'average') {
+                    // ★★★ 修改重點：區分「獨立運算欄位」與「共用欄位」 ★★★
+                    if (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted') {
                         // 1. 獨立欄位：只更新這門課的原始資料
                         course[fieldDef.id] = newVal;
-                        
-                        // 2. 重新計算 App 的總和 (Sum)
+
                         // 找出歸戶內的所有課程
                         const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-                        let sum = 0;
-                        let hasVal = false;
-                        
-                        linkedCourses.forEach(c => {
-                            const v = parseFloat(c[fieldDef.id]);
-                            if (!isNaN(v)) {
-                                sum += v;
-                                hasVal = true;
+
+                        let finalValue = 0;
+
+                        if (fieldDef.calcMode === 'weighted') {
+                            // === 加權平均模式 ===
+                            let totalWeightedScore = 0;
+                            let totalWeight = 0;
+                            const weightKey = fieldDef.weightField; // 設定檔必須指定權重欄位 key (如 credits)
+
+                            linkedCourses.forEach(c => {
+                                const val = parseFloat(c[fieldDef.id]) || 0;
+                                // 嘗試抓取權重值，支援欄位 ID 或 Label 查找
+                                const weight = parseFloat(getCourseValue(c, [weightKey])) || 0;
+
+                                totalWeightedScore += val * weight;
+                                totalWeight += weight;
+                            });
+
+                            if (totalWeight > 0) {
+                                finalValue = totalWeightedScore / totalWeight;
                             }
-                        });
-                        
-                        // 3. 更新 App Data (總和)
-                        const oldAppVal = app.formData[fieldDef.id];
-                        if (hasVal) {
-                            app.formData[fieldDef.id] = fieldDef.decimal ? sum.toFixed(fieldDef.decimal) : String(sum);
                         } else {
-                            app.formData[fieldDef.id] = "";
+                            // === 一般平均/加總模式 (既有邏輯) ===
+                            let sum = 0;
+                            let count = 0;
+                            linkedCourses.forEach(c => {
+                                const v = parseFloat(c[fieldDef.id]);
+                                if (!isNaN(v)) {
+                                    sum += v;
+                                    count++;
+                                }
+                            });
+                            // 這裡維持原本 average 的行為 (看是純加總還是要除以數量，視需求而定，原程式碼是做 Sum)
+                            finalValue = sum;
                         }
-                        
-                        logChange(fieldDef.id, appId, oldAppVal, app.formData[fieldDef.id], student.id);
+
+                        // 3. 更新 App Data
+                        // 使用設定檔的小數位數 (decimal) 或預設整數
+                        app.formData[fieldDef.id] = fieldDef.decimal ? finalValue.toFixed(fieldDef.decimal) : Math.round(finalValue).toString();
+
+                        logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
 
                         // 注意：這裡【不】同步到其他格子，因為我們要讓它們保持獨立顯示
-                        
+
                     } else {
                         // 1. 一般共用欄位：更新 App Data
                         const oldVal = app.formData[fieldDef.id];
@@ -3560,25 +3580,41 @@
                 });
             }
 
-            // 2. ★★★ 核心修正：自動加總數值欄位 ★★★
-            // 針對設定為 calcMode='average' (平均/加總) 的欄位，重新計算總和
+            // 2. ★★★ 核心修正：自動運算數值欄位 (加總 或 加權) ★★★
             (currentYearConfig.fields||[]).forEach(f => {
-                if (f.type === 'number' && f.calcMode === 'average') {
-                    let sum = 0;
-                    let hasVal = false;
-                    
-                    selectedCourses.forEach(c => {
-                        // 務必使用原始課程資料(Raw Data)來加總，避免重複計算已合併的數值
-                        const v = parseFloat(c[f.id]);
-                        if (!isNaN(v)) {
-                            sum += v;
-                            hasVal = true;
+                if (f.type === 'number') {
+                    if (f.calcMode === 'average') {
+                        // === 既有的加總邏輯 ===
+                        let sum = 0;
+                        let hasVal = false;
+                        selectedCourses.forEach(c => {
+                            const v = parseFloat(c[f.id]);
+                            if (!isNaN(v)) { sum += v; hasVal = true; }
+                        });
+                        if (hasVal) initData[f.id] = f.decimal ? sum.toFixed(f.decimal) : String(sum);
+            
+                    } else if (f.calcMode === 'weighted') {
+                        // === 新增：加權平均邏輯 ===
+                        let totalWeightedScore = 0;
+                        let totalWeight = 0;
+                        const weightKey = f.weightField;
+                        let hasVal = false;
+            
+                        selectedCourses.forEach(c => {
+                            const val = parseFloat(c[f.id]);
+                            const weight = parseFloat(getCourseValue(c, [weightKey])) || 0;
+                            
+                            if (!isNaN(val)) {
+                                totalWeightedScore += val * weight;
+                                totalWeight += weight;
+                                hasVal = true;
+                            }
+                        });
+            
+                        if (hasVal && totalWeight > 0) {
+                            const avg = totalWeightedScore / totalWeight;
+                            initData[f.id] = f.decimal ? avg.toFixed(f.decimal) : Math.round(avg).toString();
                         }
-                    });
-
-                    if (hasVal) {
-                        // 依照小數點設定寫入
-                        initData[f.id] = f.decimal ? sum.toFixed(2) : String(sum);
                     }
                 }
             });
