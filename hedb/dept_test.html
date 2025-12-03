@@ -1327,40 +1327,28 @@
                         let finalValue = 0;
 
                         if (fieldDef.calcMode === 'weighted') {
-                            // === 加權平均模式 ===
-                            let totalWeightedScore = 0;
-                            let totalWeight = 0;
-                            const weightKey = fieldDef.weightField; // 設定檔必須指定權重欄位 key (如 credits)
-
-                            linkedCourses.forEach(c => {
-                                const val = parseFloat(c[fieldDef.id]) || 0;
-                                // 嘗試抓取權重值，支援欄位 ID 或 Label 查找
-                                const weight = parseFloat(getCourseValue(c, [weightKey])) || 0;
-
-                                totalWeightedScore += val * weight;
-                                totalWeight += weight;
-                            });
-
-                            if (totalWeight > 0) {
-                                finalValue = totalWeightedScore / totalWeight;
-                            }
-                        } else {
-                            // === 一般平均/加總模式 (既有邏輯) ===
+                            // === 修正：加權分配模式 (Weighted Distribution) ===
+                            // 邏輯：對於時數/點數，歸戶後的數值應為「總和」。
+                            // (權重是用來在「填總數自動分配」時使用的，但在此處「由下往上」匯總時，就是單純累加)
                             let sum = 0;
-                            let count = 0;
                             linkedCourses.forEach(c => {
                                 const v = parseFloat(c[fieldDef.id]);
                                 if (!isNaN(v)) {
                                     sum += v;
-                                    count++;
                                 }
                             });
-                            // 這裡維持原本 average 的行為 (看是純加總還是要除以數量，視需求而定，原程式碼是做 Sum)
-                            finalValue = sum;
+                            finalValue = sum; // 200 + 300 = 500
+                        } else {
+                            // === 一般平均/加總模式 ===
+                            let sum = 0;
+                            linkedCourses.forEach(c => {
+                                const v = parseFloat(c[fieldDef.id]);
+                                if (!isNaN(v)) sum += v;
+                            });
+                            finalValue = sum; 
                         }
 
                         // 3. 更新 App Data
-                        // 使用設定檔的小數位數 (decimal) 或預設整數
                         app.formData[fieldDef.id] = fieldDef.decimal ? finalValue.toFixed(fieldDef.decimal) : Math.round(finalValue).toString();
 
                         logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
@@ -3592,28 +3580,23 @@
                             if (!isNaN(v)) { sum += v; hasVal = true; }
                         });
                         if (hasVal) initData[f.id] = f.decimal ? sum.toFixed(f.decimal) : String(sum);
-            
+                        
                     } else if (f.calcMode === 'weighted') {
-                        // === 新增：加權平均邏輯 ===
-                        let totalWeightedScore = 0;
-                        let totalWeight = 0;
-                        const weightKey = f.weightField;
+                        // === 修正：加權分配模式 (Weighted Distribution) ===
+                        // 這裡同樣計算總和 (Total)，以便後續若有分配邏輯時，總數是正確的 (e.g. 500)
+                        let sum = 0;
                         let hasVal = false;
-            
+                        
                         selectedCourses.forEach(c => {
                             const val = parseFloat(c[f.id]);
-                            const weight = parseFloat(getCourseValue(c, [weightKey])) || 0;
-                            
                             if (!isNaN(val)) {
-                                totalWeightedScore += val * weight;
-                                totalWeight += weight;
+                                sum += val;
                                 hasVal = true;
                             }
                         });
-            
-                        if (hasVal && totalWeight > 0) {
-                            const avg = totalWeightedScore / totalWeight;
-                            initData[f.id] = f.decimal ? avg.toFixed(f.decimal) : Math.round(avg).toString();
+
+                        if (hasVal) {
+                            initData[f.id] = f.decimal ? sum.toFixed(f.decimal) : Math.round(sum).toString();
                         }
                     }
                 }
