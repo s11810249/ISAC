@@ -1516,24 +1516,55 @@
                 });
             }
 
-            const sampleData = allFlatData.slice(0, 50);
+            const sampleData = allFlatData.slice(0, 50); // 取樣計算
 
             allColumns.forEach(f => {
                 let maxW = 0;
+                
+                // A. 計算表頭寬度
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
-                const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 20 + iconWidth;
+                const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
+                maxW = Math.max(maxW, headerW);
 
+                // B. ★★★ 計算提示字元 (Placeholder) 寬度 ★★★
+                let placeholderText = "";
+                
+                // B-1. 依據日期格式判斷
+                if (f.type === 'date') {
+                    if (f.inputFormat === 'ROC') placeholderText = "114/12/31"; // 預留寬度
+                    else placeholderText = "2025/12/31"; 
+                }
+                // B-2. 依據權重欄位判斷
+                else if (f.calcMode === 'weighted') {
+                    placeholderText = "(點擊填寫)";
+                }
+                // B-3. 依據設定檔中的 placeholder (若有)
+                else if (f.placeholder) {
+                    placeholderText = f.placeholder;
+                }
+                // B-4. 下拉選單預設文字
+                else if (f.type === 'single_select') {
+                    placeholderText = "請選擇...";
+                }
+
+                if (placeholderText) {
+                    // 加一點 buffer (25px) 讓視覺不擁擠
+                    const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 25;
+                    maxW = Math.max(maxW, phWidth);
+                }
+
+                // C. 計算內容資料寬度 (取樣)
                 if (f.type === 'single_select' || f.type === 'list') {
                     if (f.options && f.options.length > 0) {
                         f.options.forEach(opt => {
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'");
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 30; // 下拉箭頭空間
                             if (w > maxW) maxW = w;
                         });
                     }
-                    maxW += 45; 
                 } 
-                else if (f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info') {
+                else {
+                    // 一般文字或唯讀欄位
                     sampleData.forEach(row => {
                         let val = row.course[f.id];
                         if (val === undefined) {
@@ -1542,19 +1573,19 @@
                             else if (f.id === 'student_dept') val = row.student.dept;
                         }
                         if (val) {
-                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'");
+                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 20;
                             if (w > maxW) maxW = w;
                         }
                     });
-                    maxW += 30;
                 }
-                else if (f.type === 'text' || f.type === 'address' || f.id.includes('name')) {
-                    maxW = f.width ? parseInt(f.width) : 200; 
+                
+                // 設定最小值與最大值保護
+                if (f.type === 'text' || f.type === 'address') {
+                    // 文字框允許稍微寬一點
+                    columnWidths[f.id] = Math.max(maxW, f.width ? parseInt(f.width) : 100);
+                } else {
+                    columnWidths[f.id] = Math.max(maxW, 80);
                 }
-                else {
-                    maxW = headerW;
-                }
-                columnWidths[f.id] = Math.max(maxW, headerW, 80);
             });
 
             // 3. 渲染表頭 (Header)
@@ -1603,7 +1634,6 @@
                 return;
             }
 
-            // 用於追蹤歸戶群組的變數
             let lastAppId = null;
             let isAltRow = false;
 
@@ -1611,21 +1641,23 @@
                 const { student, course, appData, appId } = row;
                 
                 // --- 顏色交替邏輯 ---
-                // 只有當「有歸戶」且「歸戶ID改變」時，才切換顏色
                 if (appId) {
-                    if (appId !== lastAppId) {
-                        isAltRow = !isAltRow; // 切換顏色
-                    }
+                    if (appId !== lastAppId) isAltRow = !isAltRow;
                 } else {
-                    isAltRow = false; // 未歸戶的資料一律使用白色底 (或視為獨立群組)
+                    isAltRow = false; // 未歸戶預設白色
                 }
                 lastAppId = appId;
 
+                // 定義此列的四種背景色代碼 (用於凍結欄位與唯讀欄位的手動上色)
+                // 1. 一般欄位底色 (白 vs 淺灰)
+                const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
+                // 2. 唯讀欄位底色 (淺灰 vs 深灰) - 讓唯讀區塊永遠比一般區塊深一點
+                const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9';
+
                 const tr = document.createElement('tr');
-                // 根據狀態套用背景色 Class
                 tr.className = isAltRow 
                     ? "row-group-alt transition border-b border-slate-100 group" 
-                    : "bg-white transition border-b border-slate-100 group";
+                    : "row-group-normal transition border-b border-slate-100 group";
                 
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
@@ -1640,17 +1672,21 @@
                     td.style.minWidth = finalWidth + "px";
                     td.style.maxWidth = finalWidth + "px";
 
+                    // 判斷是否為唯讀/系統欄位
+                    const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
+                    
+                    // 決定此格的背景色 (凍結欄位必須顯式設定，非凍結則透明讓 TR 顏色透出)
+                    let cellBgColor = 'transparent'; 
+                    
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
                         currentStickyLeft += finalWidth;
+                        if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                         
-                        // 凍結欄位背景色需強制指定，否則會透明
-                        td.style.backgroundColor = isAltRow ? '#f8fafc' : '#ffffff';
-
-                        if (index === freezeLimit - 1) {
-                            td.classList.add('sticky-border-right');
-                        }
+                        // ★ 凍結欄位必須有實體背景色，否則捲動會透視
+                        cellBgColor = isReadOnly ? bgReadOnly : bgBase;
+                        td.style.backgroundColor = cellBgColor;
                     }
 
                     // 取得內容值
@@ -1666,26 +1702,28 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
                     
-                    // 判斷是否為唯讀/系統欄位
-                    const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
-                    
                     if (isReadOnly) {
-                        // 唯讀欄位：保持淺灰色背景
-                        td.innerHTML = `<div class="px-3 py-0 flex items-center justify-center h-full text-slate-500 select-none bg-slate-100 text-sm cell-multiline" title="${val}">${val||''}</div>`;
+                        // ★ 唯讀欄位：使用 div 填滿，並設定專屬背景色 (交替深淺)
+                        const div = document.createElement('div');
+                        div.className = "cell-read-only cell-multiline";
+                        div.innerText = val || '';
+                        div.title = val || '';
+                        // 非凍結欄位由此 div 負責背景色，凍結欄位由 td 負責 (style 已設)
+                        if (index >= freezeLimit) {
+                            div.style.backgroundColor = bgReadOnly;
+                        }
+                        td.appendChild(div);
                     } else {
-                        // 可編輯欄位：建立 Input
+                        // ★ 可編輯欄位
                         let input;
                         
+                        // 建立輸入框 (邏輯不變)
                         if (f.type === 'text' || f.type === 'address') {
                             input = document.createElement('textarea');
                             input.rows = 1;
-                            input.className = "grid-input"; // CSS 已設定背景透明
+                            input.className = "grid-input";
                             input.style.resize = "none";
                             input.style.textAlign = 'left';
-                            input.addEventListener('input', function() {
-                                this.style.height = 'auto';
-                                this.style.height = (this.scrollHeight) + 'px';
-                            });
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
@@ -1700,7 +1738,7 @@
                             
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                                // ... (日期處理邏輯保持不變) ...
+                                // (日期事件綁定保持原樣...)
                                 input.addEventListener('change', (e) => {
                                     let v = e.target.value.trim().replace(/[^\d]/g, '');
                                     if (f.inputFormat === 'ROC') {
@@ -1713,34 +1751,41 @@
                                 });
                             }
                         }
-                        
+
+                        // 處理 Placeholder 與權重欄位
+                        if (f.placeholder) input.placeholder = f.placeholder;
+                        if (f.calcMode === 'weighted') {
+                            input.placeholder = "(點擊填寫)";
+                            input.readOnly = true;
+                            input.style.cursor = 'pointer';
+                            // 權重欄位視為唯讀，背景色要跟著唯讀邏輯
+                            input.style.backgroundColor = bgReadOnly; 
+                            input.onclick = (e) => {
+                                e.stopPropagation(); e.preventDefault();
+                                if(typeof openDistributionModal === 'function') openDistributionModal(student.id, appId, f.id);
+                            };
+                        }
+
                         input.value = val || "";
                         input.dataset.field = f.id;
                         input.title = val || ""; 
                         
                         if(appId) {
                             input.classList.add(`app-input-${appId}-${f.id}`);
-                            // ★ 移除這裡的 td.classList.add('is-linked')，不再強制變色
-                            
-                            // 特殊處理：權重分配欄位 (唯讀)
-                            if (f.calcMode === 'weighted') {
-                                input.readOnly = true;
-                                input.style.cursor = 'pointer';
-                                input.disabled = true; // 使用 disabled 樣式 (灰色)
-                                input.style.textAlign = 'center';
-                                input.placeholder = "(點擊填寫)";
-                                input.onclick = (e) => {
-                                    e.stopPropagation(); 
-                                    e.preventDefault();
-                                    if(typeof openDistributionModal === 'function') openDistributionModal(student.id, appId, f.id);
-                                };
-                            }
-                        } 
+                        }
 
                         if (f.type !== 'date') {
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         }
                         
+                        // Input 高度自動調整
+                        if (input.tagName === 'TEXTAREA') {
+                             input.addEventListener('input', function() {
+                                this.style.height = 'auto';
+                                this.style.height = (this.scrollHeight) + 'px';
+                            });
+                        }
+
                         td.appendChild(input);
                     }
                     tr.appendChild(td);
@@ -1748,7 +1793,7 @@
                 
                 tbodyFragment.appendChild(tr);
                 
-                // 文字框高度自動調整
+                // 初始化 Textarea 高度
                 setTimeout(() => {
                     tr.querySelectorAll('textarea').forEach(ta => {
                         ta.style.height = 'auto';
