@@ -220,16 +220,54 @@
         .grid-input:disabled { background-color: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
         
         /* Linked Data Indicator */
-        .is-linked { background-color: #eff6ff !important; color: #1e40af; } /* Light Blue for consolidated */
-        .is-raw { background-color: #fff !important; }
+        .is-linked { 
+            background-color: transparent !important; 
+            color: inherit; 
+        } 
         
-        /* Toggle Checkbox Label */
-        .col-toggle-label { 
-            display: inline-flex; items-center; gap: 4px; background: white; padding: 2px 8px; 
-            border: 1px solid #cbd5e1; rounded: 4px; cursor: pointer; user-select: none;
+        /* 2. 輸入框預設透明，獲得焦點時才變白 */
+        .grid-input { 
+            width: 100%; 
+            height: 100%;
+            border: none; 
+            background: transparent; /* 關鍵：透明背景 */
+            padding: 0 10px;
+            font-size: 15px;
+            line-height: 40px;
+            color: #334155;
+            transition: background-color 0.2s;
         }
-        .col-toggle-label:hover { border-color: #64748b; }
-        .col-toggle-label input:checked + span { color: #002E5D; font-weight: bold; }
+
+        .grid-input:focus { 
+            outline: none;
+            box-shadow: inset 0 0 0 2px #002E5D; 
+            background-color: #ffffff; /* 聚焦時變白 */
+            z-index: 10;
+        }
+
+        /* 3. 交替顏色設定 (淺灰 vs 白) - 視覺疲勞減緩版 */
+        tr.row-group-alt {
+            background-color: #f8fafc; /* Slate-50: 極淺的灰，不刺眼 */
+        }
+        tr.row-group-alt:hover {
+            background-color: #f1f5f9; /* Slate-100: Hover 時稍微深一點 */
+        }
+        
+        /* 一般列的 Hover */
+        tr.bg-white:hover {
+            background-color: #f8fafc;
+        }
+
+        /* 4. 唯讀欄位保持原本的灰色，以示區別 */
+        .grid-input:disabled { 
+            background-color: #e2e8f0; /* 稍微深一點的灰表示唯讀 */
+            color: #94a3b8;
+            cursor: not-allowed;
+        }
+        /* 修正唯讀儲存格背景 */
+        td:has(.grid-input:disabled), td:has(.cell-multiline) {
+            background-color: #f1f5f9; 
+        }
         
         /* =========================================
            ★★★ Grid View 極致美化 (V2: 字體加大版) ★★★
@@ -1570,18 +1608,37 @@
             });
             theadFragment.appendChild(trHead);
 
-            // 4. 渲染內容 (Body)
+            // 4. 渲染內容 (Body) - 修正版：歸戶交替色 + 移除輸入框底色
             if (allFlatData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${allColumns.length}" class="p-8 text-center text-slate-400">無符合資料</td></tr>`;
                 thead.appendChild(theadFragment);
                 return;
             }
 
+            // 用於追蹤歸戶群組的變數
+            let lastAppId = null;
+            let isAltRow = false;
+
             allFlatData.forEach(row => {
                 const { student, course, appData, appId } = row;
                 
+                // --- 顏色交替邏輯 ---
+                // 只有當「有歸戶」且「歸戶ID改變」時，才切換顏色
+                if (appId) {
+                    if (appId !== lastAppId) {
+                        isAltRow = !isAltRow; // 切換顏色
+                    }
+                } else {
+                    isAltRow = false; // 未歸戶的資料一律使用白色底 (或視為獨立群組)
+                }
+                lastAppId = appId;
+
                 const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition border-b border-slate-100 group";
+                // 根據狀態套用背景色 Class
+                tr.className = isAltRow 
+                    ? "row-group-alt transition border-b border-slate-100 group" 
+                    : "bg-white transition border-b border-slate-100 group";
+                
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
 
@@ -1595,19 +1652,20 @@
                     td.style.minWidth = finalWidth + "px";
                     td.style.maxWidth = finalWidth + "px";
 
-                    const isTextType = f.type === 'text' || f.type === 'address';
-
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
                         currentStickyLeft += finalWidth;
                         
+                        // 凍結欄位背景色需強制指定，否則會透明
+                        td.style.backgroundColor = isAltRow ? '#f8fafc' : '#ffffff';
+
                         if (index === freezeLimit - 1) {
                             td.classList.add('sticky-border-right');
                         }
                     }
 
-                    // 內容值
+                    // 取得內容值
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -1620,22 +1678,22 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
                     
+                    // 判斷是否為唯讀/系統欄位
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
                     if (isReadOnly) {
-                        const alignClass = isTextType ? 'cell-left' : 'cell-center';
-                        td.innerHTML = `<div class="px-3 py-0 flex items-center h-full text-slate-600 select-none bg-slate-50 text-sm cell-multiline ${alignClass}" title="${val}">${val||''}</div>`;
+                        // 唯讀欄位：保持淺灰色背景
+                        td.innerHTML = `<div class="px-3 py-0 flex items-center justify-center h-full text-slate-500 select-none bg-slate-100 text-sm cell-multiline" title="${val}">${val||''}</div>`;
                     } else {
+                        // 可編輯欄位：建立 Input
                         let input;
                         
                         if (f.type === 'text' || f.type === 'address') {
                             input = document.createElement('textarea');
                             input.rows = 1;
-                            input.className = "grid-input w-full px-2 py-1 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
-                            input.style.height = "100%";
+                            input.className = "grid-input"; // CSS 已設定背景透明
                             input.style.resize = "none";
                             input.style.textAlign = 'left';
-                            
                             input.addEventListener('input', function() {
                                 this.style.height = 'auto';
                                 this.style.height = (this.scrollHeight) + 'px';
@@ -1643,17 +1701,18 @@
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
-                            input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
+                            input.className = "grid-input";
                             input.style.textAlign = 'center';
                             input.style.textAlignLast = 'center';
                         } else {
                             input = document.createElement('input');
                             input.type = "text";
-                            input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
+                            input.className = "grid-input";
                             input.style.textAlign = 'center';
                             
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
+                                // ... (日期處理邏輯保持不變) ...
                                 input.addEventListener('change', (e) => {
                                     let v = e.target.value.trim().replace(/[^\d]/g, '');
                                     if (f.inputFormat === 'ROC') {
@@ -1673,37 +1732,35 @@
                         
                         if(appId) {
                             input.classList.add(`app-input-${appId}-${f.id}`);
-                            td.classList.add('is-linked'); 
+                            // ★ 移除這裡的 td.classList.add('is-linked')，不再強制變色
                             
+                            // 特殊處理：權重分配欄位 (唯讀)
                             if (f.calcMode === 'weighted') {
                                 input.readOnly = true;
                                 input.style.cursor = 'pointer';
-                                input.style.backgroundColor = '#f8fafc';
-                                input.style.color = '#64748b';
+                                input.disabled = true; // 使用 disabled 樣式 (灰色)
                                 input.style.textAlign = 'center';
-                                input.placeholder = "(點擊填寫時數)";
+                                input.placeholder = "(點擊填寫)";
                                 input.onclick = (e) => {
                                     e.stopPropagation(); 
                                     e.preventDefault();
                                     if(typeof openDistributionModal === 'function') openDistributionModal(student.id, appId, f.id);
                                 };
                             }
-                        } else {
-                            td.classList.add('is-raw');
-                        }
+                        } 
 
                         if (f.type !== 'date') {
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         }
-                        if (!(appId && f.calcMode === 'weighted')) {
-                            input.oninput = (e) => { e.target.title = e.target.value; }; 
-                        }
+                        
                         td.appendChild(input);
                     }
                     tr.appendChild(td);
                 });
                 
                 tbodyFragment.appendChild(tr);
+                
+                // 文字框高度自動調整
                 setTimeout(() => {
                     tr.querySelectorAll('textarea').forEach(ta => {
                         ta.style.height = 'auto';
