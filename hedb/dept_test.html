@@ -448,37 +448,36 @@
             background: linear-gradient(to bottom, #ffffff, #f8fafc);
         }
         
-        /* --- Grid 凍結與排序樣式 --- */
-        
-        /* 1. 拖曳中的樣式 (Drag & Drop) */
-        .field-chip-label.dragging {
-            opacity: 0.4;
-            border-style: dashed;
-            border-color: #94a3b8;
-            background-color: #e2e8f0;
+        /* --- Grid 優化 (表格線條與對齊) --- */
+
+        /* 1. 表格基礎設定 (線條變細) */
+        .excel-table { 
+            border-collapse: separate; 
+            border-spacing: 0;
         }
         
-        /* 2. 凍結欄位 (Sticky Columns) */
-        .sticky-col {
-            position: sticky !important;
-            z-index: 30; /* 比一般內容高，比 Header 低(Header 是 z-20，需調整) */
-            background-color: #fff; /* 必須有背景色，不然透明會透出下面的字 */
-            box-shadow: 2px 0 5px -2px rgba(0, 0, 0, 0.1); /* 右側陰影分隔線 */
-            border-right: 1px solid #e2e8f0 !important; /* 強制分隔線 */
+        /* 手動繪製格線：顏色變淡 (#e2e8f0 -> #f1f5f9)，寬度保持 1px */
+        .excel-table th, .excel-table td { 
+            border-right: 1px solid #e2e8f0; 
+            border-bottom: 1px solid #e2e8f0; 
+            box-sizing: border-box;
+        }
+
+        /* 2. 對齊設定 (唯讀欄位一律置中) */
+        .cell-multiline {
+            white-space: normal !important;
+            word-break: break-all;
+            line-height: 1.4;
+            padding: 4px 8px !important;
+            height: auto !important;
+            min-height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center; /* 強制水平置中 */
+            text-align: center;      /* 強制文字置中 */
         }
         
-        /* 表頭的凍結樣式 (層級要最高) */
-        th.sticky-col {
-            z-index: 40 !important; /* 比一般表頭(z-20)和內容凍結(z-30)都高 */
-            background-color: #f1f5f9; /* 配合原本表頭底色 */
-        }
-        
-        /* 修正：原本 Checkbox 的層級 */
-        th:first-child, td:first-child {
-            z-index: 41 !important; /* Checkbox 永遠最高 */
-            position: sticky;
-            left: 0;
-        }
+        /* 移除 .cell-left, .cell-center 區分，統一使用上方設定 */
         
         /* --- Grid 寬度與凍結優化 (V6: 最終修復版) --- */
 
@@ -1393,23 +1392,15 @@
             const searchTerm = document.getElementById('grid-search').value.toLowerCase();
             const fields = currentYearConfig.fields || [];
 
-            // 1. 欄位準備與排序
+            // 1. 欄位準備與排序 (取消 gridState.columnOrder，只用設定檔 order)
             let allColumns = fields
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
                 .filter(f => !gridState.hiddenCols.includes(f.id));
 
             const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
 
-            if (gridState.columnOrder.length > 0) {
-                allColumns.sort((a, b) => {
-                    const idxA = gridState.columnOrder.indexOf(a.id);
-                    const idxB = gridState.columnOrder.indexOf(b.id);
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    return getOrder(a) - getOrder(b);
-                });
-            } else {
-                allColumns.sort((a,b) => getOrder(a) - getOrder(b));
-            }
+            // 始終依照設定檔的 order 屬性排序
+            allColumns.sort((a,b) => getOrder(a) - getOrder(b));
 
             if (allColumns.length === 0) {
                 thead.innerHTML = '<tr><th class="p-4 text-center text-slate-400">所有欄位已隱藏</th></tr>';
@@ -1422,7 +1413,6 @@
             
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
-                    // ★ 修正變數名稱：使用 c 而非 course
                     const fullText = Object.values(c).join(' ') + s.name + s.id;
                     if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
 
@@ -1456,7 +1446,6 @@
                 });
             }
 
-            // 寬度計算樣本
             const sampleData = allFlatData.slice(0, 50);
 
             allColumns.forEach(f => {
@@ -1499,12 +1488,12 @@
             });
 
             // --- 3. 渲染表頭 (Header) ---
-            const freezeLimit = gridState.frozenCount; // 讀取凍結設定
-            let currentStickyLeft = 0; // ★ 徹底修正：起始位置為 0 (無 checkbox)
+            const freezeLimit = gridState.frozenCount; 
+            let currentStickyLeft = 0; // 起始位置為 0 (無 checkbox)
 
             let trHead = document.createElement('tr');
             
-            // ★★★ 關鍵：已移除 thCheck 建立程式碼 ★★★
+            // ★ 已移除 Checkbox 表頭
 
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
@@ -1515,11 +1504,10 @@
                 th.style.minWidth = finalWidth + "px";
                 th.style.maxWidth = finalWidth + "px";
 
-                const isTextType = col.type === 'text' || col.type === 'address';
-                th.style.textAlign = isTextType ? 'left' : 'center';
+                // 統一置中
+                th.style.textAlign = 'center';
 
-                // ★ 凍結邏輯：只有當 index 小於 設定數量時才凍結
-                // 如果 freezeLimit 是 0，這個條件永遠為假，第一欄就不會被凍結
+                // ★ 凍結邏輯 (僅當 index < freezeLimit 時生效)
                 if (index < freezeLimit) {
                     th.classList.add('sticky-col');
                     th.style.left = currentStickyLeft + "px";
@@ -1543,8 +1531,7 @@
                     infoIcon = `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>`;
                 }
 
-                const justifyClass = isTextType ? 'justify-start' : 'justify-center';
-                th.innerHTML = `<div class="truncate flex items-center ${justifyClass} gap-1">${col.label}${infoIcon} ${icon}</div>`;
+                th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon} ${icon}</div>`;
                 
                 trHead.appendChild(th);
             });
@@ -1565,9 +1552,8 @@
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
 
-                // ★★★ 關鍵：已移除 tdCheck 建立程式碼 ★★★
+                // ★ 已移除 Checkbox 內容格
 
-                // 重置 sticky 左邊距
                 currentStickyLeft = 0; 
 
                 allColumns.forEach((f, index) => {
@@ -1577,8 +1563,6 @@
                     const finalWidth = columnWidths[f.id];
                     td.style.minWidth = finalWidth + "px";
                     td.style.maxWidth = finalWidth + "px";
-
-                    const isTextType = f.type === 'text' || f.type === 'address';
 
                     // 凍結處理
                     if (index < freezeLimit) {
@@ -1607,8 +1591,8 @@
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
                     if (isReadOnly) {
-                        const alignClass = isTextType ? 'cell-left' : 'cell-center';
-                        td.innerHTML = `<div class="px-3 py-0 flex items-center h-full text-slate-600 select-none bg-slate-50 text-sm cell-multiline ${alignClass}" title="${val}">${val||''}</div>`;
+                        // 統一使用置中樣式
+                        td.innerHTML = `<div class="px-3 py-0 flex items-center h-full text-slate-600 select-none bg-slate-50 text-sm cell-multiline" title="${val}">${val||''}</div>`;
                     } else {
                         let input;
                         
@@ -1618,7 +1602,7 @@
                             input.className = "grid-input w-full px-2 py-1 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
                             input.style.height = "100%";
                             input.style.resize = "none";
-                            input.style.textAlign = 'left';
+                            input.style.textAlign = 'left'; // 可編輯的文字靠左
                             
                             input.addEventListener('input', function() {
                                 this.style.height = 'auto';
@@ -4384,7 +4368,7 @@
             frozenCount: 0   // ★ 新增：凍結欄位數量 (從左側數來，不含 checkbox)
         };
 
-        // 1. 渲染欄位選擇器 (參考 Preview Modal 設計)
+        // 1. 渲染欄位選擇器 (移除排序功能版)
         function renderGridColumnPicker() {
             const container = document.getElementById('grid-column-picker-container');
             if(!container) return;
@@ -4392,24 +4376,11 @@
             const fields = currentYearConfig.fields || [];
             let allCols = fields.filter(f => !['course_id', '_internal_id'].includes(f.id));
             
-            // ★ 修正 3: 確保 order 為 0 時也能正確排序
+            // 強制依照 Config 的 order 屬性排序
             const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
+            allCols.sort((a,b) => getOrder(a) - getOrder(b));
 
-            if (gridState.columnOrder.length === 0) {
-                const sortedDefault = [...allCols].sort((a,b) => getOrder(a) - getOrder(b));
-                gridState.columnOrder = sortedDefault.map(f => f.id);
-            }
-
-            allCols.sort((a, b) => {
-                const idxA = gridState.columnOrder.indexOf(a.id);
-                const idxB = gridState.columnOrder.indexOf(b.id);
-                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                if (idxA !== -1) return -1;
-                if (idxB !== -1) return 1;
-                return getOrder(a) - getOrder(b);
-            });
-
-            // 更新 state
+            // 更新 state (雖然不讓使用者改，但保持同步)
             gridState.columnOrder = allCols.map(f => f.id);
 
             const total = allCols.length;
@@ -4417,8 +4388,9 @@
             const currentVisible = total - currentHiddenCount;
 
             container.innerHTML = '';
+            
+            // 暫存狀態
             let tempHiddenCols = [...gridState.hiddenCols];
-            let tempColumnOrder = [...gridState.columnOrder];
 
             const details = document.createElement('details');
             details.className = "group relative"; 
@@ -4437,7 +4409,6 @@
             `;
             
             const dropdown = document.createElement('div');
-            // 層級提高避免被遮擋
             dropdown.className = "picker-dropdown absolute right-0 top-full mt-2 w-[600px] bg-white border border-slate-200 rounded-xl shadow-2xl z-[80] flex flex-col overflow-hidden";
             
             const actions = document.createElement('div');
@@ -4445,7 +4416,7 @@
             actions.innerHTML = `
                 <div class="flex items-center gap-4">
                     <div class="text-xs font-bold text-slate-500">
-                        <i class="fas fa-eye text-slate-400"></i> 拖曳排序 / 勾選顯示
+                        <i class="fas fa-eye text-slate-400"></i> 勾選以顯示
                     </div>
                     <div class="flex items-center gap-2 border-l border-slate-200 pl-4">
                         <label class="text-xs font-bold text-slate-600">凍結左側:</label>
@@ -4466,19 +4437,15 @@
             
             const renderChips = () => {
                 tagsContainer.innerHTML = '';
-                tempColumnOrder.forEach((fieldId, index) => {
-                    const f = allCols.find(c => c.id === fieldId);
-                    if (!f) return;
-
+                // 直接遍歷已排序的 allCols，不再使用 tempColumnOrder
+                allCols.forEach((f) => {
                     const lbl = document.createElement('label');
-                    lbl.className = 'field-chip-label cursor-move'; 
-                    lbl.draggable = true; 
-                    lbl.dataset.id = f.id;
-                    lbl.dataset.index = index;
-
+                    // 移除 cursor-move 與 draggable
+                    lbl.className = 'field-chip-label cursor-pointer'; 
+                    
                     const isVisible = !tempHiddenCols.includes(f.id);
+                    // 移除 grip icon
                     lbl.innerHTML = `
-                        <i class="fas fa-grip-vertical text-slate-300 text-xs mr-1 cursor-move"></i>
                         <input type="checkbox" value="${f.id}" ${isVisible ? 'checked' : ''}>
                         <div class="chip-check-icon"></div>
                         <span class="truncate font-medium select-none" title="${f.label}">${f.label}</span>
@@ -4489,28 +4456,8 @@
                         else tempHiddenCols.push(f.id);
                     };
 
-                    lbl.addEventListener('dragstart', (e) => {
-                        lbl.classList.add('dragging');
-                        e.dataTransfer.effectAllowed = 'move';
-                        e.dataTransfer.setData('text/plain', index);
-                    });
-                    lbl.addEventListener('dragend', () => {
-                        lbl.classList.remove('dragging');
-                    });
-                    lbl.addEventListener('dragover', (e) => {
-                        e.preventDefault();
-                        e.dataTransfer.dropEffect = 'move';
-                    });
-                    lbl.addEventListener('drop', (e) => {
-                        e.preventDefault();
-                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
-                        const toIndex = index;
-                        if (fromIndex !== toIndex) {
-                            const item = tempColumnOrder.splice(fromIndex, 1)[0];
-                            tempColumnOrder.splice(toIndex, 0, item);
-                            renderChips();
-                        }
-                    });
+                    // 已移除所有 Drag & Drop 事件監聽器
+
                     tagsContainer.appendChild(lbl);
                 });
             };
@@ -4538,7 +4485,7 @@
             };
             dropdown.querySelector('#grid-hide-all').onclick = (e) => {
                 e.preventDefault();
-                tempHiddenCols = tempColumnOrder.map(id => id);
+                tempHiddenCols = allCols.map(c => c.id);
                 tagsContainer.querySelectorAll('input[type="checkbox"]').forEach(cb => cb.checked = false);
             };
             dropdown.querySelector('#grid-apply').onclick = () => details.removeAttribute('open');
@@ -4548,19 +4495,16 @@
                     const newFreeze = parseInt(document.getElementById('grid-freeze-input').value) || 0;
                     const isChanged = 
                         newFreeze !== gridState.frozenCount ||
-                        JSON.stringify(tempHiddenCols.sort()) !== JSON.stringify(gridState.hiddenCols.sort()) ||
-                        JSON.stringify(tempColumnOrder) !== JSON.stringify(gridState.columnOrder);
+                        JSON.stringify(tempHiddenCols.sort()) !== JSON.stringify(gridState.hiddenCols.sort());
 
                     if (isChanged) {
                         gridState.hiddenCols = [...tempHiddenCols];
-                        gridState.columnOrder = [...tempColumnOrder];
                         gridState.frozenCount = newFreeze;
                         renderGlobalGrid(); 
                         renderGridColumnPicker(); 
                     }
                 } else {
                     tempHiddenCols = [...gridState.hiddenCols];
-                    tempColumnOrder = [...gridState.columnOrder];
                     renderChips();
                 }
             });
