@@ -705,6 +705,29 @@
         }
 
         .excel-table td { vertical-align: middle; }
+　　　　　
+　　　　　/* === Step 2: 右側凍結欄位樣式 (不可取消) === */
+        
+        /* 表頭與內容的右側凍結共用設定 */
+        th.sticky-col-right, td.sticky-col-right {
+            position: sticky;
+            right: 0;
+            z-index: 50 !important; /* 確保蓋過一般內容 */
+            border-left: 2px solid #cbd5e1 !important; /* 左側加粗邊框以示區隔 */
+            box-shadow: -4px 0 6px -3px rgba(0,0,0,0.1); /* 向左的陰影 */
+        }
+
+        /* 表頭特定設定 */
+        th.sticky-col-right {
+            background-color: #f8fafc !important;
+            z-index: 60 !important; /* 比左側凍結更高一點點或相同皆可 */
+        }
+
+        /* 內容特定設定 */
+        td.sticky-col-right {
+            z-index: 45 !important; /* 高於一般內容 (auto)，但低於表頭 */
+            /* 背景色由 JS 動態控制 (白/灰交替) */
+        }
 
         /* --- style結尾 --- */
     </style> 
@@ -1561,11 +1584,10 @@
                 return;
             }
 
-            // 2. 寬度計算
+            // 2. 寬度計算 (V9: 單選寬度加大緩衝 + 標題優先)
             const columnWidths = {};
             let allFlatData = [];
             
-            // ... (資料扁平化邏輯保持不變) ...
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
                     const fullText = Object.values(c).join(' ') + s.name + s.id;
@@ -1578,40 +1600,30 @@
                     allFlatData.push({ course: c, appData: appData, student: s, appId: c._app_id, internalId: c._internal_id });
                 });
             });
-            // ------------------------------------
 
             allColumns.forEach(f => {
-                // A. 基準寬度：標題 + Info Icon
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
-                // 使用 15px 計算標題寬度 + 30px 緩衝
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
-                // B. 依據內容撐開 
                 const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
 
-                // --- 策略 1: 下拉選單 (Single Select) ---
                 if (f.type === 'single_select' || f.type === 'list') {
-                    // 1.1 掃描「設定檔中的選項」
                     if (f.options && f.options.length > 0) {
                         f.options.forEach(opt => {
-                            // ★ 修改：文字寬度 + 65px (確保容納箭頭與左右留白)
-                            // 使用 15px 字體計算，比實際顯示(14px)稍寬，確保不換行
-                            const w = getTextWidth(opt, "15px 'Noto Sans TC'") + 65; 
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 65; // +65 緩衝
                             finalW = Math.max(finalW, w);
                         });
                     }
-                    // 1.2 掃描「實際資料值」
                     allFlatData.forEach(row => {
                          let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
                          if (val) {
-                             const w = getTextWidth(String(val), "15px 'Noto Sans TC'") + 65;
+                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 65;
                              finalW = Math.max(finalW, w);
                          }
                     });
                 } 
-                // --- 策略 2: 唯讀欄位 (Read Only) ---
                 else if (isReadOnly) {
                     allFlatData.forEach(row => {
                         let val = row.course[f.id];
@@ -1623,34 +1635,29 @@
                         if (row.appId && row.appData[f.id] !== undefined) val = row.appData[f.id];
 
                         if (val) {
-                            // 唯讀欄位 + 24px 緩衝
                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24; 
                             finalW = Math.max(finalW, w);
                         }
                     });
                 }
-                // --- 策略 3: 文字欄位 (Text) ---
                 else if (f.type === 'text' || f.type === 'address') {
                     const defaultTextW = f.width ? parseInt(f.width) : 200;
                     finalW = Math.max(finalW, defaultTextW);
                 }
                 
-                // C. 提示字元 Placeholder 優先
                 let placeholderText = "";
                 if (f.type === 'date') placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
                 else if (f.calcMode === 'weighted') placeholderText = "(點擊填寫)";
                 else if (f.placeholder) placeholderText = f.placeholder;
-                // 單選不使用 placeholder 計算，因為上面已經掃描所有選項了
 
                 if (placeholderText) {
                     const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 30;
                     finalW = Math.max(finalW, phWidth);
                 }
 
-                // D. 設定最終寬度 (最小 80px)
                 columnWidths[f.id] = Math.max(finalW, 80);
             });
-            
+
             // 3. 渲染表頭 (Header)
             const freezeLimit = gridState.frozenCount; 
             let currentStickyLeft = 0; 
@@ -1664,8 +1671,6 @@
                 const finalWidth = columnWidths[col.id];
                 th.style.minWidth = finalWidth + "px";
                 th.style.maxWidth = finalWidth + "px";
-
-                // ★ 強制所有標題置中
                 th.style.textAlign = 'center';
 
                 if (index < freezeLimit) {
@@ -1683,16 +1688,23 @@
                     infoIcon = `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>`;
                 }
 
-                // ★ 強制 flex justify-center
                 th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}</div>`;
-                
                 trHead.appendChild(th);
             });
+
+            // ★★★ 新增：最右側凍結表頭「歸戶狀態」 ★★★
+            const thStatus = document.createElement('th');
+            thStatus.className = "bg-slate-100 text-slate-600 px-2 py-2 text-sm font-bold whitespace-nowrap select-none sticky-col-right";
+            thStatus.style.minWidth = "140px"; // 給予固定寬度
+            thStatus.style.textAlign = 'center';
+            thStatus.innerHTML = "歸戶狀態";
+            trHead.appendChild(thStatus);
+
             theadFragment.appendChild(trHead);
 
-            // 4. 渲染內容 (Body) - 修正版：歸戶交替色 + 移除輸入框底色
+            // 4. 渲染內容 (Body)
             if (allFlatData.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${allColumns.length}" class="p-8 text-center text-slate-400">無符合資料</td></tr>`;
+                tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="p-8 text-center text-slate-400">無符合資料</td></tr>`;
                 thead.appendChild(theadFragment);
                 return;
             }
@@ -1703,7 +1715,6 @@
             allFlatData.forEach(row => {
                 const { student, course, appData, appId } = row;
                 
-                // 顏色交替邏輯
                 if (appId) {
                     if (appId !== lastAppId) isAltRow = !isAltRow;
                 } else {
@@ -1711,9 +1722,8 @@
                 }
                 lastAppId = appId;
 
-                // 定義背景色
                 const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
-                const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9'; // 唯讀欄位較深
+                const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9';
 
                 const tr = document.createElement('tr');
                 tr.className = isAltRow 
@@ -1727,7 +1737,7 @@
 
                 allColumns.forEach((f, index) => {
                     const td = document.createElement('td');
-                    td.className = "border-r border-slate-200 p-0 relative"; // 移除 height class
+                    td.className = "border-r border-slate-200 p-0 relative"; 
                     
                     const finalWidth = columnWidths[f.id];
                     td.style.minWidth = finalWidth + "px";
@@ -1735,17 +1745,13 @@
 
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
-                    // ★★★ 關鍵修正：將背景色直接上在 TD，解決白邊問題 ★★★
                     let cellBgColor = bgBase;
                     if (isReadOnly) {
                         cellBgColor = bgReadOnly;
                     }
                     
-                    // 設定 TD 背景色
-                    // (注意：CSS 中的 tr:hover td { ... !important } 會覆蓋這個 inline style，這是預期行為)
                     td.style.backgroundColor = cellBgColor;
 
-                    // 處理凍結欄位
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
@@ -1753,7 +1759,6 @@
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
-                    // 取得內容值
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -1767,14 +1772,12 @@
                     }
                     
                     if (isReadOnly) {
-                        // 唯讀內容：div 不再負責背景色
                         const div = document.createElement('div');
-                        div.className = "cell-read-only"; // CSS 已設定 padding 與 flex
+                        div.className = "cell-read-only"; 
                         div.innerText = val || '';
                         div.title = val || '';
                         td.appendChild(div);
                     } else {
-                        // 可編輯內容
                         let input;
                         
                         if (f.type === 'text' || f.type === 'address') {
@@ -1815,7 +1818,6 @@
                             input.placeholder = "(點擊填寫)";
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
-                            // 權重欄位視為唯讀背景
                             td.style.backgroundColor = bgReadOnly; 
                             input.onclick = (e) => {
                                 e.stopPropagation(); e.preventDefault();
@@ -1847,9 +1849,41 @@
                     tr.appendChild(td);
                 });
                 
+                // ★★★ 新增：最右側凍結內容「歸戶狀態」 ★★★
+                const tdStatus = document.createElement('td');
+                tdStatus.className = "border-l-2 border-slate-300 p-0 relative sticky-col-right";
+                tdStatus.style.minWidth = "140px";
+                // 使用 JS 設定背景色，確保與該行交替色一致
+                tdStatus.style.backgroundColor = bgBase;
+
+                let statusHtml = '';
+                if (!appId) {
+                    // 未歸戶：紅色
+                    statusHtml = `<span class="font-bold text-red-500 text-sm">未歸戶</span>`;
+                } else {
+                    // 已歸戶：紫色，計算流水號
+                    // 在 student.applications 中尋找此 appId 的 index
+                    const appIdx = student.applications.findIndex(a => a.id === appId);
+                    const seq = appIdx >= 0 ? appIdx + 1 : '?';
+                    
+                    statusHtml = `
+                        <div class="flex flex-col items-center justify-center leading-tight py-1">
+                            <span class="text-xs font-bold text-purple-600 mb-0.5">已歸戶 ${student.id}</span>
+                            <span class="text-[10px] text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">實習紀錄${seq}</span>
+                        </div>
+                    `;
+                }
+
+                // 使用 cell-read-only 容器確保置中
+                const divStatus = document.createElement('div');
+                divStatus.className = "cell-read-only";
+                divStatus.innerHTML = statusHtml;
+                tdStatus.appendChild(divStatus);
+
+                tr.appendChild(tdStatus);
+
                 tbodyFragment.appendChild(tr);
                 
-                // 初始化 Textarea 高度
                 setTimeout(() => {
                     tr.querySelectorAll('textarea').forEach(ta => {
                         ta.style.height = 'auto';
