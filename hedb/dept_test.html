@@ -1467,7 +1467,6 @@
                 s.courses.forEach(c => {
                     const fullText = Object.values(c).join(' ') + s.name + s.id;
                     if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
-
                     let appData = {};
                     if(c._app_id) {
                         const app = s.applications.find(a => a.id === c._app_id);
@@ -1516,72 +1515,79 @@
                 });
             }
 
-            const sampleData = allFlatData.slice(0, 50); // 取樣計算
+            const sampleData = allFlatData.slice(0, 50); // 輸入框僅需取樣
 
             allColumns.forEach(f => {
-                let maxW = 0;
-                
-                // A. 計算表頭寬度
+                // 1. 基礎寬度 (表頭)
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
-                const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
-                maxW = Math.max(maxW, headerW);
+                // 表頭文字 + icon + padding
+                let maxW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
 
-                // B. ★★★ 計算提示字元 (Placeholder) 寬度 ★★★
+                // 2. 提示字元 (Placeholder) 寬度 - 針對輸入框
                 let placeholderText = "";
-                
-                // B-1. 依據日期格式判斷
                 if (f.type === 'date') {
-                    if (f.inputFormat === 'ROC') placeholderText = "114/12/31"; // 預留寬度
-                    else placeholderText = "2025/12/31"; 
-                }
-                // B-2. 依據權重欄位判斷
-                else if (f.calcMode === 'weighted') {
+                    placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
+                } else if (f.calcMode === 'weighted') {
                     placeholderText = "(點擊填寫)";
-                }
-                // B-3. 依據設定檔中的 placeholder (若有)
-                else if (f.placeholder) {
+                } else if (f.placeholder) {
                     placeholderText = f.placeholder;
-                }
-                // B-4. 下拉選單預設文字
-                else if (f.type === 'single_select') {
+                } else if (f.type === 'single_select') {
                     placeholderText = "請選擇...";
                 }
 
                 if (placeholderText) {
-                    // 加一點 buffer (25px) 讓視覺不擁擠
+                    // 計算提示字元寬度 + Buffer
                     const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 25;
                     maxW = Math.max(maxW, phWidth);
                 }
 
-                // C. 計算內容資料寬度 (取樣)
+                // 3. 內容寬度計算
+                // ★★★ 關鍵修正：唯讀欄位掃描所有資料，輸入欄位掃描取樣資料 ★★★
+                const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
+                
+                // 如果是唯讀欄位，必須掃描 allFlatData 以確保不會切到任何一個長字串
+                // 如果是下拉選單，檢查 options
+                // 其他輸入框使用 sampleData 即可
+                
                 if (f.type === 'single_select' || f.type === 'list') {
                     if (f.options && f.options.length > 0) {
                         f.options.forEach(opt => {
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 30; // 下拉箭頭空間
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 34; // 文字 + 下拉箭頭空間
                             if (w > maxW) maxW = w;
                         });
                     }
                 } 
                 else {
-                    // 一般文字或唯讀欄位
-                    sampleData.forEach(row => {
+                    // 決定掃描範圍
+                    const dataset = isReadOnly ? allFlatData : sampleData;
+
+                    dataset.forEach(row => {
                         let val = row.course[f.id];
+                        
+                        // 處理 Fallback 值 (學號、姓名等)
                         if (val === undefined) {
                             if (f.id === 'student_id') val = row.student.id;
                             else if (f.id === 'student_name') val = row.student.name;
                             else if (f.id === 'student_dept') val = row.student.dept;
                         }
+                        
+                        // 優先讀取 App Data (因為使用者填寫的可能比較長)
+                        if (row.appId && row.appData[f.id] !== undefined) {
+                            val = row.appData[f.id];
+                        }
+
                         if (val) {
-                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 20;
+                            // 計算文字寬度 + Padding (左右各約 10px + Buffer)
+                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24;
                             if (w > maxW) maxW = w;
                         }
                     });
                 }
                 
-                // 設定最小值與最大值保護
+                // 4. 設定最終寬度 (設定最小值保護)
                 if (f.type === 'text' || f.type === 'address') {
-                    // 文字框允許稍微寬一點
+                    // 文字輸入框允許設定檔指定最小寬度 (例如地址欄)
                     columnWidths[f.id] = Math.max(maxW, f.width ? parseInt(f.width) : 100);
                 } else {
                     columnWidths[f.id] = Math.max(maxW, 80);
