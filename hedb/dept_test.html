@@ -3891,13 +3891,13 @@
             renderGlobalGrid();
         }
         
-        // --- 補上缺失的 Grid 渲染函式 (修正：無資料時不顯示表頭) ---
+        // --- 補上缺失的 Grid 渲染函式 (修正：重複顯示與無資料隱藏) ---
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
             if (!thead || !tbody) return;
 
-            // ★★★ 新增判斷：若無學生資料，清空表格並直接結束 (不顯示表頭) ★★★
+            // 若無學生資料，清空表格並直接結束
             if (Object.keys(groupedStudents).length === 0) {
                 thead.innerHTML = '';
                 tbody.innerHTML = '';
@@ -3907,23 +3907,29 @@
             thead.innerHTML = '';
             tbody.innerHTML = '';
 
-            // 1. 準備欄位
-            // 取得設定檔中的欄位，並過濾掉被使用者隱藏的欄位
-            const fields = currentYearConfig.fields || [];
-            const visibleFields = fields
-                .filter(f => !gridState.hiddenCols.includes(f.id) && f.id !== '_internal_id')
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
-
-            // 2. 建立表頭
-            const trHead = document.createElement('tr');
-
-            // 固定欄位 (左側基礎資訊)
+            // 1. 定義固定欄位 (左側基礎資訊)
             const fixedHeaders = [
                 { id: 'student_id', label: '學號', width: '80px' },
                 { id: 'student_name', label: '姓名', width: '80px' },
                 { id: 'course_name', label: '課程名稱', width: '150px' },
                 { id: 'semester', label: '學期', width: '50px' }
             ];
+            
+            // 建立一個 Set 來儲存固定欄位的 ID，以便過濾
+            const fixedIds = new Set(fixedHeaders.map(h => h.id));
+
+            // 2. 準備動態欄位
+            // 取得設定檔中的欄位，並過濾掉：
+            // (1) 被使用者隱藏的欄位
+            // (2) 內部 ID (_internal_id)
+            // (3) ★★★ 已經在固定欄位中顯示過的欄位 (避免重複) ★★★
+            const fields = currentYearConfig.fields || [];
+            const visibleFields = fields
+                .filter(f => !gridState.hiddenCols.includes(f.id) && f.id !== '_internal_id' && !fixedIds.has(f.id))
+                .sort((a, b) => (a.order || 0) - (b.order || 0));
+
+            // 3. 建立表頭
+            const trHead = document.createElement('tr');
 
             // 渲染固定表頭
             fixedHeaders.forEach(h => {
@@ -3942,7 +3948,7 @@
                 trHead.appendChild(th);
             });
 
-            // 渲染動態表頭 (填報欄位)
+            // 渲染動態表頭 (剩下的填報欄位)
             visibleFields.forEach(f => {
                 const th = document.createElement('th');
                 th.className = 'sortable-header';
@@ -3963,7 +3969,7 @@
             });
             thead.appendChild(trHead);
 
-            // 3. 準備資料 (攤平所有學生的課程)
+            // 4. 準備資料 (攤平所有學生的課程)
             let rows = [];
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
@@ -3976,7 +3982,7 @@
                 });
             });
 
-            // 4. 篩選 (搜尋)
+            // 5. 篩選 (搜尋)
             const term = document.getElementById('grid-search')?.value.toLowerCase() || '';
             if (term) {
                 rows = rows.filter(r => 
@@ -3986,7 +3992,7 @@
                 );
             }
 
-            // 5. 排序
+            // 6. 排序
             if (gridState.sortKey) {
                 rows.sort((a, b) => {
                     // 取得比較值 (優先從 App 取值，沒有則從 Course 取值)
@@ -4014,7 +4020,7 @@
                 });
             }
 
-            // 6. 渲染內容列
+            // 7. 渲染內容列
             rows.forEach(item => {
                 const { student, course, app } = item;
                 const tr = document.createElement('tr');
@@ -4071,7 +4077,7 @@
                         input.value = val;
                     } else {
                         input = document.createElement('input');
-                        input.type = 'text'; // Grid 模式統一用 text 以保持版面整齊，日期格式由 user 自行輸入或後續優化
+                        input.type = 'text'; // Grid 模式統一用 text
                         input.value = val;
                     }
                     
@@ -4087,7 +4093,6 @@
                     input.onchange = (e) => handleGridChange(e.target, student, course, f);
                     
                     // 處理 Locked / Visibility 狀態
-                    // 這裡先依據當前資料判斷一次
                     const dataContext = app ? app.formData : course;
                     checkGridInputVisibility(input, f, dataContext);
 
