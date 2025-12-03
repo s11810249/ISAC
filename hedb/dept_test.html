@@ -220,41 +220,64 @@
         .grid-input:disabled { background-color: #f1f5f9; color: #cbd5e1; cursor: not-allowed; }
         
         /* Linked Data Indicator */
+        /* 1. 移除歸戶連結色 */
         .is-linked { background-color: transparent !important; color: inherit; } 
         
+        /* 2. 輸入框設定：改回用 Padding 撐開高度，移除固定 line-height */
         .grid-input { 
-            width: 100%; height: 100%; border: none; background: transparent;
-            padding: 0 10px; font-size: 15px; line-height: 40px; color: #334155;
+            width: 100%; 
+            height: 100%; 
+            min-height: 38px; /* 保持適當的點擊區域 */
+            border: none; 
+            background: transparent;
+            padding: 8px 10px; /* 上下 padding 撐開高度，回復原本的排版感 */
+            font-size: 15px; 
+            line-height: 1.5;
+            color: #334155;
             transition: all 0.2s;
+            box-sizing: border-box; /* 確保 padding 不會撐爆寬度 */
         }
+        
+        /* 讓 Textarea 自動換行時也有正確間距 */
+        textarea.grid-input {
+            padding-top: 8px;
+            padding-bottom: 8px;
+            vertical-align: middle;
+        }
+
         .grid-input:focus { 
             outline: none; box-shadow: inset 0 0 0 2px #002E5D; background-color: #ffffff; z-index: 10;
         }
 
-        /* 2. 表格列背景設定 (一般狀態) */
-        /* 預設白色 */
+        /* 3. 表格儲存格：移除固定高度 40px */
+        .excel-table td { 
+            padding: 0 !important; /* 保持 0，由內部的 input/div 負責 padding */
+            height: auto;          /* ★★★ 改回 auto，解決高度強制撐開導致的白邊 */
+            vertical-align: middle;
+            border-right: 1px solid #f1f5f9; 
+            border-bottom: 1px solid #f1f5f9; 
+        }
+
+        /* 4. 唯讀儲存格內容容器 */
+        .cell-read-only {
+            width: 100%; 
+            min-height: 38px; /* 與 input 保持一致 */
+            display: flex; 
+            align-items: center; 
+            justify-content: center;
+            padding: 8px 10px; /* 與 input 保持一致 */
+            color: #64748b; 
+            white-space: normal; /* 允許換行 */
+            word-break: break-all;
+        }
+
+        /* 5. 懸停與背景色設定 */
         tr.row-group-normal { background-color: #ffffff; }
-        /* 交替色 (極淺灰) */
         tr.row-group-alt { background-color: #f8fafc; }
 
-        /* 3. ★★★ 懸停效果 (Hover) 改為淺藍色 ★★★ */
-        /* 使用 !important 確保覆蓋過原本的背景色 */
-        tr.row-group-normal:hover, tr.row-group-alt:hover {
-            background-color: #eff6ff !important; /* Sky-50: 淺藍色 */
-        }
-        tr.row-group-normal:hover td, tr.row-group-alt:hover td {
-            background-color: #eff6ff !important; /* 強制讓 TD 也變色 (解決凍結欄位遮擋問題) */
-        }
-
-        /* 4. 唯讀欄位與鎖定欄位 */
-        /* 這些樣式將由 JS 動態寫入 style，這裡保留基本設定 */
-        .grid-input:disabled { color: #94a3b8; cursor: not-allowed; }
-        
-        /* 讓唯讀的 div 撐滿並置中 */
-        .cell-read-only {
-            width: 100%; height: 100%;
-            display: flex; align-items: center; justify-content: center;
-            padding: 0 10px; color: #64748b; select-none;
+        /* Hover 淺藍色 (使用 !important 覆蓋 td 的 inline style 背景) */
+        tr.row-group-normal:hover, tr.row-group-alt:hover { background-color: #eff6ff !important; }
+        tr.row-group-normal:hover td, tr.row-group-alt:hover td { background-color: #eff6ff !important; 
         }
         
         /* =========================================
@@ -1646,19 +1669,17 @@
             allFlatData.forEach(row => {
                 const { student, course, appData, appId } = row;
                 
-                // --- 顏色交替邏輯 ---
+                // 顏色交替邏輯
                 if (appId) {
                     if (appId !== lastAppId) isAltRow = !isAltRow;
                 } else {
-                    isAltRow = false; // 未歸戶預設白色
+                    isAltRow = false; 
                 }
                 lastAppId = appId;
 
-                // 定義此列的四種背景色代碼 (用於凍結欄位與唯讀欄位的手動上色)
-                // 1. 一般欄位底色 (白 vs 淺灰)
+                // 定義背景色
                 const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
-                // 2. 唯讀欄位底色 (淺灰 vs 深灰) - 讓唯讀區塊永遠比一般區塊深一點
-                const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9';
+                const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9'; // 唯讀欄位較深
 
                 const tr = document.createElement('tr');
                 tr.className = isAltRow 
@@ -1672,27 +1693,30 @@
 
                 allColumns.forEach((f, index) => {
                     const td = document.createElement('td');
-                    td.className = "border-r border-slate-200 p-0 relative h-[40px]";
+                    td.className = "border-r border-slate-200 p-0 relative"; // 移除 height class
                     
                     const finalWidth = columnWidths[f.id];
                     td.style.minWidth = finalWidth + "px";
                     td.style.maxWidth = finalWidth + "px";
 
-                    // 判斷是否為唯讀/系統欄位
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
-                    // 決定此格的背景色 (凍結欄位必須顯式設定，非凍結則透明讓 TR 顏色透出)
-                    let cellBgColor = 'transparent'; 
+                    // ★★★ 關鍵修正：將背景色直接上在 TD，解決白邊問題 ★★★
+                    let cellBgColor = bgBase;
+                    if (isReadOnly) {
+                        cellBgColor = bgReadOnly;
+                    }
                     
+                    // 設定 TD 背景色
+                    // (注意：CSS 中的 tr:hover td { ... !important } 會覆蓋這個 inline style，這是預期行為)
+                    td.style.backgroundColor = cellBgColor;
+
+                    // 處理凍結欄位
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
                         currentStickyLeft += finalWidth;
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
-                        
-                        // ★ 凍結欄位必須有實體背景色，否則捲動會透視
-                        cellBgColor = isReadOnly ? bgReadOnly : bgBase;
-                        td.style.backgroundColor = cellBgColor;
                     }
 
                     // 取得內容值
@@ -1709,21 +1733,16 @@
                     }
                     
                     if (isReadOnly) {
-                        // ★ 唯讀欄位：使用 div 填滿，並設定專屬背景色 (交替深淺)
+                        // 唯讀內容：div 不再負責背景色
                         const div = document.createElement('div');
-                        div.className = "cell-read-only cell-multiline";
+                        div.className = "cell-read-only"; // CSS 已設定 padding 與 flex
                         div.innerText = val || '';
                         div.title = val || '';
-                        // 非凍結欄位由此 div 負責背景色，凍結欄位由 td 負責 (style 已設)
-                        if (index >= freezeLimit) {
-                            div.style.backgroundColor = bgReadOnly;
-                        }
                         td.appendChild(div);
                     } else {
-                        // ★ 可編輯欄位
+                        // 可編輯內容
                         let input;
                         
-                        // 建立輸入框 (邏輯不變)
                         if (f.type === 'text' || f.type === 'address') {
                             input = document.createElement('textarea');
                             input.rows = 1;
@@ -1744,7 +1763,6 @@
                             
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                                // (日期事件綁定保持原樣...)
                                 input.addEventListener('change', (e) => {
                                     let v = e.target.value.trim().replace(/[^\d]/g, '');
                                     if (f.inputFormat === 'ROC') {
@@ -1758,14 +1776,13 @@
                             }
                         }
 
-                        // 處理 Placeholder 與權重欄位
                         if (f.placeholder) input.placeholder = f.placeholder;
                         if (f.calcMode === 'weighted') {
                             input.placeholder = "(點擊填寫)";
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
-                            // 權重欄位視為唯讀，背景色要跟著唯讀邏輯
-                            input.style.backgroundColor = bgReadOnly; 
+                            // 權重欄位視為唯讀背景
+                            td.style.backgroundColor = bgReadOnly; 
                             input.onclick = (e) => {
                                 e.stopPropagation(); e.preventDefault();
                                 if(typeof openDistributionModal === 'function') openDistributionModal(student.id, appId, f.id);
@@ -1784,7 +1801,6 @@
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         }
                         
-                        // Input 高度自動調整
                         if (input.tagName === 'TEXTAREA') {
                              input.addEventListener('input', function() {
                                 this.style.height = 'auto';
