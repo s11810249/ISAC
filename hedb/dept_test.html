@@ -1096,257 +1096,6 @@
         // --- 傳統填報模式 (Grid View) 核心邏輯 ---
         let gridSelection = new Set(); 
 
-        function renderGlobalGrid() {
-            const thead = document.getElementById('grid-thead');
-            const tbody = document.getElementById('grid-tbody');
-            if (!thead || !tbody) return;
-            
-            thead.innerHTML = '';
-            tbody.innerHTML = '';
-
-            const searchTerm = document.getElementById('grid-search').value.toLowerCase();
-            const fields = currentYearConfig.fields || [];
-
-            // --- 1. 欄位準備 (過濾隱藏欄位 + 排序) ---
-            const allColumns = fields
-                .filter(f => !['course_id', '_internal_id'].includes(f.id)) // 排除內部ID
-                .filter(f => !gridState.hiddenCols.includes(f.id)) // ★ 排除使用者隱藏的欄位
-                .sort((a,b) => (a.order !== undefined ? a.order : 999) - (b.order !== undefined ? b.order : 999));
-
-            if (allColumns.length === 0) {
-                thead.innerHTML = '<tr><th class="p-4 text-center text-slate-400">所有欄位已隱藏</th></tr>';
-                tbody.innerHTML = '';
-                return;
-            }
-
-            // --- 2. 建立表頭 (支援排序點擊) ---
-            let trHead = document.createElement('tr');
-            
-            // Checkbox 空表頭 (不可排序)
-            let thCheck = document.createElement('th');
-            thCheck.style.width = "40px";
-            thCheck.className = "text-center bg-slate-100 border-r border-slate-200 p-0";
-            // 這裡保留全選功能
-            thCheck.innerHTML = `<input type="checkbox" id="grid-select-all" onclick="toggleAllGridSelection(this)" class="accent-primary cursor-pointer">`;
-            trHead.appendChild(thCheck);
-
-            allColumns.forEach(col => {
-                const th = document.createElement('th');
-                
-                // ★ 加入排序點擊事件與樣式
-                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap sticky top-0 cursor-pointer hover:bg-slate-200 transition select-none";
-                th.onclick = () => setGridSort(col.id);
-                
-                let icon = '<i class="fas fa-sort text-slate-300 ml-1 text-xs"></i>';
-                if (gridState.sortKey === col.id) {
-                    icon = gridState.sortDir === 'asc' 
-                        ? '<i class="fas fa-sort-up text-primary ml-1 text-xs"></i>' 
-                        : '<i class="fas fa-sort-down text-primary ml-1 text-xs"></i>';
-                    th.classList.add('text-primary'); // 標記當前排序欄位
-                }
-                
-                th.innerHTML = `${col.label} ${icon}`;
-                th.style.minWidth = col.width || (col.category?.startsWith('sys_') ? '100px' : '140px');
-                trHead.appendChild(th);
-            });
-            thead.appendChild(trHead);
-
-            // --- 3. 資料準備 (攤平 + 搜尋 + 排序) ---
-            let flatRows = [];
-            
-            Object.values(groupedStudents).forEach(student => {
-                student.courses.forEach(course => {
-                    // 1. 搜尋過濾
-                    const fullText = Object.values(course).join(' ') + student.name + student.id;
-                    if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
-
-                    // 2. 準備資料物件 (包含 AppData 整合)
-                    const appId = course._app_id;
-                    let appData = {};
-                    if(appId) {
-                        const app = student.applications.find(a => a.id === appId);
-                        if(app) appData = app.formData;
-                    }
-
-                    flatRows.push({
-                        student: student,
-                        course: course,
-                        appData: appData,
-                        appId: appId,
-                        internalId: course._internal_id
-                    });
-                });
-            });
-
-            // 3. 執行排序
-            if (gridState.sortKey) {
-                flatRows.sort((rowA, rowB) => {
-                    // 取得用於排序的值 (GetValue Helper Logic)
-                    const getVal = (row) => {
-                        let v = "";
-                        const key = gridState.sortKey;
-                        // 優先取 AppData -> Course -> Student info
-                        if (row.appId && row.appData[key] !== undefined) v = row.appData[key];
-                        else v = row.course[key];
-                        
-                        if ((v === undefined || v === "") && key === 'student_id') v = row.student.id;
-                        if ((v === undefined || v === "") && key === 'student_name') v = row.student.name;
-                        
-                        return v === undefined || v === null ? "" : String(v);
-                    };
-
-                    const valA = getVal(rowA);
-                    const valB = getVal(rowB);
-
-                    // 數字排序 vs 字串排序
-                    const numA = parseFloat(valA.replace(/,/g, ''));
-                    const numB = parseFloat(valB.replace(/,/g, ''));
-                    
-                    let result = 0;
-                    if (!isNaN(numA) && !isNaN(numB) && valA.trim() !== '' && valB.trim() !== '') {
-                        result = numA - numB;
-                    } else {
-                        result = valA.localeCompare(valB, 'zh-Hant');
-                    }
-                    
-                    return gridState.sortDir === 'asc' ? result : -result;
-                });
-            }
-
-            if (flatRows.length === 0) {
-                tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="p-8 text-center text-slate-400">無符合資料</td></tr>`;
-                return;
-            }
-
-            // ★★★ 1. 請在此處補上這段計算 RowSpan 的程式碼 ★★★
-            // 規則：連續相同的 appId 視為一組
-            const rowSpans = new Array(flatRows.length).fill(1);
-            const hiddenRows = new Array(flatRows.length).fill(false); // 標記被合併隱藏的列
-
-            for (let i = 0; i < flatRows.length; i++) {
-                if (hiddenRows[i]) continue; // 已經被前一列合併了
-                
-                const currentAppId = flatRows[i].appId;
-                if (!currentAppId) continue; // 未歸戶的不合併
-
-                // 往後找相同 AppId 的列
-                let span = 1;
-                for (let j = i + 1; j < flatRows.length; j++) {
-                    if (flatRows[j].appId === currentAppId) {
-                        span++;
-                        hiddenRows[j] = true; // 標記為隱藏 (它是被合併的一份子)
-                    } else {
-                        break; // 遇到不同的就停止
-                    }
-                }
-                rowSpans[i] = span;
-            }
-            // ★★★ 補上結束 ★★★
-
-            // --- 4. 建立內容 (渲染) ---
-            // ★★★ 2. 請修改這一行，加入 idx 參數 ★★★
-            flatRows.forEach((row, idx) => { 
-                const { student, course, appData, appId } = row;
-                
-                const tr = document.createElement('tr');
-                tr.className = "hover:bg-slate-50 transition border-b border-slate-100 group";
-                tr.dataset.cid = course._internal_id; 
-                tr.dataset.sid = student.id; 
-
-                // A. Checkbox Cell
-                const tdCheck = document.createElement('td');
-                tdCheck.className = "text-center bg-slate-50 border-r border-slate-200 p-0";
-                const isChecked = gridSelection.has(course._internal_id);
-                tdCheck.innerHTML = `<input type="checkbox" class="grid-row-chk accent-primary cursor-pointer" value="${course._internal_id}" ${isChecked?'checked':''} onchange="updateGridSelection(this)">`;
-                tr.appendChild(tdCheck);
-
-                // B. Data Cells
-                allColumns.forEach(f => {
-                    // ★★★ 修改：加入 'weighted' 模式也需要合併儲存格 ★★★
-                    const shouldMerge = appId && (f.calcMode === 'average' || f.calcMode === 'weighted');
-
-                    // 如果需要合併，且是被隱藏的列，則不產生 td
-                    if (shouldMerge && hiddenRows[idx]) return;
-
-                    const td = document.createElement('td');
-                    td.className = "border-r border-slate-200 p-0 relative h-[40px]";
-                    
-                    let val = "";
-                    
-                    // ★★★ 修改重點：優先判斷是否為獨立欄位 (average) ★★★
-                    if (f.calcMode === 'average') {
-                        // 若是加總型欄位，強制顯示「原始課程數值」，讓各列獨立顯示
-                        val = course[f.id];
-                    } 
-                    // 其他歸戶欄位：若有歸戶資料，則顯示共用資料
-                    else if (appId && appData[f.id] !== undefined) {
-                        val = appData[f.id];
-                    } 
-                    // 否則顯示原始資料 (Fallback)
-                    else {
-                        val = course[f.id];
-                        // 預設資料補救邏輯
-                        if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
-                        if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
-                        if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
-                    }
-                    
-                    const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
-                    
-                    if (isReadOnly) {
-                        td.innerHTML = `<div class="px-3 py-0 flex items-center h-full truncate text-slate-600 select-none bg-slate-50 text-sm" title="${val}">${val||''}</div>`;
-                    } else {
-                        let input;
-                        if (f.type === 'single_select' || f.type === 'list') {
-                            input = document.createElement('select');
-                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
-                        } else {
-                            input = document.createElement('input');
-                            input.type = "text";
-                            input.value = val || "";
-                            
-                            // 日期格式化邏輯 (ROC/西元)
-                            if (f.type === 'date') {
-                                input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                                input.addEventListener('change', (e) => {
-                                    let v = e.target.value.trim().replace(/[^\d]/g, '');
-                                    if (f.inputFormat === 'ROC') {
-                                        if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
-                                        else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
-                                    } else if (v.length === 8) { 
-                                        e.target.value = `${v.substring(0,4)}/${v.substring(4,6)}/${v.substring(6,8)}`;
-                                    }
-                                    handleGridChange(e.target, student, course, f);
-                                });
-                            }
-                        }
-                        
-                        input.className = "grid-input w-full h-full px-3 text-sm bg-transparent focus:bg-white focus:ring-2 focus:ring-inset focus:ring-primary outline-none transition";
-                        input.dataset.field = f.id;
-                        input.title = val || ""; 
-                        
-                        if(appId) {
-                            input.classList.add(`app-input-${appId}-${f.id}`);
-                            td.classList.add('is-linked'); 
-                        } else {
-                            td.classList.add('is-raw');
-                        }
-
-                        if (f.type !== 'date') {
-                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                        }
-                        input.oninput = (e) => { e.target.title = e.target.value; }; 
-
-                        td.appendChild(input);
-                    }
-                    tr.appendChild(td);
-                });
-                
-                tbody.appendChild(tr);
-                updateRowLogic(tr, appId ? appData : course);
-            });
-        }
-
         // 檢查單一格子的顯示邏輯
         function checkGridInputVisibility(input, fieldDef, dataContext) {
             if (fieldDef.visibilityRule) {
@@ -1366,7 +1115,7 @@
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
             const newVal = inputEl.value;
-            inputEl.title = newVal; // 更新 Hover 提示
+            inputEl.title = newVal; 
             
             const appId = course._app_id;
             hasUnsavedChanges = true;
@@ -1378,88 +1127,97 @@
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
                     
-                    // ★★★ 修改重點：處理 Average (平均) 與 Weighted (權重) 模式 ★★★
+                    // ★★★ 修改：加總後再依權重分配 (Sum then Distribute) ★★★
                     if (fieldDef.type === 'number' && (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted')) {
-                        const totalVal = parseFloat(newVal);
-                        const oldAppVal = app.formData[fieldDef.id];
                         
-                        // 更新 App Data (顯示的總數)
-                        app.formData[fieldDef.id] = newVal;
-                        logChange(fieldDef.id, appId, oldAppVal, newVal, student.id);
+                        // 1. 先更新「當前被編輯」的課程數值
+                        course[fieldDef.id] = newVal;
 
-                        // 同步畫面上的其他合併格 (若因排序未合併)
-                        document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
-                            if (el !== inputEl) { el.value = newVal; el.title = newVal; }
+                        // 2. 重新計算 App 的「新總和」 (Sum of all courses)
+                        const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+                        let newTotal = 0;
+                        let hasVal = false;
+
+                        linkedCourses.forEach(c => {
+                            const v = parseFloat(c[fieldDef.id]);
+                            if (!isNaN(v)) {
+                                newTotal += v;
+                                hasVal = true;
+                            }
                         });
 
-                        if (!isNaN(totalVal)) {
-                            // 1. 找出此歸戶下的所有課程
-                            const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-                            
-                            // 2. 準備權重 (分母)
+                        // 3. 更新 App Data (歸戶總數)
+                        if (hasVal) {
+                            app.formData[fieldDef.id] = fieldDef.decimal ? newTotal.toFixed(fieldDef.decimal) : String(newTotal);
+                        } else {
+                            app.formData[fieldDef.id] = "";
+                        }
+                        
+                        // 4. ★ 關鍵：依權重「重新分配」這個總和 (Re-distribute) ★
+                        // 這樣可以確保所有欄位都符合比例 (例如 A輸入10, B為0 -> 總10 -> A變成5, B變成5)
+                        if (hasVal) {
                             let totalWeight = 0;
                             const weights = linkedCourses.map(c => {
-                                let w = 1; // 預設權重 (average 模式或找不到欄位時)
+                                let w = 1; // 預設權重 (average 模式)
                                 
                                 if (fieldDef.calcMode === 'weighted') {
-                                    // 優先使用設定的權重欄位，若無設定則嘗試抓取 "學分" 相關欄位
-                                    const targetField = fieldDef.weightField || 'internship_credit'; // 預設找 internship_credit
-                                    
-                                    // 嘗試從課程資料中抓取權重值 (支援欄位 ID 或 Label 模糊搜尋)
-                                    // 注意：這裡假設您的 getCourseValue 函式可用，若無可直接用 c[targetField]
+                                    const targetField = fieldDef.weightField || 'internship_credit'; 
                                     let val = c[targetField];
-                                    
-                                    // 如果找不到 ID，嘗試用 Helper 找
                                     if (!val && typeof getCourseValue === 'function') {
                                         val = getCourseValue(c, [targetField, 'credits', '學分', '學分數']);
                                     }
-
                                     const parsedW = parseFloat(val);
-                                    if (!isNaN(parsedW) && parsedW > 0) {
-                                        w = parsedW;
-                                    }
+                                    if (!isNaN(parsedW) && parsedW > 0) w = parsedW;
                                 }
                                 totalWeight += w;
                                 return w;
                             });
 
-                            // 3. 執行分配 (依比例寫回課程原始資料)
-                            let currentSum = 0;
-                            const decimals = fieldDef.decimal || 0; // 小數位數設定
+                            // 執行分配寫回
+                            let currentDistributedSum = 0;
+                            const decimals = fieldDef.decimal || 0;
 
                             linkedCourses.forEach((c, idx) => {
                                 const weight = weights[idx];
                                 let distVal = 0;
                                 
                                 if (totalWeight === 0) {
-                                    // 防呆：若總權重為 0，平均分配
-                                    distVal = totalVal / linkedCourses.length;
+                                    distVal = newTotal / linkedCourses.length;
                                 } else if (idx === linkedCourses.length - 1) {
-                                    // 最後一筆：用減法吸收誤差 (Total - 已分配總和)
-                                    distVal = totalVal - currentSum;
+                                    distVal = newTotal - currentDistributedSum;
                                 } else {
-                                    // 一般計算：總數 * (權重 / 總權重)
-                                    distVal = totalVal * (weight / totalWeight);
+                                    distVal = newTotal * (weight / totalWeight);
                                 }
                                 
-                                // 格式化數值並寫入課程
-                                // 注意：toFixed 會回傳字串，若需運算要轉回 float
                                 const finalValStr = distVal.toFixed(decimals);
                                 c[fieldDef.id] = finalValStr;
-                                
-                                currentSum += parseFloat(finalValStr);
+                                currentDistributedSum += parseFloat(finalValStr);
+                            });
+
+                            // 5. 更新畫面上所有相關格子 (顯示分配後的結果)
+                            document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
+                                // 找出該格子對應的課程 ID (從 tr 取得)
+                                const rowCid = el.closest('tr')?.dataset.cid;
+                                const targetCourse = linkedCourses.find(lc => lc._internal_id === rowCid);
+                                if (targetCourse) {
+                                    el.value = targetCourse[fieldDef.id];
+                                    el.title = targetCourse[fieldDef.id];
+                                }
                             });
                         }
-                    } 
-                    else {
+                        
+                    } else {
                         // === 一般共用欄位 (文字/日期等) ===
+                        // 修改一處，同步更新所有 (因為是共用的)
                         const oldVal = app.formData[fieldDef.id];
                         app.formData[fieldDef.id] = newVal;
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
-                        // 同步更新所有格子
                         document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
-                            if (el !== inputEl) { el.value = newVal; el.title = newVal; }
+                            if (el !== inputEl) {
+                                el.value = newVal;
+                                el.title = newVal;
+                            }
                         });
                     }
 
@@ -1483,7 +1241,7 @@
                 if (!isScoreField && newVal && newVal.trim() !== "") {
                     tryAutoMerge(student, course);
                 }
-            } 
+            }
         }
         // --- Initialization ---
         window.onload = async function() {
