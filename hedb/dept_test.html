@@ -328,9 +328,12 @@
             background: transparent;
             padding: 4px 8px; 
             font-size: 14px;  
-            line-height: 1.25;     /* ★ 修改：調降行高 (原本 1.5 -> 1.25)，讓換行更緊湊 */
+            line-height: 1.25;
             color: #334155;
-            transition: all 0.2s;
+            
+            /* ★★★ 關鍵修正：只對顏色和陰影做動畫，防止背景圖示位移 ★★★ */
+            transition: background-color 0.2s, box-shadow 0.2s;
+            
             box-sizing: border-box;
             vertical-align: top;
             display: block;        
@@ -352,7 +355,10 @@
             width: 100%;             
             height: 100%;            
             border: none;
-            background: transparent; /* 確保背景透明，讓 TD 顏色透出 */
+            
+            /* ★ 修正：明確指定 background-color，避免覆蓋 image */
+            background-color: transparent; 
+            
             cursor: pointer;
             
             /* 自定義箭頭圖示 */
@@ -360,10 +366,10 @@
             background-repeat: no-repeat;
             background-size: 16px;
             
-            /* ★ 關鍵修正 1：將箭頭死死釘在右側 (靠右 8px)，不隨文字移動 */
+            /* 固定按鈕位置 */
             background-position: right 8px center; 
             
-            /* ★ 關鍵修正 2：右側內距加大到 30px，確保文字絕對不會跟箭頭重疊 */
+            /* 右側內距 */
             padding-right: 30px !important; 
             padding-left: 8px;
             
@@ -371,7 +377,6 @@
             text-align: center;
             text-align-last: center; 
             
-            /* 禁止換行，過長省略 */
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
