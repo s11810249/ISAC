@@ -1507,7 +1507,7 @@
             const columnWidths = {};
             let allFlatData = [];
             
-            // ... (資料扁平化邏輯保持不變，請保留原程式碼的 allFlatData 填充部分) ...
+            // ... (資料扁平化邏輯保持不變) ...
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
                     const fullText = Object.values(c).join(' ') + s.name + s.id;
@@ -1526,11 +1526,10 @@
                 // A. 基準寬度：絕對優先計算「標題 + Info Icon」
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
-                // 使用 bold 15px 計算標題，並加上 30px 安全邊距
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
-                // B. 依據內容撐開 (針對不同類型策略)
+                // B. 依據內容撐開 
                 const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
 
                 // --- 策略 1: 下拉選單 (Single Select) ---
@@ -1538,26 +1537,24 @@
                     // 1.1 掃描「設定檔中的選項」
                     if (f.options && f.options.length > 0) {
                         f.options.forEach(opt => {
-                            // 文字寬度 + 40px (預留下拉箭頭與 padding)
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 40; 
+                            // ★ 修正：文字寬度 + 50px (包含左右 Padding + 下拉箭頭圖示寬度)
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 50; 
                             finalW = Math.max(finalW, w);
                         });
                     }
-                    // 1.2 也要掃描「實際資料值」 (防止匯入的資料不在選項清單中)
+                    // 1.2 也要掃描「實際資料值」
                     allFlatData.forEach(row => {
                          let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
                          if (val) {
-                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 40;
+                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 50;
                              finalW = Math.max(finalW, w);
                          }
                     });
                 } 
                 // --- 策略 2: 唯讀欄位 (Read Only) ---
                 else if (isReadOnly) {
-                    // 掃描所有資料
                     allFlatData.forEach(row => {
                         let val = row.course[f.id];
-                        // Fallback
                         if (val === undefined) {
                             if (f.id === 'student_id') val = row.student.id;
                             else if (f.id === 'student_name') val = row.student.name;
@@ -1573,18 +1570,16 @@
                 }
                 // --- 策略 3: 文字欄位 (Text) ---
                 else if (f.type === 'text' || f.type === 'address') {
-                    // 取 (目前計算出的標題寬度) 與 (預設寬度) 的最大值
-                    // 這樣若標題很長，寬度就會自動被 finalW (headerW) 撐開
                     const defaultTextW = f.width ? parseInt(f.width) : 200;
                     finalW = Math.max(finalW, defaultTextW);
                 }
                 
-                // C. 提示字元 Placeholder 優先 (所有欄位都要檢查)
+                // C. 提示字元 Placeholder 優先 (移除單選的預設提示)
                 let placeholderText = "";
                 if (f.type === 'date') placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
                 else if (f.calcMode === 'weighted') placeholderText = "(點擊填寫)";
                 else if (f.placeholder) placeholderText = f.placeholder;
-                else if (f.type === 'single_select') placeholderText = "請選擇...";
+                // ★ 移除 else if (f.type === 'single_select') ... "請選擇"
 
                 if (placeholderText) {
                     const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 30;
@@ -1594,7 +1589,7 @@
                 // D. 設定最終寬度 (最小 80px)
                 columnWidths[f.id] = Math.max(finalW, 80);
             });
-
+            
             // 3. 渲染表頭 (Header)
             const freezeLimit = gridState.frozenCount; 
             let currentStickyLeft = 0; 
@@ -1729,7 +1724,7 @@
                             input.style.textAlign = 'left';
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
-                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                             input.className = "grid-input";
                             input.style.textAlign = 'center';
                             input.style.textAlignLast = 'center';
