@@ -1302,6 +1302,7 @@
         }
 
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
+        // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
             const newVal = inputEl.value;
             inputEl.title = newVal; // 更新 Hover 提示
@@ -1318,27 +1319,69 @@
                     
                     // ★★★ 修改重點：區分「獨立運算欄位」與「共用欄位」 ★★★
                     if (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted') {
-                        // 1. 獨立欄位：只更新這門課的原始資料
+                        // 1. 先暫存使用者輸入的最新值 (為了計算總和)
                         course[fieldDef.id] = newVal;
 
                         // 找出歸戶內的所有課程
                         const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
 
-                        let finalValue = 0;
+                        let finalValue = 0; // 這將會是「總和」
 
                         if (fieldDef.calcMode === 'weighted') {
                             // === 修正：加權分配模式 (Weighted Distribution) ===
-                            // 邏輯：對於時數/點數，歸戶後的數值應為「總和」。
-                            let sum = 0;
+                            // 動作：算出新總和 -> 依照權重重新分配給所有課程 -> 更新畫面
+                            
+                            // A. 計算目前的「新總和」與「總權重」
+                            let currentTotalValue = 0;
+                            let totalWeight = 0;
+                            const weightKey = fieldDef.weightField; // 設定檔必須指定 (如 credits)
+
                             linkedCourses.forEach(c => {
-                                const v = parseFloat(c[fieldDef.id]);
-                                if (!isNaN(v)) {
-                                    sum += v;
-                                }
+                                const v = parseFloat(c[fieldDef.id]) || 0;
+                                // 嘗試抓取權重值
+                                const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
+                                currentTotalValue += v;
+                                totalWeight += w;
                             });
-                            finalValue = sum; 
+
+                            finalValue = currentTotalValue; // 歸戶資料存總和
+
+                            // B. 執行分配與回寫 (若有權重)
+                            if (totalWeight > 0) {
+                                linkedCourses.forEach(c => {
+                                    // B-1. 計算該課程應分配到的數值
+                                    const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
+                                    const ratio = w / totalWeight;
+                                    const distributedVal = currentTotalValue * ratio;
+                                    
+                                    // B-2. 格式化數值
+                                    const formattedVal = fieldDef.decimal ? distributedVal.toFixed(fieldDef.decimal) : Math.round(distributedVal).toString();
+
+                                    // B-3. 更新資料物件
+                                    c[fieldDef.id] = formattedVal;
+
+                                    // B-4. ★關鍵：同步更新畫面上其他課程的 Input★
+                                    // 我們需要找到這門課在畫面上的 Input 元素
+                                    const row = document.querySelector(`tr[data-cid="${c._internal_id}"]`);
+                                    if(row) {
+                                        const targetInput = row.querySelector(`input[data-field="${fieldDef.id}"]`);
+                                        if (targetInput) {
+                                            targetInput.value = formattedVal;
+                                            targetInput.title = formattedVal;
+                                            
+                                            // 視覺回饋：閃爍背景提示使用者數值被自動調整
+                                            if (targetInput !== inputEl) { 
+                                                targetInput.style.transition = 'background-color 0.3s';
+                                                targetInput.style.backgroundColor = '#fff7ed'; // 淡橘色
+                                                setTimeout(() => targetInput.style.backgroundColor = '', 400);
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+
                         } else {
-                            // === 一般平均/加總模式 ===
+                            // === 一般平均/加總模式 (既有邏輯) ===
                             let sum = 0;
                             linkedCourses.forEach(c => {
                                 const v = parseFloat(c[fieldDef.id]);
@@ -1347,12 +1390,12 @@
                             finalValue = sum; 
                         }
 
-                        // 3. 更新 App Data
+                        // 3. 更新 App Data (儲存總和)
                         app.formData[fieldDef.id] = fieldDef.decimal ? finalValue.toFixed(fieldDef.decimal) : Math.round(finalValue).toString();
 
                         logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
 
-                        // 注意：這裡【不】同步到其他格子，因為我們要讓它們保持獨立顯示
+                        // 注意：weighted 模式下，上面已經手動同步畫面了
 
                     } else {
                         // 1. 一般共用欄位：更新 App Data
@@ -1360,7 +1403,7 @@
                         app.formData[fieldDef.id] = newVal;
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
-                        // 2. 同步數值到所有共用此 App 的格子 (讓大家長一樣)
+                        // 2. 同步數值到所有共用此 App 的格子
                         document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
                             if (el !== inputEl) {
                                 el.value = newVal;
@@ -1369,14 +1412,11 @@
                         });
                     }
 
-                    // 3. 觸發連動邏輯檢查 (例如填了依賴欄位後解鎖子欄位)
-                    // 找出目前畫面上所有屬於這個 App 的列 (TR)
+                    // 3. 觸發連動邏輯檢查
                     const allRows = document.getElementById('grid-tbody').querySelectorAll('tr');
                     allRows.forEach(tr => {
                         const cid = tr.dataset.cid;
                         const sid = tr.dataset.sid; 
-                        
-                        // 只更新同一位學生的相關列
                         if (sid === student.id && app.courseIds.includes(cid)) {
                             updateRowLogic(tr, app.formData);
                         }
@@ -1385,12 +1425,9 @@
             } else {
                 // === 情境 B: 未歸戶 ===
                 course[fieldDef.id] = newVal;
-                
-                // 1. 觸發單列邏輯檢查
                 const tr = inputEl.closest('tr');
                 if (tr) updateRowLogic(tr, course);
 
-                // 2. 觸發智慧自動歸戶
                 if (!isScoreField && newVal && newVal.trim() !== "") {
                     tryAutoMerge(student, course);
                 }
