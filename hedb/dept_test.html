@@ -3915,18 +3915,20 @@
                 { id: 'semester', label: '學期', width: '50px' }
             ];
             
-            // 建立一個 Set 來儲存固定欄位的 ID，以便過濾
             const fixedIds = new Set(fixedHeaders.map(h => h.id));
 
-            // 2. 準備動態欄位
-            // 取得設定檔中的欄位，並過濾掉：
-            // (1) 被使用者隱藏的欄位
-            // (2) 內部 ID (_internal_id)
-            // (3) ★★★ 已經在固定欄位中顯示過的欄位 (避免重複) ★★★
+            // 2. 準備動態欄位 & 排序
+            // 取得設定檔中的欄位，並執行過濾與排序
             const fields = currentYearConfig.fields || [];
             const visibleFields = fields
                 .filter(f => !gridState.hiddenCols.includes(f.id) && f.id !== '_internal_id' && !fixedIds.has(f.id))
-                .sort((a, b) => (a.order || 0) - (b.order || 0));
+                .sort((a, b) => {
+                    // ★★★ 修正 4：依照後台設定 order 從 0 開始排序 ★★★
+                    // 若沒有設定 order，預設給 9999 排在最後面
+                    const o1 = (a.order !== undefined && a.order !== null) ? parseInt(a.order) : 9999;
+                    const o2 = (b.order !== undefined && b.order !== null) ? parseInt(b.order) : 9999;
+                    return o1 - o2;
+                });
 
             // 3. 建立表頭
             const trHead = document.createElement('tr');
@@ -3948,7 +3950,7 @@
                 trHead.appendChild(th);
             });
 
-            // 渲染動態表頭 (剩下的填報欄位)
+            // 渲染動態表頭
             visibleFields.forEach(f => {
                 const th = document.createElement('th');
                 th.className = 'sortable-header';
@@ -3969,14 +3971,13 @@
             });
             thead.appendChild(trHead);
 
-            // 4. 準備資料 (攤平所有學生的課程)
+            // 4. 準備資料
             let rows = [];
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
                     rows.push({
                         student: s,
                         course: c,
-                        // 如果有歸戶，取得 Application 資料，否則為 null
                         app: c._app_id ? s.applications.find(a => a.id === c._app_id) : null
                     });
                 });
@@ -3995,16 +3996,13 @@
             // 6. 排序
             if (gridState.sortKey) {
                 rows.sort((a, b) => {
-                    // 取得比較值 (優先從 App 取值，沒有則從 Course 取值)
                     const getVal = (rowObj, key) => {
                         if (fixedHeaders.find(h => h.id === key)) {
-                            // 固定欄位
                             if (key === 'student_id') return rowObj.student.id;
                             if (key === 'student_name') return rowObj.student.name;
                             if (key === 'course_name') return getCourseValue(rowObj.course, ['course_name', '課程名稱']) || '';
                             if (key === 'semester') return getCourseValue(rowObj.course, ['semester', '學期']) || '';
                         }
-                        // 動態欄位
                         let v = '';
                         if (rowObj.app && rowObj.app.formData[key] !== undefined) v = rowObj.app.formData[key];
                         else v = rowObj.course[key] || '';
@@ -4027,18 +4025,12 @@
                 tr.dataset.cid = course._internal_id;
                 tr.dataset.sid = student.id;
 
-                // 如果已歸戶，背景顯示淺藍色
                 if (app) tr.classList.add('is-linked');
                 
-                // --- 固定欄位 ---
+                // --- ★★★ 修正 1 & 2：移除 Checkbox，學號正常顯示 ★★★ ---
                 const tdId = document.createElement('td');
-                tdId.innerHTML = `
-                    <div class="flex items-center gap-2 pl-2">
-                        <input type="checkbox" class="grid-row-chk" value="${course._internal_id}" 
-                            ${gridSelection.has(course._internal_id) ? 'checked' : ''}
-                            onchange="updateGridSelection(this, '${student.id}')">
-                        <span class="font-mono text-xs">${student.id}</span>
-                    </div>`;
+                tdId.className = "px-2 py-0 text-slate-600 font-mono text-xs"; // 設定樣式
+                tdId.innerText = student.id; // 直接顯示學號
                 tr.appendChild(tdId);
 
                 const tdName = document.createElement('td');
@@ -4061,7 +4053,6 @@
                 visibleFields.forEach(f => {
                     const td = document.createElement('td');
                     
-                    // 決定數值：已歸戶優先讀取 app.formData，否則讀取 course
                     let val = '';
                     if (app && app.formData[f.id] !== undefined) {
                         val = app.formData[f.id];
@@ -4069,7 +4060,6 @@
                         val = course[f.id] || '';
                     }
 
-                    // 建立輸入元件
                     let input;
                     if (f.type === 'single_select' || f.type === 'list') {
                         input = document.createElement('select');
@@ -4077,22 +4067,30 @@
                         input.value = val;
                     } else {
                         input = document.createElement('input');
-                        input.type = 'text'; // Grid 模式統一用 text
+                        input.type = 'text';
                         input.value = val;
                     }
                     
                     input.className = "grid-input";
                     input.dataset.field = f.id;
                     
-                    // 標記歸戶關聯 class，用於連動更新
                     if (app) {
                         input.classList.add(`app-input-${app.id}-${f.id}`);
                     }
 
-                    // 綁定事件
-                    input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                    
-                    // 處理 Locked / Visibility 狀態
+                    // --- ★★★ 修正 3：後台設定唯讀欄位要鎖住 ★★★ ---
+                    // 檢查 f.readOnly 是否為 true
+                    if (f.readOnly) {
+                        input.disabled = true;
+                        // 額外增加鎖定樣式 (灰底、滑鼠禁用)
+                        input.classList.add('bg-slate-100', 'text-slate-400', 'cursor-not-allowed');
+                        td.classList.add('bg-slate-100'); // 讓整個格子也變灰
+                    } else {
+                        // 只有非唯讀欄位才綁定變更事件
+                        input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                    }
+
+                    // 處理 Visibility (連動隱藏)
                     const dataContext = app ? app.formData : course;
                     checkGridInputVisibility(input, f, dataContext);
 
