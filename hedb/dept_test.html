@@ -481,50 +481,50 @@
         
         /* --- Grid 寬度與凍結優化 (V7: 視覺輕量化與層級修復) --- */
 
-        /* 1. 表格基礎設定 - 極細線條風格 */
+        /* 1. 表格基礎設定 */
         .excel-table { 
             border-collapse: separate; 
             border-spacing: 0;
         }
         
-        /* 線條顏色調淡，讓閱讀更舒適 */
+        /* 一般格線 (極細淺灰) */
         .excel-table th, .excel-table td { 
-            border-right: 1px solid #f1f5f9; /* 極淺灰 */
+            border-right: 1px solid #f1f5f9; 
             border-bottom: 1px solid #f1f5f9; 
             box-sizing: border-box;
         }
 
-        /* 2. 層級設定 (Z-Index Hierarchy) - 完美解決覆蓋問題 */
-        /* 邏輯：下拉選單(80) > 左上角交界(70) > 一般表頭(60) > 內容凍結(50) > 一般內容 */
+        /* 2. 層級設定 (Z-Index) - 解決覆蓋問題 */
+        /* 規則：下拉選單(100) > 表頭凍結(90) > 一般表頭(80) > 內容凍結(70) > 一般內容 */
 
         /* 一般表頭 */
         thead th {
             position: sticky;
             top: 0;
-            background-color: #f8fafc; /* 淺灰底 */
-            z-index: 60; /* 高於內容凍結列 */
-            border-bottom: 1px solid #e2e8f0; /* 表頭底線稍微深一點點作為區隔 */
-            color: #475569; /* 深灰文字 */
+            background-color: #f8fafc;
+            z-index: 80; /* ★ 修正：拉高層級，確保高於內容凍結列 (70) */
+            border-bottom: 2px solid #94a3b8 !important; /* ★ 修正：標題底部加粗 */
+            color: #475569;
         }
         
-        /* 表頭的凍結欄位 (左上角交界處) - 層級最高 */
+        /* 表頭的凍結欄位 (左上角) */
         th.sticky-col {
             background-color: #f8fafc !important;
-            z-index: 70 !important; 
+            z-index: 90 !important; /* 最高層級 */
+            border-bottom: 2px solid #94a3b8 !important; /* 同步底部加粗 */
         }
 
-        /* 內容的凍結欄位 - 必須比表頭低 */
+        /* 內容的凍結欄位 */
         td.sticky-col {
             position: sticky;
             background-color: #fff !important;
-            z-index: 50 !important; 
+            z-index: 70 !important; /* ★ 修正：雖然很高，但必須比表頭(80)低 */
         }
 
-        /* 3. 凍結列最右邊加粗 (使用輕柔陰影) */
+        /* 3. 凍結列最右邊加粗 (右側分隔線) */
         .sticky-border-right {
-            border-right: none !important;
-            /* 陰影更淡，視覺更輕盈 */
-            box-shadow: 1px 0 0 0 #cbd5e1, 4px 0 8px -2px rgba(0,0,0,0.05) !important;
+            border-right: 2px solid #94a3b8 !important; /* ★ 修正：實體加粗邊框 */
+            box-shadow: 4px 0 6px -3px rgba(0,0,0,0.1); /* 輔助陰影 */
             clip-path: inset(0 -15px 0 0);
         }
 
@@ -538,7 +538,7 @@
         }
         .header-info-icon:hover { color: #002E5D; }
 
-        /* 5. 內容對齊與換行 */
+        /* 5. 內容對齊 */
         .cell-multiline {
             white-space: normal !important;
             word-break: break-all;
@@ -548,11 +548,9 @@
             min-height: 40px;
             display: flex;
             align-items: center;
+            justify-content: center; /* 統一置中 */
+            text-align: center;
         }
-        
-        /* 統一置中設定 */
-        .cell-center { justify-content: center; text-align: center; }
-        .cell-left { justify-content: flex-start; text-align: left; }
 
         /* 輸入框微調 */
         .excel-table textarea, .excel-table input {
@@ -812,7 +810,7 @@
                     </div>
                 </div>
                 <div class="flex gap-2 items-center">
-                     <div id="grid-column-picker-container" class="relative z-60"></div>
+                     <div id="grid-column-picker-container" class="relative z-100"></div>
                      <input type="text" id="grid-search" placeholder="篩選..." class="px-3 py-1.5 border border-slate-300 rounded text-sm w-64" oninput="renderGlobalGrid()">
                 </div>
             </div>
@@ -4433,8 +4431,8 @@
             `;
             
             const dropdown = document.createElement('div');
-            // Z-Index 80 配合 CSS 確保覆蓋
-            dropdown.className = "picker-dropdown absolute right-0 top-full mt-2 w-[600px] bg-white border border-slate-200 rounded-xl shadow-2xl z-[80] flex flex-col overflow-hidden";
+            // ★ 修改：提高到 z-[100] 以蓋過新的表頭層級 (90)
+            dropdown.className = "picker-dropdown absolute right-0 top-full mt-2 w-[600px] bg-white border border-slate-200 rounded-xl shadow-2xl z-[100] flex flex-col overflow-hidden";
             
             // --- 頂部操作區 (資料排序 + 凍結) ---
             const actions = document.createElement('div');
