@@ -221,14 +221,24 @@
         
         /* Linked Data Indicator */
         /* 1. 移除歸戶連結色 */
-        /* 1. 移除歸戶連結色 */
         .is-linked { background-color: transparent !important; color: inherit; } 
         
-        /* 2. 輸入框設定 */
+        /* 2. 表格儲存格：回復標準 Table-Cell */
+        .excel-table td { 
+            padding: 0 !important; 
+            height: 1px;           /* ★ 關鍵技巧：設定極小高度，強迫瀏覽器將實際高度分配給子元素的 height: 100% */
+            min-height: 34px;      
+            border-right: 1px solid #f1f5f9; 
+            border-bottom: 1px solid #f1f5f9;
+            vertical-align: top;   /* 內容靠上對齊，適合多行文字 */
+            
+            /* ★ 移除 display: flex，解決"格子變一列"的破圖問題 */
+        }
+
+        /* 3. 輸入框設定：填滿儲存格 */
         .grid-input { 
             width: 100%; 
-            /* height: 100%;  <-- 移除固定 height */
-            flex: 1;       /* ★ 新增：Flex 屬性，讓它自動填滿父層高度 */
+            height: 100%;          /* ★ 自動填滿父層 TD 的高度 */
             min-height: 34px;
             border: none; 
             background: transparent;
@@ -239,9 +249,10 @@
             transition: all 0.2s;
             box-sizing: border-box;
             vertical-align: top;
+            display: block;        /* 確保是區塊元素 */
         }
         
-        /* 文字區域專用 */
+        /* 文字區域專用：允許換行 */
         textarea.grid-input {
             white-space: pre-wrap; 
             word-break: break-all; 
@@ -251,49 +262,44 @@
 
         /* 鎖定狀態：背景透明 (顏色由 TD 負責)，文字變淡 */
         .grid-input:disabled {
-            color: #cbd5e1; /* 淺灰色文字，讓它看起來像浮水印 */
+            color: #cbd5e1; 
             cursor: not-allowed;
-            background-color: transparent !important; /* ★ 關鍵：讓 TD 的灰色透出來 */
+            background-color: transparent !important; 
         }
 
         .grid-input:focus { 
             outline: none; box-shadow: inset 0 0 0 2px #002E5D; background-color: #ffffff; z-index: 10;
         }
 
-        /* 3. 表格儲存格：Flex 容器 (解決高度不滿問題) */
-        .excel-table td { 
-            padding: 0 !important; 
-            height: auto;          
-            min-height: 34px;      
-            border-right: 1px solid #f1f5f9; 
-            border-bottom: 1px solid #f1f5f9;
-            
-            /* ★★★ 關鍵修改：將 TD 變為 Flex Container ★★★ */
-            display: flex;             
-            flex-direction: column;    /* 垂直排列 */
-            justify-content: center;   /* 內容垂直置中 (若有需要靠上可改 flex-start) */
-            align-items: stretch;      /* 內容水平拉伸填滿 */
-        }
-
         /* 4. 唯讀儲存格內容容器 */
         .cell-read-only {
-            flex: 1;                 /* ★ 跟隨 TD 高度自動撐開 */
             width: 100%; 
+            height: 100%;          /* ★ 填滿高度 */
             min-height: 34px;
-            display: flex; 
-            align-items: center;     
-            justify-content: center; 
+            display: flex;         /* 內部維持 Flex 以便置中 */
+            align-items: center;   /* 垂直置中 (唯讀欄位通常單行居多) */
+            justify-content: center; /* 水平置中 */
             padding: 4px 8px; 
             color: #64748b; 
-            white-space: nowrap;
+            white-space: nowrap;   /* 唯讀不換行 */
             text-align: center;
         }
         
-        /* 5. 背景色設定 */
+        /* 5. 日期選擇器容器修正 (確保填滿) */
+        .date-picker-wrapper, .date-input-group {
+            width: 100%;
+            height: 100%;
+        }
+        .date-input-group {
+            display: flex;
+            align-items: center;
+        }
+
+        /* 6. 背景色設定 */
         tr.row-group-normal { background-color: #ffffff; }
         tr.row-group-alt { background-color: #f8fafc; }
         tr.row-group-normal:hover, tr.row-group-alt:hover { background-color: #eff6ff !important; }
-        /* 注意：td 的背景色會覆蓋 tr，所以後面 JS 控制 td 背景色時要小心 */
+        tr.row-group-normal:hover td, tr.row-group-alt:hover td { background-color: #eff6ff !important; }
         
         /* =========================================
            ★★★ Grid View 極致美化 (V2: 字體加大版) ★★★
