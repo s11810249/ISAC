@@ -480,15 +480,15 @@
             left: 0;
         }
         
-        /* --- Grid 寬度與凍結優化 (V5: 最終修正版) --- */
+        /* --- Grid 寬度與凍結優化 (V6: 最終修復版) --- */
 
-        /* 1. 關鍵修正：解決格線消失與凍結問題 */
+        /* 1. 表格基礎設定 */
         .excel-table { 
-            border-collapse: separate; /* 必須用 separate 才能讓 sticky 邊框正常顯示 */
+            border-collapse: separate; /* 關鍵：sticky 邊框與陰影需要 separate */
             border-spacing: 0;
         }
         
-        /* 手動繪製格線 (因為用了 separate) */
+        /* 手動繪製格線 */
         .excel-table th, .excel-table td { 
             border-right: 1px solid #e2e8f0; 
             border-bottom: 1px solid #e2e8f0; 
@@ -496,40 +496,38 @@
         }
 
         /* 2. 層級設定 (Z-Index Hierarchy) - 解決標題被覆蓋 */
-        /* 層級邏輯：下拉選單(80) > 表頭凍結(60) > 一般表頭(50) > 內容凍結(40) > 一般內容(auto) */
-        
+        /* 規則：表頭 > 內容凍結列 > 一般內容 */
+
         /* 一般表頭 */
         thead th {
             position: sticky;
             top: 0;
             background-color: #f8fafc;
-            z-index: 50; /* 確保高於內容凍結列 */
+            z-index: 50; /* 必須比內容凍結列(40)高 */
+            border-top: 1px solid #e2e8f0; /* 補上頂部線條 */
         }
         
-        /* 表頭的凍結欄位 (左上角交界處) */
+        /* 表頭的凍結欄位 (左上角) */
         th.sticky-col {
             background-color: #f8fafc !important;
-            z-index: 60 !important; /* 最高層級，確保不被蓋住 */
+            z-index: 60 !important; /* 最高層級 */
         }
 
         /* 內容的凍結欄位 */
         td.sticky-col {
             position: sticky;
             background-color: #fff !important;
-            z-index: 40 !important; /* 比一般內容高，但必須比表頭低 */
+            z-index: 40 !important; /* 比一般內容高，但必須比表頭(50)低 */
         }
 
         /* 3. 凍結列最右邊加粗 (使用 Box-shadow 確保移動時不消失) */
         .sticky-border-right {
-            border-right: none !important; /* 移除原本邊框，改用陰影 */
+            border-right: none !important;
             box-shadow: 4px 0 0 -1px #cbd5e1, 2px 0 5px -2px rgba(0,0,0,0.1) !important;
-            clip-path: inset(0 -10px 0 0); /* 允許陰影向右溢出 */
+            clip-path: inset(0 -10px 0 0); /* 確保陰影不被切掉 */
         }
 
-        /* 4. ★ 重要：刪除舊的 first-child sticky 設定 */
-        /* 原本這裡有 th:first-child 的強制 sticky 設定，已刪除以解決凍結 0 的問題 */
-
-        /* 5. 欄位說明圖示 (Tooltip Icon) */
+        /* 4. 欄位說明圖示 */
         .header-info-icon {
             color: #94a3b8;
             margin-left: 6px;
@@ -539,7 +537,7 @@
         }
         .header-info-icon:hover { color: #002E5D; }
 
-        /* 6. 文字欄位與唯讀對齊 */
+        /* 5. 內容對齊與換行 */
         .cell-multiline {
             white-space: normal !important;
             word-break: break-all;
@@ -551,7 +549,6 @@
             align-items: center;
         }
         
-        /* 唯讀置中 (透過 Flex 達成) */
         .cell-center { justify-content: center; text-align: center; }
         .cell-left { justify-content: flex-start; text-align: left; }
 
@@ -1387,7 +1384,6 @@
             const tbody = document.getElementById('grid-tbody');
             if (!thead || !tbody) return;
             
-            // 使用 DocumentFragment 優化效能
             const theadFragment = document.createDocumentFragment();
             const tbodyFragment = document.createDocumentFragment();
             
@@ -1420,12 +1416,13 @@
                 return;
             }
 
-            // 2. 寬度計算 & 資料收集
+            // 2. 寬度計算
             const columnWidths = {};
             let allFlatData = [];
             
             Object.values(groupedStudents).forEach(s => {
                 s.courses.forEach(c => {
+                    // ★ 修正變數名稱：使用 c 而非 course
                     const fullText = Object.values(c).join(' ') + s.name + s.id;
                     if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
 
@@ -1459,15 +1456,14 @@
                 });
             }
 
+            // 寬度計算樣本
             const sampleData = allFlatData.slice(0, 50);
 
             allColumns.forEach(f => {
                 let maxW = 0;
-                
-                // ★ 修改：寬度計算加入 Description 圖示寬度
                 const hasDesc = !!f.description;
-                const iconWidth = hasDesc ? 25 : 0; // 若有說明，預留 25px
-                const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 40 + iconWidth; // 40 for sort icon
+                const iconWidth = hasDesc ? 25 : 0;
+                const headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 40 + iconWidth;
 
                 if (f.type === 'single_select' || f.type === 'list') {
                     if (f.options && f.options.length > 0) {
@@ -1502,26 +1498,28 @@
                 columnWidths[f.id] = Math.max(maxW, headerW, 80);
             });
 
-            // 3. 渲染表頭 (Header)
-            let currentStickyLeft = 0; 
-            const freezeLimit = gridState.frozenCount;
+            // --- 3. 渲染表頭 (Header) ---
+            const freezeLimit = gridState.frozenCount; // 讀取凍結設定
+            let currentStickyLeft = 0; // ★ 徹底修正：起始位置為 0 (無 checkbox)
 
             let trHead = document.createElement('tr');
             
+            // ★★★ 關鍵：已移除 thCheck 建立程式碼 ★★★
+
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
-                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap sticky top-0 cursor-pointer hover:bg-slate-200 transition select-none";
+                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap cursor-pointer hover:bg-slate-200 transition select-none";
                 th.onclick = () => setGridSort(col.id);
                 
                 const finalWidth = columnWidths[col.id];
                 th.style.minWidth = finalWidth + "px";
                 th.style.maxWidth = finalWidth + "px";
 
-                // 對齊
                 const isTextType = col.type === 'text' || col.type === 'address';
                 th.style.textAlign = isTextType ? 'left' : 'center';
 
-                // ★ 凍結邏輯
+                // ★ 凍結邏輯：只有當 index 小於 設定數量時才凍結
+                // 如果 freezeLimit 是 0，這個條件永遠為假，第一欄就不會被凍結
                 if (index < freezeLimit) {
                     th.classList.add('sticky-col');
                     th.style.left = currentStickyLeft + "px";
@@ -1540,14 +1538,11 @@
                     th.classList.add('text-primary'); 
                 }
                 
-                // ★ 修改：加入 Description 圖示
                 let infoIcon = '';
                 if(col.description) {
-                    // 標題右側顯示圓形 i
                     infoIcon = `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>`;
                 }
 
-                // 使用 Flex 讓標題、圖示、排序箭頭排成一行
                 const justifyClass = isTextType ? 'justify-start' : 'justify-center';
                 th.innerHTML = `<div class="truncate flex items-center ${justifyClass} gap-1">${col.label}${infoIcon} ${icon}</div>`;
                 
@@ -1555,7 +1550,7 @@
             });
             theadFragment.appendChild(trHead);
 
-            // 4. 渲染內容 (Body)
+            // --- 4. 渲染內容 (Body) ---
             if (allFlatData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${allColumns.length}" class="p-8 text-center text-slate-400">無符合資料</td></tr>`;
                 thead.appendChild(theadFragment);
@@ -1570,8 +1565,10 @@
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
 
-                // Reset Sticky
-                currentStickyLeft = 0;
+                // ★★★ 關鍵：已移除 tdCheck 建立程式碼 ★★★
+
+                // 重置 sticky 左邊距
+                currentStickyLeft = 0; 
 
                 allColumns.forEach((f, index) => {
                     const td = document.createElement('td');
@@ -1582,8 +1579,8 @@
                     td.style.maxWidth = finalWidth + "px";
 
                     const isTextType = f.type === 'text' || f.type === 'address';
-                    // 不要在這裡設 td.style.textAlign，交給內部的 div 或 input 控制
 
+                    // 凍結處理
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
@@ -1610,8 +1607,6 @@
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
                     if (isReadOnly) {
-                        // ★ 修改：唯讀文字置中 (Issue 6)
-                        // 使用 cell-center (置中) 或 cell-left (靠左)
                         const alignClass = isTextType ? 'cell-left' : 'cell-center';
                         td.innerHTML = `<div class="px-3 py-0 flex items-center h-full text-slate-600 select-none bg-slate-50 text-sm cell-multiline ${alignClass}" title="${val}">${val||''}</div>`;
                     } else {
