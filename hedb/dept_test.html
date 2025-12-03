@@ -228,15 +228,28 @@
         .grid-input { 
             width: 100%; 
             height: 100%; 
+            min-height: 34px; /* 最小高度 */
             border: none; 
             background: transparent;
-            padding: 4px 8px; /* 緊湊的內距 */
-            font-size: 14px;  /* 字體稍微縮小一點以配合緊湊高度 */
-            line-height: 26px; /* 配合 34px 高度 (34 - 4*2 = 26) */
+            padding: 4px 8px; 
+            font-size: 14px;  
+            line-height: 1.5;
             color: #334155;
             transition: all 0.2s;
             box-sizing: border-box;
-            white-space: nowrap; /* ★ 關鍵：禁止換行，防止高度被撐開 */
+            vertical-align: top; /* 對齊上方，方便閱讀多行文字 */
+        }
+        
+        /* ★ 文字區域專用：允許換行 */
+        textarea.grid-input {
+            white-space: pre-wrap; /* 保留換行符號並允許自動換行 */
+            word-break: break-all; /* 防止長單字撐爆 */
+            overflow: hidden;      /* 隱藏捲軸 (高度由 JS 自動調整) */
+        }
+
+        /* 其他單行輸入框：禁止換行 */
+        input.grid-input, select.grid-input {
+            white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
@@ -244,47 +257,39 @@
         .grid-input:focus { 
             outline: none; box-shadow: inset 0 0 0 2px #002E5D; background-color: #ffffff; z-index: 10;
         }
-        
-        /* 唯讀狀態的輸入框樣式 (針對沒有被 td 鎖定的情況) */
+
         .grid-input:disabled {
             color: #94a3b8;
             cursor: not-allowed;
-            /* 背景色將由 JS 控制 td 來達成，這裡設透明即可 */
             background-color: transparent; 
         }
 
-        /* 3. 表格儲存格：固定高度 34px (原本的高度) */
+        /* 3. 表格儲存格：高度自動 (auto) 以適應換行 */
         .excel-table td { 
             padding: 0 !important; 
-            height: 34px;          /* ★ 改回固定高度 */
+            height: auto;          /* ★ 改回 auto，允許內容撐開高度 */
+            min-height: 34px;      /* 設定最小高度確保整齊 */
             border-right: 1px solid #f1f5f9; 
             border-bottom: 1px solid #f1f5f9;
-            white-space: nowrap;   /* ★ 確保 TD 也不換行 */
-            overflow: hidden;      /* 超出隱藏 */
+            vertical-align: top;   /* 內容靠上對齊 */
         }
 
         /* 4. 唯讀儲存格內容容器 */
         .cell-read-only {
             width: 100%; 
-            height: 100%;
+            min-height: 34px;
             display: flex; 
-            align-items: center; 
-            padding: 0 8px; /* 左右內距 */
+            align-items: center;   /* 唯讀欄位通常單行居多，維持垂直置中較美觀，若有長文需求可改 flex-start */
+            padding: 4px 8px; 
             color: #64748b; 
-            white-space: nowrap; /* 不換行 */
-            overflow: hidden;
-            text-overflow: ellipsis;
+            white-space: nowrap;   /* 唯讀欄位 (需求2) 是依據最寬值調整，所以這裡保持不換行 */
         }
         
-        /* 內容置中設定 (針對 select 和短數字) */
-        .text-center-input { text-align: center; }
-
-        /* 5. 懸停與背景色設定 */
+        /* 5. 背景色設定 (保持不變) */
         tr.row-group-normal { background-color: #ffffff; }
         tr.row-group-alt { background-color: #f8fafc; }
-
         tr.row-group-normal:hover, tr.row-group-alt:hover { background-color: #eff6ff !important; }
-        tr.row-group-normal:hover td, tr.row-group-alt:hover td { background-color: #eff6ff !important;
+        tr.row-group-normal:hover td, tr.row-group-alt:hover td { background-color: #eff6ff !important; }
         }
         
         /* =========================================
@@ -1508,68 +1513,81 @@
             });
             // ------------------------------------
 
-            // 輸入框取樣前 50 筆即可，唯讀欄位需要全掃
-            const sampleData = allFlatData.slice(0, 50); 
-
             allColumns.forEach(f => {
-                // 1. 表頭寬度
+                // A. 基礎寬度：標題寬度 (需求4: 其他非唯讀欄位依據標題調整)
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
-                let maxW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
+                let finalW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
 
-                // 2. 提示字元寬度
-                let placeholderText = "";
-                if (f.type === 'date') placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
-                else if (f.calcMode === 'weighted') placeholderText = "(點擊填寫)";
-                else if (f.placeholder) placeholderText = f.placeholder;
-                else if (f.type === 'single_select') placeholderText = "請選擇...";
-
-                if (placeholderText) {
-                    const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 25;
-                    maxW = Math.max(maxW, phWidth);
-                }
-
-                // 3. 內容寬度 (全掃描唯讀欄位)
+                // B. 依據類型調整寬度
                 const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
-                
-                // ★ 關鍵：如果是唯讀欄位，掃描所有資料 (allFlatData)
-                // ★ 如果是輸入欄位，掃描取樣資料 (sampleData)
-                const dataset = isReadOnly ? allFlatData : sampleData;
 
-                // 如果是下拉選單，掃描選項
                 if (f.type === 'single_select' || f.type === 'list') {
-                     if (f.options) {
+                    // === 需求1: 單選依據最寬選項 ===
+                    if (f.options && f.options.length > 0) {
                         f.options.forEach(opt => {
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 34;
-                            if (w > maxW) maxW = w;
+                            // 文字寬度 + 下拉箭頭預留空間 (約 35px)
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 35;
+                            if (w > finalW) finalW = w;
                         });
-                     }
-                } else {
-                    dataset.forEach(row => {
+                    }
+                } 
+                else if (isReadOnly) {
+                    // === 需求2: 唯讀欄位依據最寬的值 ===
+                    // 掃描所有資料 (allFlatData)
+                    allFlatData.forEach(row => {
                         let val = row.course[f.id];
-                        // 處理 Fallback
+                        // Fallback 處理
                         if (val === undefined) {
                             if (f.id === 'student_id') val = row.student.id;
                             else if (f.id === 'student_name') val = row.student.name;
                             else if (f.id === 'student_dept') val = row.student.dept;
                         }
-                        // 優先讀取 App Data
+                        // 優先讀取 App Data (雖然唯讀通常不會有 App Data，但保持邏輯一致)
                         if (row.appId && row.appData[f.id] !== undefined) val = row.appData[f.id];
 
                         if (val) {
-                            // 計算寬度
                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24; 
-                            if (w > maxW) maxW = w;
+                            if (w > finalW) finalW = w;
                         }
                     });
                 }
-                
-                // 4. 設定寬度 (給予最小值保護)
-                if (f.type === 'text' || f.type === 'address') {
-                    columnWidths[f.id] = Math.max(maxW, f.width ? parseInt(f.width) : 100);
-                } else {
-                    columnWidths[f.id] = Math.max(maxW, 80);
+                else if (f.type === 'text' || f.type === 'address') {
+                    // === 需求3: 文字欄位寬度不變 (依據設定檔 width 或預設) ===
+                    // 這裡直接設定為較寬的固定值，或者讀取 config 中的 width
+                    // 預設給 200px 讓它有空間換行，如果不夠寬會自動往下長
+                    finalW = f.width ? parseInt(f.width) : 200;
                 }
+                
+                // C. === 需求4 (補充): 提示字元 Placeholder 優先 ===
+                // 檢查是否有提示字元，若有，寬度至少要能顯示提示字元
+                let placeholderText = "";
+                
+                if (f.type === 'date') {
+                    // 日期格式提示
+                    placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
+                } 
+                else if (f.calcMode === 'weighted') {
+                    // 權重分配提示
+                    placeholderText = "(點擊填寫)";
+                } 
+                else if (f.placeholder) {
+                    // 設定檔中的提示
+                    placeholderText = f.placeholder;
+                }
+                else if (f.type === 'single_select') {
+                    // 下拉選單預設提示
+                    placeholderText = "請選擇...";
+                }
+
+                if (placeholderText) {
+                    const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 25; // +Buffer
+                    // 取最大值：目前的計算結果 vs 提示字元寬度
+                    finalW = Math.max(finalW, phWidth);
+                }
+
+                // D. 設定最終寬度 (給予極限最小值保護 80px)
+                columnWidths[f.id] = Math.max(finalW, 80);
             });
 
             // 3. 渲染表頭 (Header)
