@@ -1278,9 +1278,17 @@
                             input.value = val || "";
                             
                             if (f.type === 'date') {
-                                // ... (日期邏輯保持不變) ...
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                                input.addEventListener('change', (e) => { /* ...日期處理邏輯... */ });
+                                input.addEventListener('change', (e) => {
+                                    let v = e.target.value.trim().replace(/[^\d]/g, '');
+                                    if (f.inputFormat === 'ROC') {
+                                        if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
+                                        else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
+                                    } else if (v.length === 8) { 
+                                        e.target.value = `${v.substring(0,4)}/${v.substring(4,6)}/${v.substring(6,8)}`;
+                                    }
+                                    handleGridChange(e.target, student, course, f);
+                                });
                             }
                         }
                         
@@ -1288,49 +1296,34 @@
                         input.dataset.field = f.id;
                         input.title = val || ""; 
                         
-                        // === 修改重點開始：處理歸戶與加權按鈕 ===
+                        // === 修改重點開始：處理歸戶與加權 ===
                         if(appId) {
                             input.classList.add(`app-input-${appId}-${f.id}`);
                             td.classList.add('is-linked'); 
 
                             // ★ 針對「加權」欄位 (如時數)
                             if (f.calcMode === 'weighted') {
-                                // 1. 【禁止手輸】：設為唯讀，避免使用者直接打字造成錯亂
+                                // 1. 【禁止手輸】：設為唯讀，避免使用者直接打字
                                 input.readOnly = true;
-                                input.style.cursor = 'pointer'; // 滑鼠變成手指，提示可點擊
-                                input.style.backgroundColor = '#f8fafc'; // 淺灰底色表示唯讀
-                                input.style.color = '#64748b';
-                                input.placeholder = "(點擊右側分配)";
+                                input.style.cursor = 'pointer'; // 滑鼠變成手指
+                                input.style.backgroundColor = '#f8fafc'; // 淺灰底色
+                                input.style.color = '#64748b'; // 文字顏色
+                                input.style.textAlign = 'center'; // 文字置中更好看
+                                
+                                // 2. 移除計算機按鈕，改為點擊輸入框直接觸發
+                                // 修改提示文字
+                                input.placeholder = "(點擊填寫時數)";
 
-                                // 2. 調整輸入框寬度 (讓出位置給按鈕)
-                                input.style.width = "calc(100% - 30px)"; 
-                                
-                                // 3. 建立「分配按鈕」
-                                const distBtn = document.createElement('button');
-                                distBtn.type = "button"; // 避免誤觸 submit
-                                distBtn.className = "absolute right-0 top-0 bottom-0 w-8 flex items-center justify-center text-indigo-500 hover:bg-indigo-100 hover:text-indigo-700 transition z-20 cursor-pointer border-l border-slate-200 bg-white";
-                                distBtn.innerHTML = '<i class="fas fa-calculator text-xs"></i>';
-                                distBtn.title = "輸入總數並自動分配";
-                                
-                                // 綁定點擊事件
-                                distBtn.onclick = (e) => {
-                                    e.stopPropagation(); // 阻止事件冒泡
+                                // 3. 綁定點擊事件：直接開啟分配視窗
+                                input.onclick = (e) => {
+                                    e.stopPropagation(); 
                                     e.preventDefault();
                                     
-                                    // 呼叫彈窗函式
                                     if(typeof openDistributionModal === 'function') {
+                                        // 無論幾門課，都統一開啟視窗輸入總數
                                         openDistributionModal(student.id, appId, f.id);
-                                    } else {
-                                        alert('錯誤：找不到分配視窗函式 (openDistributionModal)');
                                     }
                                 };
-
-                                // 點擊輸入框也觸發按鈕 (因為現在是唯讀的，這樣體驗更好)
-                                input.onclick = (e) => {
-                                    distBtn.click();
-                                };
-
-                                td.appendChild(distBtn);
                             }
                         } else {
                             td.classList.add('is-raw');
@@ -1340,7 +1333,8 @@
                         if (f.type !== 'date') {
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         }
-                        // 修正：如果是 weighted 且已歸戶，不需要 oninput 提示，因為是唯讀
+                        
+                        // 修正：如果是 weighted 且已歸戶，不需要 oninput (因為唯讀)
                         if (!(appId && f.calcMode === 'weighted')) {
                             input.oninput = (e) => { e.target.title = e.target.value; }; 
                         }
