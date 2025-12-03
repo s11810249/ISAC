@@ -3891,11 +3891,18 @@
             renderGlobalGrid();
         }
         
-        // --- 補上缺失的 Grid 渲染函式 ---
+        // --- 補上缺失的 Grid 渲染函式 (修正：無資料時不顯示表頭) ---
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
             if (!thead || !tbody) return;
+
+            // ★★★ 新增判斷：若無學生資料，清空表格並直接結束 (不顯示表頭) ★★★
+            if (Object.keys(groupedStudents).length === 0) {
+                thead.innerHTML = '';
+                tbody.innerHTML = '';
+                return;
+            }
 
             thead.innerHTML = '';
             tbody.innerHTML = '';
@@ -4091,7 +4098,7 @@
                 tbody.appendChild(tr);
             });
         }
-            
+
     </script>
 </body>
 </html>
