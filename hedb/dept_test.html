@@ -479,12 +479,13 @@
         
         /* 移除 .cell-left, .cell-center 區分，統一使用上方設定 */
         
-        /* --- Grid 視覺與層級最終修正 (V9) --- */
+        /* --- Grid 視覺與層級最終修正 (V10: 絕對層級版) --- */
 
         /* 1. 表格基礎設定 */
         .excel-table { 
             border-collapse: separate; 
             border-spacing: 0;
+            position: relative; /* 建立表格層級 */
         }
         
         /* 一般格線 */
@@ -492,17 +493,25 @@
             border-right: 1px solid #f1f5f9; 
             border-bottom: 1px solid #f1f5f9; 
             box-sizing: border-box;
+            background-clip: padding-box; /* 防止背景蓋住邊框 */
         }
 
         /* 2. 層級設定 (Z-Index Hierarchy) - 嚴格分層 */
-        /* 規則：下拉選單(100) > 表頭凍結(60) > 一般表頭(50) > 內容凍結(40) > 一般內容(auto) */
+        /* 規則：下拉選單(100) > 表頭凍結(90) > 一般表頭(80) > 內容凍結(70) > 一般內容(auto) */
+
+        /* 強制表頭區塊最高 */
+        thead {
+            position: sticky;
+            top: 0;
+            z-index: 80;
+        }
 
         /* 一般表頭 */
         thead th {
             position: sticky;
             top: 0;
             background-color: #f8fafc;
-            z-index: 50; /* ★ 必須高於 td.sticky-col (40) */
+            z-index: 80; /* ★ 必須高於 td.sticky-col (70) */
             border-bottom: 2px solid #94a3b8 !important; 
             color: #475569;
         }
@@ -510,7 +519,7 @@
         /* 表頭的凍結欄位 (左上角) */
         th.sticky-col {
             background-color: #f8fafc !important;
-            z-index: 60 !important; /* ★ 最高層級 */
+            z-index: 90 !important; /* ★ 最高層級，高於一般表頭 */
             border-bottom: 2px solid #94a3b8 !important;
         }
 
@@ -518,7 +527,7 @@
         td.sticky-col {
             position: sticky;
             background-color: #fff !important;
-            z-index: 40 !important; /* ★ 降低層級，確保滑動時鑽入表頭下方 */
+            z-index: 70 !important; /* ★ 必須比表頭(80)低，確保滑入下方 */
         }
 
         /* 3. 凍結列最右邊加粗 */
@@ -4406,6 +4415,7 @@
             // 暫存狀態
             let tempHiddenCols = [...gridState.hiddenCols];
             let tempColumnOrder = [...gridState.columnOrder];
+            // 排序狀態直接使用 gridState，因為我們希望排序即時生效 (或者也可以做成暫存，看您需求，這裡改為暫存但在 toggle 時生效)
             let tempSortKey = gridState.sortKey || 'student_id';
             let tempSortDir = gridState.sortDir || 'asc';
 
@@ -4543,22 +4553,22 @@
 
             // --- 事件綁定 ---
             
-            // ★ 修正：資料排序按鈕事件 (加入 preventDefault 與 stopPropagation)
+            // 資料排序按鈕切換
             const sortBtn = dropdown.querySelector('#grid-sort-dir-btn');
             sortBtn.onclick = (e) => {
                 e.preventDefault();
-                e.stopPropagation(); // 關鍵：防止事件冒泡關閉選單
+                e.stopPropagation(); 
                 tempSortDir = tempSortDir === 'asc' ? 'desc' : 'asc';
                 sortBtn.innerHTML = tempSortDir === 'asc' ? '<i class="fas fa-sort-amount-down-alt"></i>' : '<i class="fas fa-sort-amount-up"></i>';
             };
             
-            // ★ 修正：資料排序下拉選單事件
+            // 資料排序欄位變更
             const sortSelect = dropdown.querySelector('#grid-sort-select');
             sortSelect.onchange = (e) => {
                 e.stopPropagation();
                 tempSortKey = e.target.value;
             };
-            sortSelect.onclick = (e) => e.stopPropagation(); // 防止點擊 select 本身關閉選單
+            sortSelect.onclick = (e) => e.stopPropagation(); 
 
             // 凍結輸入框防止冒泡
             dropdown.querySelector('#grid-freeze-input').onclick = (e) => e.stopPropagation();
@@ -4575,14 +4585,16 @@
             };
             dropdown.querySelector('#grid-apply').onclick = () => details.removeAttribute('open');
             
-            // 監聽關閉事件，執行重繪
+            // ★ 監聽關閉事件，執行重繪
             details.addEventListener('toggle', () => {
                 if (!details.open) {
                     const newFreeze = parseInt(document.getElementById('grid-freeze-input').value) || 0;
+                    
+                    // 檢查是否有變更
                     const isChanged = 
                         newFreeze !== gridState.frozenCount ||
-                        tempSortKey !== gridState.sortKey ||
-                        tempSortDir !== gridState.sortDir ||
+                        tempSortKey !== gridState.sortKey ||  // 檢查排序欄位
+                        tempSortDir !== gridState.sortDir ||  // 檢查排序方向
                         JSON.stringify(tempHiddenCols.sort()) !== JSON.stringify(gridState.hiddenCols.sort()) ||
                         JSON.stringify(tempColumnOrder) !== JSON.stringify(gridState.columnOrder);
 
@@ -4593,8 +4605,8 @@
                         gridState.sortKey = tempSortKey;
                         gridState.sortDir = tempSortDir;
                         
-                        renderGlobalGrid(); 
-                        renderGridColumnPicker(); // 重新渲染選單以更新計數
+                        renderGlobalGrid();  // 重繪表格
+                        renderGridColumnPicker(); // 重新渲染選單以更新計數與狀態
                     }
                 } else {
                     // 開啟時重置
@@ -4604,7 +4616,7 @@
                     tempSortDir = gridState.sortDir;
                     
                     // 同步 UI 狀態
-                    document.getElementById('grid-sort-select').value = tempSortKey;
+                    sortSelect.value = tempSortKey;
                     document.getElementById('grid-freeze-input').value = gridState.frozenCount;
                     sortBtn.innerHTML = tempSortDir === 'asc' ? '<i class="fas fa-sort-amount-down-alt"></i>' : '<i class="fas fa-sort-amount-up"></i>';
                     
