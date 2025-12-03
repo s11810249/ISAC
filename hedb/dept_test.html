@@ -1329,7 +1329,6 @@
                         if (fieldDef.calcMode === 'weighted') {
                             // === 修正：加權分配模式 (Weighted Distribution) ===
                             // 邏輯：對於時數/點數，歸戶後的數值應為「總和」。
-                            // (權重是用來在「填總數自動分配」時使用的，但在此處「由下往上」匯總時，就是單純累加)
                             let sum = 0;
                             linkedCourses.forEach(c => {
                                 const v = parseFloat(c[fieldDef.id]);
@@ -1337,7 +1336,7 @@
                                     sum += v;
                                 }
                             });
-                            finalValue = sum; // 200 + 300 = 500
+                            finalValue = sum; 
                         } else {
                             // === 一般平均/加總模式 ===
                             let sum = 0;
