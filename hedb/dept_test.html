@@ -1070,11 +1070,8 @@
     </div>
 
     <!-- Toast Notification (Fixed) -->
-    <div id="toast" class="fixed bottom-5 right-5 px-6 py-3 rounded-lg shadow-lg z-50 flex items-center gap-3 text-white translate-y-20 opacity-0 transition-all duration-300 pointer-events-none">
-        <i id="toast-icon" class="fas fa-info-circle"></i>
-        <span id="toast-msg">Notification</span>
-        <button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>
-    </div>
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[200] flex flex-col gap-3 pointer-events-none transition-all duration-300">
+        </div>
     
     <div id="info-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center modal-overlay p-4">
         <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
@@ -3400,19 +3397,71 @@
 
         let toastTimeout;
         function showToast(type, msg) {
-            const el = document.getElementById('toast');
-            el.classList.remove('pointer-events-none');
-            el.innerHTML = `<i class="fas fa-${type==='success'?'check-circle':'exclamation-circle'}"></i> <span>${msg}</span><button onclick="hideToast(event)" class="ml-auto hover:text-slate-200 focus:outline-none p-1"><i class="fas fa-times"></i></button>`;
-            el.className = `fixed bottom-16 right-5 px-6 py-3 rounded-lg shadow-lg z-[200] flex items-center gap-3 text-white ${type==='success'?'bg-emerald-600':'bg-red-600'} toast-enter-active`;
-            if(toastTimeout) clearTimeout(toastTimeout);
-            toastTimeout = setTimeout(() => hideToast(), 3000);
-        }
+            const container = document.getElementById('toast-container');
+            if (!container) return;
 
-        function hideToast(e) {
-            if(e) e.stopPropagation();
-            const el = document.getElementById('toast');
-            el.classList.replace('toast-enter-active', 'toast-exit-active');
-            el.classList.add('pointer-events-none');
+            // 1. 建立新的 Toast 元素
+            const el = document.createElement('div');
+            
+            // 設定顏色
+            let colorClass = 'bg-slate-800'; // 預設
+            let iconClass = 'fa-info-circle';
+            
+            if (type === 'success') {
+                colorClass = 'bg-emerald-600';
+                iconClass = 'fa-check-circle';
+            } else if (type === 'error') {
+                colorClass = 'bg-red-600';
+                iconClass = 'fa-exclamation-circle';
+            } else if (type === 'warning') {
+                colorClass = 'bg-orange-500';
+                iconClass = 'fa-exclamation-triangle';
+            } else if (type === 'info') {
+                colorClass = 'bg-sky-600';
+                iconClass = 'fa-info-circle';
+            }
+
+            // 2. 設定樣式 (初始狀態: 透明 + 位移)
+            // pointer-events-auto 確保訊息本身可以被點擊或選取
+            el.className = `${colorClass} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] transform transition-all duration-300 translate-y-10 opacity-0 pointer-events-auto`;
+            
+            el.innerHTML = `
+                <i class="fas ${iconClass} text-lg"></i> 
+                <span class="font-bold text-sm tracking-wide">${msg}</span>
+                <button class="ml-auto hover:text-slate-200 focus:outline-none p-1 transition-colors"><i class="fas fa-times"></i></button>
+            `;
+
+            // 3. 定義關閉函式
+            const close = () => {
+                // 執行動畫 (淡出 + 向下位移)
+                el.classList.add('opacity-0', 'translate-y-10');
+                el.classList.remove('mb-2'); // 移除間距讓動畫更順暢
+                
+                // 等待動畫結束後移除 DOM
+                setTimeout(() => {
+                    if (el.parentElement) el.remove();
+                }, 300);
+            };
+
+            // 綁定關閉按鈕事件
+            el.querySelector('button').onclick = close;
+
+            // 4. 將元素加入容器
+            // appendChild 會將新訊息加在最下方 (堆疊向上長)
+            container.appendChild(el);
+
+            // 5. 觸發進場動畫 (下一幀執行，讓 transition 生效)
+            requestAnimationFrame(() => {
+                el.classList.remove('translate-y-10', 'opacity-0');
+            });
+
+            // 6. 設定 3 秒後自動關閉
+            setTimeout(close, 3000);
+        }
+        
+        // 為了相容性保留 hideToast 函式名 (雖然現在邏輯都在 showToast 內處理了)
+        function hideToast() {
+            // 空函式，避免舊代碼呼叫報錯
         }
 
         // --- Helper: 寬鬆搜尋課程欄位值 ---
