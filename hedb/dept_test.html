@@ -1693,14 +1693,6 @@
                 trHead.appendChild(th);
             });
 
-            // ★★★ 新增：最右側凍結表頭「歸戶狀態」 ★★★
-            const thStatus = document.createElement('th');
-            thStatus.className = "bg-slate-100 text-slate-600 px-2 py-2 text-sm font-bold whitespace-nowrap select-none sticky-col-right";
-            thStatus.style.minWidth = "140px"; // 給予固定寬度
-            thStatus.style.textAlign = 'center';
-            thStatus.innerHTML = "歸戶狀態";
-            trHead.appendChild(thStatus);
-
             theadFragment.appendChild(trHead);
 
             // 4. 渲染內容 (Body)
@@ -1849,39 +1841,6 @@
                     }
                     tr.appendChild(td);
                 });
-                
-                // ★★★ 新增：最右側凍結內容「歸戶狀態」 ★★★
-                const tdStatus = document.createElement('td');
-                tdStatus.className = "border-l-2 border-slate-300 p-0 relative sticky-col-right";
-                tdStatus.style.minWidth = "140px";
-                // 使用 JS 設定背景色，確保與該行交替色一致
-                tdStatus.style.backgroundColor = bgBase;
-
-                let statusHtml = '';
-                if (!appId) {
-                    // 未歸戶：紅色
-                    statusHtml = `<span class="font-bold text-red-500 text-sm">未歸戶</span>`;
-                } else {
-                    // 已歸戶：紫色，計算流水號
-                    // 在 student.applications 中尋找此 appId 的 index
-                    const appIdx = student.applications.findIndex(a => a.id === appId);
-                    const seq = appIdx >= 0 ? appIdx + 1 : '?';
-                    
-                    statusHtml = `
-                        <div class="flex flex-col items-center justify-center leading-tight py-1">
-                            <span class="text-xs font-bold text-purple-600 mb-0.5">已歸戶 ${student.id}</span>
-                            <span class="text-[10px] text-purple-400 bg-purple-50 px-1.5 py-0.5 rounded border border-purple-100">實習紀錄${seq}</span>
-                        </div>
-                    `;
-                }
-
-                // 使用 cell-read-only 容器確保置中
-                const divStatus = document.createElement('div');
-                divStatus.className = "cell-read-only";
-                divStatus.innerHTML = statusHtml;
-                tdStatus.appendChild(divStatus);
-
-                tr.appendChild(tdStatus);
 
                 tbodyFragment.appendChild(tr);
                 
