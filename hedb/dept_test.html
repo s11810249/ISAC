@@ -1918,6 +1918,12 @@
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
+            if (fieldDef.type === 'address') {
+                // 呼叫全域輔助函式處理格式 (全形轉半形、台/臺、路段補全等)
+                // 注意：processAddress 會直接修改 inputEl.value
+                processAddress(inputEl, fieldDef);
+            }
+
             const newVal = inputEl.value;
             inputEl.title = newVal; // 更新 Hover 提示
             
