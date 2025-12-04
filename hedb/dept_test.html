@@ -1474,6 +1474,7 @@
         // --- 傳統填報模式 (Grid View) ---
         
         // --- 修改後的視圖切換函式 ---
+        // --- 修改後的視圖切換函式 (加入清除暫存與資料檢查) ---
         async function switchViewMode(mode) {
             const gridView = document.getElementById('grid-view-container');
             const btnApp = document.getElementById('btn-view-app');
@@ -1521,6 +1522,7 @@
             return metrics.width;
         }
 
+        // ★★★ 請將 promptAndConsolidate 貼在這裡 ★★★
         // --- 輔助：點擊未歸戶資料時的處理函式 ---
         async function promptAndConsolidate(student, course) {
             const confirm = await showConfirm(
@@ -1568,7 +1570,7 @@
             
             logChange('GridAutoCreate', appId, '', 'Created by grid interaction', student.id);
         }
-
+        
         function renderGlobalGrid() {
             const thead = document.getElementById('grid-thead');
             const tbody = document.getElementById('grid-tbody');
@@ -1864,6 +1866,7 @@
                                 if(typeof openDistributionModal === 'function') openDistributionModal(student.id, appId, f.id);
                             };
                         }
+                        // ★★★ 修改結束 ★★★
 
                         input.value = val || "";
                         input.dataset.field = f.id;
