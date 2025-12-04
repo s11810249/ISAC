@@ -1919,12 +1919,11 @@
         function handleGridChange(inputEl, student, course, fieldDef) {
             
             // ★★★ 修正：依據 Template 設定的屬性執行地址格式化 ★★★
-            // fieldDef 來自 currentYearConfig.fields，包含了 latinToEng, toHalf 等屬性
             if (fieldDef.type === 'address') {
-                // 將 fieldDef 作為 settings 傳入，processAddress 會讀取其中的屬性進行調整
-                processAddress(inputEl, fieldDef);
+                if (fieldDef.toHalf || fieldDef.forceTai || fieldDef.latinToEng || fieldDef.smartFormat) {
+                    processAddress(inputEl, fieldDef);
+                }
             }
-            // ★★★ 修正結束 ★★★
 
             const newVal = inputEl.value; // 讀取格式化後的最新值
             inputEl.title = newVal; // 更新 Hover 提示
