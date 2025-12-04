@@ -1474,7 +1474,6 @@
         // --- 傳統填報模式 (Grid View) ---
         
         // --- 修改後的視圖切換函式 ---
-        // --- 修改後的視圖切換函式 (加入清除暫存與資料檢查) ---
         async function switchViewMode(mode) {
             const gridView = document.getElementById('grid-view-container');
             const btnApp = document.getElementById('btn-view-app');
@@ -1520,6 +1519,54 @@
             context.font = font;
             const metrics = context.measureText(text);
             return metrics.width;
+        }
+
+        // --- 輔助：點擊未歸戶資料時的處理函式 ---
+        async function promptAndConsolidate(student, course) {
+            const confirm = await showConfirm(
+                '需要歸戶', 
+                '此資料尚未歸戶，請先執行歸戶操作後再進行編輯。\n是否立即為此課程建立一份實習紀錄？'
+            );
+            
+            if (!confirm) return;
+
+            // 1. 準備歸戶資料
+            const appId = 'app_grid_click_' + Date.now();
+            const initData = {};
+            
+            // 複製既有資料到表單
+            (currentYearConfig.fields || []).forEach(f => {
+                 if (!f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info') {
+                     const val = course[f.id];
+                     if (val !== undefined && val !== null && String(val).trim() !== "") {
+                         initData[f.id] = val;
+                     }
+                 }
+            });
+            
+            // 自動帶入機構名稱 (若有的話)
+            if (!initData['internship_institution_name']) {
+                const instName = getCourseValue(course, ['internship_institution_name', '實習機構', '機構名稱']);
+                if (instName && instName !== '-') initData['internship_institution_name'] = instName;
+            }
+
+            const newApp = {
+                id: appId,
+                courseIds: [course._internal_id],
+                formData: initData
+            };
+            
+            // 2. 執行寫入
+            student.applications.push(newApp);
+            course._app_id = appId;
+            hasUnsavedChanges = true;
+            
+            // 3. 更新畫面
+            showToast('success', '歸戶建立完成，現在可以開始編輯');
+            renderGlobalGrid();      // 重繪總表
+            renderGridStudentList(); // 更新側邊欄狀態
+            
+            logChange('GridAutoCreate', appId, '', 'Created by grid interaction', student.id);
         }
 
         function renderGlobalGrid() {
@@ -1780,14 +1827,40 @@
                             }
                         }
 
-                        if (f.placeholder) input.placeholder = f.placeholder;
-                        if (f.calcMode === 'weighted') {
+                        // ★★★ 修改開始：檢查歸戶狀態 ★★★
+                        if (!appId) {
+                            // 情境 A: 未歸戶 -> 強制唯讀，點擊觸發歸戶詢問
+                            input.readOnly = true;
+                            input.style.cursor = 'pointer';
+                            input.title = "尚未歸戶 (點擊以建立)";
+                            
+                            // 定義點擊處理器
+                            const triggerConsolidate = (e) => {
+                                e.preventDefault();     // 防止輸入框取得焦點
+                                e.stopPropagation();    // 防止冒泡
+                                promptAndConsolidate(student, course);
+                            };
+
+                            // 針對不同元素綁定事件
+                            if (input.tagName === 'SELECT') {
+                                // Select 元素用 mousedown 攔截最有效 (防止下拉選單打開)
+                                input.addEventListener('mousedown', triggerConsolidate);
+                            } else {
+                                input.onclick = triggerConsolidate;
+                            }
+                            
+                            // (選用) 讓未歸戶的格子背景稍微不同，提示使用者
+                            // input.style.backgroundColor = "#ffffff"; 
+                        } 
+                        else if (f.calcMode === 'weighted') {
+                            // 情境 B: 已歸戶且為權重分配欄位 (維持原有邏輯)
                             input.placeholder = "(點擊填寫)";
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
                             td.style.backgroundColor = bgReadOnly; 
                             input.onclick = (e) => {
-                                e.stopPropagation(); e.preventDefault();
+                                e.stopPropagation();
+                                e.preventDefault();
                                 if(typeof openDistributionModal === 'function') openDistributionModal(student.id, appId, f.id);
                             };
                         }
