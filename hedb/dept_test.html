@@ -1916,15 +1916,17 @@
         }
 
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
-        // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
+            
+            // ★★★ 修正：依據 Template 設定的屬性執行地址格式化 ★★★
+            // fieldDef 來自 currentYearConfig.fields，包含了 latinToEng, toHalf 等屬性
             if (fieldDef.type === 'address') {
-                // 呼叫全域輔助函式處理格式 (全形轉半形、台/臺、路段補全等)
-                // 注意：processAddress 會直接修改 inputEl.value
+                // 將 fieldDef 作為 settings 傳入，processAddress 會讀取其中的屬性進行調整
                 processAddress(inputEl, fieldDef);
             }
+            // ★★★ 修正結束 ★★★
 
-            const newVal = inputEl.value;
+            const newVal = inputEl.value; // 讀取格式化後的最新值
             inputEl.title = newVal; // 更新 Hover 提示
             
             const appId = course._app_id;
