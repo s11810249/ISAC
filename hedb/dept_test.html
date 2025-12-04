@@ -1901,7 +1901,7 @@
                     });
                 }, 0);
                 
-                updateRowLogic(tr, appId ? appData : course);
+                updateRowLogic(tr, appId ? appData : course, !appId);
             });
 
             thead.appendChild(theadFragment);
@@ -2048,7 +2048,9 @@
                         const cid = tr.dataset.cid;
                         const sid = tr.dataset.sid; 
                         if (sid === student.id && app.courseIds.includes(cid)) {
-                            updateRowLogic(tr, app.formData);
+                            // 修改前：updateRowLogic(tr, app.formData);
+                            // 修改後：明確傳入 false (因為這是已歸戶的 App 資料)
+                            updateRowLogic(tr, app.formData, false);
                         }
                     });
                 }
@@ -2056,8 +2058,10 @@
                 // === 情境 B: 未歸戶 ===
                 course[fieldDef.id] = newVal;
                 const tr = inputEl.closest('tr');
-                if (tr) updateRowLogic(tr, course);
-
+                // 修改前：if (tr) updateRowLogic(tr, course);
+                // 修改後：傳入 true (這是未歸戶資料)
+                if (tr) updateRowLogic(tr, course, true);
+                
                 if (!isScoreField && newVal && newVal.trim() !== "") {
                     tryAutoMerge(student, course);
                 }
@@ -4071,9 +4075,11 @@
         }
         
         // ★★★ 核心輔助：更新單一列的邏輯 (鎖定狀態 & 下拉連動) ★★★
-        function updateRowLogic(tr, dataContext) {
-            const fields = currentYearConfig.fields || [];
+        function updateRowLogic(tr, dataContext, isUnassigned = false) {
             
+            if (isUnassigned) return;
+            
+            const fields = currentYearConfig.fields || [];
             fields.forEach(f => {
                 const input = tr.querySelector(`[data-field="${f.id}"]`);
                 if (!input) return;
