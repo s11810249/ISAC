@@ -730,6 +730,22 @@
             pointer-events: none; /* 禁止下拉操作 */
             background-color: transparent;
         }
+
+        /* 確保學生列表的 Wrapper 可以捲動 */
+        #student-grid-wrapper {
+            overflow-x: auto; /* 強制水平捲軸 */
+            overflow-y: hidden; /* 避免垂直雙重捲軸 (內部還有一個 div 負責垂直) */
+        }
+        
+        #student-grid-wrapper .flex-grow {
+            overflow: auto; /* 內容區域雙向捲動 */
+        }
+        
+        /* 確保表格不會被壓縮 */
+        #student-grid-wrapper table {
+            min-width: 100%; 
+            /* width 將由 JS 動態計算後寫入 style */
+        }
         /* --- style結尾 --- */
     </style> 
 </head>
@@ -898,7 +914,12 @@
 
                 <div class="flex-grow relative overflow-hidden bg-slate-50">
                     
-                    <div id="student-grid-wrapper" class="hidden absolute inset-x-0 top-0 bottom-10 flex flex-col bg-white z-20 border-b border-slate-200">
+                    <div id="student-grid-wrapper" class="hidden absolute inset-x-0 top-0 bottom-10 flex flex-col bg-white z-50 border-b border-slate-200 shadow-lg">
+                        <div class="flex-grow overflow-auto custom-scroll relative p-0">
+                            <table class="excel-table relative">
+                                </table>
+                        </div>
+                    </div>
                         
                         <div class="px-6 py-2 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-shrink-0">
                             <h2 class="font-bold text-slate-700 text-sm flex items-center gap-2">
@@ -3262,13 +3283,12 @@
                 const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
                 
                 if (!wrapper) return;
-
+        
                 let isLocked = false;
-
-                // --- 1. Visibility 檢查 ---
+        
+                // --- 1. Visibility 檢查 (這部分保持不變) ---
                 if (f.visibilityRule) {
                     const depVal = app.formData[f.visibilityRule.dep];
-                    // ★ 嚴謹檢查 ★
                     const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
                     
                     if (!hasDepValue) {
@@ -3283,26 +3303,31 @@
                         if (!shouldShow) isLocked = true;
                     }
                 }
-
-                // --- 2. Filter Rules 檢查 ---
+        
+                // --- 2. Filter Rules 檢查 (針對 Select 增強邏輯) ---
                 if (!isLocked && f.filterRules && f.filterRules.length > 0) {
                     const parentId = f.filterRules[0].dep;
                     const parentVal = app.formData[parentId];
-
+        
                     if (!parentVal || parentVal === "") {
-                        isLocked = true;
+                        isLocked = true; // 父欄位沒值，子欄位鎖定
                     } else {
                         const rule = f.filterRules.find(r => r.val === parentVal);
-                        if (!rule) isLocked = true;
+                        if (!rule) isLocked = true; // 找不到對應規則，鎖定
                         else {
                             if (inputEl && inputEl.tagName === 'SELECT') {
+                                // 雖然沒鎖定，但要過濾選項
+                                let hasValidOption = false;
                                 Array.from(inputEl.options).forEach(opt => {
                                     if (opt.value === "") return;
                                     const show = rule.limitTo && rule.limitTo.includes(opt.value);
                                     opt.hidden = !show;
-                                    opt.disabled = !show;
+                                    opt.disabled = !show; // 為了相容性同時設定 disabled
+                                    if(show && opt.value === inputEl.value) hasValidOption = true;
                                 });
-                                if (inputEl.value && rule.limitTo && !rule.limitTo.includes(inputEl.value)) {
+                                
+                                // 如果當前選的值被過濾掉了，重置為空
+                                if (inputEl.value && !hasValidOption) {
                                     inputEl.value = "";
                                     app.formData[f.id] = "";
                                 }
@@ -3310,25 +3335,31 @@
                         }
                     }
                 }
-
-                // --- 3. UI 更新 ---
+        
+                // --- 3. UI 更新 (確保 Select 也被正確 Disable) ---
                 if (isLocked) {
                     wrapper.classList.add('field-locked');
-                    if (inputEl && inputEl.type !== 'hidden') {
-                        inputEl.disabled = true;
-                        if(inputEl.value !== "") {
+                    if (inputEl) {
+                        inputEl.disabled = true; // ★ 關鍵：強制設為 disabled
+                        if (inputEl.type !== 'hidden' && inputEl.value !== "") {
                             inputEl.value = "";
                             app.formData[f.id] = "";
                         }
                     }
                     if (rocContainer) {
-                        rocContainer.querySelector('input').value = "";
-                        rocContainer.querySelector('input').disabled = true;
+                        const rocInput = rocContainer.querySelector('input');
+                        if(rocInput) {
+                            rocInput.value = "";
+                            rocInput.disabled = true;
+                        }
                     }
                 } else {
                     wrapper.classList.remove('field-locked');
-                    if (inputEl) inputEl.disabled = false;
-                    if (rocContainer) rocContainer.querySelector('input').disabled = false;
+                    if (inputEl) inputEl.disabled = false; // ★ 解鎖
+                    if (rocContainer) {
+                        const rocInput = rocContainer.querySelector('input');
+                        if(rocInput) rocInput.disabled = false;
+                    }
                 }
             });
         }
@@ -5242,12 +5273,15 @@
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
             });
-
-            // ★ 強制設定表格總寬度，確保撐開容器出現捲軸
+            
+            // ★★★ 新增/修改：強制設定表格總寬度，確保撐開容器出現捲軸 ★★★
             const tableElement = document.querySelector('#student-grid-wrapper table');
             if(tableElement) {
-                // 額外加 2px 避免計算誤差導致換行
-                tableElement.style.width = (totalTableWidth + 2) + 'px';
+                // 額外加 2px 避免計算誤差導致換行或捲軸閃爍
+                // 重要：這裡的 width 設定會覆蓋 CSS 的 width: 100%
+                // 讓瀏覽器知道表格實際有多寬，進而觸發父容器的 overflow-x
+                tableElement.style.width = (totalTableWidth + 20) + 'px'; 
+                tableElement.style.tableLayout = 'fixed'; // 確保欄位寬度嚴格遵守設定
             }
 
             // (E) 渲染表頭 (★ 已移除點擊排序與圖示)
