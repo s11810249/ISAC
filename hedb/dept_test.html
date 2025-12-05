@@ -113,7 +113,13 @@
         .tab-content.active { display: block; }
 
         /* Excel Preview Table */
-        .excel-table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
+        .excel-table { 
+            border-collapse: separate; 
+            border-spacing: 0;
+            table-layout: fixed; /* ★ 新增：固定表格佈局，確保欄位寬度強制生效以產生捲軸 */
+            width: auto;         /* ★ 修改：由 JS 動態控制寬度，不強迫 100% */
+            min-width: 100%;     /* 確保至少填滿畫面 */
+        }
         .excel-table th, .excel-table td { border: 1px solid #e2e8f0; padding: 6px 10px; white-space: nowrap; }
         .excel-table th { background-color: #f8fafc; color: #64748b; font-weight: bold; text-align: left; }
         
