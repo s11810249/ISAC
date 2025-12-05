@@ -5108,16 +5108,25 @@
 
             const fields = currentYearConfig.fields || [];
             
-            // 欄位準備 (排除系統欄位)
+            // 欄位準備 (排除系統隱藏欄位)
             let allColumns = fields
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
                 .filter(f => !localGridState.hiddenCols.includes(f.id));
 
             // 欄位排序
             const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
-            allColumns.sort((a,b) => getOrder(a) - getOrder(b));
+            if (localGridState.columnOrder.length > 0) {
+                allColumns.sort((a, b) => {
+                    const idxA = localGridState.columnOrder.indexOf(a.id);
+                    const idxB = localGridState.columnOrder.indexOf(b.id);
+                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                    return getOrder(a) - getOrder(b);
+                });
+            } else {
+                allColumns.sort((a,b) => getOrder(a) - getOrder(b));
+            }
 
-            // 準備資料 (扁平化)
+            // 準備資料
             let rowsData = [];
             student.courses.forEach(c => {
                 let appData = {};
@@ -5132,13 +5141,16 @@
             const columnWidths = {};
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
-                // 預設寬度
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
-                // 掃描內容寬度
                 rowsData.forEach(row => {
+                    // 預先計算值以測量寬度
                     let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
+                    if(!val && f.id === 'student_id') val = row.student.id;
+                    if(!val && f.id === 'student_name') val = row.student.name;
+                    if(!val && f.id === 'student_dept') val = row.student.dept;
+
                     if (val) {
                         const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 50;
                         finalW = Math.max(finalW, w);
@@ -5148,8 +5160,7 @@
             });
 
             // --- 渲染表頭 ---
-            // 強制凍結前 2 欄 (通常是學年/學期)
-            const freezeLimit = 2; 
+            const freezeLimit = 2; // 強制凍結前兩欄
             let currentStickyLeft = 0; 
             let trHead = document.createElement('tr');
 
@@ -5182,7 +5193,6 @@
             rowsData.forEach(row => {
                 const { student, course, appData, appId } = row;
 
-                // 處理歸戶群組的斑馬紋
                 if (appId) {
                     if (appId !== lastAppId) isAltRow = !isAltRow;
                 } else {
@@ -5212,7 +5222,6 @@
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
                     td.style.backgroundColor = cellBgColor;
 
-                    // 處理凍結欄位
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
@@ -5220,7 +5229,7 @@
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
-                    // 取值邏輯
+                    // ★★★ 修正取值邏輯 (這裡之前少了 fallback) ★★★
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -5228,9 +5237,12 @@
                         val = appData[f.id]; 
                     } else {
                         val = course[f.id];
+                        // 補上系統欄位後備值
+                        if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
+                        if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
+                        if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
 
-                    // 產生輸入框
                     if (isReadOnly) {
                         const div = document.createElement('div');
                         div.className = "cell-read-only"; 
@@ -5261,7 +5273,7 @@
                             }
                         }
 
-                        // 未歸戶/特殊欄位邏輯
+                        // 未歸戶處理
                         if (!appId) {
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
@@ -5269,7 +5281,7 @@
                             const triggerConsolidate = (e) => {
                                 e.preventDefault(); e.stopPropagation();
                                 promptAndConsolidate(student, course).then(() => {
-                                    renderStudentLocalGrid(sid); // 操作後重繪
+                                    renderStudentLocalGrid(sid);
                                 });
                             };
                             if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
@@ -5287,7 +5299,6 @@
                         input.dataset.field = f.id;
                         if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
 
-                        // 綁定事件 (共用 handleGridChange)
                         if (f.type !== 'date') {
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         } else {
@@ -5300,24 +5311,226 @@
                                 handleGridChange(e.target, student, course, f);
                             });
                         }
-
                         td.appendChild(input);
                     }
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
-                
-                // 更新邏輯鎖定 (例如: 縣市選了才能選區域)
                 updateRowLogic(tr, appId ? appData : course, !appId);
             });
             
-            // Textarea 高度調整
             setTimeout(() => {
                 document.querySelectorAll('#local-grid-tbody textarea').forEach(ta => {
                     ta.style.height = 'auto';
                     ta.style.height = (ta.scrollHeight) + 'px';
                 });
             }, 0);
+        }
+        
+        function renderLocalGridPicker() {
+            const container = document.getElementById('local-grid-column-picker');
+            // 如果找不到容器，直接結束（避免錯誤）
+            if(!container) return;
+            
+            const fields = currentYearConfig.fields || [];
+            // 排除系統內部欄位
+            let allCols = fields.filter(f => !['course_id', '_internal_id'].includes(f.id));
+            
+            // 1. 初始化排序狀態 (如果尚未設定)
+            if (!localGridState.columnOrder || localGridState.columnOrder.length === 0) {
+                const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
+                const sortedDefault = [...allCols].sort((a,b) => getOrder(a) - getOrder(b));
+                localGridState.columnOrder = sortedDefault.map(f => f.id);
+            }
+
+            // 2. 依據 State 排序欄位
+            allCols.sort((a, b) => {
+                const idxA = localGridState.columnOrder.indexOf(a.id);
+                const idxB = localGridState.columnOrder.indexOf(b.id);
+                if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                // 若無紀錄則依預設順序
+                const orderA = (a.order !== undefined) ? a.order : 999;
+                const orderB = (b.order !== undefined) ? b.order : 999;
+                return orderA - orderB;
+            });
+            // 同步更新 State 以防萬一
+            localGridState.columnOrder = allCols.map(f => f.id);
+
+            // 3. 計算顯示數量
+            const total = allCols.length;
+            const currentHiddenCount = localGridState.hiddenCols.length;
+            const currentVisible = total - currentHiddenCount;
+
+            // 4. 清空並重建容器內容
+            container.innerHTML = '';
+            
+            // 建立暫存變數 (操作時不立即生效，按下套用或關閉時才生效)
+            let tempHiddenCols = [...localGridState.hiddenCols];
+            let tempColumnOrder = [...localGridState.columnOrder];
+
+            // --- 建立 HTML 結構 ---
+            const details = document.createElement('details');
+            details.className = "group relative"; 
+            
+            // (A) 按鈕 (Summary)
+            const summary = document.createElement('summary');
+            summary.className = "custom-picker-trigger flex items-center gap-2 cursor-pointer px-3 py-1.5 bg-white border border-slate-300 rounded-lg hover:border-primary hover:text-primary transition select-none text-slate-600 shadow-sm";
+            summary.innerHTML = `
+                <div class="flex items-center gap-2 font-bold text-xs">
+                    <i class="fas fa-sliders-h"></i>
+                    <span>欄位設定</span>
+                    <span class="bg-slate-100 text-slate-600 text-[10px] px-1.5 py-0.5 rounded-full border border-slate-200 group-open:bg-primary group-open:text-white group-open:border-primary transition">
+                        ${currentVisible}
+                    </span>
+                </div>
+                <i class="fas fa-chevron-down text-[10px] text-slate-400 group-open:rotate-180 transition-transform duration-300"></i>
+            `;
+            
+            // (B) 下拉選單 (Dropdown)
+            const dropdown = document.createElement('div');
+            // 設定樣式：絕對定位、陰影、右對齊
+            dropdown.className = "picker-dropdown absolute right-0 top-full mt-2 w-[480px] bg-white border border-slate-200 rounded-xl shadow-2xl z-[100] flex flex-col overflow-hidden";
+            
+            // (B-1) 頂部操作區
+            const actions = document.createElement('div');
+            actions.className = "flex justify-between items-center px-4 py-2 border-b border-slate-100 bg-slate-50";
+            actions.innerHTML = `
+                <div class="text-[10px] text-slate-400"><i class="fas fa-grip-vertical mr-1"></i>拖曳可調整順序</div>
+                <div class="flex gap-2">
+                    <button type="button" id="local-show-all" class="text-[10px] px-2 py-1 rounded bg-white border border-slate-200 hover:border-primary hover:text-primary shadow-sm transition">全選</button>
+                    <button type="button" id="local-hide-all" class="text-[10px] px-2 py-1 rounded bg-white border border-slate-200 hover:border-slate-400 hover:text-slate-600 shadow-sm transition">全隱藏</button>
+                </div>
+            `;
+            dropdown.appendChild(actions);
+
+            // (B-2) 選項列表區 (Grid)
+            const tagsContainer = document.createElement('div');
+            tagsContainer.className = "p-4 grid grid-cols-2 gap-2 max-h-[250px] overflow-y-auto custom-scroll bg-white";
+            
+            // 渲染 Chip 的函式
+            const renderChips = () => {
+                tagsContainer.innerHTML = '';
+                tempColumnOrder.forEach((fieldId, index) => {
+                    const f = allCols.find(c => c.id === fieldId);
+                    if (!f) return;
+
+                    const lbl = document.createElement('label');
+                    lbl.className = 'field-chip-label cursor-move flex items-center p-2 rounded border border-transparent hover:bg-slate-50 transition select-none'; 
+                    lbl.draggable = true; 
+                    lbl.dataset.index = index;
+
+                    const isVisible = !tempHiddenCols.includes(f.id);
+                    // 設定樣式與內容
+                    lbl.innerHTML = `
+                        <i class="fas fa-grip-vertical text-slate-300 text-xs mr-2 cursor-move"></i>
+                        <input type="checkbox" class="mr-2 accent-primary" value="${f.id}" ${isVisible ? 'checked' : ''}>
+                        <span class="truncate font-medium text-xs text-slate-700" title="${f.label}">${f.label}</span>
+                    `;
+
+                    // Checkbox 事件
+                    const checkbox = lbl.querySelector('input');
+                    checkbox.onchange = (e) => {
+                        if (e.target.checked) {
+                            tempHiddenCols = tempHiddenCols.filter(id => id !== f.id);
+                        } else {
+                            if (!tempHiddenCols.includes(f.id)) tempHiddenCols.push(f.id);
+                        }
+                    };
+
+                    // Drag & Drop 事件
+                    lbl.addEventListener('dragstart', (e) => {
+                        e.dataTransfer.effectAllowed = 'move';
+                        e.dataTransfer.setData('text/plain', index);
+                        lbl.style.opacity = '0.5';
+                    });
+                    lbl.addEventListener('dragend', () => {
+                        lbl.style.opacity = '1';
+                    });
+                    lbl.addEventListener('dragover', (e) => { e.preventDefault(); });
+                    lbl.addEventListener('drop', (e) => {
+                        e.preventDefault();
+                        const fromIndex = parseInt(e.dataTransfer.getData('text/plain'));
+                        const toIndex = index;
+                        if (fromIndex !== toIndex && !isNaN(fromIndex)) {
+                            // 移動陣列元素
+                            const item = tempColumnOrder.splice(fromIndex, 1)[0];
+                            tempColumnOrder.splice(toIndex, 0, item);
+                            renderChips(); // 重新渲染列表
+                        }
+                    });
+                    tagsContainer.appendChild(lbl);
+                });
+            };
+            
+            renderChips(); // 初次渲染
+            dropdown.appendChild(tagsContainer);
+
+            // (B-3) 底部確認區
+            const footer = document.createElement('div');
+            footer.className = "picker-footer-action px-4 py-2 border-t border-slate-100 flex justify-end bg-slate-50";
+            footer.innerHTML = `
+                <button type="button" id="local-apply" class="px-4 py-1.5 bg-primary hover:bg-indigo-900 text-white text-xs font-bold rounded-lg shadow-md transition">
+                    套用設定
+                </button>
+            `;
+            dropdown.appendChild(footer);
+
+            details.appendChild(summary);
+            details.appendChild(dropdown);
+            container.appendChild(details);
+
+            // --- 綁定按鈕事件 ---
+            
+            // 全選
+            dropdown.querySelector('#local-show-all').onclick = (e) => {
+                e.preventDefault();
+                tempHiddenCols = []; // 清空隱藏清單 = 全顯
+                renderChips();
+            };
+            // 全隱藏
+            dropdown.querySelector('#local-hide-all').onclick = (e) => {
+                e.preventDefault();
+                tempHiddenCols = tempColumnOrder.map(id => id); // 全部加入隱藏
+                renderChips();
+            };
+            // 套用 (關閉選單)
+            dropdown.querySelector('#local-apply').onclick = () => {
+                details.removeAttribute('open');
+            };
+            
+            // ★★★ 監聽選單關閉事件：執行重繪與儲存 ★★★
+            details.addEventListener('toggle', () => {
+                if (!details.open) {
+                    // 檢查是否有變更
+                    const isChanged = 
+                        JSON.stringify(tempHiddenCols.sort()) !== JSON.stringify(localGridState.hiddenCols.sort()) ||
+                        JSON.stringify(tempColumnOrder) !== JSON.stringify(localGridState.columnOrder);
+
+                    if (isChanged) {
+                        // 更新全域狀態
+                        localGridState.hiddenCols = [...tempHiddenCols];
+                        localGridState.columnOrder = [...tempColumnOrder];
+                        
+                        // 重新渲染表格與按鈕狀態
+                        if (typeof renderStudentLocalGrid === 'function' && currentStudentId) {
+                            renderStudentLocalGrid(currentStudentId);
+                        }
+                        renderLocalGridPicker(); 
+                    }
+                } else {
+                    // 開啟時：重置暫存變數為當前狀態
+                    tempHiddenCols = [...localGridState.hiddenCols];
+                    tempColumnOrder = [...localGridState.columnOrder];
+                    renderChips();
+                }
+            });
+            
+            // 點擊外部自動關閉
+            document.addEventListener('click', (e) => {
+                if (!details.contains(e.target) && details.hasAttribute('open')) {
+                    details.removeAttribute('open');
+                }
+            });
         }        
     </script>
 </body>
