@@ -715,7 +715,21 @@
         }
 
         .excel-table td { vertical-align: middle; }
-
+        
+        #local-grid-top-scroll {
+            overflow-x: auto;
+            overflow-y: hidden;
+            background-color: #f8fafc;
+            border-bottom: 1px solid #e2e8f0;
+            height: 14px; /* 捲軸高度 */
+            flex-shrink: 0; /* 防止被壓縮 */
+            z-index: 25; /* 確保在表頭之上 */
+        }
+        /* 讓 SELECT 在未歸戶時看起來像鎖定，但仍能透過父層點擊 */
+        .select-locked-visually {
+            pointer-events: none; /* 禁止下拉操作 */
+            background-color: transparent;
+        }
         /* --- style結尾 --- */
     </style> 
 </head>
@@ -1778,92 +1792,73 @@
                         }
                         
                         if (isReadOnly) {
-                        const div = document.createElement('div');
-                        div.className = "cell-read-only"; 
-                        div.innerText = val || '';
-                        div.title = val || '';
-                        td.appendChild(div);
-                    } else {
-                        let input;
-                        if (f.type === 'text' || f.type === 'address') {
-                            input = document.createElement('textarea');
-                            input.rows = 1;
-                            input.className = "grid-input";
-                            input.style.resize = "none";
-                            input.style.textAlign = 'left';
-                        } else if (f.type === 'single_select' || f.type === 'list') {
-                            input = document.createElement('select');
-                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
-                            input.className = "grid-input";
-                            // ★ 1. 移除 text-align 設定，避免 Safari/Chrome 渲染問題
-                            // input.style.textAlign = 'center'; 
-                            // input.style.textAlignLast = 'center';
+                                const div = document.createElement('div');
+                                div.className = "cell-read-only"; 
+                                div.innerText = val || '';
+                                div.title = val || '';
+                                td.appendChild(div);
                         } else {
-                            input = document.createElement('input');
-                            input.type = "text";
-                            input.className = "grid-input";
-                            input.style.textAlign = 'center';
-                            
-                            if (f.type === 'date') {
-                                input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                                input.addEventListener('change', (e) => {
-                                    // 日期格式化邏輯 (保留原樣)
-                                    let v = e.target.value.trim().replace(/[^\d]/g, '');
-                                    if (f.inputFormat === 'ROC' && v.length >= 6) {
-                                        if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
-                                        else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
-                                    }
-                                    handleGridChange(e.target, student, course, f);
-                                });
-                            }
-                        }
-
-                        // ★★★ 修改開始：處理未歸戶鎖定與點擊事件 ★★★
-                        if (!appId) {
-                            input.readOnly = true; // Text input 有效
-                            input.style.cursor = 'pointer';
-                            input.title = "尚未歸戶 (點擊以建立)";
-
-                            // 針對下拉選單：使用 pointer-events: none 徹底鎖住，讓點擊穿透
-                            if (input.tagName === 'SELECT') {
-                                input.style.pointerEvents = 'none'; 
-                                input.style.backgroundColor = 'transparent'; // 確保背景透明，讓 td 的 hover 顏色透出來
-                            }
-
-                            // 定義觸發函式
-                            const triggerConsolidate = (e) => {
-                                // 防止點擊到 checkbox 或其他不該觸發的元素 (如果有的話)
-                                if(e.target.type !== 'checkbox') {
-                                    e.preventDefault(); 
-                                    e.stopPropagation();
-                                    promptAndConsolidate(student, course);
+                                let input;
+                                if (f.type === 'text' || f.type === 'address') {
+                                        input = document.createElement('textarea');
+                                        input.rows = 1;
+                                        input.className = "grid-input";
+                                        input.style.resize = "none";
+                                        input.style.textAlign = 'left';
+                                } else if (f.type === 'single_select' || f.type === 'list') {
+                                        input = document.createElement('select');
+                                        input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                                        input.className = "grid-input";
+                                        input.style.textAlign = 'center';
+                                        input.style.textAlignLast = 'center';
+                                } else {
+                                        input = document.createElement('input');
+                                        input.type = "text";
+                                        input.className = "grid-input";
+                                        input.style.textAlign = 'center';
+                                        
+                                        if (f.type === 'date') {
+                                                input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
+                                                input.addEventListener('change', (e) => {
+                                                        // 日期格式化邏輯 (保留原樣)
+                                                        let v = e.target.value.trim().replace(/[^\d]/g, '');
+                                                        if (f.inputFormat === 'ROC' && v.length >= 6) {
+                                                                if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
+                                                                else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
+                                                        }
+                                                        handleGridChange(e.target, student, course, f);
+                                                });
+                                        }
                                 }
-                            };
 
-                            // 將點擊事件綁定在父層 TD 上，這樣無論點到 input 還是 td 空白處都能觸發
-                            td.style.cursor = 'pointer';
-                            td.onclick = triggerConsolidate;
+                                // 處理未歸戶點擊事件
+                                if (!appId) {
+                                        input.readOnly = true;
+                                        input.style.cursor = 'pointer';
+                                        input.title = "尚未歸戶 (點擊以建立)";
+                                        const triggerConsolidate = (e) => {
+                                                e.preventDefault(); e.stopPropagation();
+                                                promptAndConsolidate(student, course);
+                                        };
+                                        if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
+                                        else input.onclick = triggerConsolidate;
+                                } else if (f.calcMode === 'weighted') {
+                                        input.readOnly = true;
+                                        input.style.cursor = 'pointer';
+                                        input.onclick = (e) => { e.stopPropagation(); e.preventDefault(); openDistributionModal(student.id, appId, f.id); };
+                                }
 
-                        } else if (f.calcMode === 'weighted') {
-                            // 加權欄位邏輯保持不變
-                            input.readOnly = true;
-                            input.style.cursor = 'pointer';
-                            input.onclick = (e) => { e.stopPropagation(); e.preventDefault(); openDistributionModal(student.id, appId, f.id); };
+                                input.value = val || "";
+                                input.dataset.field = f.id;
+                                if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
+                                
+                                if (f.type !== 'date') {
+                                        input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                                }
+                                
+                                td.appendChild(input);
                         }
-                        // ★★★ 修改結束 ★★★
-
-                        input.value = val || "";
-                        input.dataset.field = f.id;
-                        if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
-                        
-                        if (f.type !== 'date') {
-                            // 注意：如果是未歸戶(Select鎖住)，這個 change 事件不會觸發，這是正確的
-                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                        }
-                        
-                        td.appendChild(input);
-                    }
-                    tr.appendChild(td);
+                        tr.appendChild(td);
                 });
                 tbodyFragment.appendChild(tr);
                 updateRowLogic(tr, appId ? appData : course, !appId);
@@ -5141,12 +5136,13 @@
         }
 
         // 2. 渲染單人列表表格
-function renderStudentLocalGrid(sid) {
+        function renderStudentLocalGrid(sid) {
             const student = groupedStudents[sid];
             if (!student) return;
 
             const thead = document.getElementById('local-grid-thead');
             const tbody = document.getElementById('local-grid-tbody');
+            // 讀取搜尋關鍵字
             const searchTerm = document.getElementById('local-grid-search')?.value.toLowerCase() || "";
 
             if(!thead || !tbody) return;
@@ -5161,6 +5157,7 @@ function renderStudentLocalGrid(sid) {
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
                 .filter(f => !localGridState.hiddenCols.includes(f.id));
 
+            // 依據使用者設定的順序排列欄位
             const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
             if (localGridState.columnOrder.length > 0) {
                 allColumns.sort((a, b) => {
@@ -5173,9 +5170,10 @@ function renderStudentLocalGrid(sid) {
                 allColumns.sort((a,b) => getOrder(a) - getOrder(b));
             }
 
-            // (B) 資料準備
+            // (B) 資料準備 (扁平化 + 搜尋過濾)
             let rowsData = [];
             student.courses.forEach(c => {
+                // 搜尋過濾：檢查課程內的所有值
                 if (searchTerm) {
                     const fullText = Object.values(c).join(' ').toLowerCase();
                     if (!fullText.includes(searchTerm)) return;
@@ -5189,7 +5187,7 @@ function renderStudentLocalGrid(sid) {
                 rowsData.push({ course: c, appData: appData, student: student, appId: c._app_id });
             });
 
-            // (C) 資料排序
+            // (C) 資料排序 (邏輯保留，但僅透過右上角選單觸發)
             if (localGridState.sortKey) {
                 rowsData.sort((a, b) => {
                     const getVal = (row, key) => {
@@ -5216,15 +5214,17 @@ function renderStudentLocalGrid(sid) {
                 });
             }
 
-            // (D) 計算欄位寬度與總寬度
+            // (D) ★★★ 計算欄位寬度與總寬度 (解決捲軸問題的核心) ★★★
             const columnWidths = {};
-            let totalTableWidth = 0;
+            let totalTableWidth = 0; // 用於累加總寬度
 
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
+                // 預設標題寬度
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
+                // 掃描內容寬度 (若資料量大可考慮只掃描前50筆)
                 rowsData.forEach(row => {
                     let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
                     if(!val && f.id === 'student_id') val = row.student.id;
@@ -5237,38 +5237,35 @@ function renderStudentLocalGrid(sid) {
                     }
                 });
                 
+                // 設定該欄位最終寬度 (最少 80px)
                 const calculatedWidth = Math.max(finalW, 80);
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
             });
 
-            // ★★★ 強制設定表格容器樣式以確保捲軸出現 ★★★
-            const tableContainer = document.querySelector('#student-grid-wrapper .overflow-auto');
+            // ★ 強制設定表格總寬度，確保撐開容器出現捲軸
             const tableElement = document.querySelector('#student-grid-wrapper table');
-            
-            if(tableContainer) {
-                tableContainer.style.zIndex = '30'; 
-                tableContainer.style.position = 'relative';
-            }
-
             if(tableElement) {
+                // 額外加 2px 避免計算誤差導致換行
                 tableElement.style.width = (totalTableWidth + 2) + 'px';
-                tableElement.style.tableLayout = 'fixed';
             }
 
-            // (E) 渲染表頭
+            // (E) 渲染表頭 (★ 已移除點擊排序與圖示)
             const freezeLimit = localGridState.frozenCount;
             let currentStickyLeft = 0; 
             let trHead = document.createElement('tr');
 
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
+                // 移除 sortable-header, cursor-pointer
                 th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none";
                 
+                // 設定寬度 (配合 table-layout: fixed)
                 const finalWidth = columnWidths[col.id];
                 th.style.width = finalWidth + "px"; 
                 th.style.textAlign = 'center';
 
+                // 處理凍結
                 if (index < freezeLimit) {
                     th.classList.add('sticky-col');
                     th.style.left = currentStickyLeft + "px";
@@ -5276,6 +5273,7 @@ function renderStudentLocalGrid(sid) {
                     if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
                 }
 
+                // ★ 僅保留說明圖示，移除排序圖示
                 let infoIcon = col.description ? `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>` : '';
                 th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}</div>`;
                 trHead.appendChild(th);
@@ -5311,7 +5309,7 @@ function renderStudentLocalGrid(sid) {
                     td.className = "border-r border-slate-200 p-0 relative";
                     
                     const finalWidth = columnWidths[f.id];
-                    td.style.width = finalWidth + "px";
+                    td.style.width = finalWidth + "px"; // 設定寬度
                     
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
@@ -5324,6 +5322,7 @@ function renderStudentLocalGrid(sid) {
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
+                    // 取值 (含 fallback)
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -5336,6 +5335,7 @@ function renderStudentLocalGrid(sid) {
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
 
+                    // 輸入框生成邏輯
                     if (isReadOnly) {
                         const div = document.createElement('div');
                         div.className = "cell-read-only"; 
@@ -5366,31 +5366,16 @@ function renderStudentLocalGrid(sid) {
                             }
                         }
 
-                        // ★★★ 處理未歸戶鎖定與點擊 ★★★
                         if (!appId) {
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
                             input.title = "尚未歸戶 (點擊以建立)";
-
-                            // 針對下拉選單：CSS 鎖定
-                            if (input.tagName === 'SELECT') {
-                                input.style.pointerEvents = 'none';
-                                input.style.backgroundColor = 'transparent';
-                            }
-
                             const triggerConsolidate = (e) => {
-                                if(e.target.type !== 'checkbox') {
-                                    e.preventDefault(); 
-                                    e.stopPropagation();
-                                    promptAndConsolidate(student, course).then(() => { 
-                                        renderStudentLocalGrid(sid); 
-                                    });
-                                }
+                                e.preventDefault(); e.stopPropagation();
+                                promptAndConsolidate(student, course).then(() => { renderStudentLocalGrid(sid); });
                             };
-                            
-                            td.style.cursor = 'pointer';
-                            td.onclick = triggerConsolidate;
-
+                            if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
+                            else input.onclick = triggerConsolidate;
                         } else if (f.calcMode === 'weighted') {
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
@@ -5410,8 +5395,8 @@ function renderStudentLocalGrid(sid) {
                             input.addEventListener('change', (e) => {
                                 let v = e.target.value.trim().replace(/[^\d]/g, '');
                                 if (f.inputFormat === 'ROC' && v.length >= 6) {
-                                    if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
-                                    else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
+                                     if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
+                                     else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
                                 }
                                 handleGridChange(e.target, student, course, f);
                             });
