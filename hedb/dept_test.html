@@ -899,7 +899,7 @@
                         </div>
 
                         <div class="flex-grow overflow-auto custom-scroll relative p-0">
-                            <table class="excel-table w-full relative">
+                            table class="excel-table relative">
                                 <thead class="sticky top-0 z-20 bg-slate-100 shadow-sm" id="local-grid-thead"></thead>
                                 <tbody id="local-grid-tbody"></tbody>
                             </table>
@@ -1823,14 +1823,32 @@
 
                                // 處理未歸戶點擊事件
                                 // ★ 修正 1: 未歸戶時所有可填欄位 (包含 SELECT) 均應鎖定並觸發歸戶提示
-                                if (!appId) { // <--- 移除對 SELECT 的排除
+                                if (!appId) { 
+                                    // 鎖定元素：SELECT 必須使用 disabled，其他使用 readOnly (無害)
+                                    if (input.tagName === 'SELECT') {
+                                        input.disabled = true; // 真正鎖住 SELECT
+                                    } else {
                                         input.readOnly = true;
-                                        input.style.cursor = 'pointer';
-                                        input.title = "尚未歸戶 (點擊以建立)";
-                                        const triggerConsolidate = (e) => {
-                                        };
-                                        if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
-                                        else input.onclick = triggerConsolidate;
+                                    }
+                                    
+                                    input.style.cursor = 'default'; // 避免光標干擾
+                                    input.title = "尚未歸戶 (點擊以建立)";
+                                    
+                                    const triggerConsolidate = (e) => {
+                                        e.preventDefault(); 
+                                        e.stopPropagation();
+                                        // 由於 input 可能被 disabled，我們讓 td 處理點擊事件
+                                        promptAndConsolidate(student, course).then(() => { renderStudentLocalGrid(sid); });
+                                    };
+                                    
+                                    // 將點擊事件綁定到父層 TD 上，以確保對 disabled 的 SELECT 仍然有效
+                                    td.onclick = triggerConsolidate;
+                                    td.style.cursor = 'pointer'; 
+        
+                                    // 清除 input 上的所有點擊事件，避免與 td 衝突
+                                    input.onclick = null;
+                                    input.onmousedown = null;
+        
                                 } else if (f.calcMode === 'weighted') {
                                         input.readOnly = true;
                                         input.style.cursor = 'pointer';
