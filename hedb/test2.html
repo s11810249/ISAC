@@ -874,7 +874,7 @@
 
                 <div class="flex-grow relative overflow-hidden bg-slate-50">
                     
-                    <div id="student-grid-wrapper" class="hidden absolute inset-x-0 top-0 bottom-10 flex flex-col bg-white z-20 border-b border-slate-200">
+                    <div id="student-grid-wrapper" class="hidden flex-col bg-white z-20 border-b border-slate-200" style="height: calc(100vh - 140px);">
                         
                         <div class="px-6 py-2 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-shrink-0">
                             <h2 class="font-bold text-slate-700 text-sm flex items-center gap-2">
@@ -884,7 +884,7 @@
                                  </div>
                         </div>
 
-                        <div class="flex-grow overflow-auto custom-scroll relative p-0">
+                        <div class="flex-grow overflow-auto custom-scroll relative p-0 mb-10">
                             <table class="excel-table w-full relative">
                                 <thead class="sticky top-0 z-20 bg-slate-100 shadow-sm" id="local-grid-thead"></thead>
                                 <tbody id="local-grid-tbody"></tbody>
@@ -5112,295 +5112,9 @@
         }
 
         // 2. 渲染單人列表表格
-        function renderStudentLocalGrid(sid) {
-            const student = groupedStudents[sid];
-            if (!student) return;
-
-            const thead = document.getElementById('local-grid-thead');
-            const tbody = document.getElementById('local-grid-tbody');
-            // 讀取搜尋關鍵字
-            const searchTerm = document.getElementById('local-grid-search')?.value.toLowerCase() || "";
-
-            if(!thead || !tbody) return;
-
-            thead.innerHTML = '';
-            tbody.innerHTML = '';
-
-            const fields = currentYearConfig.fields || [];
-            
-            // (A) 欄位準備與排序
-            let allColumns = fields
-                .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
-                .filter(f => !localGridState.hiddenCols.includes(f.id));
-
-            // 依據使用者設定的順序排列欄位
-            const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
-            if (localGridState.columnOrder.length > 0) {
-                allColumns.sort((a, b) => {
-                    const idxA = localGridState.columnOrder.indexOf(a.id);
-                    const idxB = localGridState.columnOrder.indexOf(b.id);
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    return getOrder(a) - getOrder(b);
-                });
-            } else {
-                allColumns.sort((a,b) => getOrder(a) - getOrder(b));
-            }
-
-            // (B) 資料準備 (扁平化 + 搜尋過濾)
-            let rowsData = [];
-            student.courses.forEach(c => {
-                // 搜尋過濾：檢查課程內的所有值
-                if (searchTerm) {
-                    const fullText = Object.values(c).join(' ').toLowerCase();
-                    if (!fullText.includes(searchTerm)) return;
-                }
-
-                let appData = {};
-                if(c._app_id) {
-                    const app = student.applications.find(a => a.id === c._app_id);
-                    if(app) appData = app.formData;
-                }
-                rowsData.push({ course: c, appData: appData, student: student, appId: c._app_id });
-            });
-
-            // (C) 資料排序
-            if (localGridState.sortKey) {
-                rowsData.sort((a, b) => {
-                    // 取值 Helper
-                    const getVal = (row, key) => {
-                        let v = row.appId && row.appData[key] ? row.appData[key] : row.course[key];
-                        if (!v && key === 'student_id') v = row.student.id;
-                        if (!v && key === 'student_name') v = row.student.name;
-                        return v || "";
-                    };
-
-                    const valA = String(getVal(a, localGridState.sortKey));
-                    const valB = String(getVal(b, localGridState.sortKey));
-
-                    // 數字排序 vs 字串排序
-                    const numA = parseFloat(valA.replace(/,/g, ''));
-                    const numB = parseFloat(valB.replace(/,/g, ''));
-                    
-                    let result = 0;
-                    if (!isNaN(numA) && !isNaN(numB) && valA.trim() !== '' && valB.trim() !== '') {
-                        result = numA - numB;
-                    } else {
-                        // 中文排序支援
-                        result = valA.localeCompare(valB, 'zh-Hant');
-                    }
-                    
-                    return localGridState.sortDir === 'asc' ? result : -result;
-                });
-            }
-
-            // (D) 計算欄位寬度
-            const columnWidths = {};
-            allColumns.forEach(f => {
-                const iconWidth = f.description ? 25 : 0;
-                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
-                let finalW = headerW;
-
-                rowsData.forEach(row => {
-                    let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
-                    // 系統欄位 fallback
-                    if(!val && f.id === 'student_id') val = row.student.id;
-                    if(!val && f.id === 'student_name') val = row.student.name;
-                    if(!val && f.id === 'student_dept') val = row.student.dept;
-
-                    if (val) {
-                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 50;
-                        finalW = Math.max(finalW, w);
-                    }
-                });
-                columnWidths[f.id] = Math.max(finalW, 80);
-            });
-
-            // (E) 渲染表頭 (支援排序點擊 + 凍結)
-            const freezeLimit = localGridState.frozenCount; // 使用動態設定
-            let currentStickyLeft = 0; 
-            let trHead = document.createElement('tr');
-
-            allColumns.forEach((col, index) => {
-                const th = document.createElement('th');
-                // 加入 cursor-pointer 與 hover 效果
-                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none sortable-header hover:bg-slate-200 transition-colors";
-                
-                // ★ 綁定排序事件
-                th.onclick = () => setLocalSort(col.id);
-
-                const finalWidth = columnWidths[col.id];
-                th.style.minWidth = finalWidth + "px";
-                th.style.maxWidth = finalWidth + "px";
-                th.style.textAlign = 'center';
-
-                // 處理凍結
-                if (index < freezeLimit) {
-                    th.classList.add('sticky-col');
-                    th.style.left = currentStickyLeft + "px";
-                    currentStickyLeft += finalWidth;
-                    if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
-                }
-
-                // 排序圖示
-                let sortIcon = '';
-                if (localGridState.sortKey === col.id) {
-                    sortIcon = localGridState.sortDir === 'asc' 
-                        ? '<i class="fas fa-sort-up sort-icon active ml-1"></i>' 
-                        : '<i class="fas fa-sort-down sort-icon active ml-1"></i>';
-                } else {
-                    sortIcon = '<i class="fas fa-sort sort-icon ml-1 opacity-20"></i>';
-                }
-
-                let infoIcon = col.description ? `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>` : '';
-                th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}${sortIcon}</div>`;
-                trHead.appendChild(th);
-            });
-            thead.appendChild(trHead);
-
-            // (F) 渲染內容
-            let lastAppId = null;
-            let isAltRow = false;
-
-            rowsData.forEach(row => {
-                const { student, course, appData, appId } = row;
-
-                if (appId) {
-                    if (appId !== lastAppId) isAltRow = !isAltRow;
-                } else {
-                    isAltRow = false; 
-                }
-                lastAppId = appId;
-
-                const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
-                const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9';
-
-                const tr = document.createElement('tr');
-                tr.className = "transition border-b border-slate-100 group hover:bg-blue-50"; 
-                tr.dataset.cid = course._internal_id; 
-                tr.dataset.sid = student.id; 
-
-                currentStickyLeft = 0;
-
-                allColumns.forEach((f, index) => {
-                    const td = document.createElement('td');
-                    td.className = "border-r border-slate-200 p-0 relative";
-                    
-                    const finalWidth = columnWidths[f.id];
-                    td.style.minWidth = finalWidth + "px";
-                    td.style.maxWidth = finalWidth + "px";
-
-                    const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
-                    let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
-                    td.style.backgroundColor = cellBgColor;
-
-                    if (index < freezeLimit) {
-                        td.classList.add('sticky-col');
-                        td.style.left = currentStickyLeft + "px";
-                        currentStickyLeft += finalWidth;
-                        if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
-                    }
-
-                    // 取值 (含 fallback)
-                    let val = "";
-                    if (f.calcMode === 'average' || f.calcMode === 'weighted') {
-                        val = course[f.id]; 
-                    } else if (appId && appData[f.id] !== undefined) {
-                        val = appData[f.id]; 
-                    } else {
-                        val = course[f.id];
-                        if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
-                        if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
-                        if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
-                    }
-
-                    // 輸入框生成邏輯 (與之前相同)
-                    if (isReadOnly) {
-                        const div = document.createElement('div');
-                        div.className = "cell-read-only"; 
-                        div.innerText = val || '';
-                        div.title = val || '';
-                        td.appendChild(div);
-                    } else {
-                        let input;
-                        if (f.type === 'text' || f.type === 'address') {
-                            input = document.createElement('textarea');
-                            input.rows = 1;
-                            input.className = "grid-input";
-                            input.style.resize = "none";
-                            input.style.textAlign = 'left';
-                        } else if (f.type === 'single_select' || f.type === 'list') {
-                            input = document.createElement('select');
-                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
-                            input.className = "grid-input";
-                            input.style.textAlign = 'center';
-                            input.style.textAlignLast = 'center';
-                        } else {
-                            input = document.createElement('input');
-                            input.type = "text";
-                            input.className = "grid-input";
-                            input.style.textAlign = 'center';
-                            if (f.type === 'date') {
-                                input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                            }
-                        }
-
-                        if (!appId) {
-                            input.readOnly = true;
-                            input.style.cursor = 'pointer';
-                            input.title = "尚未歸戶 (點擊以建立)";
-                            const triggerConsolidate = (e) => {
-                                e.preventDefault(); e.stopPropagation();
-                                promptAndConsolidate(student, course).then(() => { renderStudentLocalGrid(sid); });
-                            };
-                            if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
-                            else input.onclick = triggerConsolidate;
-                        } else if (f.calcMode === 'weighted') {
-                            input.readOnly = true;
-                            input.style.cursor = 'pointer';
-                            input.onclick = (e) => { 
-                                e.stopPropagation(); e.preventDefault(); 
-                                openDistributionModal(student.id, appId, f.id); 
-                            };
-                        }
-
-                        input.value = val || "";
-                        input.dataset.field = f.id;
-                        if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
-
-                        if (f.type !== 'date') {
-                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                        } else {
-                            input.addEventListener('change', (e) => {
-                                let v = e.target.value.trim().replace(/[^\d]/g, '');
-                                if (f.inputFormat === 'ROC' && v.length >= 6) {
-                                     if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
-                                     else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
-                                }
-                                handleGridChange(e.target, student, course, f);
-                            });
-                        }
-                        td.appendChild(input);
-                    }
-                    tr.appendChild(td);
-                });
-                tbody.appendChild(tr);
-                updateRowLogic(tr, appId ? appData : course, !appId);
-            });
-            
-            setTimeout(() => {
-                document.querySelectorAll('#local-grid-tbody textarea').forEach(ta => {
-                    ta.style.height = 'auto';
-                    ta.style.height = (ta.scrollHeight) + 'px';
-                });
-            }, 0);
-        }
-        
         function renderLocalGridPicker() {
             const container = document.getElementById('local-grid-column-picker');
-            if(!container) {
-                console.error("找不到欄位設定容器 #local-grid-column-picker");
-                return;
-            }
+            if(!container) return;
             
             const fields = currentYearConfig.fields || [];
             let allCols = fields.filter(f => !['course_id', '_internal_id'].includes(f.id));
@@ -5426,7 +5140,6 @@
 
             container.innerHTML = '';
             
-            // 暫存變數
             let tempHiddenCols = [...localGridState.hiddenCols];
             let tempColumnOrder = [...localGridState.columnOrder];
             let tempSortKey = localGridState.sortKey || '';
@@ -5451,7 +5164,7 @@
             const dropdown = document.createElement('div');
             dropdown.className = "picker-dropdown absolute right-0 top-full mt-2 w-[550px] bg-white border border-slate-200 rounded-xl shadow-2xl z-[100] flex flex-col overflow-hidden";
             
-            // ★★★ 頂部操作區 (新增排序與凍結) ★★★
+            // 頂部操作區
             const actions = document.createElement('div');
             actions.className = "flex flex-col gap-2 px-4 py-3 border-b border-slate-100 bg-slate-50";
             
@@ -5488,7 +5201,7 @@
             `;
             dropdown.appendChild(actions);
 
-            // 中間選項區 (Grid)
+            // ★★★ 中間選項區 (修正：恢復 Checkbox Chip 樣式) ★★★
             const tagsContainer = document.createElement('div');
             tagsContainer.className = "p-4 grid grid-cols-3 gap-2 max-h-[250px] overflow-y-auto custom-scroll bg-white";
             
@@ -5499,22 +5212,26 @@
                     if (!f) return;
 
                     const lbl = document.createElement('label');
-                    lbl.className = 'field-chip-label cursor-move flex items-center p-2 rounded border border-transparent hover:bg-slate-50 transition select-none'; 
+                    // 使用與預覽視窗相同的 class
+                    lbl.className = 'field-chip-label cursor-move'; 
                     lbl.draggable = true; 
                     lbl.dataset.index = index;
 
                     const isVisible = !tempHiddenCols.includes(f.id);
+                    // 恢復 Chip 結構
                     lbl.innerHTML = `
-                        <i class="fas fa-grip-vertical text-slate-300 text-xs mr-2 cursor-move"></i>
-                        <input type="checkbox" class="mr-2 accent-primary" value="${f.id}" ${isVisible ? 'checked' : ''}>
-                        <span class="truncate font-medium text-xs text-slate-700" title="${f.label}">${f.label}</span>
+                        <input type="checkbox" value="${f.id}" ${isVisible ? 'checked' : ''}>
+                        <div class="chip-check-icon"></div>
+                        <span class="truncate font-medium text-xs" title="${f.label}">${f.label}</span>
                     `;
 
+                    // Checkbox 事件
                     lbl.querySelector('input').onchange = (e) => {
                         if (e.target.checked) tempHiddenCols = tempHiddenCols.filter(id => id !== f.id);
                         else tempHiddenCols.push(f.id);
                     };
 
+                    // Drag & Drop
                     lbl.addEventListener('dragstart', (e) => {
                         e.dataTransfer.effectAllowed = 'move';
                         e.dataTransfer.setData('text/plain', index);
@@ -5555,27 +5272,22 @@
 
             // --- 事件綁定 ---
             
-            // 排序按鈕
-            const sortBtn = dropdown.querySelector('#local-sort-dir-btn');
-            sortBtn.onclick = (e) => {
+            dropdown.querySelector('#local-sort-dir-btn').onclick = (e) => {
                 e.preventDefault(); e.stopPropagation(); 
                 tempSortDir = tempSortDir === 'asc' ? 'desc' : 'asc';
-                sortBtn.innerHTML = tempSortDir === 'asc' ? '<i class="fas fa-sort-amount-down-alt"></i>' : '<i class="fas fa-sort-amount-up"></i>';
+                e.target.closest('button').innerHTML = tempSortDir === 'asc' ? '<i class="fas fa-sort-amount-down-alt"></i>' : '<i class="fas fa-sort-amount-up"></i>';
             };
             
-            // 排序下拉
             const sortSelect = dropdown.querySelector('#local-sort-select');
             sortSelect.onchange = (e) => { e.stopPropagation(); tempSortKey = e.target.value; };
             sortSelect.onclick = (e) => e.stopPropagation(); 
 
-            // 凍結輸入框
             dropdown.querySelector('#local-freeze-input').onclick = (e) => e.stopPropagation();
 
-            // 按鈕事件
             dropdown.querySelector('#local-show-all').onclick = (e) => {
                 e.preventDefault();
                 tempHiddenCols = [];
-                renderChips();
+                renderChips(); // 只重繪按鈕狀態 (checkbox checked)
             };
             dropdown.querySelector('#local-hide-all').onclick = (e) => {
                 e.preventDefault();
@@ -5607,7 +5319,6 @@
                         renderLocalGridPicker(); 
                     }
                 } else {
-                    // 開啟時重置暫存
                     tempHiddenCols = [...localGridState.hiddenCols];
                     tempColumnOrder = [...localGridState.columnOrder];
                     tempSortKey = localGridState.sortKey;
@@ -5615,7 +5326,8 @@
                     
                     sortSelect.value = tempSortKey;
                     document.getElementById('local-freeze-input').value = localGridState.frozenCount;
-                    sortBtn.innerHTML = tempSortDir === 'asc' ? '<i class="fas fa-sort-amount-down-alt"></i>' : '<i class="fas fa-sort-amount-up"></i>';
+                    const btnIcon = dropdown.querySelector('#local-sort-dir-btn');
+                    btnIcon.innerHTML = tempSortDir === 'asc' ? '<i class="fas fa-sort-amount-down-alt"></i>' : '<i class="fas fa-sort-amount-up"></i>';
                     renderChips();
                 }
             });
@@ -5625,7 +5337,7 @@
                     details.removeAttribute('open');
                 }
             });
-        }        
+        }
     </script>
 </body>
 </html>
