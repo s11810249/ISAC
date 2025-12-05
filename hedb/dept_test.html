@@ -917,7 +917,7 @@
 
                 </div>
         </main>
-    <div id="grid-view-container" class="hidden absolute top-0 left-0 right-0 bottom-0 z-10 bg-white flex">
+    <div id="grid-view-container" class="hidden flex-grow flex overflow-hidden relative z-10 bg-white">
         
         <aside id="grid-sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0 relative">
              <div class="p-4 border-b border-slate-100 bg-slate-50">
@@ -1173,6 +1173,9 @@
         let activeYear = "";         
         let hasUnsavedChanges = false; // Flag for unsaved changes
 
+        let gridPage = 1;          // 新增：目前頁碼
+        const PAGE_SIZE = 50;      // 新增：每頁顯示筆數 (建議 50-100)
+        let searchDebounceTimer;   // 新增：搜尋防抖計時器
         // Change Log Store
         let changeLogs = []; // { time, field, oldVal, newVal, student, app }
 
@@ -1572,123 +1575,102 @@
         }
         
         function renderGlobalGrid() {
-            const thead = document.getElementById('grid-thead');
-            const tbody = document.getElementById('grid-tbody');
-            if (!thead || !tbody) return;
-            
-            const theadFragment = document.createDocumentFragment();
-            const tbodyFragment = document.createDocumentFragment();
-            
-            thead.innerHTML = '';
-            tbody.innerHTML = '';
+        const thead = document.getElementById('grid-thead');
+        const tbody = document.getElementById('grid-tbody');
+        if (!thead || !tbody) return;
+        
+        // 清空與初始化
+        thead.innerHTML = '';
+        tbody.innerHTML = '';
+        const theadFragment = document.createDocumentFragment();
+        const tbodyFragment = document.createDocumentFragment();
 
-            const searchTerm = document.getElementById('grid-search').value.toLowerCase();
-            const fields = currentYearConfig.fields || [];
+        const searchTerm = document.getElementById('grid-search').value.toLowerCase();
+        const fields = currentYearConfig.fields || [];
 
-            // 1. 欄位準備與排序
-            let allColumns = fields
+        // 1. 欄位準備 (保持不變)
+        let allColumns = fields
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
                 .filter(f => !gridState.hiddenCols.includes(f.id));
 
-            const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
+        const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
 
-            if (gridState.columnOrder.length > 0) {
+        // 排序欄位
+        if (gridState.columnOrder.length > 0) {
                 allColumns.sort((a, b) => {
-                    const idxA = gridState.columnOrder.indexOf(a.id);
-                    const idxB = gridState.columnOrder.indexOf(b.id);
-                    if (idxA !== -1 && idxB !== -1) return idxA - idxB;
-                    return getOrder(a) - getOrder(b);
+                        const idxA = gridState.columnOrder.indexOf(a.id);
+                        const idxB = gridState.columnOrder.indexOf(b.id);
+                        if (idxA !== -1 && idxB !== -1) return idxA - idxB;
+                        return getOrder(a) - getOrder(b);
                 });
-            } else {
+        } else {
                 allColumns.sort((a,b) => getOrder(a) - getOrder(b));
-            }
+        }
 
-            if (allColumns.length === 0) {
+        // 2. 資料篩選與準備 (Filter)
+        let allFlatData = [];
+        Object.values(groupedStudents).forEach(s => {
+                s.courses.forEach(c => {
+                        const fullText = Object.values(c).join(' ') + s.name + s.id;
+                        if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
+                        
+                        let appData = {};
+                        if(c._app_id) {
+                                const app = s.applications.find(a => a.id === c._app_id);
+                                if(app) appData = app.formData;
+                        }
+                        allFlatData.push({ course: c, appData: appData, student: s, appId: c._app_id, internalId: c._internal_id });
+                });
+        });
+
+        // 3. ★★★ 新增：分頁處理 (Pagination) ★★★
+        const totalRecords = allFlatData.length;
+        const totalPages = Math.ceil(totalRecords / PAGE_SIZE) || 1;
+        if (gridPage > totalPages) gridPage = 1;
+        if (gridPage < 1) gridPage = 1;
+
+        // 只取出當前頁面的資料進行寬度計算與渲染
+        const startIndex = (gridPage - 1) * PAGE_SIZE;
+        const pageData = allFlatData.slice(startIndex, startIndex + PAGE_SIZE);
+
+        // 4. 更新分頁控制項介面
+        updatePaginationUI(totalRecords, totalPages);
+
+        if (allColumns.length === 0) {
                 thead.innerHTML = '<tr><th class="p-4 text-center text-slate-400">所有欄位已隱藏</th></tr>';
                 return;
-            }
+        }
 
-            // 2. 寬度計算 (V9: 單選寬度加大緩衝 + 標題優先)
-            const columnWidths = {};
-            let allFlatData = [];
-            
-            Object.values(groupedStudents).forEach(s => {
-                s.courses.forEach(c => {
-                    const fullText = Object.values(c).join(' ') + s.name + s.id;
-                    if (searchTerm && !fullText.toLowerCase().includes(searchTerm)) return;
-                    let appData = {};
-                    if(c._app_id) {
-                        const app = s.applications.find(a => a.id === c._app_id);
-                        if(app) appData = app.formData;
-                    }
-                    allFlatData.push({ course: c, appData: appData, student: s, appId: c._app_id, internalId: c._internal_id });
-                });
-            });
-
-            allColumns.forEach(f => {
+        // 5. 寬度計算 (只計算當前頁面資料，提升效能)
+        const columnWidths = {};
+        allColumns.forEach(f => {
                 const hasDesc = !!f.description;
                 const iconWidth = hasDesc ? 25 : 0;
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
-                const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
-
-                if (f.type === 'single_select' || f.type === 'list') {
-                    if (f.options && f.options.length > 0) {
-                        f.options.forEach(opt => {
-                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 65; // +65 緩衝
-                            finalW = Math.max(finalW, w);
-                        });
-                    }
-                    allFlatData.forEach(row => {
-                         let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
-                         if (val) {
-                             const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 65;
-                             finalW = Math.max(finalW, w);
-                         }
-                    });
-                } 
-                else if (isReadOnly) {
-                    allFlatData.forEach(row => {
-                        let val = row.course[f.id];
-                        if (val === undefined) {
-                            if (f.id === 'student_id') val = row.student.id;
-                            else if (f.id === 'student_name') val = row.student.name;
-                            else if (f.id === 'student_dept') val = row.student.dept;
-                        }
-                        if (row.appId && row.appData[f.id] !== undefined) val = row.appData[f.id];
-
+                // 計算頁面內資料的最大寬度
+                pageData.forEach(row => {
+                        let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
+                        if(!val && f.id === 'student_id') val = row.student.id;
+                        if(!val && f.id === 'student_name') val = row.student.name;
+                        
                         if (val) {
-                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 24; 
-                            finalW = Math.max(finalW, w);
+                                const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 50;
+                                finalW = Math.max(finalW, w);
                         }
-                    });
-                }
-                else if (f.type === 'text' || f.type === 'address') {
-                    const defaultTextW = f.width ? parseInt(f.width) : 200;
-                    finalW = Math.max(finalW, defaultTextW);
-                }
+                });
                 
-                let placeholderText = "";
-                if (f.type === 'date') placeholderText = f.inputFormat === 'ROC' ? "114/12/31" : "2025/12/31"; 
-                else if (f.calcMode === 'weighted') placeholderText = "(點擊填寫)";
-                else if (f.placeholder) placeholderText = f.placeholder;
-
-                if (placeholderText) {
-                    const phWidth = getTextWidth(placeholderText, "14px 'Noto Sans TC'") + 30;
-                    finalW = Math.max(finalW, phWidth);
-                }
-
+                // 加上最小值保護
                 columnWidths[f.id] = Math.max(finalW, 80);
-            });
+        });
 
-            // 3. 渲染表頭 (Header)
-            const freezeLimit = gridState.frozenCount; 
-            let currentStickyLeft = 0; 
-
-            let trHead = document.createElement('tr');
-            
-            allColumns.forEach((col, index) => {
+        // 6. 渲染表頭 (Header)
+        const freezeLimit = gridState.frozenCount; 
+        let currentStickyLeft = 0; 
+        let trHead = document.createElement('tr');
+        
+        allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
                 th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none";
                 
@@ -1698,43 +1680,35 @@
                 th.style.textAlign = 'center';
 
                 if (index < freezeLimit) {
-                    th.classList.add('sticky-col');
-                    th.style.left = currentStickyLeft + "px";
-                    currentStickyLeft += finalWidth;
-                    
-                    if (index === freezeLimit - 1) {
-                        th.classList.add('sticky-border-right');
-                    }
+                        th.classList.add('sticky-col');
+                        th.style.left = currentStickyLeft + "px";
+                        currentStickyLeft += finalWidth;
+                        if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
                 }
 
-                let infoIcon = '';
-                if(col.description) {
-                    infoIcon = `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>`;
-                }
-
+                let infoIcon = col.description ? `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>` : '';
                 th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}</div>`;
                 trHead.appendChild(th);
-            });
+        });
+        theadFragment.appendChild(trHead);
 
-            theadFragment.appendChild(trHead);
-
-            // 4. 渲染內容 (Body)
-            if (allFlatData.length === 0) {
+        // 7. 渲染內容 (Body) - 使用 pageData
+        if (pageData.length === 0) {
                 tbody.innerHTML = `<tr><td colspan="${allColumns.length + 1}" class="p-8 text-center text-slate-400">無符合資料</td></tr>`;
                 thead.appendChild(theadFragment);
                 return;
-            }
+        }
 
-            let lastAppId = null;
-            let isAltRow = false;
+        let lastAppId = null;
+        let isAltRow = false;
 
-            allFlatData.forEach(row => {
+        pageData.forEach(row => {
                 const { student, course, appData, appId } = row;
                 
                 if (appId) {
-                    if (appId !== lastAppId) isAltRow = !isAltRow;
+                        if (appId !== lastAppId) isAltRow = !isAltRow;
                 } else {
-                    isAltRow = false; 
+                        isAltRow = false; 
                 }
                 lastAppId = appId;
 
@@ -1742,171 +1716,166 @@
                 const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9';
 
                 const tr = document.createElement('tr');
-                tr.className = isAltRow 
-                    ? "row-group-alt transition border-b border-slate-100 group" 
-                    : "row-group-normal transition border-b border-slate-100 group";
-                
+                tr.className = isAltRow ? "row-group-alt transition border-b border-slate-100 group" : "row-group-normal transition border-b border-slate-100 group";
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
 
                 currentStickyLeft = 0; 
 
                 allColumns.forEach((f, index) => {
-                    const td = document.createElement('td');
-                    td.className = "border-r border-slate-200 p-0 relative"; 
-                    
-                    const finalWidth = columnWidths[f.id];
-                    td.style.minWidth = finalWidth + "px";
-                    td.style.maxWidth = finalWidth + "px";
-
-                    const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
-                    
-                    let cellBgColor = bgBase;
-                    if (isReadOnly) {
-                        cellBgColor = bgReadOnly;
-                    }
-                    
-                    td.style.backgroundColor = cellBgColor;
-
-                    if (index < freezeLimit) {
-                        td.classList.add('sticky-col');
-                        td.style.left = currentStickyLeft + "px";
-                        currentStickyLeft += finalWidth;
-                        if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
-                    }
-
-                    let val = "";
-                    if (f.calcMode === 'average' || f.calcMode === 'weighted') {
-                        val = course[f.id]; 
-                    } else if (appId && appData[f.id] !== undefined) {
-                        val = appData[f.id]; 
-                    } else {
-                        val = course[f.id];
-                        if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
-                        if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
-                        if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
-                    }
-                    
-                    if (isReadOnly) {
-                        const div = document.createElement('div');
-                        div.className = "cell-read-only"; 
-                        div.innerText = val || '';
-                        div.title = val || '';
-                        td.appendChild(div);
-                    } else {
-                        let input;
+                        const td = document.createElement('td');
+                        td.className = "border-r border-slate-200 p-0 relative"; 
                         
-                        if (f.type === 'text' || f.type === 'address') {
-                            input = document.createElement('textarea');
-                            input.rows = 1;
-                            input.className = "grid-input";
-                            input.style.resize = "none";
-                            input.style.textAlign = 'left';
-                        } else if (f.type === 'single_select' || f.type === 'list') {
-                            input = document.createElement('select');
-                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
-                            input.className = "grid-input";
-                            input.style.textAlign = 'center';
-                            input.style.textAlignLast = 'center';
+                        const finalWidth = columnWidths[f.id];
+                        td.style.minWidth = finalWidth + "px";
+                        td.style.maxWidth = finalWidth + "px";
+
+                        const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
+                        let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
+                        td.style.backgroundColor = cellBgColor;
+
+                        if (index < freezeLimit) {
+                                td.classList.add('sticky-col');
+                                td.style.left = currentStickyLeft + "px";
+                                currentStickyLeft += finalWidth;
+                                if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
+                        }
+
+                        // 取值邏輯
+                        let val = "";
+                        if (f.calcMode === 'average' || f.calcMode === 'weighted') {
+                                val = course[f.id]; 
+                        } else if (appId && appData[f.id] !== undefined) {
+                                val = appData[f.id]; 
                         } else {
-                            input = document.createElement('input');
-                            input.type = "text";
-                            input.className = "grid-input";
-                            input.style.textAlign = 'center';
-                            
-                            if (f.type === 'date') {
-                                input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
-                                input.addEventListener('change', (e) => {
-                                    let v = e.target.value.trim().replace(/[^\d]/g, '');
-                                    if (f.inputFormat === 'ROC') {
-                                        if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
-                                        else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
-                                    } else if (v.length === 8) { 
-                                        e.target.value = `${v.substring(0,4)}/${v.substring(4,6)}/${v.substring(6,8)}`;
-                                    }
-                                    handleGridChange(e.target, student, course, f);
-                                });
-                            }
-                        }
-
-                        // ★★★ 修改開始：檢查歸戶狀態 ★★★
-                        if (!appId) {
-                            // 情境 A: 未歸戶 -> 強制唯讀，點擊觸發歸戶詢問
-                            input.readOnly = true;
-                            input.style.cursor = 'pointer';
-                            input.title = "尚未歸戶 (點擊以建立)";
-                            
-                            // 定義點擊處理器
-                            const triggerConsolidate = (e) => {
-                                e.preventDefault();     // 防止輸入框取得焦點
-                                e.stopPropagation();    // 防止冒泡
-                                promptAndConsolidate(student, course);
-                            };
-
-                            // 針對不同元素綁定事件
-                            if (input.tagName === 'SELECT') {
-                                // Select 元素用 mousedown 攔截最有效 (防止下拉選單打開)
-                                input.addEventListener('mousedown', triggerConsolidate);
-                            } else {
-                                input.onclick = triggerConsolidate;
-                            }
-                            
-                            // (選用) 讓未歸戶的格子背景稍微不同，提示使用者
-                            // input.style.backgroundColor = "#ffffff"; 
-                        } 
-                        else if (f.calcMode === 'weighted') {
-                            // 情境 B: 已歸戶且為權重分配欄位 (維持原有邏輯)
-                            input.placeholder = "(點擊填寫)";
-                            input.readOnly = true;
-                            input.style.cursor = 'pointer';
-                            td.style.backgroundColor = bgReadOnly; 
-                            input.onclick = (e) => {
-                                e.stopPropagation();
-                                e.preventDefault();
-                                if(typeof openDistributionModal === 'function') openDistributionModal(student.id, appId, f.id);
-                            };
-                        }
-                        // ★★★ 修改結束 ★★★
-
-                        input.value = val || "";
-                        input.dataset.field = f.id;
-                        input.title = val || ""; 
-                        
-                        if(appId) {
-                            input.classList.add(`app-input-${appId}-${f.id}`);
-                        }
-
-                        if (f.type !== 'date') {
-                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                                val = course[f.id];
+                                if ((val === undefined || val === "") && f.id === 'student_id') val = student.id;
+                                if ((val === undefined || val === "") && f.id === 'student_name') val = student.name;
+                                if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                         }
                         
-                        if (input.tagName === 'TEXTAREA') {
-                             input.addEventListener('input', function() {
-                                this.style.height = 'auto';
-                                this.style.height = (this.scrollHeight) + 'px';
-                            });
-                        }
+                        if (isReadOnly) {
+                                const div = document.createElement('div');
+                                div.className = "cell-read-only"; 
+                                div.innerText = val || '';
+                                div.title = val || '';
+                                td.appendChild(div);
+                        } else {
+                                let input;
+                                if (f.type === 'text' || f.type === 'address') {
+                                        input = document.createElement('textarea');
+                                        input.rows = 1;
+                                        input.className = "grid-input";
+                                        input.style.resize = "none";
+                                        input.style.textAlign = 'left';
+                                } else if (f.type === 'single_select' || f.type === 'list') {
+                                        input = document.createElement('select');
+                                        input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
+                                        input.className = "grid-input";
+                                        input.style.textAlign = 'center';
+                                        input.style.textAlignLast = 'center';
+                                } else {
+                                        input = document.createElement('input');
+                                        input.type = "text";
+                                        input.className = "grid-input";
+                                        input.style.textAlign = 'center';
+                                        
+                                        if (f.type === 'date') {
+                                                input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
+                                                input.addEventListener('change', (e) => {
+                                                        // 日期格式化邏輯 (保留原樣)
+                                                        let v = e.target.value.trim().replace(/[^\d]/g, '');
+                                                        if (f.inputFormat === 'ROC' && v.length >= 6) {
+                                                                if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
+                                                                else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
+                                                        }
+                                                        handleGridChange(e.target, student, course, f);
+                                                });
+                                        }
+                                }
 
-                        td.appendChild(input);
-                    }
-                    tr.appendChild(td);
+                                // 處理未歸戶點擊事件
+                                if (!appId) {
+                                        input.readOnly = true;
+                                        input.style.cursor = 'pointer';
+                                        input.title = "尚未歸戶 (點擊以建立)";
+                                        const triggerConsolidate = (e) => {
+                                                e.preventDefault(); e.stopPropagation();
+                                                promptAndConsolidate(student, course);
+                                        };
+                                        if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
+                                        else input.onclick = triggerConsolidate;
+                                } else if (f.calcMode === 'weighted') {
+                                        input.readOnly = true;
+                                        input.style.cursor = 'pointer';
+                                        input.onclick = (e) => { e.stopPropagation(); e.preventDefault(); openDistributionModal(student.id, appId, f.id); };
+                                }
+
+                                input.value = val || "";
+                                input.dataset.field = f.id;
+                                if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
+                                
+                                if (f.type !== 'date') {
+                                        input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                                }
+                                
+                                td.appendChild(input);
+                        }
+                        tr.appendChild(td);
                 });
-
                 tbodyFragment.appendChild(tr);
-                
-                setTimeout(() => {
-                    tr.querySelectorAll('textarea').forEach(ta => {
+                updateRowLogic(tr, appId ? appData : course, !appId);
+        });
+
+        thead.appendChild(theadFragment);
+        tbody.appendChild(tbodyFragment);
+        
+        // 微調 Textarea 高度
+        setTimeout(() => {
+                document.querySelectorAll('#grid-tbody textarea').forEach(ta => {
                         ta.style.height = 'auto';
                         ta.style.height = (ta.scrollHeight) + 'px';
-                    });
-                }, 0);
-                
-                updateRowLogic(tr, appId ? appData : course, !appId);
-            });
-
-            thead.appendChild(theadFragment);
-            tbody.appendChild(tbodyFragment);
+                });
+        }, 0);
         }
+
+        // 輔助函式：更新分頁介面 (會插入到搜尋框旁邊)
+        function updatePaginationUI(total, totalPages) {
+        let container = document.getElementById('grid-pagination-controls');
+        
+        // 如果容器不存在，創建並插入到搜尋框前面
+        if (!container) {
+                const searchBox = document.getElementById('grid-search');
+                if (searchBox && searchBox.parentElement) {
+                        container = document.createElement('div');
+                        container.id = 'grid-pagination-controls';
+                        container.className = 'flex items-center gap-2 mr-3 bg-white px-2 py-1 rounded border border-slate-200 shadow-sm';
+                        searchBox.parentElement.insertBefore(container, searchBox);
+                } else {
+                        return; // 找不到插入點
+                }
+        }
+
+        container.innerHTML = `
+                <button onclick="changeGridPage(-1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30" ${gridPage===1?'disabled':''}>
+                        <i class="fas fa-chevron-left text-xs"></i>
+                </button>
+                <span class="text-xs font-bold text-slate-600 select-none">
+                        ${gridPage} / ${totalPages} <span class="text-slate-400 font-normal">(${total}筆)</span>
+                </span>
+                <button onclick="changeGridPage(1)" class="w-6 h-6 flex items-center justify-center rounded hover:bg-slate-100 text-slate-500 disabled:opacity-30" ${gridPage===totalPages?'disabled':''}>
+                        <i class="fas fa-chevron-right text-xs"></i>
+                </button>
+        `;
+        }
+
+        function changeGridPage(delta) {
+        gridPage += delta;
+        renderGlobalGrid();
+        // 滾動回到頂部
+        const wrapper = document.querySelector('#grid-view-container .flex-grow');
+        if(wrapper) wrapper.scrollTop = 0;
+        }    
 
         // 檢查單一格子的顯示邏輯
         function checkGridInputVisibility(input, fieldDef, dataContext) {
