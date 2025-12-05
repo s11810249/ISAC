@@ -716,12 +716,11 @@
 
         .excel-table td { vertical-align: middle; }
      
-        /* --- style結尾 --- */
-        /* ★ 修正 2: 移除學生單人列表表格的 min-width: 100% 限制，確保 JS 設定的寬度能強制捲軸出現 */
-        #student-grid-wrapper .excel-table {
-            min-width: auto !important;
-            width: max-content !important; 
-        }
+    /* --- style結尾 --- */
+    /* ★ 修正 2: 移除學生單人列表表格的 min-width: 100% 限制，確保 JS 設定的寬度能強制捲軸出現 */
+    #student-grid-wrapper .excel-table {
+        min-width: auto !important;
+    }
     </style> 
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -5367,25 +5366,6 @@
                             };
                             if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
                             else input.onclick = triggerConsolidate;
-                        } else if (f.calcMode === 'weighted') {
-
-                       if (!appId && input.tagName !== 'SELECT') {
-                            input.readOnly = true;
-                            input.style.cursor = 'pointer';
-                            input.title = "尚未歸戶 (點擊以建立)";
-                            const triggerConsolidate = (e) => {
-                                e.preventDefault(); e.stopPropagation();
-                                promptAndConsolidate(student, course).then(() => { renderStudentLocalGrid(sid); });
-                            };
-                            if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
-                            else input.onclick = triggerConsolidate;
-                        } else if (f.calcMode === 'weighted') {
-                            input.readOnly = true;
-                            input.style.cursor = 'pointer';
-                            input.onclick = (e) => { 
-                                e.stopPropagation(); e.preventDefault(); 
-                                openDistributionModal(student.id, appId, f.id); 
-                            };
                         }
 
                         input.value = val || "";
