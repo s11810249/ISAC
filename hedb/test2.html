@@ -715,60 +715,45 @@
 
     <!-- Header -->
     <header class="h-16 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 flex-shrink-0 justify-between">
-        <div class="flex items-center gap-4">
-            <div class="bg-primary p-1.5 rounded-lg shadow-sm">
+        <div class="flex items-center gap-4 min-w-0">
+            <div class="bg-primary p-1.5 rounded-lg shadow-sm flex-shrink-0">
                 <img src="files/svg/THU-Logo.svg" class="h-8 w-auto" alt="Logo">
             </div>
-            <div>
-                <h1 class="font-bold text-lg text-primary tracking-wide">東海大學學生校外實習校庫填報輔助系統</h1>
-                <p class="text-[10px] text-slate-400">Department Data Entry System</p>
+            <div class="truncate">
+                <h1 class="font-bold text-lg text-primary tracking-wide truncate">東海大學學生校外實習校庫填報輔助系統</h1>
+                <p class="text-[10px] text-slate-400 truncate">Department Data Entry System</p>
             </div>
         </div>
-        <div class="flex items-center gap-3">
-            <div class="flex bg-slate-100 p-1 rounded-lg mr-3">
-                <button onclick="switchViewMode('app')" id="btn-view-app" class="px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary">
+        
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+
+            <div class="flex bg-slate-100 p-1 rounded-lg mr-1 flex-shrink-0">
+                <button onclick="switchViewMode('app')" id="btn-view-app" class="px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary whitespace-nowrap flex items-center gap-1">
                     <i class="fas fa-layer-group"></i> 歸戶填報
                 </button>
-                <button onclick="switchViewMode('grid')" id="btn-view-grid" class="px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition">
+                <button onclick="switchViewMode('grid')" id="btn-view-grid" class="px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition whitespace-nowrap flex items-center gap-1">
                     <i class="fas fa-th"></i> 傳統總表
                 </button>
             </div>
 
-                <button onclick="openPreviewModal()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-2">
-                    <i class="fas fa-table"></i> 資料預覽
-                </button>
-                <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500">未填報</span>
-            </div>
-
             <div class="relative group mr-2">
-                <button class="flex items-center gap-2 text-slate-600 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition">
+                <button class="flex items-center gap-2 text-slate-600 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition whitespace-nowrap">
                     <i class="fas fa-toolbox"></i> 輔助工具 <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
                 </button>
-                
                 <div class="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl hidden group-hover:block z-50 p-1">
                     <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">批次處理</div>
-                    
-                    <button onclick="toolAutoFill()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fas fa-magic"></i></div>
-                        <span>智慧填入預設值</span>
-                    </button>
-                    
-                    <button onclick="toolCheckData()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fas fa-check-double"></i></div>
-                        <span>資料完整性檢查</span>
-                    </button>
-
+                    <button onclick="toolAutoFill()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fas fa-magic"></i></div><span>智慧填入預設值</span></button>
+                    <button onclick="toolCheckData()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fas fa-check-double"></i></div><span>資料完整性檢查</span></button>
                     <div class="border-t border-slate-100 my-1"></div>
-                    
                     <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">分析</div>
-                    <button onclick="toolStats()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fas fa-chart-pie"></i></div>
-                        <span>目前填報統計</span>
-                    </button>
+                    <button onclick="toolStats()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fas fa-chart-pie"></i></div><span>目前填報統計</span></button>
                 </div>
             </div>
+
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
-            <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2">
+            
+            <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2 whitespace-nowrap">
                 <i class="fas fa-file-export"></i> 匯出結果
             </button>
             <button onclick="document.getElementById('info-modal').classList.remove('hidden')" class="ml-3 text-slate-400 hover:text-primary transition" title="系統與隱私聲明">
@@ -852,7 +837,6 @@
             <div id="form-container" class="hidden flex flex-col h-full w-full">
                 
                 <div class="bg-white px-6 py-4 border-b border-slate-200 shadow-sm flex-shrink-0 flex justify-between items-center z-20">
-                    
                     <div class="flex gap-4 items-center min-w-0 mr-4">
                         <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold flex-shrink-0">
                             <span id="header-avatar">?</span>
@@ -867,10 +851,8 @@
                             </p>
                         </div>
                     </div>
-
                     <div class="flex items-center gap-3 flex-shrink-0">
-                        
-                        <div class="flex bg-slate-100 p-1 rounded-lg mr-2">
+                        <div class="flex bg-slate-100 p-1 rounded-lg mr-2 flex-shrink-0">
                             <button onclick="setStudentViewMode('form')" id="btn-std-view-form" class="px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap">
                                 <i class="fas fa-file-alt"></i> 表單
                             </button>
@@ -884,7 +866,6 @@
                         <button onclick="openPreviewModal()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-2 whitespace-nowrap">
                             <i class="fas fa-table"></i> 資料預覽
                         </button>
-
                         <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 whitespace-nowrap">未填報</span>
                     </div>
                 </div>
@@ -1567,41 +1548,44 @@
             
             if (!confirm) return;
 
-            // 1. 準備歸戶資料
+            // ... (中間省略，保持原樣) ...
+            // 找到: const newApp = { ... }; 
+            // 找到: student.applications.push(newApp); 
+            // 找到: course._app_id = appId;
+            
+            // --- 請將原本函式「後半段」替換為以下內容 ---
+            
+            // 1. 準備歸戶資料 (重複原本邏輯)
             const appId = 'app_grid_click_' + Date.now();
             const initData = {};
-            
-            // 複製既有資料到表單
             (currentYearConfig.fields || []).forEach(f => {
                  if (!f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info') {
                      const val = course[f.id];
-                     if (val !== undefined && val !== null && String(val).trim() !== "") {
-                         initData[f.id] = val;
-                     }
+                     if (val !== undefined && val !== null && String(val).trim() !== "") initData[f.id] = val;
                  }
             });
-            
-            // 自動帶入機構名稱 (若有的話)
             if (!initData['internship_institution_name']) {
                 const instName = getCourseValue(course, ['internship_institution_name', '實習機構', '機構名稱']);
                 if (instName && instName !== '-') initData['internship_institution_name'] = instName;
             }
-
-            const newApp = {
-                id: appId,
-                courseIds: [course._internal_id],
-                formData: initData
-            };
+            const newApp = { id: appId, courseIds: [course._internal_id], formData: initData };
             
-            // 2. 執行寫入
+            // 2. 寫入
             student.applications.push(newApp);
             course._app_id = appId;
             hasUnsavedChanges = true;
             
-            // 3. 更新畫面
+            // 3. 更新畫面 (修正點)
             showToast('success', '歸戶建立完成，現在可以開始編輯');
-            renderGlobalGrid();      // 重繪總表
-            renderGridStudentList(); // 更新側邊欄狀態
+            
+            renderGlobalGrid();      // 更新全校總表
+            renderGridStudentList(); // 更新側邊欄
+            
+            // ★ 新增：如果目前正在查看該學生的列表，也要更新
+            const localGridWrapper = document.getElementById('student-grid-wrapper');
+            if (currentStudentId === student.id && localGridWrapper && !localGridWrapper.classList.contains('hidden')) {
+                renderStudentLocalGrid(student.id);
+            }
             
             logChange('GridAutoCreate', appId, '', 'Created by grid interaction', student.id);
         }
@@ -1928,90 +1912,60 @@
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
             
-            // ★★★ 修正：依據 Template 設定的屬性執行地址格式化 ★★★
+            // 1. 地址/文字格式化
             if (fieldDef.type === 'address') {
                 if (fieldDef.toHalf || fieldDef.forceTai || fieldDef.latinToEng || fieldDef.smartFormat) {
                     processAddress(inputEl, fieldDef);
                 }
             }
 
-            const newVal = inputEl.value; // 讀取格式化後的最新值
-            inputEl.title = newVal; // 更新 Hover 提示
+            const newVal = inputEl.value;
+            inputEl.title = newVal;
             
             const appId = course._app_id;
             hasUnsavedChanges = true;
-
             const isScoreField = ['score', 'grade', 'credit', 'hours', 'point', '成績', '學分', '時數'].some(k => fieldDef.id.toLowerCase().includes(k) || fieldDef.label.includes(k));
 
             if (appId) {
                 // === 情境 A: 已歸戶 ===
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
-                    
-                    // ★★★ 修改重點：區分「獨立運算欄位」與「共用欄位」 ★★★
+                    const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+
                     if (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted') {
-                        // 1. 先暫存使用者輸入的最新值
-                        course[fieldDef.id] = newVal;
+                        // 數值運算模式 (平均/加權)
+                        course[fieldDef.id] = newVal; // 先更新自己
 
-                        // 找出歸戶內的所有課程
-                        const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
-
-                        let finalValue = 0; // 這將會是「總和」
-
+                        let finalValue = 0;
                         if (fieldDef.calcMode === 'weighted') {
-                            // === 修正：加權分配模式 (Weighted Distribution) ===
-                            
-                            // A. 計算目前的「新總和」與「總權重」
+                            // 加權運算
                             let currentTotalValue = 0;
                             let totalWeight = 0;
                             const weightKey = fieldDef.weightField; 
 
                             linkedCourses.forEach(c => {
                                 const v = parseFloat(c[fieldDef.id]) || 0;
-                                // 嘗試抓取權重值
                                 const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
                                 currentTotalValue += v;
                                 totalWeight += w;
                             });
+                            finalValue = currentTotalValue;
 
-                            finalValue = currentTotalValue; // 歸戶資料存總和
-
-                            // B. 執行分配與回寫 (若有權重)
+                            // 分配回寫
                             if (totalWeight > 0) {
                                 linkedCourses.forEach(c => {
-                                    // B-1. 計算該課程應分配到的數值
                                     const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
                                     const ratio = w / totalWeight;
                                     const distributedVal = currentTotalValue * ratio;
-                                    
-                                    // B-2. 格式化數值
                                     const formattedVal = fieldDef.decimal ? distributedVal.toFixed(fieldDef.decimal) : Math.round(distributedVal).toString();
-
-                                    // B-3. 更新資料物件
+                                    
                                     c[fieldDef.id] = formattedVal;
-
-                                    // B-4. ★關鍵修正★：同步更新畫面時，必須同時指定 cid 和 sid
-                                    // 這樣才不會抓到別的學生修同一門課的格子
-                                    const row = document.querySelector(`tr[data-cid="${c._internal_id}"][data-sid="${student.id}"]`);
-                                    if(row) {
-                                        const targetInput = row.querySelector(`input[data-field="${fieldDef.id}"]`);
-                                        if (targetInput) {
-                                            targetInput.value = formattedVal;
-                                            targetInput.title = formattedVal;
-                                            
-                                            // 視覺回饋
-                                            if (targetInput !== inputEl) { 
-                                                targetInput.style.transition = 'background-color 0.3s';
-                                                targetInput.style.backgroundColor = '#fff7ed'; // 淡橘色
-                                                setTimeout(() => targetInput.style.backgroundColor = '', 400);
-                                            }
-                                        }
-                                    }
+                                    // ★ 關鍵：同步更新所有視圖 (Local + Global)
+                                    syncValueToViews(c._internal_id, student.id, fieldDef.id, formattedVal, inputEl);
                                 });
                             }
-
                         } else {
-                            // === 一般平均/加總模式 ===
+                            // 平均/加總模式
                             let sum = 0;
                             linkedCourses.forEach(c => {
                                 const v = parseFloat(c[fieldDef.id]);
@@ -2020,22 +1974,18 @@
                             finalValue = sum; 
                         }
 
-                        // 3. 更新 App Data (儲存總和)
                         app.formData[fieldDef.id] = fieldDef.decimal ? finalValue.toFixed(fieldDef.decimal) : Math.round(finalValue).toString();
-
                         logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
 
                     } else {
-                        // 1. 一般共用欄位：更新 App Data
+                        // 一般共用欄位：更新 App Data
                         const oldVal = app.formData[fieldDef.id];
                         app.formData[fieldDef.id] = newVal;
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
-                        // 2. 同步數值到所有共用此 App 的格子
-                        // 這裡也要修正，加上 data-sid 確保只更新該學生的格子
-                        // 雖然 class selector 比較難加屬性，但通常 app-input class 是用 appId 生成的，appId 若唯一則沒問題。
-                        // 但為了保險，建議依賴 appId 即可 (appId 是每次建立歸戶時生成的唯一亂數，不會跨學生重複)
-                        document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`).forEach(el => {
+                        // ★ 關鍵：同步更新所有連動格子 (使用 class 選擇器)
+                        const allRelatedInputs = document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`);
+                        allRelatedInputs.forEach(el => {
                             if (el !== inputEl) {
                                 el.value = newVal;
                                 el.title = newVal;
@@ -2043,14 +1993,12 @@
                         });
                     }
 
-                    // 3. 觸發連動邏輯檢查
-                    const allRows = document.getElementById('grid-tbody').querySelectorAll('tr');
-                    allRows.forEach(tr => {
+                    // 觸發 UI 邏輯檢查 (針對所有受影響的行)
+                    // 使用 querySelectorAll 抓取所有相關的 tr (包含 local 和 global)
+                    const relevantRows = document.querySelectorAll(`tr[data-cid][data-sid="${student.id}"]`);
+                    relevantRows.forEach(tr => {
                         const cid = tr.dataset.cid;
-                        const sid = tr.dataset.sid; 
-                        if (sid === student.id && app.courseIds.includes(cid)) {
-                            // 修改前：updateRowLogic(tr, app.formData);
-                            // 修改後：明確傳入 false (因為這是已歸戶的 App 資料)
+                        if (app.courseIds.includes(cid)) {
                             updateRowLogic(tr, app.formData, false);
                         }
                     });
@@ -2058,15 +2006,36 @@
             } else {
                 // === 情境 B: 未歸戶 ===
                 course[fieldDef.id] = newVal;
-                const tr = inputEl.closest('tr');
-                // 修改前：if (tr) updateRowLogic(tr, course);
-                // 修改後：傳入 true (這是未歸戶資料)
-                if (tr) updateRowLogic(tr, course, true);
                 
+                // 更新該行邏輯 (Local & Global)
+                const relevantRows = document.querySelectorAll(`tr[data-cid="${course._internal_id}"][data-sid="${student.id}"]`);
+                relevantRows.forEach(tr => updateRowLogic(tr, course, true));
+                
+                // 更新畫面數值 (防止 Local 改了 Global 沒變)
+                syncValueToViews(course._internal_id, student.id, fieldDef.id, newVal, inputEl);
+
                 if (!isScoreField && newVal && newVal.trim() !== "") {
                     tryAutoMerge(student, course);
                 }
             }
+        }
+
+        // ★ 輔助：同步數值到所有視圖的函式
+        function syncValueToViews(cid, sid, fieldId, value, sourceInput) {
+            // 尋找所有對應這門課、這個欄位的輸入框
+            // 注意：我們沒有給每個 input 獨特 ID，所以透過 TR 的 data 屬性往下找
+            const rows = document.querySelectorAll(`tr[data-cid="${cid}"][data-sid="${sid}"]`);
+            rows.forEach(row => {
+                const targetInput = row.querySelector(`[data-field="${fieldId}"]`);
+                if (targetInput && targetInput !== sourceInput) {
+                    targetInput.value = value;
+                    targetInput.title = value;
+                    // 視覺回饋
+                    targetInput.style.transition = 'background-color 0.3s';
+                    targetInput.style.backgroundColor = '#fff7ed'; // 淡橘色
+                    setTimeout(() => targetInput.style.backgroundColor = '', 400);
+                }
+            });
         }
         // --- Initialization ---
         window.onload = async function() {
@@ -5064,19 +5033,8 @@
                 // 更新 Course Data
                 item.course[fieldDef.id] = finalVal;
 
-                // 2. 更新 Grid 畫面 (DOM)
-                // 這裡精確鎖定 studentId 與 courseId
-                const row = document.querySelector(`tr[data-cid="${item.course._internal_id}"][data-sid="${student.id}"]`);
-                if(row) {
-                    const input = row.querySelector(`input[data-field="${fieldDef.id}"]`);
-                    if(input) {
-                        input.value = finalVal;
-                        input.title = finalVal;
-                        // 閃爍效果
-                        input.style.backgroundColor = '#dcfce7'; // 淡綠色
-                        setTimeout(() => input.style.backgroundColor = '', 500);
-                    }
-                }
+                // ★ 修正：使用 syncValueToViews 更新所有視圖
+                syncValueToViews(item.course._internal_id, student.id, fieldDef.id, finalVal);
             });
 
             // 3. 更新 App Data (總和)
