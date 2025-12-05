@@ -1106,6 +1106,147 @@
             };
             reader.readAsArrayBuffer(file);
         }
+        
+        function renderStudentList() {
+            const container = document.getElementById('student-list');
+            container.innerHTML = '';
+            
+            const term = document.getElementById('search-input').value.toLowerCase();
+            const fCourseDept = document.getElementById('filter-course-dept').value;
+            const fStudentDept = document.getElementById('filter-student-dept').value;
+            const fStatus = document.getElementById('filter-status').value;
+
+            let students = Object.values(groupedStudents);
+            
+            // 篩選邏輯
+            students = students.filter(s => {
+                const matchText = s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term);
+                if (!matchText) return false;
+
+                const hasStudentDept = !fStudentDept || s.courses.some(c => (c['student_dept'] || c['系所']) === fStudentDept);
+                if(!hasStudentDept) return false;
+
+                const hasCourseDept = !fCourseDept || s.courses.some(c => (c['course_dept'] || c['開課系所']) === fCourseDept);
+                if(!hasCourseDept) return false;
+
+                if (fStatus === 'completed' && s.applications.length === 0) return false;
+                if (fStatus === 'pending' && s.applications.length > 0) return false;
+
+                return true;
+            });
+            
+            // 排序邏輯
+            students.sort((a, b) => {
+                let valA = String(a[sortConfig.key] || '');
+                let valB = String(b[sortConfig.key] || '');
+                
+                const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
+                const comp = collator.compare(valA, valB);
+                
+                return sortConfig.direction === 'asc' ? comp : -comp;
+            });
+
+            document.getElementById('student-count').innerText = students.length;
+
+            if (students.length === 0) {
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">無符合資料</div>';
+                return;
+            }
+
+            // 產生列表項目
+            students.forEach(s => {
+                const el = document.createElement('div');
+                el.className = `student-item p-3 pl-4 border-b border-slate-100 ${currentStudentId === s.id ? 'active' : ''}`;
+                el.onclick = () => selectStudent(s.id);
+                
+                const appCount = s.applications.length;
+                const totalCourses = s.courses.length;
+                const statusHtml = appCount > 0 
+                    ? `<span class="bg-green-100 text-success text-[10px] px-1.5 py-0.5 rounded font-bold">${appCount} 筆填報</span>` 
+                    : `<span class="bg-slate-100 text-slate-400 text-[10px] px-1.5 py-0.5 rounded">未開始</span>`;
+
+                el.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <div class="font-bold text-slate-700 text-sm student-name">${s.name}</div>
+                            <div class="text-xs text-slate-500 font-mono">${s.id}</div>
+                        </div>
+                        <div class="text-right">
+                            ${statusHtml}
+                            <div class="text-[10px] text-slate-400 mt-1">${totalCourses} 門課</div>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(el);
+            });
+        }
+
+        // 列表篩選觸發
+        function filterStudentList() { renderStudentList(); }
+        
+        // 列表排序觸發
+        function toggleSort(key) {
+            if (sortConfig.key === key) {
+                sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            } else {
+                sortConfig.key = key;
+                sortConfig.direction = 'asc';
+            }
+            
+            // 更新圖示樣式
+            const iconClass = sortConfig.direction === 'asc' ? 
+                (key === 'id' ? 'fa-sort-numeric-down' : 'fa-sort-alpha-down') : 
+                (key === 'id' ? 'fa-sort-numeric-up' : 'fa-sort-alpha-up');
+            
+            document.querySelectorAll('#sort-id-btn i, #sort-name-btn i').forEach(i => {
+                if (i.parentElement.id === `sort-${key}-btn`) {
+                    i.className = `fas ${iconClass}`;
+                    i.parentElement.classList.add('text-primary', 'bg-slate-100');
+                } else {
+                    const otherKey = key === 'id' ? 'name' : 'id';
+                    const defaultIcon = otherKey === 'id' ? 'fa-sort-numeric-down' : 'fa-sort-alpha-down';
+                    i.className = `fas ${defaultIcon} opacity-50`;
+                    i.parentElement.classList.remove('text-primary', 'bg-slate-100');
+                }
+            });
+
+            renderStudentList();
+        }
+
+        // 選擇學生 (已更新以支援個人總表模式)
+        function selectStudent(sid) {
+            currentStudentId = sid;
+            renderStudentList(); // 更新列表選中狀態
+            
+            const student = groupedStudents[sid];
+            document.getElementById('form-empty-state').classList.add('hidden');
+            document.getElementById('form-container').classList.remove('hidden');
+            
+            // 更新 Header 資訊
+            document.getElementById('header-name').innerText = student.name;
+            document.getElementById('header-id').innerText = student.id;
+            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
+            document.getElementById('header-avatar').innerText = student.name[0] || '?';
+            
+            const appCount = student.applications.length;
+            const statusEl = document.getElementById('header-status');
+            statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
+            statusEl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${appCount > 0 ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
+
+            // 重置個人總表的勾選狀態
+            if (studentGridSelection) studentGridSelection.clear();
+            updateGridToolbar();
+
+            // 根據目前模式渲染對應視圖
+            if (currentViewMode === 'form') {
+                renderTabs(student);
+                if (appCount > 0) switchTab(student.applications[0].id);
+                else switchTab('settings');
+                renderSettingsTab(student);
+            } else {
+                renderStudentGrid();
+            }
+        }
 
         async function processUploadedData(data, savedApps=[]) {
             allRawData = data;
