@@ -717,6 +717,10 @@
         .excel-table td { vertical-align: middle; }
 
         /* --- style結尾 --- */
+        /* ★ 修正2: 移除學生單人列表表格的 min-width: 100% 限制，讓 JS 精確設定寬度 */
+        #student-grid-wrapper .excel-table {
+            min-width: auto !important;
+        }
     </style> 
 </head>
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
@@ -1817,8 +1821,9 @@
                                         }
                                 }
 
-                                // 處理未歸戶點擊事件
-                                if (!appId) {
+                               // 處理未歸戶點擊事件
+                                // ★ 修正 1: 單選欄位 (SELECT) 在未歸戶時允許編輯，不強制歸戶
+                                if (!appId && input.tagName !== 'SELECT') { 
                                         input.readOnly = true;
                                         input.style.cursor = 'pointer';
                                         input.title = "尚未歸戶 (點擊以建立)";
@@ -5352,7 +5357,7 @@
                             }
                         }
 
-                        if (!appId) {
+                       if (!appId && input.tagName !== 'SELECT') {
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
                             input.title = "尚未歸戶 (點擊以建立)";
