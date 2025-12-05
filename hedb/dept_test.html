@@ -715,11 +715,12 @@
         }
 
         .excel-table td { vertical-align: middle; }
-
+     
         /* --- style結尾 --- */
-        /* ★ 修正2: 移除學生單人列表表格的 min-width: 100% 限制，讓 JS 精確設定寬度 */
+        /* ★ 修正 2: 移除學生單人列表表格的 min-width: 100% 限制，確保 JS 設定的寬度能強制捲軸出現 */
         #student-grid-wrapper .excel-table {
             min-width: auto !important;
+            width: max-content !important; 
         }
     </style> 
 </head>
@@ -1822,14 +1823,12 @@
                                 }
 
                                // 處理未歸戶點擊事件
-                                // ★ 修正 1: 單選欄位 (SELECT) 在未歸戶時允許編輯，不強制歸戶
-                                if (!appId && input.tagName !== 'SELECT') { 
+                                // ★ 修正 1: 未歸戶時所有可填欄位 (包含 SELECT) 均應鎖定並觸發歸戶提示
+                                if (!appId) { // <--- 移除對 SELECT 的排除
                                         input.readOnly = true;
                                         input.style.cursor = 'pointer';
                                         input.title = "尚未歸戶 (點擊以建立)";
                                         const triggerConsolidate = (e) => {
-                                                e.preventDefault(); e.stopPropagation();
-                                                promptAndConsolidate(student, course);
                                         };
                                         if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
                                         else input.onclick = triggerConsolidate;
@@ -5356,6 +5355,19 @@
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
                             }
                         }
+
+                        // ★ 修正 1: 未歸戶時所有可填欄位 (包含 SELECT) 均應鎖定並觸發歸戶提示
+                        if (!appId) { // <--- 移除對 SELECT 的排除
+                            input.readOnly = true;
+                            input.style.cursor = 'pointer';
+                            input.title = "尚未歸戶 (點擊以建立)";
+                            const triggerConsolidate = (e) => {
+                                e.preventDefault(); e.stopPropagation();
+                                promptAndConsolidate(student, course).then(() => { renderStudentLocalGrid(sid); });
+                            };
+                            if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
+                            else input.onclick = triggerConsolidate;
+                        } else if (f.calcMode === 'weighted') {
 
                        if (!appId && input.tagName !== 'SELECT') {
                             input.readOnly = true;
