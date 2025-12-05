@@ -1181,7 +1181,170 @@
             setStudentView(mode);
         }
         */
+        // --- 補上缺失的工具函式 ---
 
+        // 記錄變更 (Audit Log)
+        function logChange(field, appId, oldVal, newVal, studentId) {
+            if(oldVal === newVal) return;
+            changeLogs.push({
+                time: new Date().toISOString(),
+                field: field,
+                old: oldVal,
+                new: newVal,
+                student: studentId,
+                app: appId
+            });
+        }
+
+        // 顯示提示訊息 (Toast)
+        let toastTimeout;
+        function showToast(type, msg) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+
+            const el = document.createElement('div');
+            let colorClass = 'bg-slate-800'; 
+            let iconClass = 'fa-info-circle';
+            
+            if (type === 'success') {
+                colorClass = 'bg-emerald-600';
+                iconClass = 'fa-check-circle';
+            } else if (type === 'error') {
+                colorClass = 'bg-red-600';
+                iconClass = 'fa-exclamation-circle';
+            } else if (type === 'warning') {
+                colorClass = 'bg-orange-500';
+                iconClass = 'fa-exclamation-triangle';
+            } else if (type === 'info') {
+                colorClass = 'bg-sky-600';
+                iconClass = 'fa-info-circle';
+            }
+
+            el.className = `${colorClass} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 min-w-[300px] transform transition-all duration-300 translate-y-10 opacity-0 pointer-events-auto`;
+            
+            el.innerHTML = `
+                <i class="fas ${iconClass} text-lg"></i> 
+                <span class="font-bold text-sm tracking-wide">${msg}</span>
+                <button class="ml-auto hover:text-slate-200 focus:outline-none p-1 transition-colors"><i class="fas fa-times"></i></button>
+            `;
+
+            const close = () => {
+                el.classList.add('opacity-0', 'translate-y-10');
+                el.classList.remove('mb-2'); 
+                setTimeout(() => { if (el.parentElement) el.remove(); }, 300);
+            };
+
+            el.querySelector('button').onclick = close;
+            container.appendChild(el);
+
+            requestAnimationFrame(() => {
+                el.classList.remove('translate-y-10', 'opacity-0');
+            });
+
+            setTimeout(close, 3000);
+        }
+        
+        // 隱藏提示 (相容性保留)
+        function hideToast() {
+            // 空函式，新版邏輯已整合至 showToast
+        }
+
+        // 匯出資料
+        async function exportData() {
+            if(Object.keys(groupedStudents).length === 0) return showToast('error', '無資料可匯出');
+
+            const workbook = new ExcelJS.Workbook();
+            const ws = workbook.addWorksheet('填報資料');
+
+            const headers = [];
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => headers.push({key: f.id, header: f.label}));
+            }
+            ws.columns = headers;
+
+            const headerRow = ws.getRow(1);
+            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002E5D' } };
+
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
+                    const courseCount = courses.length;
+
+                    courses.forEach((c, idx) => {
+                        const row = {};
+                        headers.forEach(h => {
+                            let val = app.formData[h.key];
+                            const fieldDef = currentYearConfig.fields?.find(f => f.id === h.key);
+                            
+                            if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                                const totalVal = parseFloat(val);
+                                const baseVal = Math.floor(totalVal / courseCount);
+                                const remainder = totalVal % courseCount;
+                                if (idx === courses.length - 1) val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                                else val = baseVal.toFixed(fieldDef.decimal || 0);
+                            }
+
+                            if (val === undefined || val === "") val = c[h.key] || c[h.header] || "";
+                            
+                            if (fieldDef && fieldDef.type === 'date' && fieldDef.outputFormat === 'ROC' && val && val.includes('-')) {
+                                 const parts = val.split('-');
+                                 if (parts.length === 3) {
+                                     const roc = parseInt(parts[0]) - 1911;
+                                     val = `${roc}${parts[1]}${parts[2]}`; 
+                                 }
+                            }
+
+                            row[h.key] = val;
+                        });
+                        ws.addRow(row);
+                    });
+                });
+
+                const unassigned = s.courses.filter(c => !c._app_id);
+                unassigned.forEach(c => {
+                    const row = {};
+                    headers.forEach(h => row[h.key] = c[h.key] || c[h.header] || "");
+                    ws.addRow(row);
+                });
+            });
+
+            if (currentYearConfig.fields) {
+                currentYearConfig.fields.forEach((f, i) => {
+                    const col = ws.getColumn(i + 1);
+                    if (f.excelWidth) col.width = f.excelWidth;
+                    
+                    if (f.type === 'single_select' && f.options && f.options.length > 0) {
+                         const char = col.letter;
+                         const listStr = f.options.join(',');
+                         if(listStr.length < 255) {
+                             ws.dataValidations.add(`${char}2:${char}9999`, {
+                                 type: 'list',
+                                 allowBlank: true,
+                                 formulae: [`"${listStr}"`]
+                             });
+                         }
+                    }
+                });
+            }
+
+            const conSheet = workbook.addWorksheet('_Consolidation_Data', {state: 'hidden'});
+            conSheet.columns = [{header: 'App_ID', key: 'id'}, {header: 'Student_ID', key: 'sid'}, {header: 'Course_IDs', key: 'cids'}, {header: 'Form_Data', key: 'data'}];
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    conSheet.addRow({ id: app.id, sid: s.id, cids: app.courseIds.join(','), data: JSON.stringify(app.formData) });
+                });
+            });
+
+            const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
+            changeLogs.forEach(l => logSheet.addRow(l));
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `實習填報_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('success', '匯出成功');
+            hasUnsavedChanges = false;
+        }
     </script>
 </body>
 </html>
