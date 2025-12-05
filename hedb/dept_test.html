@@ -614,6 +614,9 @@
         .excel-table { 
             border-collapse: separate; 
             border-spacing: 0;
+            table-layout: fixed; /* ★ 新增：固定表格佈局，確保欄位寬度強制生效以產生捲軸 */
+            width: auto;         /* ★ 修改：由 JS 動態控制寬度，不強迫 100% */
+            min-width: 100%;     /* 確保至少填滿畫面 */
         }
         
         .excel-table th, .excel-table td { 
@@ -5164,10 +5167,9 @@
                 rowsData.push({ course: c, appData: appData, student: student, appId: c._app_id });
             });
 
-            // (C) 資料排序
+            // (C) 資料排序 (邏輯保留，但僅透過右上角選單觸發，表頭不再觸發)
             if (localGridState.sortKey) {
                 rowsData.sort((a, b) => {
-                    // 取值 Helper
                     const getVal = (row, key) => {
                         let v = row.appId && row.appData[key] ? row.appData[key] : row.course[key];
                         if (!v && key === 'student_id') v = row.student.id;
@@ -5178,7 +5180,6 @@
                     const valA = String(getVal(a, localGridState.sortKey));
                     const valB = String(getVal(b, localGridState.sortKey));
 
-                    // 數字排序 vs 字串排序
                     const numA = parseFloat(valA.replace(/,/g, ''));
                     const numB = parseFloat(valB.replace(/,/g, ''));
                     
@@ -5186,7 +5187,6 @@
                     if (!isNaN(numA) && !isNaN(numB) && valA.trim() !== '' && valB.trim() !== '') {
                         result = numA - numB;
                     } else {
-                        // 中文排序支援
                         result = valA.localeCompare(valB, 'zh-Hant');
                     }
                     
@@ -5194,8 +5194,10 @@
                 });
             }
 
-            // (D) 計算欄位寬度
+            // (D) ★★★ 計算欄位寬度與總寬度 (解決捲軸問題的核心) ★★★
             const columnWidths = {};
+            let totalTableWidth = 0; // 用於累加總寬度
+
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
@@ -5203,7 +5205,6 @@
 
                 rowsData.forEach(row => {
                     let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
-                    // 系統欄位 fallback
                     if(!val && f.id === 'student_id') val = row.student.id;
                     if(!val && f.id === 'student_name') val = row.student.name;
                     if(!val && f.id === 'student_dept') val = row.student.dept;
@@ -5213,25 +5214,35 @@
                         finalW = Math.max(finalW, w);
                     }
                 });
-                columnWidths[f.id] = Math.max(finalW, 80);
+                
+                // 設定欄位寬度 (最少 80px)
+                const calculatedWidth = Math.max(finalW, 80);
+                columnWidths[f.id] = calculatedWidth;
+                totalTableWidth += calculatedWidth;
             });
 
-            // (E) 渲染表頭 (支援排序點擊 + 凍結)
-            const freezeLimit = localGridState.frozenCount; // 使用動態設定
+            // ★ 強制設定表格總寬度，確保捲軸出現
+            const tableElement = document.querySelector('#student-grid-wrapper table');
+            if(tableElement) {
+                // 額外加一點 buffer 避免計算誤差導致換行
+                tableElement.style.width = (totalTableWidth + 10) + 'px';
+            }
+
+            // (E) 渲染表頭 (★ 已移除點擊排序與圖示)
+            const freezeLimit = localGridState.frozenCount;
             let currentStickyLeft = 0; 
             let trHead = document.createElement('tr');
 
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
-                // 加入 cursor-pointer 與 hover 效果
-                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none sortable-header hover:bg-slate-200 transition-colors";
+                // 移除 sortable-header, cursor-pointer, hover 效果
+                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none";
                 
-                // ★ 綁定排序事件
-                th.onclick = () => setLocalSort(col.id);
+                // ★ 移除 onclick 事件
+                // th.onclick = ... (已刪除)
 
                 const finalWidth = columnWidths[col.id];
-                th.style.minWidth = finalWidth + "px";
-                th.style.maxWidth = finalWidth + "px";
+                th.style.width = finalWidth + "px"; // 使用 width 而非 min-width 以配合 table-layout: fixed
                 th.style.textAlign = 'center';
 
                 // 處理凍結
@@ -5242,18 +5253,9 @@
                     if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
                 }
 
-                // 排序圖示
-                let sortIcon = '';
-                if (localGridState.sortKey === col.id) {
-                    sortIcon = localGridState.sortDir === 'asc' 
-                        ? '<i class="fas fa-sort-up sort-icon active ml-1"></i>' 
-                        : '<i class="fas fa-sort-down sort-icon active ml-1"></i>';
-                } else {
-                    sortIcon = '<i class="fas fa-sort sort-icon ml-1 opacity-20"></i>';
-                }
-
+                // ★ 移除排序圖示邏輯
                 let infoIcon = col.description ? `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>` : '';
-                th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}${sortIcon}</div>`;
+                th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}</div>`;
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
@@ -5287,9 +5289,8 @@
                     td.className = "border-r border-slate-200 p-0 relative";
                     
                     const finalWidth = columnWidths[f.id];
-                    td.style.minWidth = finalWidth + "px";
-                    td.style.maxWidth = finalWidth + "px";
-
+                    td.style.width = finalWidth + "px"; // 使用 width
+                    
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
                     td.style.backgroundColor = cellBgColor;
@@ -5314,7 +5315,7 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
 
-                    // 輸入框生成邏輯 (與之前相同)
+                    // 輸入框生成邏輯
                     if (isReadOnly) {
                         const div = document.createElement('div');
                         div.className = "cell-read-only"; 
