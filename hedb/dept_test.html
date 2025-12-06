@@ -2045,11 +2045,32 @@
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // Header 資訊更新
+            // --- ★★★ 修改開始：處理系級顯示 (Department | Grade) ★★★ ---
+            
+            // 1. 嘗試從第一門課程中抓取「年級」
+            let gradeVal = '';
+            if (student.courses.length > 0) {
+                // 使用寬鬆搜尋找年級欄位
+                const found = getCourseValue(student.courses[0], ['grade', '年級', '修課年級']);
+                if (found && found !== '-') gradeVal = found;
+            }
+
+            // 2. 組合顯示字串
+            let deptDisplayHtml = student.dept;
+            if (gradeVal) {
+                // 如果有年級，顯示 "系所 | X年級"
+                deptDisplayHtml = `${student.dept} <span class="mx-1 opacity-50">|</span> ${gradeVal}年級`;
+            }
+
+            // 3. 更新 Header DOM
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
-            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${student.dept}`;
+            // 這裡套用新的顯示 HTML
+            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${deptDisplayHtml}`;
             document.getElementById('header-avatar').innerText = student.name[0] || '?';
+            
+            // --- ★★★ 修改結束 ★★★ ---
+
             
             const appCount = student.applications.length;
             const statusEl = document.getElementById('header-status');
