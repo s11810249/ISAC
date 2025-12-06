@@ -1710,11 +1710,9 @@
             groupedStudents = {};
             
             let detectedYear = null;
-
             if (data.length > 0) {
                 const firstRow = data[0];
                 detectedYear = firstRow['school_year'] || firstRow['academic_year'] || firstRow['學年'] || null;
-
                 if (detectedYear) {
                     detectedYear = detectedYear.toString().trim();
                     await changeYear(detectedYear); 
@@ -1726,44 +1724,43 @@
 
             const courseDepts = new Set();
             const studentDepts = new Set();
-            
-            // Pre-scan to build course counters per student for stable IDs
             const courseCounters = {}; 
 
             allRawData.forEach((row, idx) => {
                 const sid = row['student_id'] || row['學號'] || row['id'];
                 const sname = row['student_name'] || row['姓名'] || row['name'];
-                const sdept = row['student_dept'] || row['系所'] || row['department'];
                 
-                // ★★★ 新增：讀取年級 (欄位名稱支援 grade, 年級, level) ★★★
+                // ★ 強制確保有值，若無則為空字串
+                const rawDept = row['student_dept'] || row['系所'] || row['department'] || '';
                 const sgrade = row['grade'] || row['年級'] || row['level'] || ''; 
 
                 const cdept = row['course_dept'] || row['開課系所'];
                 
-                if (sdept) studentDepts.add(sdept);
+                if (rawDept) studentDepts.add(rawDept);
                 if (cdept) courseDepts.add(cdept);
 
                 if (!sid) return;
 
                 if (!groupedStudents[sid]) {
-                    let deptDisplay = sdept;
-                    if (deptMasterData && deptMasterData[sdept]) {
+                    let deptDisplay = rawDept;
+                    // 嘗試從 master data 取得顯示名稱
+                    if (deptMasterData && deptMasterData[rawDept]) {
                         const y = activeYear || '114';
-                        const master = deptMasterData[sdept];
-                        deptDisplay = (master.historical_names && master.historical_names[y]) || master.short_name || master.name || sdept;
+                        const master = deptMasterData[rawDept];
+                        deptDisplay = (master.historical_names && master.historical_names[y]) || master.short_name || master.name || rawDept;
                     }
 
                     groupedStudents[sid] = {
                         id: sid,
                         name: sname || '未知',
-                        dept: deptDisplay || '',
-                        grade: sgrade, // ★★★ 新增：將年級存入物件 ★★★
+                        dept: deptDisplay || '未分系', // ★ 預設值防止空白
+                        grade: sgrade,
                         courses: [],
                         applications: [] 
                     };
                 }
                 
-                // --- 課程 ID 生成邏輯 (保持原樣) ---
+                // --- 課程 ID 生成邏輯 ---
                 const rYear = row['school_year'] || row['學年'] || row['academic_year'];
                 const rSem = row['semester'] || row['學期'];
                 const rCode = row['course_code'] || row['選課代號'];
@@ -1790,7 +1787,7 @@
                 groupedStudents[sid].courses.push(row);
             });
 
-            // --- 還原歸戶設定與自動偵測邏輯 (保持原樣) ---
+            // --- 還原歸戶設定 ---
             if (savedApps && savedApps.length > 0) {
                 savedApps.forEach(app => {
                     const student = groupedStudents[app.studentId];
@@ -1816,7 +1813,7 @@
                 showToast('success', `已還原 ${savedApps.length} 筆歸戶設定`);
             }
 
-            // 自動歸戶單一課程偵測
+            // --- 自動歸戶單一課程偵測 ---
             const singleCourseStudents = Object.values(groupedStudents).filter(s => 
                 s.courses.length === 1 && !s.courses[0]._app_id
             );
@@ -1871,8 +1868,10 @@
                 }
             }
             
+            // 更新下拉選單
             const renderOpts = (elId, set) => {
                 const el = document.getElementById(elId);
+                if(!el) return;
                 const current = el.value;
                 el.innerHTML = el.options[0].outerHTML; 
                 Array.from(set).sort().forEach(v => {
@@ -2030,15 +2029,19 @@
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             
-            // ★★★ 修改重點：顯示「系所 | 年級」 ★★★
-            // filter(Boolean) 會移除空字串，確保只有系所或只有年級時格式也正確
-            const gradeDisplay = student.grade ? `${student.grade}年級` : '';
-            const deptGradeText = [student.dept, gradeDisplay].filter(Boolean).join(' <span class="mx-1 opacity-50">|</span> ');
+            // ★★★ 修改重點：更安全的字串組合 (系所 | 年級) ★★★
+            let deptText = student.dept || '系所未知'; // 確保有字
+            let gradeText = student.grade ? `${student.grade}年級` : '';
             
-            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${deptGradeText}`;
+            let fullHtml = `<i class="fas fa-graduation-cap mr-1"></i>${deptText}`;
+            if (gradeText) {
+                fullHtml += ` <span class="mx-1 opacity-50">|</span> ${gradeText}`;
+            }
             
+            document.getElementById('header-dept').innerHTML = fullHtml;
             document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
+            // 更新狀態標籤
             const appCount = student.applications.length;
             const statusEl = document.getElementById('header-status');
             statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
@@ -2050,11 +2053,9 @@
             const dynamicArea = document.getElementById('dynamic-tabs-area');
 
             if (appCount > 0) {
-                // 有資料：清空可能存在的空狀態 -> 切換到第一筆
                 dynamicArea.innerHTML = '';
                 switchTab(student.applications[0].id);
             } else {
-                // 無資料：移除選中 -> 顯示空狀態
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
                 renderEmptyState();
             }
