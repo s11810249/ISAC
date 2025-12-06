@@ -2240,32 +2240,49 @@
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // Header 資訊更新
+            // --- 1. 基本資訊更新 ---
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             
-            // 處理系級顯示
+            // --- 2. 準備系級文字 ---
             let deptText = (student.dept && student.dept !== 'undefined') ? student.dept : '系所未知';
             let gradeText = student.grade ? `${student.grade}年級` : '';
-            
-            let fullHtml = `<i class="fas fa-graduation-cap mr-1"></i>${deptText}`;
+            let deptHtml = `<span class="text-slate-600"><i class="fas fa-graduation-cap mr-1"></i>${deptText}</span>`;
             if (gradeText) {
-                fullHtml += ` <span class="mx-1 opacity-50">|</span> ${gradeText}`;
+                deptHtml += ` <span class="mx-2 text-slate-300">|</span> <span class="text-slate-600">${gradeText}</span>`;
             }
+
+            // --- 3. ★★★ 準備狀態文字與顏色 (核心修改) ★★★ ---
+            const totalCourses = student.courses.length;
+            const appCount = student.applications.length;
+            const unassignedCount = student.courses.filter(c => !c._app_id).length;
+
+            let statusHtml = "";
             
-            document.getElementById('header-dept').innerHTML = fullHtml;
+            if (appCount === 0) {
+                // 情境 1: 完全未開始
+                // 樣式：灰色/深灰色，表示待辦
+                statusHtml = `<span class="text-slate-500 font-bold">共修習 ${totalCourses} 門課程，尚未建立任何實習紀錄</span>`;
+            } else if (unassignedCount > 0) {
+                // 情境 2: 部分歸戶
+                // 樣式：藍色，表示進行中
+                statusHtml = `<span class="text-blue-600 font-bold">共修習 ${totalCourses} 門課程，已建立 ${appCount} 筆實習紀錄，未歸戶課程共 ${unassignedCount} 門</span>`;
+            } else {
+                // 情境 3: 全部歸戶完成
+                // 樣式：綠色，表示完成
+                statusHtml = `<span class="text-emerald-600 font-bold"><i class="fas fa-check-circle mr-1"></i>共修習 ${totalCourses} 門課程，共建立 ${appCount} 筆實習紀錄，無未歸戶的實習課程</span>`;
+            }
+
+            // --- 4. 組合顯示 (加入分隔線) ---
+            document.getElementById('header-dept').innerHTML = `${deptHtml} <span class="mx-3 text-slate-300">|</span> ${statusHtml}`;
             document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
-            // 更新狀態標籤
-            const appCount = student.applications.length;
+            // --- 5. 隱藏舊的右側狀態標籤 ---
             const statusEl = document.getElementById('header-status');
-            statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
-            statusEl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${appCount > 0 ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
+            if(statusEl) statusEl.style.display = 'none'; // 直接隱藏
 
-            // ★★★ 關鍵修正：使用 currentViewMode (記憶模式) ★★★
-            // 不要寫死成 'form'，否則切換學生會一直跳回去
+            // --- 6. 視圖與內容切換 (保持不變) ---
             setStudentViewMode(currentViewMode); 
-            
             renderTabs(student);
             
             const dynamicArea = document.getElementById('dynamic-tabs-area');
