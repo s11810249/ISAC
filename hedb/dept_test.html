@@ -171,7 +171,13 @@
         .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
 
         /* Custom ROC Date Picker Styles */
-        .date-picker-wrapper { position: relative; width: 100%; }
+        .date-picker-wrapper { 
+            position: relative; 
+            width: 100%; 
+            display: flex;       /* ★ 關鍵：消除 block 元素間隙 */
+            align-items: center; /* 垂直置中 */
+            margin: 0;           /* 確保無外距 */
+        }
         .date-input-group { 
             position: relative; 
             display: flex; 
@@ -908,7 +914,8 @@
 
                 <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
                 </div>
-
+                <div id="sticky-progress-header" class="hidden bg-white border-b border-slate-200 px-6 py-3 shadow-sm z-20 flex-shrink-0">
+                    </div>
                 <div class="flex-grow relative overflow-hidden bg-slate-50">
                     
                     <div id="student-grid-wrapper" class="hidden absolute inset-x-0 top-0 bottom-10 flex flex-col bg-white z-20 border-b border-slate-200">
@@ -2472,6 +2479,7 @@
             // 切換顯示
             document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
             content.style.display = 'block';
+        updateAppProgress(tabId); 
         }
 
         function createApplication() {
@@ -2548,13 +2556,6 @@
             const div = document.createElement('div');
             div.id = `content-${appId}`;
             div.className = 'dynamic-tab-content max-w-5xl mx-auto space-y-6';
-
-            // ★★★ 新增這段：插入進度條容器 ★★★
-            const statusDiv = document.createElement('div');
-            statusDiv.id = `app-progress-${appId}`;
-            statusDiv.className = "bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center justify-between";
-            div.appendChild(statusDiv);
-            // ★★★ 結束新增 ★★★
             
             // --- 課程資訊區塊 (可收合) ---
             // 使用 <details> 標籤實現收合，預設 open
@@ -3030,54 +3031,61 @@
         }
 
         function updateAppProgress(appId) {
+            // 1. 基本檢查
             const student = groupedStudents[currentStudentId];
             if(!student) return;
             const app = student.applications.find(a => a.id === appId);
             if(!app) return;
         
+            // 2. 取得置頂容器
+            const container = document.getElementById('sticky-progress-header');
+            if(!container) return;
+        
+            // 3. 計算數據
             const stats = calculateAppStats(app);
             const { required, filled, percent } = stats;
         
-            const container = document.getElementById(`app-progress-${appId}`);
-            if(container) {
-                const isComplete = percent === 100;
-                const colorClass = isComplete ? 'text-emerald-600' : 'text-orange-500';
-                const barColor = isComplete ? 'bg-emerald-500' : 'bg-orange-400';
-                const btnClass = isComplete 
-                    ? 'hidden' 
-                    : 'px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded text-xs font-bold transition flex items-center gap-1';
+            // 4. 設定樣式變數
+            const isComplete = percent === 100;
+            const colorClass = isComplete ? 'text-emerald-600' : 'text-orange-500';
+            const barColor = isComplete ? 'bg-emerald-500' : 'bg-orange-400';
+            const btnClass = isComplete 
+                ? 'hidden' 
+                : 'px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded text-xs font-bold transition flex items-center gap-1 cursor-pointer';
         
-                container.innerHTML = `
-                    <div class="flex items-center gap-4 flex-grow">
-                        <div class="w-12 h-12 rounded-full bg-slate-50 flex-shrink-0 flex items-center justify-center text-primary border border-slate-100 shadow-sm">
-                            <i class="fas fa-clipboard-check text-xl"></i>
-                        </div>
-                        <div class="flex-grow">
-                            <div class="flex justify-between items-center mb-1">
-                                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">填報進度</div>
-                                <div class="font-bold text-slate-700 text-xs">
-                                    ${filled} / ${required} 欄位
-                                </div>
-                            </div>
-                            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
-                                <div class="h-full ${barColor} transition-all duration-500 shadow-sm" style="width: ${percent}%"></div>
+            // 5. 渲染內容 (全寬樣式)
+            container.innerHTML = `
+                <div class="flex items-center gap-4 w-full">
+                    <div class="w-10 h-10 rounded-full bg-slate-50 flex-shrink-0 flex items-center justify-center text-primary border border-slate-100 shadow-sm">
+                        <i class="fas fa-clipboard-check text-lg"></i>
+                    </div>
+                    
+                    <div class="flex-grow flex flex-col justify-center">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">填報進度</div>
+                            <div class="font-bold text-slate-700 text-xs">
+                                已填 ${filled} / 應填 ${required}
                             </div>
                         </div>
-                        <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
-                            <span class="font-bold text-2xl ${colorClass}">${percent}%</span>
-                            <button onclick="highlightUnfilled('${appId}')" class="${btnClass}">
-                                <i class="fas fa-exclamation-circle"></i> 標示未填
-                            </button>
+                        <div class="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
+                            <div class="h-full ${barColor} transition-all duration-500 shadow-sm" style="width: ${percent}%"></div>
                         </div>
                     </div>
-                `;
-            }
+        
+                    <div class="flex items-center gap-3 pl-4 border-l border-slate-100 h-full flex-shrink-0">
+                        <span class="font-bold text-xl ${colorClass} w-12 text-right">${percent}%</span>
+                        <button onclick="highlightUnfilled('${appId}')" class="${btnClass}">
+                            <i class="fas fa-exclamation-circle"></i> 未填提示
+                        </button>
+                    </div>
+                </div>
+            `;
             
-            // 同步更新 Tab 上的狀態燈號 (因為填寫時進度會變)
+            // 6. 顯示容器
+            container.classList.remove('hidden');
+            
+            // 同步更新 Tab 狀態燈號
             renderTabs(student);
-            // 保持當前 Tab 激活樣式
-            const activeBtn = document.querySelector(`.tab-btn[data-tab="${appId}"]`);
-            if(activeBtn) activeBtn.classList.add('active');
         }
         function evaluateLogic(app) {
             const fields = currentYearConfig.fields || [];
@@ -4171,49 +4179,73 @@
 
         // 1. 切換視圖模式 (修正版：加入模式記憶功能)
         function setStudentViewMode(mode) {
-            // ★ 記錄使用者的選擇
+            // 1. 記錄使用者目前的選擇
             currentViewMode = mode;
-
+        
+            // 2. 取得必要的 DOM 元素
             const formContainer = document.getElementById('form-content-area');
             const tabsContainer = document.getElementById('tabs-container');
             const gridWrapper = document.getElementById('student-grid-wrapper');
+            const stickyHeader = document.getElementById('sticky-progress-header'); // ★ 取得置頂進度條元素
             
             const btnForm = document.getElementById('btn-std-view-form');
             const btnGrid = document.getElementById('btn-std-view-grid');
-
+        
             if(!formContainer || !gridWrapper) return;
-
+        
             if (mode === 'grid') {
-                // 切換到列表模式
+                // =======================
+                // 切換到【列表模式】
+                // =======================
+                
+                // 1. 切換容器顯示狀態
                 formContainer.classList.add('hidden');
                 tabsContainer.classList.add('hidden'); 
                 gridWrapper.classList.remove('hidden');
-
+        
+                // ★ 關鍵修改：切換到列表時，隱藏表單專用的進度條
+                if(stickyHeader) stickyHeader.classList.add('hidden');
+        
+                // 2. 更新按鈕樣式 (列表按鈕亮起)
                 if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
                 if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
-
-                // 渲染表格
+        
+                // 3. 渲染表格內容
                 if(currentStudentId) {
                     renderStudentLocalGrid(currentStudentId); 
+                    // 延遲渲染欄位設定器，確保 DOM 已更新
                     setTimeout(() => {
-                        renderLocalGridPicker(); 
+                        if(typeof renderLocalGridPicker === 'function') renderLocalGridPicker(); 
                     }, 0);
                 }
-
+        
             } else {
-                // 切換回表單模式
+                // =======================
+                // 切換回【表單模式】
+                // =======================
+        
+                // 1. 切換容器顯示狀態
                 formContainer.classList.remove('hidden');
                 tabsContainer.classList.remove('hidden');
                 gridWrapper.classList.add('hidden');
-
+        
+                // 2. 更新按鈕樣式 (表單按鈕亮起)
                 if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
                 if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
                 
+                // 3. ★ 關鍵修改：恢復進度條顯示
+                // 檢查是否有當前選中的頁籤 (Tab)
                 const activeTab = document.querySelector('.tab-btn.active');
-                if(activeTab) switchTab(activeTab.dataset.tab);
+                if(activeTab) {
+                    // 如果有選中的 Tab，呼叫 switchTab
+                    // 注意：switchTab 內部已經包含了 updateAppProgress(tabId)，這會自動讓 stickyHeader 顯示出來
+                    switchTab(activeTab.dataset.tab); 
+                } else {
+                    // 如果沒有選中頁籤 (例如剛載入或無資料)，確保進度條是隱藏的
+                    if(stickyHeader) stickyHeader.classList.add('hidden');
+                }
             }
         }
-
         // 2. 渲染單人列表表格
         function renderStudentLocalGrid(sid) {
             const student = groupedStudents[sid];
