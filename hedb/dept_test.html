@@ -3855,17 +3855,22 @@
             const student = groupedStudents[sid];
             if (!student) return;
 
+            const table = document.querySelector('#student-grid-wrapper table');
             const thead = document.getElementById('local-grid-thead');
             const tbody = document.getElementById('local-grid-tbody');
-            const tableElement = document.querySelector('#student-grid-wrapper table'); // 抓取表格元素
             
             // 讀取搜尋關鍵字
             const searchTerm = document.getElementById('local-grid-search')?.value.toLowerCase() || "";
 
-            if(!thead || !tbody) return;
+            if(!table || !thead || !tbody) return;
 
+            // --- 重置表格內容 ---
             thead.innerHTML = '';
             tbody.innerHTML = '';
+            
+            // 清除舊的 colgroup (如果有的話)
+            const oldColgroup = table.querySelector('colgroup');
+            if(oldColgroup) table.removeChild(oldColgroup);
 
             const fields = currentYearConfig.fields || [];
             
@@ -3874,7 +3879,6 @@
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
                 .filter(f => !localGridState.hiddenCols.includes(f.id));
 
-            // 依據使用者設定的順序排列欄位
             const getOrder = (col) => (col.order !== undefined && col.order !== null) ? col.order : 999;
             if (localGridState.columnOrder.length > 0) {
                 allColumns.sort((a, b) => {
@@ -3890,12 +3894,10 @@
             // (B) 資料準備 (扁平化 + 搜尋過濾)
             let rowsData = [];
             student.courses.forEach(c => {
-                // 搜尋過濾
                 if (searchTerm) {
                     const fullText = Object.values(c).join(' ').toLowerCase();
                     if (!fullText.includes(searchTerm)) return;
                 }
-
                 let appData = {};
                 if(c._app_id) {
                     const app = student.applications.find(a => a.id === c._app_id);
@@ -3913,32 +3915,26 @@
                         if (!v && key === 'student_name') v = row.student.name;
                         return v || "";
                     };
-
                     const valA = String(getVal(a, localGridState.sortKey));
                     const valB = String(getVal(b, localGridState.sortKey));
-
                     const numA = parseFloat(valA.replace(/,/g, ''));
                     const numB = parseFloat(valB.replace(/,/g, ''));
-                    
-                    let result = 0;
                     if (!isNaN(numA) && !isNaN(numB) && valA.trim() !== '' && valB.trim() !== '') {
-                        result = numA - numB;
-                    } else {
-                        result = valA.localeCompare(valB, 'zh-Hant');
+                        return localGridState.sortDir === 'asc' ? numA - numB : numB - numA;
                     }
-                    
-                    return localGridState.sortDir === 'asc' ? result : -result;
+                    return localGridState.sortDir === 'asc' ? valA.localeCompare(valB, 'zh-Hant') : -valA.localeCompare(valB, 'zh-Hant');
                 });
             }
 
-            // (D) ★★★ 關鍵：計算欄位寬度與總寬度 ★★★
+            // (D) ★★★ 計算欄位寬度 & 建立 ColGroup ★★★
+            const colgroup = document.createElement('colgroup');
             const columnWidths = {};
-            let totalTableWidth = 0; // 用於累加總寬度
+            let totalTableWidth = 0; 
 
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
-                // 1. 標題寬度計算 (加大緩衝 +50)
-                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 50 + iconWidth;
+                // 1. 標題寬度 (加大緩衝)
+                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 60 + iconWidth;
                 let finalW = headerW;
 
                 rowsData.forEach(row => {
@@ -3948,28 +3944,33 @@
                     if(!val && f.id === 'student_dept') val = row.student.dept;
 
                     if (val) {
-                        // 2. 內容寬度計算 (加大緩衝 +60)
-                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 60;
+                        // 2. 內容寬度 (加大緩衝)
+                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 50;
                         finalW = Math.max(finalW, w);
                     }
                 });
                 
-                // 3. 設定最小寬度 (從 80 加大到 120，強迫撐開)
-                const calculatedWidth = Math.max(finalW, 120);
+                // ★ 強制最小寬度 150px (這會讓表格很容易變寬)
+                const calculatedWidth = Math.max(finalW, 150); 
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
+
+                // 建立 <col> 標籤
+                const col = document.createElement('col');
+                col.style.width = calculatedWidth + "px";
+                colgroup.appendChild(col);
             });
 
-            // (E) ★★★ 關鍵：移除 w-full 並強制設定表格像素寬度 ★★★
-            if(tableElement) {
-                // 移除 Tailwind 的 w-full class，避免被限制在 100%
-                tableElement.classList.remove('w-full');
-                // 強制設定 table-layout 為 fixed
-                tableElement.style.tableLayout = 'fixed';
-                // 直接給予計算後的像素寬度 (這會撐開容器，產生捲軸)
-                tableElement.style.width = totalTableWidth + 'px';
-                tableElement.style.minWidth = totalTableWidth + 'px'; 
-            }
+            // 插入 colgroup 到表格最前面
+            table.insertBefore(colgroup, thead);
+
+            // (E) ★★★ 強制撐開表格 ★★★
+            // 移除可能限制寬度的 class
+            table.classList.remove('w-full');
+            // 設定樣式
+            table.style.tableLayout = 'fixed';
+            table.style.width = totalTableWidth + 'px';
+            table.style.minWidth = totalTableWidth + 'px';
 
             // (F) 渲染表頭
             const freezeLimit = localGridState.frozenCount;
@@ -3978,21 +3979,20 @@
 
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
-                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none";
+                th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold select-none";
                 
-                // 綁定點擊排序
+                // 強制不換行
+                th.style.whiteSpace = 'nowrap';
+                th.style.overflow = 'hidden';
+                th.style.textOverflow = 'ellipsis';
                 th.style.cursor = 'pointer';
                 th.onclick = () => setLocalSort(col.id);
-
-                const finalWidth = columnWidths[col.id];
-                th.style.width = finalWidth + "px"; 
-                th.style.textAlign = 'center';
 
                 // 處理凍結
                 if (index < freezeLimit) {
                     th.classList.add('sticky-col');
                     th.style.left = currentStickyLeft + "px";
-                    currentStickyLeft += finalWidth;
+                    currentStickyLeft += columnWidths[col.id];
                     if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
                 }
 
@@ -4004,7 +4004,7 @@
                 }
 
                 let infoIcon = col.description ? `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>` : '';
-                th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}${sortIcon}</div>`;
+                th.innerHTML = `<div class="flex items-center justify-center gap-1">${col.label}${infoIcon}${sortIcon}</div>`;
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
@@ -4037,21 +4037,21 @@
                     const td = document.createElement('td');
                     td.className = "border-r border-slate-200 p-0 relative";
                     
-                    const finalWidth = columnWidths[f.id];
-                    td.style.width = finalWidth + "px"; 
-                    
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
                     td.style.backgroundColor = cellBgColor;
 
+                    // 強制不換行
+                    td.style.whiteSpace = 'nowrap'; 
+
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
                         td.style.left = currentStickyLeft + "px";
-                        currentStickyLeft += finalWidth;
+                        currentStickyLeft += columnWidths[f.id];
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
-                    // 取值 (含 fallback)
+                    // 取值
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -4078,6 +4078,9 @@
                             input.className = "grid-input";
                             input.style.resize = "none";
                             input.style.textAlign = 'left';
+                            // textarea 需要特殊處理不換行
+                            input.style.whiteSpace = 'nowrap'; 
+                            input.style.overflow = 'hidden';
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
@@ -4098,12 +4101,10 @@
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
                             input.title = "尚未歸戶 (點擊以建立)";
-                            
                             const triggerConsolidate = (e) => {
                                 e.preventDefault(); e.stopPropagation();
                                 showToast('info', '請使用上方「歸戶設定」頁籤進行歸戶操作');
                             };
-
                             if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
                             else input.onclick = triggerConsolidate;
                         } else if (f.calcMode === 'weighted') {
@@ -4139,6 +4140,7 @@
                 updateRowLogic(tr, appId ? appData : course, !appId);
             });
             
+            // Textarea 高度微調 (雖然 nowrap 了，但為了保險)
             setTimeout(() => {
                 document.querySelectorAll('#local-grid-tbody textarea').forEach(ta => {
                     ta.style.height = 'auto';
