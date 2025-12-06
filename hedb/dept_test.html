@@ -113,13 +113,7 @@
         .tab-content.active { display: block; }
 
         /* Excel Preview Table */
-        .excel-table { 
-            border-collapse: separate; 
-            border-spacing: 0;
-            table-layout: fixed; /* ★ 強制固定佈局，讓欄位寬度生效 */
-            width: max-content;  /* ★ 關鍵：讓表格寬度依據內容撐開，不要受限於 100% */
-            min-width: 100%;     /* 確保至少填滿畫面 */
-        }
+        .excel-table { border-collapse: collapse; width: 100%; font-size: 0.9em; }
         .excel-table th, .excel-table td { border: 1px solid #e2e8f0; padding: 6px 10px; white-space: nowrap; }
         .excel-table th { background-color: #f8fafc; color: #64748b; font-weight: bold; text-align: left; }
         
@@ -5173,7 +5167,7 @@
                 rowsData.push({ course: c, appData: appData, student: student, appId: c._app_id });
             });
 
-            // (C) 資料排序 (邏輯保留，但僅透過右上角選單觸發)
+            // (C) 資料排序 (邏輯保留，但僅透過右上角選單觸發，表頭不再觸發)
             if (localGridState.sortKey) {
                 rowsData.sort((a, b) => {
                     const getVal = (row, key) => {
@@ -5206,11 +5200,9 @@
 
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
-                // 預設標題寬度
                 let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
-                // 掃描內容寬度 (若資料量大可考慮只掃描前50筆)
                 rowsData.forEach(row => {
                     let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
                     if(!val && f.id === 'student_id') val = row.student.id;
@@ -5223,17 +5215,17 @@
                     }
                 });
                 
-                // 設定該欄位最終寬度 (最少 80px)
+                // 設定欄位寬度 (最少 80px)
                 const calculatedWidth = Math.max(finalW, 80);
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
             });
 
-            // ★ 強制設定表格總寬度，確保撐開容器出現捲軸
+            // ★ 強制設定表格總寬度，確保捲軸出現
             const tableElement = document.querySelector('#student-grid-wrapper table');
             if(tableElement) {
-                // 額外加 2px 避免計算誤差導致換行
-                tableElement.style.width = (totalTableWidth + 2) + 'px';
+                // 額外加一點 buffer 避免計算誤差導致換行
+                tableElement.style.width = (totalTableWidth + 10) + 'px';
             }
 
             // (E) 渲染表頭 (★ 已移除點擊排序與圖示)
@@ -5243,12 +5235,14 @@
 
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
-                // 移除 sortable-header, cursor-pointer
+                // 移除 sortable-header, cursor-pointer, hover 效果
                 th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none";
                 
-                // 設定寬度 (配合 table-layout: fixed)
+                // ★ 移除 onclick 事件
+                // th.onclick = ... (已刪除)
+
                 const finalWidth = columnWidths[col.id];
-                th.style.width = finalWidth + "px"; 
+                th.style.width = finalWidth + "px"; // 使用 width 而非 min-width 以配合 table-layout: fixed
                 th.style.textAlign = 'center';
 
                 // 處理凍結
@@ -5259,7 +5253,7 @@
                     if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
                 }
 
-                // ★ 僅保留說明圖示，移除排序圖示
+                // ★ 移除排序圖示邏輯
                 let infoIcon = col.description ? `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>` : '';
                 th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}</div>`;
                 trHead.appendChild(th);
@@ -5295,7 +5289,7 @@
                     td.className = "border-r border-slate-200 p-0 relative";
                     
                     const finalWidth = columnWidths[f.id];
-                    td.style.width = finalWidth + "px"; // 設定寬度
+                    td.style.width = finalWidth + "px"; // 使用 width
                     
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
