@@ -3902,7 +3902,7 @@
                 rowsData.push({ course: c, appData: appData, student: student, appId: c._app_id });
             });
 
-            // (C) 資料排序 (邏輯保留，但僅透過右上角選單觸發，表頭不再觸發)
+            // (C) 資料排序
             if (localGridState.sortKey) {
                 rowsData.sort((a, b) => {
                     const getVal = (row, key) => {
@@ -3935,7 +3935,8 @@
 
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
-                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 30 + iconWidth;
+                // 基礎寬度加大
+                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 40 + iconWidth;
                 let finalW = headerW;
 
                 rowsData.forEach(row => {
@@ -3945,39 +3946,43 @@
                     if(!val && f.id === 'student_dept') val = row.student.dept;
 
                     if (val) {
-                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 50;
+                        // 內容寬度緩衝加大 (+60px)
+                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 60;
                         finalW = Math.max(finalW, w);
                     }
                 });
                 
-                // 設定欄位寬度 (最少 80px)
-                const calculatedWidth = Math.max(finalW, 80);
+                // ★ 強制設定最小寬度為 100px (原為 80px)，確保不會縮太小
+                const calculatedWidth = Math.max(finalW, 100);
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
             });
 
-            // ★ 強制設定表格總寬度，確保捲軸出現
+            // ★★★ 關鍵：強制設定表格總寬度，確保捲軸出現 ★★★
+            // 找到包含 table 的外層容器內的 table 元素
+            // 注意：這裡使用 querySelector 確保選到正確的表格
             const tableElement = document.querySelector('#student-grid-wrapper table');
             if(tableElement) {
-                // 額外加一點 buffer 避免計算誤差導致換行
-                tableElement.style.width = (totalTableWidth + 10) + 'px';
+                // 強制給予像素寬度，這會撐開容器產生捲軸
+                tableElement.style.width = totalTableWidth + 'px';
+                tableElement.style.minWidth = totalTableWidth + 'px'; // 雙重保險
             }
 
-            // (E) 渲染表頭 (★ 已移除點擊排序與圖示)
+            // (E) 渲染表頭
             const freezeLimit = localGridState.frozenCount;
             let currentStickyLeft = 0; 
             let trHead = document.createElement('tr');
 
             allColumns.forEach((col, index) => {
                 const th = document.createElement('th');
-                // 移除 sortable-header, cursor-pointer, hover 效果
                 th.className = "bg-slate-100 text-slate-600 border-r border-slate-200 px-2 py-2 text-sm font-bold whitespace-nowrap select-none";
                 
-                // ★ 移除 onclick 事件
-                // th.onclick = ... (已刪除)
+                // 綁定點擊排序
+                th.style.cursor = 'pointer';
+                th.onclick = () => setLocalSort(col.id);
 
                 const finalWidth = columnWidths[col.id];
-                th.style.width = finalWidth + "px"; // 使用 width 而非 min-width 以配合 table-layout: fixed
+                th.style.width = finalWidth + "px"; 
                 th.style.textAlign = 'center';
 
                 // 處理凍結
@@ -3988,9 +3993,16 @@
                     if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
                 }
 
-                // ★ 移除排序圖示邏輯
+                // 排序圖示
+                let sortIcon = '';
+                if (localGridState.sortKey === col.id) {
+                    sortIcon = localGridState.sortDir === 'asc' 
+                        ? '<i class="fas fa-sort-up ml-1 text-primary"></i>' 
+                        : '<i class="fas fa-sort-down ml-1 text-primary"></i>';
+                }
+
                 let infoIcon = col.description ? `<i class="fas fa-info-circle header-info-icon" title="${col.description}"></i>` : '';
-                th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}</div>`;
+                th.innerHTML = `<div class="truncate flex items-center justify-center gap-1">${col.label}${infoIcon}${sortIcon}</div>`;
                 trHead.appendChild(th);
             });
             thead.appendChild(trHead);
@@ -4085,10 +4097,13 @@
                             input.readOnly = true;
                             input.style.cursor = 'pointer';
                             input.title = "尚未歸戶 (點擊以建立)";
+                            
+                            // ★ 點擊事件修正：只顯示提示，不報錯
                             const triggerConsolidate = (e) => {
                                 e.preventDefault(); e.stopPropagation();
                                 showToast('info', '請使用上方「歸戶設定」頁籤進行歸戶操作');
                             };
+
                             if (input.tagName === 'SELECT') input.addEventListener('mousedown', triggerConsolidate);
                             else input.onclick = triggerConsolidate;
                         } else if (f.calcMode === 'weighted') {
