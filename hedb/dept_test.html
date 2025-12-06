@@ -3911,58 +3911,62 @@
 
             if(!table || !scrollContainer || !thead || !tbody) return;
 
-            // --- ★★★ 新增：空狀態檢查邏輯 ★★★ ---
+            // --- ★★★ 新增：空狀態 (Empty State) 處理 ★★★ ---
             
-            // 1. 嘗試抓取或建立空狀態容器
+            // 1. 檢查或建立空狀態容器
             let emptyState = document.getElementById('local-grid-empty-state');
             if (!emptyState) {
                 emptyState = document.createElement('div');
                 emptyState.id = 'local-grid-empty-state';
-                // 使用 Flex 置中樣式，高度撐滿
-                emptyState.className = 'hidden flex-col items-center justify-center h-[50vh] text-slate-400 w-full absolute top-0 left-0 bg-white z-10';
+                // 設定樣式：絕對定位蓋住表格，Flex 置中
+                emptyState.className = 'hidden flex-col items-center justify-center h-full w-full absolute top-0 left-0 bg-white z-20';
+                
+                // 設定內容 (依照您的要求)
                 emptyState.innerHTML = `
-                    <div class="w-20 h-20 bg-slate-50 rounded-full flex items-center justify-center mb-4 shadow-sm border border-slate-100">
-                        <i class="fas fa-list-ul text-3xl text-slate-300"></i>
+                    <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                        <i class="fas fa-folder-plus text-4xl text-slate-300"></i>
                     </div>
-                    <h3 class="text-lg font-bold text-slate-600 mb-1">尚無列表資料</h3>
-                    <p class="text-xs text-slate-400 mb-5">請先點擊下方按鈕進行歸戶設定</p>
-                    <button onclick="openStudentSettingsModal('${sid}')" class="px-5 py-2 bg-primary hover:bg-indigo-700 text-white rounded-lg shadow-md text-xs font-bold transition transform hover:scale-105 flex items-center gap-2">
+                    <h3 class="text-xl font-bold text-slate-600 mb-2">尚無實習紀錄</h3>
+                    <p class="text-sm text-slate-500 mb-6">請先進行歸戶設定以開始填報</p>
+                    <button onclick="openStudentSettingsModal('${sid}')" class="px-6 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-sky-700 transition transform hover:scale-105 flex items-center gap-2">
                         <i class="fas fa-cog"></i> 開啟歸戶設定
                     </button>
                 `;
                 scrollContainer.appendChild(emptyState);
-                // 確保容器定位，讓 absolute 生效
-                if(scrollContainer.style.position !== 'relative') scrollContainer.style.position = 'relative';
             }
 
-            // 2. 判斷是否有歸戶資料
+            // 2. 確保容器有定位屬性 (讓 absolute 生效)
+            if(window.getComputedStyle(scrollContainer).position === 'static') {
+                scrollContainer.style.position = 'relative';
+            }
+
+            // 3. 判斷顯示邏輯
             if (student.applications.length === 0) {
-                // 情境 A: 無歸戶 -> 顯示空狀態，隱藏表格
-                table.style.visibility = 'hidden'; // 使用 visibility 保持佔位但不可見，或 display: none
-                table.style.display = 'none';
+                // 無資料：顯示空狀態，隱藏表格
+                table.style.visibility = 'hidden'; 
                 emptyState.classList.remove('hidden');
                 emptyState.classList.add('flex');
-                return; // ★ 直接結束函式，不渲染表格內容
+                // 直接返回，不執行後續表格渲染
+                return; 
             } else {
-                // 情境 B: 有歸戶 -> 顯示表格，隱藏空狀態
+                // 有資料：顯示表格，隱藏空狀態
                 table.style.visibility = 'visible';
-                table.style.display = 'table';
                 emptyState.classList.add('hidden');
                 emptyState.classList.remove('flex');
             }
             // --- ★★★ 結束空狀態邏輯 ★★★ ---
 
 
-            // --- 以下為原本的渲染邏輯 (保持 V7 的樣式與捲軸設定) ---
+            // --- 以下為標準表格渲染邏輯 (保持捲軸與欄寬設定) ---
 
-            // A. 容器樣式
+            // A. 容器樣式重置
             scrollContainer.classList.remove('flex-grow');
             scrollContainer.classList.remove('h-full');
             scrollContainer.style.height = 'auto';
             scrollContainer.style.maxHeight = 'calc(100% - 60px)'; 
             scrollContainer.style.overflow = 'auto';
-            
-            // 重置表格
+
+            // 重置表格內容
             thead.innerHTML = '';
             tbody.innerHTML = '';
             const oldColgroup = table.querySelector('colgroup');
@@ -4074,7 +4078,7 @@
                 th.style.whiteSpace = 'nowrap';
                 th.style.overflow = 'hidden';
                 th.style.textOverflow = 'ellipsis';
-                th.style.cursor = 'default'; // 移除點擊手勢
+                th.style.cursor = 'default';
 
                 if (index < freezeLimit) {
                     th.classList.add('sticky-col');
@@ -4129,7 +4133,7 @@
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
-                    // 取值與 Input 生成
+                    // 取值
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
