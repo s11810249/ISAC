@@ -978,14 +978,15 @@
         </div>
     
     <div id="info-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center modal-overlay p-4">
-        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            <div class="px-6 py-4 bg-primary text-white flex justify-between items-center">
+        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-primary text-white flex justify-between items-center flex-shrink-0">
                 <h3 class="text-lg font-bold flex items-center gap-2">
                     <i class="fas fa-shield-alt"></i> 系統使用與隱私聲明
                 </h3>
-                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="text-white/80 hover:text-white transition"><i class="fas fa-times"></i></button>
             </div>
-            <div class="p-6 space-y-4 text-sm text-slate-700">
+            
+            <div class="p-6 space-y-4 text-sm text-slate-700 overflow-y-auto custom-scroll">
+                
                 <div class="flex gap-3">
                     <div class="text-2xl text-blue-500"><i class="fas fa-laptop-code"></i></div>
                     <div>
@@ -995,10 +996,31 @@
                 </div>
                 
                 <div class="flex gap-3">
-                    <div class="text-2xl text-orange-500"><i class="fas fa-save"></i></div>
-                    <div>
+                    <div class="text-2xl text-orange-500"><i class="fas fa-hdd"></i></div>
+                    <div class="flex-grow">
                         <h4 class="font-bold text-slate-800">資料暫存機制</h4>
-                        <p class="text-slate-500 mt-1">資料僅暫存於記憶體中。若您<span class="font-bold">重新整理網頁</span>或<span class="font-bold">關閉瀏覽器</span>，所有未匯出的進度將會<span class="text-red-500 font-bold">永久遺失</span>。</p>
+                        <p class="text-slate-500 mt-1 mb-2">
+                            預設為記憶體暫存（關閉即消失）。若啟用<span class="font-bold text-primary">「暫存保護」</span>，資料將儲存於瀏覽器中。
+                            <span class="text-red-500 font-bold block mt-1"><i class="fas fa-exclamation-triangle"></i> 請勿在公用電腦啟用此功能，以免個資外洩。</span>
+                        </p>
+                        
+                        <div class="bg-slate-50 p-3 rounded-lg border border-slate-200 text-xs text-slate-600">
+                            <strong class="block mb-2 text-slate-700 border-b border-slate-200 pb-1">⚠️ 注意：在以下情形，暫存資料將會遺失</strong>
+                            <ul class="list-disc pl-4 space-y-1.5">
+                                <li>
+                                    <span class="font-bold text-slate-700">手動清除：</span>點擊系統內的紅色「清除暫存資料」按鈕，或在瀏覽器設定中清除「Cookie 與其他網站資料」。
+                                </li>
+                                <li>
+                                    <span class="font-bold text-slate-700">無痕模式：</span>若在無痕視窗中使用，關閉視窗後瀏覽器會強制刪除所有資料。
+                                </li>
+                                <li>
+                                    <span class="font-bold text-slate-700">資料覆蓋：</span>當您匯入新的 Excel 檔案時，系統會重置結構，舊的暫存檔將被新資料覆蓋。
+                                </li>
+                                <li>
+                                    <span class="font-bold text-slate-700">瀏覽器重設：</span>重設瀏覽器設定或解除安裝瀏覽器。
+                                </li>
+                            </ul>
+                        </div>
                     </div>
                 </div>
 
@@ -1009,15 +1031,29 @@
                         <p class="text-slate-500 mt-1">匯出的 Excel 檔案包含敏感個資，請妥善保管。若使用公用電腦，請務必在使用後刪除下載的檔案。</p>
                     </div>
                 </div>
+
+                <div class="p-3 bg-yellow-50 text-yellow-800 rounded-lg text-xs border border-yellow-200 flex items-start gap-2">
+                    <i class="fas fa-info-circle mt-0.5"></i>
+                    <span>此聲明預設每次開啟系統時皆會顯示，以確保您了解資料安全規範。</span>
+                </div>
             </div>
-            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex justify-end">
-                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="bg-primary hover:bg-sky-900 text-white px-6 py-2 rounded-lg font-bold shadow transition">
-                    我已了解，開始使用
-                </button>
+
+            <div class="px-6 py-4 bg-slate-50 border-t border-slate-100 flex-shrink-0">
+                <label class="flex items-center mb-4 cursor-pointer group select-none">
+                    <input type="checkbox" id="chk-info-agree" class="w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary transition">
+                    <span class="ml-2 text-sm font-bold text-slate-600 group-hover:text-primary transition">
+                        我同意啟用「暫存保護」，且未來不再顯示此聲明
+                    </span>
+                </label>
+                <div class="flex justify-end">
+                    <button onclick="handleInfoModalClose()" class="bg-primary hover:bg-sky-900 text-white px-6 py-2 rounded-lg font-bold shadow transition">
+                        進入系統
+                    </button>
+                </div>
             </div>
         </div>
     </div>
-
+        
     <!-- 修正 1: 加入 Footer 版權宣告 -->
     <footer class="bg-white border-t border-slate-200 py-3 px-6 text-center text-[10px] text-slate-400 flex-shrink-0 z-50 fixed bottom-0 w-full">
     <p class="font-bold">Copyright © <span id="copyright-year">2025</span> 東海大學實習與學生成就中心 Internship and Student Achievement Center, Tunghai University. All Rights Reserved.</p>
@@ -1095,6 +1131,27 @@
             }
         }
 
+        // ★★★ 新增：處理聲明視窗關閉與同意邏輯 ★★★
+        function handleInfoModalClose() {
+            const chk = document.getElementById('chk-info-agree');
+            const modal = document.getElementById('info-modal');
+            
+            if (chk && chk.checked) {
+                // 1. 使用者同意：啟用暫存
+                localStorage.setItem(STORAGE_KEY + '_enabled', 'true');
+                updateStorageBtn(true);
+                saveToLocal(); // 立即存檔
+                
+                // 2. 設定 Flag：下次不再顯示
+                localStorage.setItem('thu_isac_hide_intro', 'true');
+                
+                showToast('success', '已啟用暫存保護，下次將不再顯示聲明');
+            }
+            
+            // 關閉視窗
+            modal.classList.add('hidden');
+        }
+        
         // 2. 更新按鈕樣式
         function updateStorageBtn(isEnabled) {
             const btn = document.getElementById('btn-local-storage');
@@ -1655,7 +1712,6 @@
                     }
                 };
 
-                // Load static configs
                 const [cfgRes, deptRes, masterRes] = await Promise.all([
                     fetch('config.json').then(r => r.ok ? r.json() : {}),
                     fetch('data_departments.json').then(r => r.ok ? r.json() : []),
@@ -1667,13 +1723,15 @@
                 deptMasterData = masterRes;
 
                 updateFooterYear();
-
+                
+                // 1. 檢查並還原暫存資料
                 await checkAndRestore();
                 
-                // ★★★ 新增：首次載入時顯示聲明 ★★★
-                // 您可以使用 localStorage 來記錄是否已經看過，避免每次F5都跳出來煩人
-                // 但因為這系統強調"不存東西"，所以每次跳出來提醒"資料不存檔"其實也是好的
-                document.getElementById('info-modal').classList.remove('hidden');
+                // 2. ★★★ 判斷是否顯示聲明視窗 ★★★
+                const hideIntro = localStorage.getItem('thu_isac_hide_intro') === 'true';
+                if (!hideIntro) {
+                    document.getElementById('info-modal').classList.remove('hidden');
+                }
                 
             } catch (e) {
                 console.error("Init failed", e);
