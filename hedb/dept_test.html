@@ -1065,6 +1065,129 @@
     </div>
     
     <script>
+        // --- Local Storage Manager (暫存管理系統) ---
+        const STORAGE_KEY = 'thu_isac_hedb_temp_v1';
+
+        // 1. 切換暫存狀態 (按鈕點擊事件)
+        function toggleLocalStorage() {
+            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
+
+            if (isEnabled) {
+                // 如果已開啟，詢問是否關閉並清除
+                showConfirm('清除暫存？', '確定要關閉暫存功能並清除本機的備份資料嗎？\n(清除後若未匯出，重新整理將遺失資料)').then(yes => {
+                    if(yes) {
+                        localStorage.removeItem(STORAGE_KEY);
+                        localStorage.removeItem(STORAGE_KEY + '_enabled');
+                        updateStorageBtn(false);
+                        showToast('info', '已清除本機暫存資料');
+                    }
+                });
+            } else {
+                // 如果未開啟，詢問是否啟用 (同意條款)
+                showConfirm('啟用暫存保護', '同意將填報資料暫存在您的瀏覽器(Local Storage)中嗎？\n\n注意：\n1. 資料僅儲存於此電腦，不會上傳伺服器。\n2. 請勿在公用電腦使用此功能，以免個資外洩。').then(yes => {
+                    if(yes) {
+                        localStorage.setItem(STORAGE_KEY + '_enabled', 'true');
+                        saveToLocal(); // 立即存檔
+                        updateStorageBtn(true);
+                        showToast('success', '已啟用暫存保護，資料將自動保存');
+                    }
+                });
+            }
+        }
+
+        // 2. 更新按鈕樣式
+        function updateStorageBtn(isEnabled) {
+            const btn = document.getElementById('btn-local-storage');
+            if(!btn) return;
+            
+            if(isEnabled) {
+                btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> 清除暫存資料';
+                btn.className = "text-red-500 hover:text-red-700 font-bold text-sm px-3 py-2 rounded-lg hover:bg-red-50 transition whitespace-nowrap flex items-center gap-2 mr-2 border border-red-200";
+                btn.title = "資料保護中 (點擊以清除)";
+            } else {
+                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 啟用暫存保護';
+                btn.className = "text-slate-500 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition whitespace-nowrap flex items-center gap-2 mr-2";
+                btn.title = "開啟後可避免意外關閉導致資料遺失";
+            }
+        }
+
+        // 3. 執行存檔 (將被各個修改函式呼叫)
+        function saveToLocal() {
+            // 檢查是否啟用
+            if (localStorage.getItem(STORAGE_KEY + '_enabled') !== 'true') return;
+            if (!allRawData || allRawData.length === 0) return;
+
+            // 提取所有歸戶資料 (Flatten Applications)
+            const allApps = [];
+            Object.values(groupedStudents).forEach(s => {
+                if(s.applications) {
+                    s.applications.forEach(app => {
+                        allApps.push({
+                            id: app.id,
+                            studentId: s.id,
+                            courseIds: app.courseIds,
+                            formData: app.formData
+                        });
+                    });
+                }
+            });
+
+            const state = {
+                rawData: allRawData, // 包含最新的課程欄位修改
+                apps: allApps,       // 包含所有的歸戶設定與表單內容
+                year: activeYear,
+                studentId: currentStudentId, // 記住當前查看的學生
+                mode: currentViewMode,       // 記住當前是列表還是表單
+                timestamp: Date.now()
+            };
+            
+            try {
+                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
+                // console.log('Auto-saved to local storage');
+            } catch (e) {
+                console.error("Storage full or error", e);
+                showToast('warning', '暫存失敗：瀏覽器空間不足');
+            }
+        }
+
+        // 4. 檢查並還原 (OnInit 呼叫)
+        async function checkAndRestore() {
+            const saved = localStorage.getItem(STORAGE_KEY);
+            if (saved) {
+                const yes = await showConfirm('發現未完成的暫存', '系統發現您上次有未儲存的填報進度，是否還原？');
+                if (yes) {
+                    try {
+                        const state = JSON.parse(saved);
+                        
+                        // 1. 還原資料 (使用既有的處理函式)
+                        await processUploadedData(state.rawData, state.apps);
+                        
+                        // 2. 還原視圖狀態
+                        if(state.mode) currentViewMode = state.mode;
+                        if(state.studentId) {
+                            selectStudent(state.studentId);
+                        }
+                        
+                        // 3. 確保狀態為啟用
+                        localStorage.setItem(STORAGE_KEY + '_enabled', 'true');
+                        updateStorageBtn(true);
+                        showToast('success', '已成功還原暫存資料');
+                    } catch (e) {
+                        console.error(e);
+                        showToast('error', '還原失敗：暫存資料可能已損毀');
+                    }
+                } else {
+                    // 使用者選擇不還原 -> 視為放棄，但也許想保留設定？
+                    // 這裡我們簡單處理：保持按鈕為「啟用」狀態，讓使用者可以手動清除
+                    updateStorageBtn(true); 
+                }
+            } else {
+                // 檢查是否曾啟用過 (按鈕狀態同步)
+                const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
+                updateStorageBtn(isEnabled);
+            }
+        }
+        
         // --- Global State ---
         let globalConfig = {};       
         let currentYearConfig = {};  
@@ -1544,6 +1667,8 @@
                 deptMasterData = masterRes;
 
                 updateFooterYear();
+
+                await checkAndRestore();
                 
                 // ★★★ 新增：首次載入時顯示聲明 ★★★
                 // 您可以使用 localStorage 來記錄是否已經看過，避免每次F5都跳出來煩人
