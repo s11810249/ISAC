@@ -1680,6 +1680,7 @@
                     tryAutoMerge(student, course);
                 }
             }
+            saveToLocal();
         }
 
         // ★ 輔助：同步數值到所有視圖的函式
@@ -2083,6 +2084,7 @@
 
             renderStudentList();
             hasUnsavedChanges = false;
+            
 
             // ★★★ 4. 新增：匯入檔案後，強制重置主畫面回空狀態 ★★★
             currentStudentId = null; 
@@ -2096,6 +2098,7 @@
             document.getElementById('header-avatar').innerText = '?';
             document.getElementById('header-status').innerText = '未填報';
             document.getElementById('header-status').className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 whitespace-nowrap';
+            saveToLocal();
         }
         
         function renderStudentList() {
@@ -2386,6 +2389,7 @@
             
             showToast('success', '歸戶已解除');
             logChange('DeleteApp', appId, 'Existing', 'Deleted', student.id);
+            saveToLocal();    
         }
         
         function createApplicationContent(appId) {
@@ -3667,6 +3671,7 @@
             
             showToast('success', '已建立填報單');
             logChange('CreateApp', appId, '', 'Created from Grid Modal', student.id);
+            saveToLocal();
         }
 
         // 5. 從視窗刪除歸戶 (Wrapper)
@@ -3702,6 +3707,7 @@
             
             showToast('success', '歸戶已解除');
             logChange('DeleteApp', appId, 'Existing', 'Deleted from Grid Modal', studentId);
+            saveToLocal();
         }
         
     function toolAutoFill() {
@@ -3728,6 +3734,7 @@
     
             showToast('success', `已自動為 ${count} 筆歸戶資料填入預設國別 (中華民國)`);
             logChange('ToolAutoFill', '', '', `Auto-filled ${count} items`, 'System');
+            saveToLocal();
         } else {
             showToast('info', '所有歸戶資料皆已填寫國別，無需處理');
         }
@@ -3919,6 +3926,7 @@
             hasUnsavedChanges = true;
 
             showToast('success', `已將 ${formattedTotal} 分配至 ${linkedCourses.length} 門課程`);
+            saveToLocal();
             document.getElementById('distribute-modal').classList.add('hidden');
         }
 
