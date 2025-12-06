@@ -716,6 +716,7 @@
 <body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
 
     <!-- Header -->
+    
     <header class="h-16 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 flex-shrink-0 justify-between">
         <div class="flex items-center gap-4 min-w-0">
             <div class="bg-primary p-1.5 rounded-lg shadow-sm flex-shrink-0">
@@ -835,25 +836,34 @@
             <div id="form-container" class="hidden flex flex-col h-full w-full">
                 
                 <div class="bg-white px-6 py-4 border-b border-slate-200 shadow-sm flex-shrink-0 flex justify-between items-center z-20">
-                    <div class="flex gap-4 items-center min-w-0 mr-4">
-                        <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold flex-shrink-0">
+                    <div class="flex gap-4 items-start min-w-0 mr-4 flex-grow">
+                        <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold flex-shrink-0 mt-1">
                             <span id="header-avatar">?</span>
                         </div>
-                        <div class="truncate">
-                            <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                                <span id="header-name" class="truncate">學生姓名</span>
-                                <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex-shrink-0">ID</span>
-                            </h2>
-                            <p class="text-sm text-slate-500 flex gap-3 mt-0.5">
-                                <span id="header-dept" class="truncate"><i class="fas fa-graduation-cap mr-1"></i>系所</span>
-                            </p>
+                        
+                        <div class="flex flex-col gap-1.5 w-full min-w-0">
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <span id="header-name" class="truncate">學生姓名</span>
+                                    <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex-shrink-0">ID</span>
+                                </h2>
+                                <span id="header-dept" class="text-sm text-slate-500 flex items-center gap-1 truncate border-l border-slate-300 pl-3">
+                                    <i class="fas fa-graduation-cap"></i> 系所
+                                </span>
+                            </div>
+
+                            <div class="flex items-center gap-3">
+                                <button onclick="handleSettingsClick()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-3 py-1 rounded-md text-xs font-bold shadow-sm transition flex items-center gap-2 whitespace-nowrap">
+                                    <i class="fas fa-cog"></i> 歸戶設定
+                                </button>
+                                <span id="header-status-text" class="text-xs text-slate-500 truncate">
+                                    讀取中...
+                                </span>
+                            </div>
                         </div>
                     </div>
+
                     <div class="flex items-center gap-3 flex-shrink-0">
-                        <button onclick="handleSettingsClick()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-2 whitespace-nowrap mr-1">
-                            <i class="fas fa-cog"></i> 歸戶設定
-                        </button>
-                    
                         <div class="flex bg-slate-100 p-1 rounded-lg mr-2 flex-shrink-0">
                             <button onclick="setStudentViewMode('form')" id="btn-std-view-form" class="px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap">
                                 <i class="fas fa-file-alt"></i> 表單模式
@@ -868,7 +878,7 @@
                         <button onclick="openPreviewModal()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-3 py-1.5 rounded-lg text-xs font-bold shadow-sm transition flex items-center gap-2 whitespace-nowrap">
                             <i class="fas fa-table"></i> 資料預覽
                         </button>
-                        <span id="header-status" class="inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 whitespace-nowrap">未填報</span>
+                        <span id="header-status" class="hidden"></span>
                     </div>
                 </div>
 
@@ -2243,48 +2253,36 @@
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // --- 1. 基本資訊更新 ---
+            // --- 1. 基本資訊 ---
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
+            document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
-            // --- 2. 準備系級文字 ---
+            // --- 2. 系級 (位於學號右邊) ---
             let deptText = (student.dept && student.dept !== 'undefined') ? student.dept : '系所未知';
             let gradeText = student.grade ? `${student.grade}年級` : '';
-            let deptHtml = `<span class="text-slate-600"><i class="fas fa-graduation-cap mr-1"></i>${deptText}</span>`;
+            let deptHtml = `<i class="fas fa-graduation-cap mr-1"></i>${deptText}`;
             if (gradeText) {
-                deptHtml += ` <span class="mx-2 text-slate-300">|</span> <span class="text-slate-600">${gradeText}</span>`;
+                deptHtml += ` <span class="mx-2 text-slate-300">|</span> ${gradeText}`;
             }
+            document.getElementById('header-dept').innerHTML = deptHtml;
 
-            // --- 3. ★★★ 準備狀態文字與顏色 (核心修改) ★★★ ---
+            // --- 3. 狀態統計 (位於歸戶按鈕右邊) ---
             const totalCourses = student.courses.length;
             const appCount = student.applications.length;
             const unassignedCount = student.courses.filter(c => !c._app_id).length;
 
             let statusHtml = "";
-            
             if (appCount === 0) {
-                // 情境 1: 完全未開始
-                // 樣式：灰色/深灰色，表示待辦
-                statusHtml = `<span class="text-slate-500 font-bold">共修習 ${totalCourses} 門課程，尚未建立任何實習紀錄</span>`;
+                statusHtml = `<span class="text-slate-400">共修習 ${totalCourses} 門課程，尚未建立任何實習紀錄</span>`;
             } else if (unassignedCount > 0) {
-                // 情境 2: 部分歸戶
-                // 樣式：藍色，表示進行中
                 statusHtml = `<span class="text-blue-600 font-bold">共修習 ${totalCourses} 門課程，已建立 ${appCount} 筆實習紀錄，未歸戶課程共 ${unassignedCount} 門</span>`;
             } else {
-                // 情境 3: 全部歸戶完成
-                // 樣式：綠色，表示完成
                 statusHtml = `<span class="text-emerald-600 font-bold"><i class="fas fa-check-circle mr-1"></i>共修習 ${totalCourses} 門課程，共建立 ${appCount} 筆實習紀錄，無未歸戶的實習課程</span>`;
             }
+            document.getElementById('header-status-text').innerHTML = statusHtml;
 
-            // --- 4. 組合顯示 (加入分隔線) ---
-            document.getElementById('header-dept').innerHTML = `${deptHtml} <span class="mx-3 text-slate-300">|</span> ${statusHtml}`;
-            document.getElementById('header-avatar').innerText = student.name[0] || '?';
-            
-            // --- 5. 隱藏舊的右側狀態標籤 ---
-            const statusEl = document.getElementById('header-status');
-            if(statusEl) statusEl.style.display = 'none'; // 直接隱藏
-
-            // --- 6. 視圖與內容切換 (保持不變) ---
+            // --- 4. 視圖與內容切換 ---
             setStudentViewMode(currentViewMode); 
             renderTabs(student);
             
