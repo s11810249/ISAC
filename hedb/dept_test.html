@@ -1900,11 +1900,8 @@
             hasUnsavedChanges = false;
 
             // ★★★ 4. 新增：匯入檔案後，強制重置主畫面回空狀態 ★★★
-            currentStudentId = null; // 清除當前選中學生 ID
-            
-            // 隱藏內容容器
+            currentStudentId = null; 
             document.getElementById('form-container').classList.add('hidden'); 
-            // 顯示「請從左側選擇...」提示
             document.getElementById('form-empty-state').classList.remove('hidden'); 
             
             // 清除 Header 殘留資訊
@@ -2059,7 +2056,7 @@
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             
-            // 處理系級顯示 (含防呆)
+            // 處理系級顯示
             let deptText = (student.dept && student.dept !== 'undefined') ? student.dept : '系所未知';
             let gradeText = student.grade ? `${student.grade}年級` : '';
             
@@ -2077,7 +2074,8 @@
             statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
             statusEl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${appCount > 0 ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
 
-            // ★★★ 關鍵修改：使用記憶的模式，而非強制 'form' ★★★
+            // ★★★ 關鍵修正：使用 currentViewMode (記憶模式) ★★★
+            // 不要寫死成 'form'，否則切換學生會一直跳回去
             setStudentViewMode(currentViewMode); 
             
             renderTabs(student);
@@ -2085,11 +2083,9 @@
             const dynamicArea = document.getElementById('dynamic-tabs-area');
 
             if (appCount > 0) {
-                // 有資料：清空空狀態 -> 切換到第一筆
                 dynamicArea.innerHTML = '';
                 switchTab(student.applications[0].id);
             } else {
-                // 無資料：移除頁籤選中 -> 顯示空狀態
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
                 renderEmptyState();
             }
@@ -3766,9 +3762,12 @@
         }
 
         let currentViewMode = 'form';
-        
-        // 1. 切換視圖模式 (表單 vs 列表)
+
+        // 1. 切換視圖模式 (修正版：加入模式記憶功能)
         function setStudentViewMode(mode) {
+            // ★ 記錄使用者的選擇
+            currentViewMode = mode;
+
             const formContainer = document.getElementById('form-content-area');
             const tabsContainer = document.getElementById('tabs-container');
             const gridWrapper = document.getElementById('student-grid-wrapper');
@@ -3787,13 +3786,13 @@
                 if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
                 if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
 
-                // ★★★ 關鍵修正：確保這兩行被執行 ★★★
-                renderStudentLocalGrid(currentStudentId); // 渲染表格
-                
-                // 稍微延遲一下，確保 DOM 已經顯示後再渲染按鈕 (解決某些瀏覽器渲染順序問題)
-                setTimeout(() => {
-                    renderLocalGridPicker(); 
-                }, 0);
+                // 渲染表格
+                if(currentStudentId) {
+                    renderStudentLocalGrid(currentStudentId); 
+                    setTimeout(() => {
+                        renderLocalGridPicker(); 
+                    }, 0);
+                }
 
             } else {
                 // 切換回表單模式
