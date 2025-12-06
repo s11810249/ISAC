@@ -869,7 +869,6 @@
                 </div>
 
                 <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
-                    <button class="tab-btn active" data-tab="settings" onclick="switchTab('settings')"><i class="fas fa-cog"></i> 歸戶設定</button>
                 </div>
 
                 <div class="flex-grow relative overflow-hidden bg-slate-50">
@@ -893,35 +892,6 @@
                     </div>
 
                     <div id="form-content-area" class="absolute inset-0 overflow-y-auto custom-scroll p-6 pb-24">
-                        
-                        <div id="tab-settings" class="tab-content active max-w-7xl mx-auto">
-                            <div class="bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden mb-6">
-                                <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center">
-                                    <div>
-                                        <h3 class="font-bold text-indigo-800 text-lg flex items-center gap-2"><i class="fas fa-layer-group"></i> 實習歸戶設定</h3>
-                                        <p class="text-xs text-indigo-600 mt-1">請勾選同一實習機構的課程，合併建立為一份填報單。</p>
-                                    </div>
-                                    <button onclick="createApplication()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
-                                        <i class="fas fa-plus"></i> 建立實習填報單
-                                    </button>
-                                </div>
-                                
-                                <div class="p-6 grid grid-cols-1 lg:grid-cols-2 gap-8">
-                                    <div class="bg-slate-50 p-4 rounded-lg border border-slate-200">
-                                        <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 pb-2 border-b border-slate-200">
-                                            <span class="w-2 h-2 rounded-full bg-slate-400"></span> 尚未歸戶的課程 (請勾選)
-                                        </h4>
-                                        <div id="settings-course-list" class="space-y-2"></div>
-                                    </div>
-                                    <div class="bg-indigo-50/50 p-4 rounded-lg border border-indigo-100">
-                                        <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2 pb-2 border-b border-indigo-200">
-                                            <span class="w-2 h-2 rounded-full bg-success"></span> 已建立的填報單
-                                        </h4>
-                                        <div id="app-management-list" class="space-y-3"></div>
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
 
                         <div id="dynamic-tabs-area"></div>
                     </div>
@@ -2089,17 +2059,16 @@
             setStudentViewMode('form'); 
             renderTabs(student);
             
+            const dynamicArea = document.getElementById('dynamic-tabs-area');
+
             if (appCount > 0) {
-                // ★★★ 關鍵修正：在顯示表單前，強制清空內容區域 ★★★
-                // 這會移除原本的「尚無實習紀錄...」畫面，避免新表單接在它下面
-                document.getElementById('dynamic-tabs-area').innerHTML = '';
-                
-                // 切換到第一筆
-                switchTab(student.applications[0].id);
+                // 情境 A: 有資料
+                dynamicArea.innerHTML = ''; // 清除空狀態
+                switchTab(student.applications[0].id); // 切換到第一筆
             } else {
-                // 無資料：顯示提示畫面
+                // 情境 B: 無資料 (空狀態)
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
-                renderEmptyState();
+                renderEmptyState(); // 渲染空狀態畫面
             }
         }
         
@@ -2128,108 +2097,25 @@
         }
         
         function switchTab(tabId) {
+            // 更新按鈕狀態
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
             if(btn) btn.classList.add('active');
             
-            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
-            document.getElementById('dynamic-tabs-area').style.display = 'none';
+            // 顯示動態內容區域
+            const container = document.getElementById('dynamic-tabs-area');
+            container.style.display = 'block';
 
-            if (tabId === 'settings') {
-                document.getElementById('tab-settings').classList.add('active');
-                if(currentStudentId) renderSettingsTab(groupedStudents[currentStudentId]);
-            } else {
-                document.getElementById('dynamic-tabs-area').style.display = 'block';
-                let content = document.getElementById(`content-${tabId}`);
-                if (!content) {
-                    content = createApplicationContent(tabId);
-                    document.getElementById('dynamic-tabs-area').appendChild(content);
-                }
-                document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
-                content.style.display = 'block';
+            // 嘗試取得或建立內容
+            let content = document.getElementById(`content-${tabId}`);
+            if (!content) {
+                content = createApplicationContent(tabId);
+                container.appendChild(content);
             }
-        }
-
-        function renderSettingsTab(student) {
-            const listContainer = document.getElementById('settings-course-list');
-            const appsContainer = document.getElementById('app-management-list');
-            listContainer.innerHTML = '';
-            appsContainer.innerHTML = '';
-
-            // --- 修改：移除自動歸戶按鈕，只保留簡單標題 ---
-            // 由於之前的版本有動態插入 header，現在我們要恢復原本的單純列表渲染
-            // 為了保持 DOM 乾淨，我們只清除 listContainer 的內容
             
-            // 如果您之前用了 insertBefore 插入 header，這裡建議直接操作 innerHTML 重建結構
-            // 但為了相容性，我們只處理 listContainer 內部
-            
-            // 這裡不插入任何按鈕，直接渲染列表
-            const unassigned = student.courses.filter(c => !c._app_id);
-            if (unassigned.length === 0) {
-                listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
-            } else {
-                unassigned.forEach(c => {
-                    const el = document.createElement('div');
-                    el.className = 'course-card';
-                    el.innerHTML = `
-                        <div>
-                            <div class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</div>
-                            <div class="text-xs text-slate-500">${c['semester'] ? `第${c['semester']}學期` : ''} <span class="mx-1">|</span> ${c['course_code'] || c['選課代號'] || '無代號'}</div>
-                        </div>
-                        <input type="checkbox" class="course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
-                    `;
-                    el.onclick = (e) => {
-                        if(e.target.type !== 'checkbox') {
-                            const cb = el.querySelector('input');
-                            cb.checked = !cb.checked;
-                            el.classList.toggle('selected', cb.checked);
-                        }
-                    };
-                    el.querySelector('input').onclick = (e) => {
-                        e.target.parentElement.classList.toggle('selected', e.target.checked);
-                        e.stopPropagation();
-                    };
-                    listContainer.appendChild(el);
-                });
-            }
-
-            // --- 右側邏輯保持不變 ---
-            if (student.applications.length === 0) {
-                appsContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">尚未建立任何實習填報單</div>';
-            } else {
-                student.applications.forEach((app, idx) => {
-                    const el = document.createElement('div');
-                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col gap-3';
-                    
-                    const instName = app.formData['internship_institution_name'];
-                    const titleText = instName ? `實習紀錄${idx+1}：${instName}` : `實習紀錄${idx+1}`;
-                    
-                    const courseRows = app.courseIds.map(cid => {
-                        const c = student.courses.find(x => x._internal_id === cid);
-                        if (!c) return '';
-                        
-                        const sem = getCourseValue(c, ['semester', '學期']);
-                        const code = getCourseValue(c, ['course_code', '選課代號']);
-                        const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']);
-                        const type = getCourseValue(c, ['course_type', '修別', '選必修', '必選修']); 
-                        const credits = getCourseValue(c, ['credits', '學分', '學分數']);
-
-                        return `<tr class="border-t border-slate-100 hover:bg-slate-50">
-                                <td class="px-2 py-1.5 text-center">${sem}</td><td class="px-2 py-1.5 font-mono text-slate-600">${code}</td>
-                                <td class="px-2 py-1.5 font-medium text-slate-800">${name}</td><td class="px-2 py-1.5 text-center text-slate-500">${type}</td>
-                                <td class="px-2 py-1.5 text-center text-slate-500">${credits}</td></tr>`;
-                    }).join('');
-
-                    el.innerHTML = `
-                        <div class="flex justify-between items-start">
-                            <h4 class="font-bold text-primary text-sm flex items-center gap-2"><i class="fas fa-folder-open text-indigo-200"></i> ${titleText}</h4>
-                            <div class="flex gap-2"><button onclick="switchTab('${app.id}')" class="text-xs font-bold text-indigo-600 hover:bg-indigo-50 px-2 py-1.5 rounded transition"><i class="fas fa-edit"></i> 編輯</button><button onclick="deleteApplication('${app.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1.5 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button></div>
-                        </div>
-                        <div class="overflow-x-auto border border-slate-200 rounded-md"><table class="w-full text-xs text-left"><thead class="bg-slate-50 text-slate-500 font-medium"><tr><th class="px-2 py-1.5 text-center w-12">學期</th><th class="px-2 py-1.5 w-20">代號</th><th class="px-2 py-1.5">課程名稱</th><th class="px-2 py-1.5 text-center w-16">屬性</th><th class="px-2 py-1.5 text-center w-12">學分</th></tr></thead><tbody class="bg-white">${courseRows}</tbody></table></div>
-                    `;
-                    appsContainer.appendChild(el);
-                });
-            }
+            // 切換顯示
+            document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
+            content.style.display = 'block';
         }
 
         function createApplication() {
