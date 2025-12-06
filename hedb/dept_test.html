@@ -37,7 +37,18 @@
         .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
         .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
         
-        .input-stylish { width: 100%; border: 1px solid #e2e8f0; border-radius: 0.375rem; padding: 0.4rem 0.75rem; font-size: 1em; transition: all 0.2s; background-color: #fff; line-height: 1.5; height: 42px; }
+        .input-stylish { 
+            width: 100%; 
+            border: 1px solid #e2e8f0; 
+            border-radius: 0.375rem; 
+            padding: 0.4rem 0.75rem; 
+            font-size: 1em; 
+            transition: all 0.2s; 
+            background-color: #fff; 
+            line-height: 1.5; 
+            height: 42px !important; /* ★ 加入 !important 強制高度 */
+            box-sizing: border-box;  /* 確保 padding 不會撐大高度 */
+        }
         .input-stylish:focus { border-color: #002E5D; outline: none; box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
         .input-stylish:disabled { background-color: #f1f5f9; color: #94a3b8; cursor: not-allowed; border-color: #e2e8f0; }
         
@@ -161,7 +172,24 @@
 
         /* Custom ROC Date Picker Styles */
         .date-picker-wrapper { position: relative; width: 100%; }
-        .date-input-group { position: relative; display: flex; align-items: center; }
+        .date-input-group { 
+            position: relative; 
+            display: flex; 
+            align-items: center; 
+            height: 42px; /* ★ 容器高度也固定 */
+        }
+
+        /* 3. 新增錯誤提示樣式 (給需求3使用) */
+        .field-error .input-stylish {
+            border-color: #ef4444 !important;
+            background-color: #fef2f2 !important;
+            box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1) !important;
+        }
+        
+        .field-error label {
+            color: #ef4444 !important;
+        }
+        
         .date-picker-trigger {
             position: absolute; right: 8px; color: #64748b; cursor: pointer; padding: 4px;
             border-radius: 4px; transition: color 0.2s;
@@ -2105,7 +2133,6 @@
             document.getElementById('header-id').innerText = 'ID';
             document.getElementById('header-dept').innerHTML = '<i class="fas fa-graduation-cap mr-1"></i>系所';
             document.getElementById('header-avatar').innerText = '?';
-            document.getElementById('header-status').className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 whitespace-nowrap';
             saveToLocal();
         }
         
@@ -2299,9 +2326,7 @@
         
         function renderTabs(student) {
             const container = document.getElementById('tabs-container');
-            
-            // ★ 修改：不再預設加入設定按鈕，直接清空
-            container.innerHTML = ''; 
+            container.innerHTML = '';
             
             student.applications.forEach((app, idx) => {
                 const btn = document.createElement('button');
@@ -2311,9 +2336,120 @@
                 
                 let label = `實習紀錄${idx+1}`;
                 
-                btn.innerHTML = `<i class="fas fa-file-alt text-slate-400 mr-1"></i> ${label}`;
+                // ★ 計算狀態與顏色
+                const stats = calculateAppStats(app);
+                let statusHtml = '';
+                let statusColor = '';
+                
+                // 判斷狀態邏輯
+                // 這裡暫時無法自動判斷「無須填報」，預留邏輯給您
+                const isNotRequired = false; // 未來可根據 app.formData['status'] === 'not_required' 判斷
+        
+                if (isNotRequired) {
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-slate-400"></span><span class="text-xs text-slate-400">無須填報</span>';
+                } else if (stats.percent === 100) {
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-xs text-emerald-600">完成填報</span>';
+                } else if (stats.percent === 0) {
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-slate-300"></span><span class="text-xs text-slate-400">尚未填報</span>';
+                } else {
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="text-xs text-blue-600">填報中</span>';
+                }
+                
+                btn.innerHTML = `
+                    <div class="flex flex-col items-start gap-0.5">
+                        <div class="flex items-center gap-2 text-sm">
+                            <i class="fas fa-file-alt text-slate-400"></i> ${label}
+                        </div>
+                        <div class="flex items-center gap-1.5 pl-5 opacity-90">
+                            ${statusHtml}
+                        </div>
+                    </div>
+                `;
                 container.appendChild(btn);
             });
+        }
+
+        // ★ 新增：計算單一歸戶的填報數據 (供頁籤與進度條共用)
+        function calculateAppStats(app) {
+            const fields = currentYearConfig.fields || [];
+            let required = 0;
+            let filled = 0;
+        
+            fields.forEach(f => {
+                if(f.isSystem || !f.required || f.category === 'sys_course_info') return;
+        
+                // 檢查 Visibility
+                let isVisible = true;
+                if (f.visibilityRule) {
+                    const depVal = app.formData[f.visibilityRule.dep];
+                    const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
+                    if (!hasDepValue) isVisible = false;
+                    else isVisible = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
+                }
+        
+                if (isVisible) {
+                    required++;
+                    const val = app.formData[f.id];
+                    if (val !== undefined && val !== null && String(val).trim() !== "") {
+                        filled++;
+                    }
+                }
+            });
+        
+            return { required, filled, percent: required > 0 ? Math.round((filled/required)*100) : 0 };
+        }
+        
+        // ★ 新增：高亮未填欄位
+        function highlightUnfilled(appId) {
+            const student = groupedStudents[currentStudentId];
+            if(!student) return;
+            const app = student.applications.find(a => a.id === appId);
+            if(!app) return;
+        
+            const fields = currentYearConfig.fields || [];
+            let firstErrorId = null;
+            let errorCount = 0;
+        
+            // 先清除所有舊的錯誤標記
+            document.querySelectorAll('.field-error').forEach(el => el.classList.remove('field-error'));
+        
+            fields.forEach(f => {
+                if(f.isSystem || !f.required || f.category === 'sys_course_info') return;
+        
+                // Visibility Check
+                let isVisible = true;
+                if (f.visibilityRule) {
+                    const depVal = app.formData[f.visibilityRule.dep];
+                    if (!depVal) isVisible = false; // 簡化判斷
+                    else isVisible = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
+                }
+        
+                if (isVisible) {
+                    const val = app.formData[f.id];
+                    const isUnfilled = (val === undefined || val === null || String(val).trim() === "");
+                    
+                    if (isUnfilled) {
+                        // 標記錯誤
+                        const wrapper = document.getElementById(`wrapper-${appId}-${f.id}`);
+                        if(wrapper) {
+                            wrapper.classList.add('field-error');
+                            if(!firstErrorId) firstErrorId = `input-${appId}-${f.id}`;
+                            errorCount++;
+                        }
+                    }
+                }
+            });
+        
+            if(errorCount > 0) {
+                showToast('warning', `共有 ${errorCount} 個必填欄位未完成，已用紅色標示`);
+                // 捲動到第一個錯誤
+                if(firstErrorId) {
+                    const el = document.getElementById(firstErrorId);
+                    if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                }
+            } else {
+                showToast('success', '太棒了！所有必填欄位皆已完成');
+            }
         }
         
         function switchTab(tabId) {
@@ -2899,65 +3035,49 @@
             const app = student.applications.find(a => a.id === appId);
             if(!app) return;
         
-            const fields = currentYearConfig.fields || [];
-            let requiredCount = 0;
-            let filledCount = 0;
+            const stats = calculateAppStats(app);
+            const { required, filled, percent } = stats;
         
-            fields.forEach(f => {
-                // 排除系統欄位、非必填、以及不需要填寫的類別
-                if(f.isSystem || !f.required || f.category === 'sys_course_info') return;
-        
-                // 檢查是否可見 (Visibility Rule)
-                let isVisible = true;
-                if (f.visibilityRule) {
-                    const depVal = app.formData[f.visibilityRule.dep];
-                    // 嚴謹檢查是否有值
-                    const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
-                    
-                    if (!hasDepValue) isVisible = false;
-                    else {
-                        if (f.visibilityRule.action === 'show') isVisible = (depVal === f.visibilityRule.val);
-                        else isVisible = (depVal !== f.visibilityRule.val);
-                    }
-                }
-        
-                if (isVisible) {
-                    requiredCount++;
-                    const val = app.formData[f.id];
-                    // 檢查是否有填寫
-                    if (val !== undefined && val !== null && String(val).trim() !== "") {
-                        filledCount++;
-                    }
-                }
-            });
-        
-            // 更新 UI
             const container = document.getElementById(`app-progress-${appId}`);
             if(container) {
-                const pct = requiredCount > 0 ? Math.round((filledCount / requiredCount) * 100) : 100;
-                const colorClass = pct === 100 ? 'text-emerald-600' : 'text-orange-500';
-                const barColor = pct === 100 ? 'bg-emerald-500' : 'bg-orange-400';
-                
+                const isComplete = percent === 100;
+                const colorClass = isComplete ? 'text-emerald-600' : 'text-orange-500';
+                const barColor = isComplete ? 'bg-emerald-500' : 'bg-orange-400';
+                const btnClass = isComplete 
+                    ? 'hidden' 
+                    : 'px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded text-xs font-bold transition flex items-center gap-1';
+        
                 container.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-primary border border-slate-100">
-                            <i class="fas fa-clipboard-check text-lg"></i>
+                    <div class="flex items-center gap-4 flex-grow">
+                        <div class="w-12 h-12 rounded-full bg-slate-50 flex-shrink-0 flex items-center justify-center text-primary border border-slate-100 shadow-sm">
+                            <i class="fas fa-clipboard-check text-xl"></i>
                         </div>
-                        <div>
-                            <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">填報完整度</div>
-                            <div class="font-bold text-slate-700 text-sm">
-                                應填 <span class="mx-0.5">${requiredCount}</span> / 實填 <span class="${colorClass} mx-0.5">${filledCount}</span> 欄位
+                        <div class="flex-grow">
+                            <div class="flex justify-between items-center mb-1">
+                                <div class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">填報進度</div>
+                                <div class="font-bold text-slate-700 text-xs">
+                                    ${filled} / ${required} 欄位
+                                </div>
+                            </div>
+                            <div class="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden">
+                                <div class="h-full ${barColor} transition-all duration-500 shadow-sm" style="width: ${percent}%"></div>
                             </div>
                         </div>
-                    </div>
-                    <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
-                        <div class="w-32 h-2.5 bg-slate-100 rounded-full overflow-hidden shadow-inner">
-                            <div class="h-full ${barColor} transition-all duration-500" style="width: ${pct}%"></div>
+                        <div class="flex items-center gap-3 pl-4 border-l border-slate-100">
+                            <span class="font-bold text-2xl ${colorClass}">${percent}%</span>
+                            <button onclick="highlightUnfilled('${appId}')" class="${btnClass}">
+                                <i class="fas fa-exclamation-circle"></i> 標示未填
+                            </button>
                         </div>
-                        <span class="font-bold text-lg ${colorClass}">${pct}%</span>
                     </div>
                 `;
             }
+            
+            // 同步更新 Tab 上的狀態燈號 (因為填寫時進度會變)
+            renderTabs(student);
+            // 保持當前 Tab 激活樣式
+            const activeBtn = document.querySelector(`.tab-btn[data-tab="${appId}"]`);
+            if(activeBtn) activeBtn.classList.add('active');
         }
         function evaluateLogic(app) {
             const fields = currentYearConfig.fields || [];
