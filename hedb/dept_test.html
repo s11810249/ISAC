@@ -3857,6 +3857,8 @@
 
             const thead = document.getElementById('local-grid-thead');
             const tbody = document.getElementById('local-grid-tbody');
+            const tableElement = document.querySelector('#student-grid-wrapper table'); // 抓取表格元素
+            
             // 讀取搜尋關鍵字
             const searchTerm = document.getElementById('local-grid-search')?.value.toLowerCase() || "";
 
@@ -3888,7 +3890,7 @@
             // (B) 資料準備 (扁平化 + 搜尋過濾)
             let rowsData = [];
             student.courses.forEach(c => {
-                // 搜尋過濾：檢查課程內的所有值
+                // 搜尋過濾
                 if (searchTerm) {
                     const fullText = Object.values(c).join(' ').toLowerCase();
                     if (!fullText.includes(searchTerm)) return;
@@ -3929,14 +3931,14 @@
                 });
             }
 
-            // (D) ★★★ 計算欄位寬度與總寬度 (解決捲軸問題的核心) ★★★
+            // (D) ★★★ 關鍵：計算欄位寬度與總寬度 ★★★
             const columnWidths = {};
             let totalTableWidth = 0; // 用於累加總寬度
 
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
-                // 基礎寬度加大
-                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 40 + iconWidth;
+                // 1. 標題寬度計算 (加大緩衝 +50)
+                let headerW = getTextWidth(f.label, "bold 15px 'Noto Sans TC'") + 50 + iconWidth;
                 let finalW = headerW;
 
                 rowsData.forEach(row => {
@@ -3946,29 +3948,30 @@
                     if(!val && f.id === 'student_dept') val = row.student.dept;
 
                     if (val) {
-                        // 內容寬度緩衝加大 (+60px)
+                        // 2. 內容寬度計算 (加大緩衝 +60)
                         const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 60;
                         finalW = Math.max(finalW, w);
                     }
                 });
                 
-                // ★ 強制設定最小寬度為 100px (原為 80px)，確保不會縮太小
-                const calculatedWidth = Math.max(finalW, 100);
+                // 3. 設定最小寬度 (從 80 加大到 120，強迫撐開)
+                const calculatedWidth = Math.max(finalW, 120);
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
             });
 
-            // ★★★ 關鍵：強制設定表格總寬度，確保捲軸出現 ★★★
-            // 找到包含 table 的外層容器內的 table 元素
-            // 注意：這裡使用 querySelector 確保選到正確的表格
-            const tableElement = document.querySelector('#student-grid-wrapper table');
+            // (E) ★★★ 關鍵：移除 w-full 並強制設定表格像素寬度 ★★★
             if(tableElement) {
-                // 強制給予像素寬度，這會撐開容器產生捲軸
+                // 移除 Tailwind 的 w-full class，避免被限制在 100%
+                tableElement.classList.remove('w-full');
+                // 強制設定 table-layout 為 fixed
+                tableElement.style.tableLayout = 'fixed';
+                // 直接給予計算後的像素寬度 (這會撐開容器，產生捲軸)
                 tableElement.style.width = totalTableWidth + 'px';
-                tableElement.style.minWidth = totalTableWidth + 'px'; // 雙重保險
+                tableElement.style.minWidth = totalTableWidth + 'px'; 
             }
 
-            // (E) 渲染表頭
+            // (F) 渲染表頭
             const freezeLimit = localGridState.frozenCount;
             let currentStickyLeft = 0; 
             let trHead = document.createElement('tr');
@@ -3993,7 +3996,6 @@
                     if (index === freezeLimit - 1) th.classList.add('sticky-border-right');
                 }
 
-                // 排序圖示
                 let sortIcon = '';
                 if (localGridState.sortKey === col.id) {
                     sortIcon = localGridState.sortDir === 'asc' 
@@ -4007,7 +4009,7 @@
             });
             thead.appendChild(trHead);
 
-            // (F) 渲染內容
+            // (G) 渲染內容
             let lastAppId = null;
             let isAltRow = false;
 
@@ -4036,7 +4038,7 @@
                     td.className = "border-r border-slate-200 p-0 relative";
                     
                     const finalWidth = columnWidths[f.id];
-                    td.style.width = finalWidth + "px"; // 使用 width
+                    td.style.width = finalWidth + "px"; 
                     
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
@@ -4062,7 +4064,6 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
 
-                    // 輸入框生成邏輯
                     if (isReadOnly) {
                         const div = document.createElement('div');
                         div.className = "cell-read-only"; 
@@ -4098,7 +4099,6 @@
                             input.style.cursor = 'pointer';
                             input.title = "尚未歸戶 (點擊以建立)";
                             
-                            // ★ 點擊事件修正：只顯示提示，不報錯
                             const triggerConsolidate = (e) => {
                                 e.preventDefault(); e.stopPropagation();
                                 showToast('info', '請使用上方「歸戶設定」頁籤進行歸戶操作');
