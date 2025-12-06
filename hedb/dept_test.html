@@ -2044,9 +2044,32 @@
             renderStudentList();
         }
 
+        function renderEmptyState() {
+            const container = document.getElementById('dynamic-tabs-area');
+            if(!container) return;
+            
+            // 清空內容並顯示提示
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center h-[60vh] text-slate-400 animate-fade-in">
+                    <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
+                        <i class="fas fa-folder-plus text-4xl text-slate-300"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-slate-600 mb-2">尚無實習紀錄</h3>
+                    <p class="text-sm text-slate-500 mb-6">請先進行歸戶設定以開始填報</p>
+                    <button onclick="openStudentSettingsModal(currentStudentId)" class="px-6 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-sky-700 transition transform hover:scale-105">
+                        <i class="fas fa-cog mr-2"></i> 開啟歸戶設定
+                    </button>
+                </div>
+            `;
+            container.style.display = 'block';
+            
+            // 隱藏所有 tab content
+            document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
+        }
+        
         function selectStudent(sid) {
             currentStudentId = sid;
-            renderStudentList(); 
+            renderStudentList(); // 刷新側邊欄選中狀態
             
             const student = groupedStudents[sid];
             document.getElementById('form-empty-state').classList.add('hidden');
@@ -2063,15 +2086,18 @@
             statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
             statusEl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${appCount > 0 ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
 
-            // ★★★ 新增：每次選擇學生時，重置回「表單模式」 ★★★
             setStudentViewMode('form'); 
-
             renderTabs(student);
             
-            if (appCount > 0) switchTab(student.applications[0].id);
-            else switchTab('settings');
-            
-            renderSettingsTab(student);
+            // ★ 修改重點：判斷是否有歸戶資料
+            if (appCount > 0) {
+                // 有資料：切換到第一筆
+                switchTab(student.applications[0].id);
+            } else {
+                // 無資料：顯示提示畫面
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); // 移除所有頁籤選中
+                renderEmptyState();
+            }
         }
 
         function handleSettingsClick() {
@@ -2242,8 +2268,6 @@
         }
 
         async function deleteApplication(appId) {
-            // 4. 詢問是否要刪除紀錄的時候，要改用內建提示框 (Custom Modal)
-            // Used custom showConfirm instead of window.confirm
             const confirmed = await showConfirm('確認刪除？', '確定要解除此歸戶嗎？填寫的資料將會遺失。');
             if (!confirmed) return;
             
@@ -2258,20 +2282,19 @@
             });
 
             student.applications.splice(idx, 1);
-            
-            hasUnsavedChanges = true; // Mark changes
+            hasUnsavedChanges = true;
 
             const dom = document.getElementById(`content-${appId}`);
             if(dom) dom.remove();
 
-            renderTabs(student);
-            renderSettingsTab(student);
-            renderStudentList();
-            showToast('success', '歸戶已解除');
+            // ★ 修改：使用 selectStudent 重新判斷狀態
+            // 如果刪光了，selectStudent 會自動呼叫 renderEmptyState
+            selectStudent(currentStudentId);
             
+            showToast('success', '歸戶已解除');
             logChange('DeleteApp', appId, 'Existing', 'Deleted', student.id);
         }
-
+        
         function createApplicationContent(appId) {
             const student = groupedStudents[currentStudentId];
             const app = student.applications.find(a => a.id === appId);
@@ -3516,7 +3539,6 @@
             const ids = Array.from(checkboxes).map(cb => cb.value);
             const appId = 'app_' + Date.now();
             
-            // 複製第一門課資料作為預設
             const firstC = student.courses.find(c => c._internal_id === ids[0]);
             const initData = {};
             if (currentYearConfig.fields) {
@@ -3537,10 +3559,18 @@
             student.applications.push(newApp);
             hasUnsavedChanges = true;
             
-            // 更新介面
+            // 更新 Modal 內部介面
             renderModalSettingsTab(student);
-            renderGridStudentList(); // 更新側邊欄狀態
-            renderGlobalGrid(); // 更新主表格背景色
+            
+            // ★ 新增：同步刷新外部介面 (側邊欄狀態 + 右側內容)
+            renderStudentList(); 
+            selectStudent(currentStudentId); 
+            
+            // 如果在 Grid 模式，也刷新 Grid
+            const gridWrapper = document.getElementById('student-grid-wrapper');
+            if (gridWrapper && !gridWrapper.classList.contains('hidden')) {
+                renderStudentLocalGrid(currentStudentId);
+            }
             
             showToast('success', '已建立填報單');
             logChange('CreateApp', appId, '', 'Created from Grid Modal', student.id);
@@ -3548,8 +3578,6 @@
 
         // 5. 從視窗刪除歸戶 (Wrapper)
         async function deleteApplicationFromModal(appId, studentId) {
-            // 呼叫原本的刪除函式 (會跳出確認視窗)
-            // 為了避免重複渲染問題，我們這裡手動處理確認，直接操作資料
             const confirmed = await showConfirm('確認刪除？', '確定要解除此歸戶嗎？填寫的資料將會遺失。');
             if (!confirmed) return;
 
@@ -3566,14 +3594,23 @@
             student.applications.splice(idx, 1);
             hasUnsavedChanges = true;
 
-            // 更新介面
+            // 更新 Modal 內部介面
             renderModalSettingsTab(student);
-            renderGridStudentList();
-            renderGlobalGrid();
+            
+            // ★ 新增：同步刷新外部介面
+            renderStudentList(); // 讓側邊欄的 "N 筆歸戶" 變回 "未填報"
+            selectStudent(studentId); // 讓右側面板顯示 "請先進行歸戶設定"
+            
+            // 如果在 Grid 模式，也刷新 Grid
+            const gridWrapper = document.getElementById('student-grid-wrapper');
+            if (gridWrapper && !gridWrapper.classList.contains('hidden')) {
+                renderStudentLocalGrid(studentId);
+            }
             
             showToast('success', '歸戶已解除');
             logChange('DeleteApp', appId, 'Existing', 'Deleted from Grid Modal', studentId);
         }
+        
     function toolAutoFill() {
         let count = 0;
         // ... (保留中間邏輯) ...
