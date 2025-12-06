@@ -1709,7 +1709,7 @@
             allRawData = data;
             groupedStudents = {};
             
-            // --- A. 偵測學年度 (保持原樣) ---
+            // A. 偵測學年度
             let detectedYear = null;
             if (data.length > 0) {
                 const yKeys = ['school_year', 'academic_year', '學年', '學年度'];
@@ -1732,16 +1732,14 @@
             
             const currentY = activeYear || '114';
 
-            // --- B. 輔助函式：強力讀值 (優先讀取系統欄位) ---
+            // B. 輔助函式：強力讀值
             const getValue = (row, possibleKeys) => {
                 const rowKeys = Object.keys(row);
                 for (const key of possibleKeys) {
                     const target = key.toLowerCase();
-                    // 1. 精確比對 (優先)
                     if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
                         return String(row[key]).trim();
                     }
-                    // 2. 模糊比對 (忽略空白與大小寫)
                     const foundKey = rowKeys.find(k => k.trim().toLowerCase() === target);
                     if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') {
                         return String(row[foundKey]).trim();
@@ -1750,7 +1748,7 @@
                 return '';
             };
 
-            // --- C. 輔助函式：系所 Master Data 搜尋 ---
+            // C. 輔助函式：系所 Master Data 搜尋
             const findDeptMaster = (query) => {
                 if (!deptMasterData || !query) return null;
                 const q = query.toString().trim();
@@ -1769,18 +1767,12 @@
             const studentDepts = new Set();
             const courseCounters = {}; 
 
-            // --- D. 開始遍歷資料 ---
+            // D. 遍歷資料
             allRawData.forEach((row, idx) => {
-                // 1. 讀取關鍵欄位 (★ 將 student_department 與 student_grade 列為首選)
                 const sid = getValue(row, ['student_id', '學號', 'id', 'std_no']);
                 const sname = getValue(row, ['student_name', '姓名', 'name']);
-                
-                // 系所：優先找 student_department (對應 metadata)
-                const rawDept = getValue(row, ['student_department', 'student_dept', '系所', '學系', 'department', 'dept']);
-                
-                // 年級：優先找 student_grade (對應 metadata)
-                const sgrade = getValue(row, ['student_grade', 'grade', '年級', 'level', 'year']);
-
+                const rawDept = getValue(row, ['student_department', 'student_dept', '系所', 'department', 'dept']);
+                const sgrade = getValue(row, ['student_grade', 'grade', '年級', 'level']);
                 const cdept = getValue(row, ['course_dept', '開課系所']);
                 
                 if (rawDept) studentDepts.add(rawDept);
@@ -1788,9 +1780,8 @@
 
                 if (!sid) return;
 
-                // 2. 建立或更新學生資料
+                // 建立或更新學生
                 if (!groupedStudents[sid]) {
-                    // (A) 新增學生
                     let deptDisplay = rawDept;
                     const master = findDeptMaster(rawDept);
                     
@@ -1800,22 +1791,20 @@
                                       master.name || 
                                       rawDept;
                     }
-                    if (!deptDisplay) deptDisplay = '未分系';
+                    if (!deptDisplay || deptDisplay === 'undefined') deptDisplay = '未分系';
 
                     groupedStudents[sid] = {
                         id: sid,
                         name: sname || '未知',
                         dept: deptDisplay, 
-                        grade: sgrade, // 存入年級
+                        grade: sgrade, 
                         courses: [],
                         applications: [] 
                     };
                 } else {
-                    // (B) 既有學生：資料互補 (如果第一筆沒填年級，後面有填就補上)
+                    // 資料互補
                     const existing = groupedStudents[sid];
-                    if (!existing.grade && sgrade) {
-                        existing.grade = sgrade;
-                    }
+                    if (!existing.grade && sgrade) existing.grade = sgrade;
                     if ((!existing.dept || existing.dept === '未分系') && rawDept) {
                         let newDisplay = rawDept;
                         const master = findDeptMaster(rawDept);
@@ -1824,7 +1813,7 @@
                     }
                 }
                 
-                // --- E. 課程 ID 生成 ---
+                // 課程 ID 生成
                 const rYear = getValue(row, ['school_year', '學年', 'academic_year']);
                 const rSem = getValue(row, ['semester', '學期']);
                 const rCode = getValue(row, ['course_code', '選課代號']);
@@ -1843,7 +1832,7 @@
                 groupedStudents[sid].courses.push(row);
             });
 
-            // --- F. 還原與自動偵測邏輯 (保持原樣) ---
+            // E. 還原設定
             if (savedApps && savedApps.length > 0) {
                 savedApps.forEach(app => {
                     const student = groupedStudents[app.studentId];
@@ -1861,6 +1850,7 @@
                 showToast('success', `已還原 ${savedApps.length} 筆歸戶設定`);
             }
 
+            // F. 自動歸戶偵測
             const singleCourseStudents = Object.values(groupedStudents).filter(s => 
                 s.courses.length === 1 && !s.courses[0]._app_id
             );
@@ -1908,6 +1898,22 @@
 
             renderStudentList();
             hasUnsavedChanges = false;
+
+            // ★★★ 4. 新增：匯入檔案後，強制重置主畫面回空狀態 ★★★
+            currentStudentId = null; // 清除當前選中學生 ID
+            
+            // 隱藏內容容器
+            document.getElementById('form-container').classList.add('hidden'); 
+            // 顯示「請從左側選擇...」提示
+            document.getElementById('form-empty-state').classList.remove('hidden'); 
+            
+            // 清除 Header 殘留資訊
+            document.getElementById('header-name').innerText = '學生姓名';
+            document.getElementById('header-id').innerText = 'ID';
+            document.getElementById('header-dept').innerHTML = '<i class="fas fa-graduation-cap mr-1"></i>系所';
+            document.getElementById('header-avatar').innerText = '?';
+            document.getElementById('header-status').innerText = '未填報';
+            document.getElementById('header-status').className = 'inline-block px-3 py-1 rounded-full text-xs font-bold bg-slate-100 text-slate-500 whitespace-nowrap';
         }
         
         function renderStudentList() {
@@ -2049,12 +2055,11 @@
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // Header 資訊
+            // Header 資訊更新
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             
-            // ★★★ 修改：Icon 旁邊顯示 {student_department} | {student_grade}年級 ★★★
-            // 若系所為空則顯示 '系所未知'，若年級有值則加上 '年級' 後綴
+            // 處理系級顯示 (含防呆)
             let deptText = (student.dept && student.dept !== 'undefined') ? student.dept : '系所未知';
             let gradeText = student.grade ? `${student.grade}年級` : '';
             
@@ -2066,21 +2071,25 @@
             document.getElementById('header-dept').innerHTML = fullHtml;
             document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
-            // 更新狀態
+            // 更新狀態標籤
             const appCount = student.applications.length;
             const statusEl = document.getElementById('header-status');
             statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
             statusEl.className = `inline-block px-3 py-1 rounded-full text-xs font-bold ${appCount > 0 ? 'bg-green-100 text-success' : 'bg-slate-100 text-slate-500'}`;
 
-            setStudentViewMode('form'); 
+            // ★★★ 關鍵修改：使用記憶的模式，而非強制 'form' ★★★
+            setStudentViewMode(currentViewMode); 
+            
             renderTabs(student);
             
             const dynamicArea = document.getElementById('dynamic-tabs-area');
 
             if (appCount > 0) {
+                // 有資料：清空空狀態 -> 切換到第一筆
                 dynamicArea.innerHTML = '';
                 switchTab(student.applications[0].id);
             } else {
+                // 無資料：移除頁籤選中 -> 顯示空狀態
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
                 renderEmptyState();
             }
@@ -3756,6 +3765,8 @@
             renderLocalGridPicker(); 
         }
 
+        let currentViewMode = 'form';
+        
         // 1. 切換視圖模式 (表單 vs 列表)
         function setStudentViewMode(mode) {
             const formContainer = document.getElementById('form-content-area');
