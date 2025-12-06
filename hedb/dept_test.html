@@ -3863,7 +3863,7 @@
 
             if(!table || !scrollContainer || !thead || !tbody) return;
 
-            // --- A. 容器樣式 (維持讓捲軸貼合) ---
+            // --- A. 容器樣式 ---
             scrollContainer.classList.remove('flex-grow');
             scrollContainer.classList.remove('h-full');
             scrollContainer.style.height = 'auto';
@@ -3911,7 +3911,7 @@
                 rowsData.push({ course: c, appData: appData, student: student, appId: c._app_id });
             });
 
-            // 資料排序
+            // 資料排序 (略，保持原樣)
             if (localGridState.sortKey) {
                 rowsData.sort((a, b) => {
                     const getVal = (row, key) => {
@@ -3931,20 +3931,16 @@
                 });
             }
 
-            // (D) ★★★ 計算欄位寬度 (回復正常邏輯) ★★★
+            // (D) 計算欄位寬度
             const colgroup = document.createElement('colgroup');
             const columnWidths = {};
             let totalTableWidth = 0; 
 
             allColumns.forEach(f => {
                 const iconWidth = f.description ? 25 : 0;
-                
-                // 1. 標題寬度：文字寬 + 30px (icon/padding)
-                // 這裡回復到比較緊湊的設定
                 let headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 30 + iconWidth;
                 let finalW = headerW;
 
-                // 2. 掃描內容寬度
                 rowsData.forEach(row => {
                     let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
                     if(!val && f.id === 'student_id') val = row.student.id;
@@ -3952,17 +3948,14 @@
                     if(!val && f.id === 'student_dept') val = row.student.dept;
 
                     if (val) {
-                        // 內容寬度：文字寬 + 40px (padding + input borders)
                         const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 40;
                         finalW = Math.max(finalW, w);
                     }
                 });
                 
-                // 3. 設定最終寬度：
-                // 取算出來的最大值，但至少要有 80px (避免太窄按不到)，也不要超過 400px (避免長文撐爆)
-                // 如果 config 有設定 excelWidth，也可以考慮優先使用
                 let calculatedWidth = Math.max(finalW, 80); 
-                if(f.type === 'text' || f.type === 'address') calculatedWidth = Math.min(calculatedWidth, 400);
+                // 限制最大寬度，避免自動計算太寬，強迫換行
+                if(f.type === 'text' || f.type === 'address') calculatedWidth = Math.min(calculatedWidth, 300);
 
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
@@ -3974,9 +3967,9 @@
 
             table.insertBefore(colgroup, thead);
 
-            // (E) ★ 表格樣式 (保留關鍵設定) ★
+            // (E) 表格樣式
             table.classList.remove('w-full');
-            table.style.tableLayout = 'fixed';
+            table.style.tableLayout = 'fixed'; // ★ 關鍵：固定欄寬，讓內容折行
             table.style.width = totalTableWidth + 'px';
             table.style.minWidth = totalTableWidth + 'px';
 
@@ -4044,7 +4037,11 @@
                     const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
                     td.style.backgroundColor = cellBgColor;
-                    td.style.whiteSpace = 'nowrap'; // 確保內容不換行
+                    
+                    // ★ 預設不換行 (針對一般欄位)，Textarea 會另外覆蓋此設定
+                    td.style.whiteSpace = 'nowrap'; 
+                    // ★ 頂部對齊，確保多行時文字從上面開始
+                    td.style.verticalAlign = 'top'; 
 
                     if (index < freezeLimit) {
                         td.classList.add('sticky-col');
@@ -4053,7 +4050,7 @@
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
-                    // 取值與 Render
+                    // 取值
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -4071,17 +4068,45 @@
                         div.className = "cell-read-only"; 
                         div.innerText = val || '';
                         div.title = val || '';
+                        // 唯讀欄位垂直置中
+                        div.style.height = '100%';
+                        div.style.display = 'flex';
+                        div.style.alignItems = 'center';
+                        div.style.justifyContent = 'center';
                         td.appendChild(div);
                     } else {
                         let input;
+                        // ★★★ 修改重點：Textarea 自動長高邏輯 ★★★
                         if (f.type === 'text' || f.type === 'address') {
                             input = document.createElement('textarea');
-                            input.rows = 1;
+                            input.rows = 1; // 預設一行
                             input.className = "grid-input";
+                            
+                            // 1. 樣式設定：允許換行
                             input.style.resize = "none";
                             input.style.textAlign = 'left';
-                            input.style.whiteSpace = 'nowrap';
-                            input.style.overflow = 'hidden';
+                            input.style.whiteSpace = 'pre-wrap'; // ★ 關鍵：保留換行符號並自動折行
+                            input.style.overflow = 'hidden';     // 隱藏捲軸，靠 JS 長高
+                            input.style.wordBreak = 'break-all'; // 防止長單字撐爆
+                            input.style.lineHeight = '1.5';
+                            input.style.padding = '6px 8px';     // 增加內距讓文字好看
+                            input.style.height = 'auto';         // 初始高度自動
+
+                            // 2. 自動長高函式
+                            const autoResize = (el) => {
+                                el.style.height = 'auto'; // 先重置
+                                // 設定高度為內容高度 (至少 34px)
+                                el.style.height = Math.max(el.scrollHeight, 34) + 'px';
+                            };
+
+                            // 3. 綁定事件
+                            input.addEventListener('input', function() {
+                                autoResize(this);
+                            });
+                            
+                            // 延遲執行一次以適應初始內容
+                            setTimeout(() => autoResize(input), 0);
+
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
@@ -4140,13 +4165,6 @@
                 tbody.appendChild(tr);
                 updateRowLogic(tr, appId ? appData : course, !appId);
             });
-            
-            setTimeout(() => {
-                document.querySelectorAll('#local-grid-tbody textarea').forEach(ta => {
-                    ta.style.height = 'auto';
-                    ta.style.height = (ta.scrollHeight) + 'px';
-                });
-            }, 0);
         }
         
         function renderLocalGridPicker() {
