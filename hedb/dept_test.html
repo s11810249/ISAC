@@ -2076,18 +2076,7 @@
 
         function handleSettingsClick() {
             if (!currentStudentId) return;
-
-            // 判斷目前是否為列表模式 (Grid Mode)
-            const gridWrapper = document.getElementById('student-grid-wrapper');
-            const isGridMode = gridWrapper && !gridWrapper.classList.contains('hidden');
-            
-            if (isGridMode) {
-                // 模式 A: 列表模式 -> 開啟設定視窗 (Modal)
-                openStudentSettingsModal(currentStudentId);
-            } else {
-                // 模式 B: 表單模式 -> 切換到設定頁面 (Main View)
-                switchTab('settings');
-            }
+            openStudentSettingsModal(currentStudentId);
         }
         
         function renderTabs(student) {
@@ -3445,9 +3434,7 @@
             currentStudentId = sid; 
             const student = groupedStudents[sid];
             if(!student) return;
-
-            document.getElementById('modal-student-name').innerHTML = `${student.name} <span class="text-slate-400 text-sm font-normal">(${student.id})</span> - 歸戶設定`;
-            
+            document.getElementById('modal-student-name').innerText = `${student.name} (${student.id})`;           
             renderModalSettingsTab(student);
             document.getElementById('student-settings-modal').classList.remove('hidden');
         }
