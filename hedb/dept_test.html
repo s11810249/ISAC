@@ -2069,7 +2069,7 @@
         
         function selectStudent(sid) {
             currentStudentId = sid;
-            renderStudentList(); // 刷新側邊欄選中狀態
+            renderStudentList(); 
             
             const student = groupedStudents[sid];
             document.getElementById('form-empty-state').classList.add('hidden');
@@ -2089,17 +2089,20 @@
             setStudentViewMode('form'); 
             renderTabs(student);
             
-            // ★ 修改重點：判斷是否有歸戶資料
             if (appCount > 0) {
-                // 有資料：切換到第一筆
+                // ★★★ 關鍵修正：在顯示表單前，強制清空內容區域 ★★★
+                // 這會移除原本的「尚無實習紀錄...」畫面，避免新表單接在它下面
+                document.getElementById('dynamic-tabs-area').innerHTML = '';
+                
+                // 切換到第一筆
                 switchTab(student.applications[0].id);
             } else {
                 // 無資料：顯示提示畫面
-                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); // 移除所有頁籤選中
+                document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
                 renderEmptyState();
             }
         }
-
+        
         function handleSettingsClick() {
             if (!currentStudentId) return;
             openStudentSettingsModal(currentStudentId);
