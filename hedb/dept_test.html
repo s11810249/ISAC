@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="zh-TW">
 <head>
@@ -1713,14 +1712,11 @@
             let detectedYear = null;
 
             if (data.length > 0) {
-                // 優先從 common ID 取得，如果沒有則從中文 Label 取得
                 const firstRow = data[0];
                 detectedYear = firstRow['school_year'] || firstRow['academic_year'] || firstRow['學年'] || null;
 
                 if (detectedYear) {
                     detectedYear = detectedYear.toString().trim();
-                    
-                    // 直接切換學年度設定
                     await changeYear(detectedYear); 
                     showToast('info', `已自動辨識並切換至 ${detectedYear} 學年度`);
                 } else {
@@ -1732,12 +1728,16 @@
             const studentDepts = new Set();
             
             // Pre-scan to build course counters per student for stable IDs
-            const courseCounters = {}; // { "sid_year_sem_code": count }
+            const courseCounters = {}; 
 
             allRawData.forEach((row, idx) => {
                 const sid = row['student_id'] || row['學號'] || row['id'];
                 const sname = row['student_name'] || row['姓名'] || row['name'];
                 const sdept = row['student_dept'] || row['系所'] || row['department'];
+                
+                // ★★★ 新增：讀取年級 (欄位名稱支援 grade, 年級, level) ★★★
+                const sgrade = row['grade'] || row['年級'] || row['level'] || ''; 
+
                 const cdept = row['course_dept'] || row['開課系所'];
                 
                 if (sdept) studentDepts.add(sdept);
@@ -1757,41 +1757,32 @@
                         id: sid,
                         name: sname || '未知',
                         dept: deptDisplay || '',
+                        grade: sgrade, // ★★★ 新增：將年級存入物件 ★★★
                         courses: [],
                         applications: [] 
                     };
                 }
                 
-                // 3. 核心修正：Course_IDs 改用 {學年}{學期}_{選課代號}
-                // 這將作為歸戶的穩定 Key，不受 Excel 欄位順序影響
+                // --- 課程 ID 生成邏輯 (保持原樣) ---
                 const rYear = row['school_year'] || row['學年'] || row['academic_year'];
                 const rSem = row['semester'] || row['學期'];
                 const rCode = row['course_code'] || row['選課代號'];
                 
                 if (rYear && rSem && rCode) {
-                     // 移除空白並確保格式
                      const safeYear = rYear.toString().trim();
                      const safeSem = rSem.toString().trim();
                      const safeCode = rCode.toString().trim();
                      
-                     // 生成 Course ID: {學年}{學期}_{選課代號}
-                     // 例如: 1141_1363
-                     // 若同一學生修了同一門課兩次(極少見)，則加上計數器
                      const baseKey = `${sid}_${safeYear}${safeSem}_${safeCode}`;
                      if (!courseCounters[baseKey]) courseCounters[baseKey] = 0;
                      courseCounters[baseKey]++;
                      
                      let stableId = `${safeYear}${safeSem}_${safeCode}`;
-                     
-                     // 如果發現重複 (同一個學生修同一門課多次)，才加上後綴
                      if (courseCounters[baseKey] > 1) {
                          stableId += `_${courseCounters[baseKey]}`;
                      }
-                     
                      row._internal_id = stableId;
                 } else {
-                     // Fallback: 如果缺資料，使用索引，但會標記警告
-                     // console.warn('缺少關鍵課程欄位 (學年/學期/選課代號)，使用臨時 ID');
                      row._internal_id = `temp_c_${idx}`;
                 }
 
@@ -1799,14 +1790,13 @@
                 groupedStudents[sid].courses.push(row);
             });
 
-            // Restore Apps Logic
+            // --- 還原歸戶設定與自動偵測邏輯 (保持原樣) ---
             if (savedApps && savedApps.length > 0) {
                 savedApps.forEach(app => {
                     const student = groupedStudents[app.studentId];
                     if (student) {
                         const validCourseIds = [];
                         app.courseIds.forEach(cid => {
-                             // 關鍵修正 4: 使用更寬鬆的 matching 邏輯
                              const exists = student.courses.find(c => c._internal_id === cid);
                              if(exists) {
                                  validCourseIds.push(cid);
@@ -1826,26 +1816,19 @@
                 showToast('success', `已還原 ${savedApps.length} 筆歸戶設定`);
             }
 
-            // ★★★ 修改：匯入時偵測單筆資料，詢問是否自動歸戶 ★★★
-            
-            // 1. 先找出符合條件的學生 (只有一門課，且該課程尚未被還原設定歸戶)
+            // 自動歸戶單一課程偵測
             const singleCourseStudents = Object.values(groupedStudents).filter(s => 
                 s.courses.length === 1 && !s.courses[0]._app_id
             );
 
             if (singleCourseStudents.length > 0) {
-                // 2. 跳出詢問視窗 (使用 await 等待使用者回應)
-                // 注意: processUploadedData 必須是 async function (原本已是)
                 const confirmAuto = await showConfirm(
                     '自動歸戶偵測', 
                     `偵測到有 ${singleCourseStudents.length} 位學生僅有一門課程。\n是否要直接為他們建立歸戶？`
                 );
 
                 if (confirmAuto) {
-                    // 3. 使用者確認後，才執行歸戶邏輯
                     let autoSingleCount = 0;
-                    
-                    // 取得可寫入的欄位定義
                     const fields = currentYearConfig.fields || [];
                     const writableFields = fields.filter(f => 
                         !f.isSystem && 
@@ -1856,11 +1839,9 @@
 
                     singleCourseStudents.forEach(student => {
                         const course = student.courses[0];
-                        // 建立新的 App ID
                         const appId = 'app_auto_imp_' + Date.now() + Math.random().toString(36).substr(2, 5);
                         const initData = {};
 
-                        // 自動從課程資料複製內容到表單
                         writableFields.forEach(f => {
                             const val = course[f.id];
                             if (val !== undefined && val !== null && String(val).trim() !== "") {
@@ -1868,33 +1849,28 @@
                             }
                         });
 
-                        // 特殊處理：嘗試帶入機構名稱
                         if (!initData['internship_institution_name']) {
                             const instName = getCourseValue(course, ['internship_institution_name', '實習機構', '機構名稱']);
                             if (instName && instName !== '-') initData['internship_institution_name'] = instName;
                         }
 
-                        // 建立歸戶物件
                         const newApp = {
                             id: appId,
                             courseIds: [course._internal_id],
                             formData: initData
                         };
                         
-                        // 寫入學生資料
                         student.applications.push(newApp);
                         course._app_id = appId;
                         autoSingleCount++;
                     });
 
-                    // 延遲顯示成功訊息
                     setTimeout(() => {
                         showToast('success', `已自動歸戶 ${autoSingleCount} 筆單一課程資料`);
                     }, 500);
                 }
             }
             
-            // ★★★ 結束 ★★★
             const renderOpts = (elId, set) => {
                 const el = document.getElementById(elId);
                 const current = el.value;
@@ -1908,8 +1884,6 @@
             renderOpts('filter-student-dept', studentDepts);
 
             renderStudentList();
-            
-            // Reset unsaved changes flag after load
             hasUnsavedChanges = false;
         }
 
@@ -1944,7 +1918,6 @@
                 let valA = String(a[sortConfig.key] || '');
                 let valB = String(b[sortConfig.key] || '');
                 
-                // 使用 Intl.Collator 進行自然排序 (支援 S1, S2, S10 這種邏輯)
                 const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
                 const comp = collator.compare(valA, valB);
                 
@@ -1964,20 +1937,28 @@
                 el.onclick = () => selectStudent(s.id);
                 
                 const appCount = s.applications.length;
-                const totalCourses = s.courses.length;
                 const statusHtml = appCount > 0 
                     ? `<span class="bg-green-100 text-success text-[10px] px-1.5 py-0.5 rounded font-bold">${appCount} 筆填報</span>` 
                     : `<span class="bg-slate-100 text-slate-400 text-[10px] px-1.5 py-0.5 rounded">未開始</span>`;
 
+                // ★★★ 處理顯示字串：系級 ★★★
+                const gradeDisplay = s.grade ? `${s.grade}年級` : '';
+                const deptGradeText = [s.dept, gradeDisplay].filter(Boolean).join(' | ');
+
+                // ★★★ 修正 HTML：學號移到姓名右邊 (使用 bg-slate-100 樣式) ★★★
                 el.innerHTML = `
                     <div class="flex justify-between items-start">
-                        <div>
-                            <div class="font-bold text-slate-700 text-sm student-name">${s.name}</div>
-                            <div class="text-xs text-slate-500 font-mono">${s.id}</div>
+                        <div class="flex-grow min-w-0 pr-2">
+                            <div class="flex items-center gap-2 mb-1">
+                                <span class="font-bold text-slate-700 text-sm student-name truncate">${s.name}</span>
+                                <span class="text-xs text-slate-500 font-mono bg-slate-100 px-1 rounded">${s.id}</span>
+                            </div>
+                            <div class="text-xs text-slate-400 truncate" title="${deptGradeText}">
+                                ${deptGradeText}
+                            </div>
                         </div>
-                        <div class="text-right">
+                        <div class="text-right flex-shrink-0">
                             ${statusHtml}
-                            <div class="text-[10px] text-slate-400 mt-1">${totalCourses} 門課</div>
                         </div>
                     </div>
                 `;
@@ -2045,32 +2026,18 @@
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // --- ★★★ 修改開始：處理系級顯示 (Department | Grade) ★★★ ---
-            
-            // 1. 嘗試從第一門課程中抓取「年級」
-            let gradeVal = '';
-            if (student.courses.length > 0) {
-                // 使用寬鬆搜尋找年級欄位
-                const found = getCourseValue(student.courses[0], ['grade', '年級', '修課年級']);
-                if (found && found !== '-') gradeVal = found;
-            }
-
-            // 2. 組合顯示字串
-            let deptDisplayHtml = student.dept;
-            if (gradeVal) {
-                // 如果有年級，顯示 "系所 | X年級"
-                deptDisplayHtml = `${student.dept} <span class="mx-1 opacity-50">|</span> ${gradeVal}年級`;
-            }
-
-            // 3. 更新 Header DOM
+            // Header 資訊更新
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
-            // 這裡套用新的顯示 HTML
-            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${deptDisplayHtml}`;
-            document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
-            // --- ★★★ 修改結束 ★★★ ---
-
+            // ★★★ 修改重點：顯示「系所 | 年級」 ★★★
+            // filter(Boolean) 會移除空字串，確保只有系所或只有年級時格式也正確
+            const gradeDisplay = student.grade ? `${student.grade}年級` : '';
+            const deptGradeText = [student.dept, gradeDisplay].filter(Boolean).join(' <span class="mx-1 opacity-50">|</span> ');
+            
+            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap mr-1"></i>${deptGradeText}`;
+            
+            document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
             const appCount = student.applications.length;
             const statusEl = document.getElementById('header-status');
@@ -2083,13 +2050,13 @@
             const dynamicArea = document.getElementById('dynamic-tabs-area');
 
             if (appCount > 0) {
-                // 情境 A: 有資料
-                dynamicArea.innerHTML = ''; // 清除空狀態
-                switchTab(student.applications[0].id); // 切換到第一筆
+                // 有資料：清空可能存在的空狀態 -> 切換到第一筆
+                dynamicArea.innerHTML = '';
+                switchTab(student.applications[0].id);
             } else {
-                // 情境 B: 無資料 (空狀態)
+                // 無資料：移除選中 -> 顯示空狀態
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
-                renderEmptyState(); // 渲染空狀態畫面
+                renderEmptyState();
             }
         }
         
