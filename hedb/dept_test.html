@@ -1709,11 +1709,20 @@
             allRawData = data;
             groupedStudents = {};
             
-            // 嘗試偵測學年度
+            // --- A. 偵測學年度 (保持原樣) ---
             let detectedYear = null;
             if (data.length > 0) {
+                const yKeys = ['school_year', 'academic_year', '學年', '學年度'];
                 const firstRow = data[0];
-                detectedYear = firstRow['school_year'] || firstRow['academic_year'] || firstRow['學年'] || null;
+                const rowKeys = Object.keys(firstRow);
+                for (const key of yKeys) {
+                    const target = key.toLowerCase();
+                    const foundKey = rowKeys.find(k => k.trim().toLowerCase() === target);
+                    if (foundKey && firstRow[foundKey]) {
+                        detectedYear = firstRow[foundKey];
+                        break;
+                    }
+                }
                 if (detectedYear) {
                     detectedYear = detectedYear.toString().trim();
                     await changeYear(detectedYear); 
@@ -1723,24 +1732,35 @@
             
             const currentY = activeYear || '114';
 
-            // ★ 內建輔助：搜尋系所 Master Data (支援代碼/全稱/歷史名稱反查)
+            // --- B. 輔助函式：強力讀值 (優先讀取系統欄位) ---
+            const getValue = (row, possibleKeys) => {
+                const rowKeys = Object.keys(row);
+                for (const key of possibleKeys) {
+                    const target = key.toLowerCase();
+                    // 1. 精確比對 (優先)
+                    if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                        return String(row[key]).trim();
+                    }
+                    // 2. 模糊比對 (忽略空白與大小寫)
+                    const foundKey = rowKeys.find(k => k.trim().toLowerCase() === target);
+                    if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') {
+                        return String(row[foundKey]).trim();
+                    }
+                }
+                return '';
+            };
+
+            // --- C. 輔助函式：系所 Master Data 搜尋 ---
             const findDeptMaster = (query) => {
                 if (!deptMasterData || !query) return null;
-                const q = query.toString().trim(); // 去除空白很重要
+                const q = query.toString().trim();
                 
-                // 1. 直接比對 Key
                 if (deptMasterData[q]) return deptMasterData[q];
 
-                // 2. 掃描所有屬性
                 for (const key in deptMasterData) {
                     const m = deptMasterData[key];
-                    // 比對代碼、全稱、簡稱 (寬鬆比對)
                     if (m.code == q || m.name === q || m.short_name === q) return m;
-                    
-                    // 比對歷年名稱
-                    if (m.historical_names) {
-                        if (Object.values(m.historical_names).includes(q)) return m;
-                    }
+                    if (m.historical_names && Object.values(m.historical_names).includes(q)) return m;
                 }
                 return null;
             };
@@ -1749,77 +1769,81 @@
             const studentDepts = new Set();
             const courseCounters = {}; 
 
+            // --- D. 開始遍歷資料 ---
             allRawData.forEach((row, idx) => {
-                const sid = row['student_id'] || row['學號'] || row['id'];
-                const sname = row['student_name'] || row['姓名'] || row['name'];
+                // 1. 讀取關鍵欄位 (★ 將 student_department 與 student_grade 列為首選)
+                const sid = getValue(row, ['student_id', '學號', 'id', 'std_no']);
+                const sname = getValue(row, ['student_name', '姓名', 'name']);
                 
-                // ★★★ 關鍵修正：加入 'student_department' 欄位讀取 ★★★
-                const rawDept = row['student_department'] || row['student_dept'] || row['系所'] || row['department'] || '';
-                const sgrade = row['grade'] || row['年級'] || row['level'] || ''; 
+                // 系所：優先找 student_department (對應 metadata)
+                const rawDept = getValue(row, ['student_department', 'student_dept', '系所', '學系', 'department', 'dept']);
+                
+                // 年級：優先找 student_grade (對應 metadata)
+                const sgrade = getValue(row, ['student_grade', 'grade', '年級', 'level', 'year']);
 
-                const cdept = row['course_dept'] || row['開課系所'];
+                const cdept = getValue(row, ['course_dept', '開課系所']);
                 
                 if (rawDept) studentDepts.add(rawDept);
                 if (cdept) courseDepts.add(cdept);
 
                 if (!sid) return;
 
+                // 2. 建立或更新學生資料
                 if (!groupedStudents[sid]) {
-                    // ★★★ 系所名稱轉換邏輯 ★★★
+                    // (A) 新增學生
                     let deptDisplay = rawDept;
                     const master = findDeptMaster(rawDept);
                     
                     if (master) {
-                        // 找到對應資料後，優先顯示簡稱
                         deptDisplay = master.short_name || 
                                       (master.historical_names && master.historical_names[currentY]) || 
                                       master.name || 
                                       rawDept;
                     }
-
-                    // 如果真的讀不到，且 deptDisplay 為空，才顯示未分系
-                    if (!deptDisplay || deptDisplay.trim() === '') {
-                        deptDisplay = '未分系';
-                    }
+                    if (!deptDisplay) deptDisplay = '未分系';
 
                     groupedStudents[sid] = {
                         id: sid,
                         name: sname || '未知',
                         dept: deptDisplay, 
-                        grade: sgrade,
+                        grade: sgrade, // 存入年級
                         courses: [],
                         applications: [] 
                     };
+                } else {
+                    // (B) 既有學生：資料互補 (如果第一筆沒填年級，後面有填就補上)
+                    const existing = groupedStudents[sid];
+                    if (!existing.grade && sgrade) {
+                        existing.grade = sgrade;
+                    }
+                    if ((!existing.dept || existing.dept === '未分系') && rawDept) {
+                        let newDisplay = rawDept;
+                        const master = findDeptMaster(rawDept);
+                        if (master) newDisplay = master.short_name || master.name || rawDept;
+                        existing.dept = newDisplay;
+                    }
                 }
                 
-                // --- 課程 ID 生成 ---
-                const rYear = row['school_year'] || row['學年'] || row['academic_year'];
-                const rSem = row['semester'] || row['學期'];
-                const rCode = row['course_code'] || row['選課代號'];
+                // --- E. 課程 ID 生成 ---
+                const rYear = getValue(row, ['school_year', '學年', 'academic_year']);
+                const rSem = getValue(row, ['semester', '學期']);
+                const rCode = getValue(row, ['course_code', '選課代號']);
                 
                 if (rYear && rSem && rCode) {
-                     const safeYear = rYear.toString().trim();
-                     const safeSem = rSem.toString().trim();
-                     const safeCode = rCode.toString().trim();
-                     
-                     const baseKey = `${sid}_${safeYear}${safeSem}_${safeCode}`;
+                     const baseKey = `${sid}_${rYear}${rSem}_${rCode}`;
                      if (!courseCounters[baseKey]) courseCounters[baseKey] = 0;
                      courseCounters[baseKey]++;
-                     
-                     let stableId = `${safeYear}${safeSem}_${safeCode}`;
-                     if (courseCounters[baseKey] > 1) {
-                         stableId += `_${courseCounters[baseKey]}`;
-                     }
+                     let stableId = `${rYear}${rSem}_${rCode}`;
+                     if (courseCounters[baseKey] > 1) stableId += `_${courseCounters[baseKey]}`;
                      row._internal_id = stableId;
                 } else {
                      row._internal_id = `temp_c_${idx}`;
                 }
-
                 row._app_id = null; 
                 groupedStudents[sid].courses.push(row);
             });
 
-            // --- 後續還原邏輯 ---
+            // --- F. 還原與自動偵測邏輯 (保持原樣) ---
             if (savedApps && savedApps.length > 0) {
                 savedApps.forEach(app => {
                     const student = groupedStudents[app.studentId];
@@ -1827,76 +1851,45 @@
                         const validCourseIds = [];
                         app.courseIds.forEach(cid => {
                              const exists = student.courses.find(c => c._internal_id === cid);
-                             if(exists) {
-                                 validCourseIds.push(cid);
-                                 exists._app_id = app.id;
-                             }
+                             if(exists) { validCourseIds.push(cid); exists._app_id = app.id; }
                         });
-
                         if(validCourseIds.length > 0) {
-                             student.applications.push({
-                                 id: app.id,
-                                 courseIds: validCourseIds,
-                                 formData: app.formData
-                             });
+                             student.applications.push({ id: app.id, courseIds: validCourseIds, formData: app.formData });
                         }
                     }
                 });
                 showToast('success', `已還原 ${savedApps.length} 筆歸戶設定`);
             }
 
-            // --- 自動歸戶偵測 ---
             const singleCourseStudents = Object.values(groupedStudents).filter(s => 
                 s.courses.length === 1 && !s.courses[0]._app_id
             );
 
             if (singleCourseStudents.length > 0) {
-                const confirmAuto = await showConfirm(
-                    '自動歸戶偵測', 
-                    `偵測到有 ${singleCourseStudents.length} 位學生僅有一門課程。\n是否要直接為他們建立歸戶？`
-                );
-
+                const confirmAuto = await showConfirm('自動歸戶偵測', `偵測到有 ${singleCourseStudents.length} 位學生僅有一門課程。\n是否要直接為他們建立歸戶？`);
                 if (confirmAuto) {
                     let autoSingleCount = 0;
                     const fields = currentYearConfig.fields || [];
-                    const writableFields = fields.filter(f => 
-                        !f.isSystem && 
-                        !CORE_FIELDS.includes(f.id) && 
-                        f.category !== 'sys_course_info' && 
-                        f.category !== 'sys_student_info'
-                    );
+                    const writableFields = fields.filter(f => !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info');
 
                     singleCourseStudents.forEach(student => {
                         const course = student.courses[0];
                         const appId = 'app_auto_imp_' + Date.now() + Math.random().toString(36).substr(2, 5);
                         const initData = {};
-
                         writableFields.forEach(f => {
                             const val = course[f.id];
-                            if (val !== undefined && val !== null && String(val).trim() !== "") {
-                                initData[f.id] = val;
-                            }
+                            if (val !== undefined && val !== null && String(val).trim() !== "") initData[f.id] = val;
                         });
-
-                        if (!initData['internship_institution_name']) {
-                            const instName = getCourseValue(course, ['internship_institution_name', '實習機構', '機構名稱']);
-                            if (instName && instName !== '-') initData['internship_institution_name'] = instName;
-                        }
-
-                        const newApp = {
-                            id: appId,
-                            courseIds: [course._internal_id],
-                            formData: initData
-                        };
                         
+                        const instName = getValue(course, ['internship_institution_name', '實習機構', '機構名稱']);
+                        if (instName) initData['internship_institution_name'] = instName;
+
+                        const newApp = { id: appId, courseIds: [course._internal_id], formData: initData };
                         student.applications.push(newApp);
                         course._app_id = appId;
                         autoSingleCount++;
                     });
-
-                    setTimeout(() => {
-                        showToast('success', `已自動歸戶 ${autoSingleCount} 筆單一課程資料`);
-                    }, 500);
+                    setTimeout(() => showToast('success', `已自動歸戶 ${autoSingleCount} 筆單一課程資料`), 500);
                 }
             }
             
@@ -2056,11 +2049,12 @@
             document.getElementById('form-empty-state').classList.add('hidden');
             document.getElementById('form-container').classList.remove('hidden');
             
-            // Header 資訊更新
+            // Header 資訊
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             
-            // 確保 dept 至少有值
+            // ★★★ 修改：Icon 旁邊顯示 {student_department} | {student_grade}年級 ★★★
+            // 若系所為空則顯示 '系所未知'，若年級有值則加上 '年級' 後綴
             let deptText = (student.dept && student.dept !== 'undefined') ? student.dept : '系所未知';
             let gradeText = student.grade ? `${student.grade}年級` : '';
             
@@ -2072,7 +2066,7 @@
             document.getElementById('header-dept').innerHTML = fullHtml;
             document.getElementById('header-avatar').innerText = student.name[0] || '?';
             
-            // 更新狀態標籤
+            // 更新狀態
             const appCount = student.applications.length;
             const statusEl = document.getElementById('header-status');
             statusEl.innerText = appCount > 0 ? `已建立 ${appCount} 筆歸戶` : '未填報';
