@@ -1346,6 +1346,22 @@
         // 4. 檢查並還原 (OnInit 呼叫)
         async function checkAndRestore() {
             const saved = localStorage.getItem(STORAGE_KEY);
+            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true'; // 檢查暫存狀態
+            
+            // ★★★ 修正點：在還原前，先依據狀態決定是否載入機構庫 ★★★
+            if (isEnabled) {
+                try {
+                    const savedLib = localStorage.getItem(LIB_STORAGE_KEY);
+                    if(savedLib) institutionLibrary = JSON.parse(savedLib);
+                } catch(e) { 
+                    console.error("Library load error", e); 
+                    institutionLibrary = {}; // 載入失敗就清空
+                }
+            } else {
+                institutionLibrary = {}; // 如果未啟用，確保記憶體中的機構庫也是空的
+            }
+            // ★★★ 修正點結束 ★★★
+
             if (saved) {
                 const yes = await showConfirm('發現未完成的暫存', '系統發現您上次有未儲存的填報進度，是否還原？');
                 if (yes) {
@@ -1371,12 +1387,10 @@
                     }
                 } else {
                     // 使用者選擇不還原 -> 視為放棄，但也許想保留設定？
-                    // 這裡我們簡單處理：保持按鈕為「啟用」狀態，讓使用者可以手動清除
                     updateStorageBtn(true); 
                 }
             } else {
                 // 檢查是否曾啟用過 (按鈕狀態同步)
-                const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
                 updateStorageBtn(isEnabled);
             }
         }
@@ -1398,12 +1412,6 @@
 
         let institutionLibrary = {}; // 結構: { "機構名稱": [ {data_v1}, {data_v2} ] }
         const LIB_STORAGE_KEY = 'thu_isac_inst_lib_v1';
-
-        // 初始化時嘗試讀取
-        try {
-            const savedLib = localStorage.getItem(LIB_STORAGE_KEY);
-            if(savedLib) institutionLibrary = JSON.parse(savedLib);
-        } catch(e) { console.error("Library load error", e); }
         
         let sortConfig = { key: 'id', direction: 'asc' }; 
 
