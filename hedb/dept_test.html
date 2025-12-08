@@ -1241,17 +1241,18 @@
             const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
 
             if (isEnabled) {
-                // 如果已開啟，詢問是否關閉並清除
                 showConfirm('清除暫存？', '確定要關閉暫存功能並清除本機的備份資料嗎？\n(清除後若未匯出，重新整理將遺失資料)').then(yes => {
                     if(yes) {
                         localStorage.removeItem(STORAGE_KEY);
                         localStorage.removeItem(STORAGE_KEY + '_enabled');
+                        // ★ 新增：同步移除機構庫暫存
+                        localStorage.removeItem(LIB_STORAGE_KEY);
+                        
                         updateStorageBtn(false);
                         showToast('info', '已清除本機暫存資料');
                     }
                 });
             } else {
-                // 如果未開啟，詢問是否啟用 (同意條款)
                 showConfirm('啟用暫存保護', '同意將填報資料暫存在您的瀏覽器(Local Storage)中嗎？\n\n注意：\n1. 資料僅儲存於此電腦，不會上傳伺服器。\n2. 請勿在公用電腦使用此功能，以免個資外洩。').then(yes => {
                     if(yes) {
                         localStorage.setItem(STORAGE_KEY + '_enabled', 'true');
@@ -2028,6 +2029,51 @@
                         });
                     }
 
+                    // 5. Read Institution Library (還原機構庫)
+                    const libSheet = workbook.getWorksheet('_Institution_Library');
+                    if (libSheet) {
+                        // 選擇：是否要先清空現有的？(通常建議保留現有並合併，或看您的需求)
+                        // institutionLibrary = {}; 
+                        
+                        libSheet.eachRow((row, rowNumber) => {
+                            if (rowNumber > 1) {
+                                const name = row.getCell(1).value;
+                                const jsonStr = row.getCell(4).value; // 第 4 欄是 JSON
+                                
+                                if (name && jsonStr) {
+                                    try {
+                                        const entry = JSON.parse(jsonStr);
+                                        
+                                        if (!institutionLibrary[name]) {
+                                            institutionLibrary[name] = [];
+                                        }
+                                        
+                                        // 檢查是否已存在 (避免重複匯入)
+                                        // 使用與 collectInstitutionData 相同的指紋邏輯
+                                        const generateFingerprint = (e) => {
+                                            const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
+                                            const clean = {};
+                                            keys.forEach(k => clean[k] = e[k]);
+                                            return JSON.stringify(clean);
+                                        };
+                                        const newFingerprint = generateFingerprint(entry);
+                                        
+                                        const exists = institutionLibrary[name].some(e => generateFingerprint(e) === newFingerprint);
+                                        
+                                        if (!exists) {
+                                            institutionLibrary[name].push(entry);
+                                        }
+                                    } catch (e) { console.error("Lib entry parse error", e); }
+                                }
+                            }
+                        });
+                        // console.log("Restored Institution Library");
+                        // 如果有啟用暫存，立即同步
+                        if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                            localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify(institutionLibrary));
+                        }
+                    }
+                    
                     if (jsonData.length === 0) throw new Error("檔案無內容");
                     
                     // 關鍵修正 1：使用 await 確保 changeYear 完成後才呼叫 processUploadedData
@@ -3048,8 +3094,8 @@
                         if (oldVal !== newVal) {
                             app.formData[f.id] = newVal;
                             
-                            // ★ 核心修正：機構資料收集檢查 (使用白名單 INSTITUTION_FIELDS)
-                            if (INSTITUTION_FIELDS && INSTITUTION_FIELDS.includes(f.id) && typeof collectInstitutionData === 'function') {
+                            // ★★★ 修正處：動態檢查分類 ★★★
+                            if (f.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
                                 collectInstitutionData(app.formData);
                             }
 
@@ -4986,33 +5032,31 @@
 
         // 1. 自動收集機構資訊 (支援同名多版本比對)
         function collectInstitutionData(formData) {
-            // ★ 設定目標分類名稱
-            const TARGET_CATEGORY = 'internship_institution_info';
+            // ★ 設定：機構資訊的分類 ID (需與 JSON 設定檔一致)
+            const INST_CATEGORY = 'internship_institution_info';
             
+            // 1. 動態取得屬於該分類的欄位 ID 列表
             let targetFields = [];
-            let nameFieldId = 'internship_institution_name'; // 預設 Key 欄位
-
-            // 1. 動態找出該分類下的所有欄位
+            let nameFieldId = 'internship_institution_name'; // 預設 Key
+            
             if (currentYearConfig && currentYearConfig.fields) {
-                const groupFields = currentYearConfig.fields.filter(f => f.category === TARGET_CATEGORY);
+                // 找出所有屬於該分類的欄位
+                const instFields = currentYearConfig.fields.filter(f => f.category === INST_CATEGORY);
                 
-                if (groupFields.length > 0) {
-                    targetFields = groupFields.map(f => f.id);
+                if (instFields.length > 0) {
+                    targetFields = instFields.map(f => f.id);
                     
-                    // 嘗試智慧判斷哪一個欄位是「機構名稱」(作為索引 Key)
-                    // 優先找 id 包含 'name' 或 label 包含 '名稱' 的欄位
-                    const nameField = groupFields.find(f => f.id.includes('name') || f.label.includes('名稱'));
-                    if (nameField) nameFieldId = nameField.id;
+                    // 嘗試智慧找出「機構名稱」欄位 (通常含 name 或 名稱)
+                    // 若設定檔中有明確定義，則使用找到的；否則維持預設
+                    const foundNameField = instFields.find(f => f.id.includes('name') || f.label.includes('名稱'));
+                    if (foundNameField) nameFieldId = foundNameField.id;
                 }
             }
 
-            // 若找不到該分類 (可能是 JSON 還沒改)，回退使用預設清單以防報錯
+            // 若設定檔沒載入或沒找到該分類，為避免報錯，可設定一組最小預設值 (或直接 return)
             if (targetFields.length === 0) {
-                // console.warn(`找不到分類 ${TARGET_CATEGORY}，使用預設欄位`);
-                targetFields = [
-                    'internship_institution_name', 'internship_address', 
-                    'internship_country', 'internship_city', 'company_tax_id'
-                ];
+                // console.warn("未偵測到機構欄位設定，跳過收集");
+                return; 
             }
 
             // 2. 取得機構名稱 (Key)
@@ -5023,34 +5067,49 @@
             // 3. 準備資料物件
             const newEntry = {};
             let hasContent = false;
+            
             targetFields.forEach(fieldId => {
-                const val = formData[fieldId];
-                if (val !== undefined && val !== null && String(val).trim() !== "") {
-                    newEntry[fieldId] = String(val).trim();
+                let val = formData[fieldId];
+                // 資料正規化
+                if (val !== undefined && val !== null) {
+                    val = String(val).trim();
+                } else {
+                    val = "";
+                }
+                
+                if (val !== "") {
+                    newEntry[fieldId] = val;
                     hasContent = true;
                 }
             });
+            
+            // 如果除了名字以外沒有其他資訊，通常不值得存 (看需求，這裡先允許存)
+            // if (!hasContent) return;
 
-            if (!hasContent) return;
-
-            // 4. 檢查歷史庫
+            // 4. 檢查與儲存 (與之前邏輯相同)
             if (!institutionLibrary[safeName]) {
                 institutionLibrary[safeName] = [];
             }
             const existingEntries = institutionLibrary[safeName];
 
-            // 5. 比對指紋 (防止重複)
-            const newFingerprint = JSON.stringify(newEntry, Object.keys(newEntry).sort());
-            
-            const isDuplicate = existingEntries.some(entry => {
-                const { _last_updated, ...cleanEntry } = entry;
-                return JSON.stringify(cleanEntry, Object.keys(cleanEntry).sort()) === newFingerprint;
-            });
+            // 產生指紋 (Key 排序確保比對準確)
+            const generateFingerprint = (entry) => {
+                const keys = Object.keys(entry).filter(k => !k.startsWith('_')).sort();
+                const cleanObj = {};
+                keys.forEach(k => cleanObj[k] = entry[k]);
+                return JSON.stringify(cleanObj);
+            };
+
+            const newFingerprint = generateFingerprint(newEntry);
+            const isDuplicate = existingEntries.some(entry => generateFingerprint(entry) === newFingerprint);
 
             if (!isDuplicate) {
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
-                saveToLocal();
+                
+                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                    saveToLocal();
+                }
             }
         }
         
