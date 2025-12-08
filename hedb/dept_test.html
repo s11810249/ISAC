@@ -5335,6 +5335,91 @@
             renderInstitutionListItems(filtered);
         }
 
+        function getCurrentApplication() {
+            if (!currentStudentId) return null;
+            const student = groupedStudents[currentStudentId];
+            if (!student || student.applications.length === 0) return null;
+            
+            const activeBtn = document.querySelector('.tab-btn.active');
+            // 如果在列表模式或未選中 tab，預設抓第一筆
+            let targetAppId = activeBtn ? activeBtn.dataset.tab : (student.applications[0] ? student.applications[0].id : null);
+            
+            return student.applications.find(a => a.id === targetAppId);
+        }
+
+        // ★★★ 新增：核心函式 - 套用選定的機構版本資料 ★★★
+        async function applyInstitutionVersion(name, index) {
+            const entries = institutionLibrary[name];
+            
+            // 換算索引 (因為下拉選單是反向顯示的)
+            const versionIndex = entries.length - 1 - index; 
+
+            if (!entries || versionIndex < 0 || versionIndex >= entries.length) {
+                showToast('error', '機構版本資料錯誤或找不到');
+                return;
+            }
+
+            const versionData = entries[versionIndex];
+            const currentApp = getCurrentApplication();
+
+            if (!currentApp) {
+                showToast('error', '請先選擇或新增一個填報單，才能套用資料');
+                return;
+            }
+            
+            const formId = currentApp.id;
+
+            // 詢問使用者
+            const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${versionIndex + 1} 資料套用到目前的實習紀錄嗎？這將會覆蓋現有的機構相關欄位。`);
+            
+            if (yes) {
+                let changesCount = 0;
+                
+                // 遍歷版本資料，並更新表單欄位
+                Object.keys(versionData).forEach(fieldId => {
+                    if (fieldId.startsWith('_')) return; 
+
+                    const newValue = versionData[fieldId];
+                    
+                    // 優先查找使用 class 的元素，確保找到可視輸入框
+                    let inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
+                    
+                    if (!inputElement) {
+                        inputElement = document.getElementById(`input-${formId}-${fieldId}`);
+                    }
+                    
+                    if (inputElement) {
+                        if (inputElement.value !== newValue) {
+                            inputElement.value = newValue;
+                            // 觸發 change 事件以更新資料與連動邏輯
+                            inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+                            changesCount++;
+                        }
+                    }
+                });
+
+                // 重新評估所有邏輯
+                if (typeof collectInstitutionData === 'function') {
+                    collectInstitutionData(currentApp.formData);
+                }
+                evaluateLogic(currentApp);
+
+                // 關閉視窗
+                const modal = document.getElementById('inst-list-modal');
+                if(modal) modal.remove();
+                
+                // 刷新 Grid
+                if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
+                
+                // 存檔
+                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                    saveToLocal();
+                }
+
+                showToast('success', `已成功套用機構版本 ${versionIndex + 1}，共更新 ${changesCount} 個欄位！`);
+            }
+        }
+        
         // ★★★ 核心修改：顯示機構詳情 (包含下拉選單與版本過濾) ★★★
         function showInstitutionDetail(name) {
             const panel = document.getElementById('inst-detail-panel');
