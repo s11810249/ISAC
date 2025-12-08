@@ -10,7 +10,7 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
     <!-- ExcelJS (用於高階讀寫與樣式控制) -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
-    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
@@ -1327,11 +1327,14 @@
             };
             
             try {
-                localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-                
-                // ★★★ 新增：同步儲存機構庫到 LocalStorage ★★★
-                localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify(institutionLibrary));
-                localStorage.setItem(REL_STORAGE_KEY, JSON.stringify(institutionRelations));
+                const compressedState = LZString.compress(JSON.stringify(state));
+                const compressedLib = LZString.compress(JSON.stringify(institutionLibrary));
+                // ★ 新增：壓縮機構關係
+                const compressedRels = LZString.compress(JSON.stringify(institutionRelations));
+        
+                localStorage.setItem(STORAGE_KEY, compressedState);
+                localStorage.setItem(LIB_STORAGE_KEY, compressedLib);
+                localStorage.setItem(REL_STORAGE_KEY, compressedRels);
                 
             } catch (e) {
                 console.error("Storage full or error", e);
@@ -1347,24 +1350,29 @@
             // ★★★ 修正點：在還原前，先依據狀態決定是否載入機構庫 ★★★
             if (isEnabled) {
                 try {
+                    // 修改：使用 LZString.decompress 進行解壓縮
                     const savedLib = localStorage.getItem(LIB_STORAGE_KEY);
-                    if(savedLib) institutionLibrary = JSON.parse(savedLib);
+                    if(savedLib) {
+                        const decompressed = LZString.decompress(savedLib);
+                        // 相容性檢查：如果解壓縮出來是空(代表可能是舊版沒壓縮的資料)，則嘗試直接 Parse
+                        institutionLibrary = JSON.parse(decompressed || savedLib);
+                    }
+        
+                    // 同樣處理 Relations
                     const savedRels = localStorage.getItem(REL_STORAGE_KEY);
-                    if(savedRels) institutionRelations = JSON.parse(savedRels);
-                } catch(e) { 
-                    console.error("Library load error", e); 
-                    institutionLibrary = {}; // 載入失敗就清空
-                }
-            } else {
-                institutionLibrary = {}; // 如果未啟用，確保記憶體中的機構庫也是空的
+                    if(savedRels) {
+                        const decompressed = LZString.decompress(savedRels);
+                        institutionRelations = JSON.parse(decompressed || savedRels);
+                    }
+                } catch(e) { ... }
             }
-            // ★★★ 修正點結束 ★★★
 
             if (saved) {
                 const yes = await showConfirm('發現未完成的暫存', '系統發現您上次有未儲存的填報進度，是否還原？');
                 if (yes) {
                     try {
-                        const state = JSON.parse(saved);
+                        const decompressedState = LZString.decompress(saved);
+                        const state = JSON.parse(decompressedState || saved); // 相容舊資料
                         
                         // 1. 還原資料 (使用既有的處理函式)
                         await processUploadedData(state.rawData, state.apps);
