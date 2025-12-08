@@ -859,11 +859,6 @@
                     <div class="border-t border-slate-100 my-1"></div>
                     <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">機構管理</div>
                     
-                    <button onclick="openInstitutionHelper()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center"><i class="fas fa-magic"></i></div>
-                        <span>帶入常用機構資訊</span>
-                    </button>
-                    
                     <button onclick="openInstitutionList()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fas fa-building"></i></div>
                         <span>機構清單與關聯查詢</span>
@@ -5164,88 +5159,6 @@
             }
         }
         
-        // 2. 開啟「帶入常用機構」小幫手
-        function openInstitutionHelper() {
-            if (!currentStudentId) return showToast('error', '請先選擇一位學生');
-            const student = groupedStudents[currentStudentId];
-            if (student.applications.length === 0) return showToast('error', '該學生尚未建立任何實習紀錄');
-
-            const names = Object.keys(institutionLibrary).sort();
-            if (names.length === 0) return showToast('info', '目前尚無機構歷史紀錄，請先手動填寫一筆資料。');
-
-            const modalId = 'inst-helper-modal';
-            if(document.getElementById(modalId)) document.getElementById(modalId).remove();
-
-            let listHtml = '';
-            names.forEach(name => {
-                const entries = institutionLibrary[name];
-                entries.forEach((entry, index) => {
-                    const subTitle = entry.internship_address || entry.internship_institution_city || `版本 ${index + 1}`;
-                    const entryJson = encodeURIComponent(JSON.stringify(entry));
-
-                    listHtml += `
-                    <div onclick="applyInstitutionDataV2('${entryJson}')" 
-                         class="cursor-pointer p-3 border border-slate-200 rounded hover:bg-orange-50 hover:border-orange-300 transition group mb-2 bg-white">
-                        <div class="flex justify-between items-start">
-                            <div class="font-bold text-slate-700 group-hover:text-orange-700">${name}</div>
-                            <div class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded">V${index + 1}</div>
-                        </div>
-                        <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
-                            <i class="fas fa-map-marker-alt text-orange-400"></i> ${subTitle}
-                        </div>
-                    </div>`;
-                });
-            });
-
-            const modal = document.createElement('div');
-            modal.id = modalId;
-            modal.className = 'fixed inset-0 z-[160] flex items-center justify-center modal-overlay p-4';
-            modal.innerHTML = `
-                <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-orange-50 flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-orange-800"><i class="fas fa-magic mr-2"></i>選擇常用機構帶入</h3>
-                        <button onclick="document.getElementById('${modalId}').remove()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
-                    </div>
-                    <div class="p-4 overflow-y-auto custom-scroll bg-slate-50">
-                        ${listHtml}
-                    </div>
-                </div>`;
-            document.body.appendChild(modal);
-        }
-
-        // 3. 執行帶入資料
-        function applyInstitutionDataV2(jsonStr) {
-            const data = JSON.parse(decodeURIComponent(jsonStr));
-            const student = groupedStudents[currentStudentId];
-            const activeBtn = document.querySelector('.tab-btn.active');
-            // 優先套用至當前 Tab，若無則套用至第一筆
-            let targetAppId = activeBtn ? activeBtn.dataset.tab : (student.applications[0] ? student.applications[0].id : null);
-            
-            if (!targetAppId) return;
-            const app = student.applications.find(a => a.id === targetAppId);
-
-            let count = 0;
-            Object.keys(data).forEach(key => {
-                if (key.startsWith('_')) return;
-                // 只更新不同的值
-                if (app.formData[key] !== data[key]) {
-                    app.formData[key] = data[key];
-                    count++;
-                }
-            });
-
-            if (count > 0) {
-                hasUnsavedChanges = true;
-                if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
-                else switchTab(targetAppId);
-                
-                showToast('success', `已成功帶入 ${count} 個欄位資料`);
-                document.getElementById('inst-helper-modal').remove();
-            } else {
-                showToast('info', '資料完全相同，無需更新');
-            }
-        }
-
         // 4. 開啟「機構清單與關聯查詢」視窗 (反查功能)
         function openInstitutionList(preSelectName = null) {
             const names = Object.keys(institutionLibrary).sort();
@@ -5340,25 +5253,29 @@
             const student = groupedStudents[currentStudentId];
             if (!student || student.applications.length === 0) return null;
             
+            // 抓取目前 active 的頁籤按鈕
             const activeBtn = document.querySelector('.tab-btn.active');
-            // 如果在列表模式或未選中 tab，預設抓第一筆
-            let targetAppId = activeBtn ? activeBtn.dataset.tab : (student.applications[0] ? student.applications[0].id : null);
+            
+            // 如果有選中頁籤，就用頁籤的 ID；否則（例如剛載入）預設抓第一筆
+            let targetAppId = activeBtn ? activeBtn.dataset.tab : student.applications[0].id;
             
             return student.applications.find(a => a.id === targetAppId);
         }
 
-        // ★★★ 新增：核心函式 - 套用選定的機構版本資料 ★★★
+        // ★★★ 2. 核心函式：套用選定的機構版本資料到目前填報單 ★★★
         async function applyInstitutionVersion(name, index) {
             const entries = institutionLibrary[name];
             
-            // ★ 修正 1：直接使用傳入的 index，不再重複換算
-            // 前端 onclick 事件已經算好正確的原始索引了
+            // 防呆檢查
             if (!entries || index < 0 || index >= entries.length) {
                 showToast('error', '機構版本資料錯誤或找不到');
                 return;
             }
 
+            // 1. 取得來源資料 (機構版本)
             const versionData = entries[index];
+            
+            // 2. 取得目標資料 (當下打開的填報單)
             const currentApp = getCurrentApplication();
 
             if (!currentApp) {
@@ -5368,20 +5285,19 @@
             
             const formId = currentApp.id;
 
-            const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${index + 1} 資料套用到目前的實習紀錄嗎？這將會覆蓋現有的機構相關欄位。`);
+            // 3. 確認提示
+            const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${index + 1} 資料套用到目前的實習紀錄嗎？\n這將會覆蓋現有的機構相關欄位。`);
             
             if (yes) {
                 let changesCount = 0;
                 
-                // 遍歷版本資料，並更新表單欄位
+                // 4. 遍歷版本資料，逐一更新欄位
                 Object.keys(versionData).forEach(fieldId => {
-                    if (fieldId.startsWith('_')) return; 
+                    if (fieldId.startsWith('_')) return; // 跳過系統欄位
 
                     let newValue = versionData[fieldId];
                     
-                    // ★ 修正 2：檢查是否為 ROC 日期欄位，若是則需轉換格式
-                    // 必須從 config 找定義，因為 versionData 裡存的是西元字串 (YYYY-MM-DD)
-                    // 但 UI 輸入框期望的是 ROC 字串 (yyy/mm/dd)
+                    // ★ 特別處理：ROC 日期轉換 (如果資料庫存的是 YYYY-MM-DD，轉回 yyy/mm/dd)
                     if (currentYearConfig && currentYearConfig.fields) {
                         const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
                         if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC') {
@@ -5395,19 +5311,22 @@
                         }
                     }
 
-                    // 優先查找使用 class 的元素 (可視輸入框)
+                    // ★ 關鍵：優先查找【可視輸入框】 (Input Element)
+                    // 我們使用 renderFields 產生的 class (.app-input-{appId}-{fieldId}) 來精確定位
                     let inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
+                    
+                    // 如果找不到 (有些 hidden 欄位可能沒 class)，嘗試用 ID
                     if (!inputElement) {
                         inputElement = document.getElementById(`input-${formId}-${fieldId}`);
                     }
                     
                     if (inputElement) {
-                        // 強制更新值並觸發事件
-                        // 即使值看起來一樣，為了確保格式正確(如日期)，還是強制寫入一次
+                        // 強制更新值並觸發 change 事件
+                        // (即使值相同也觸發，確保連動邏輯如 visibility 被重新評估)
                         inputElement.value = newValue;
                         inputElement.dispatchEvent(new Event('change', { bubbles: true }));
                         
-                        // 對於 textarea 等元素，觸發 input 事件以調整高度
+                        // 如果是 Textarea，額外觸發 input 以調整高度
                         if(inputElement.tagName === 'TEXTAREA') {
                             inputElement.dispatchEvent(new Event('input', { bubbles: true }));
                         }
@@ -5416,17 +5335,19 @@
                     }
                 });
 
-                // 重新收集與評估邏輯
+                // 5. 重新收集與評估邏輯 (確保資料一致性)
                 if (typeof collectInstitutionData === 'function') {
                     collectInstitutionData(currentApp.formData);
                 }
-                evaluateLogic(currentApp);
+                if (typeof evaluateLogic === 'function') {
+                    evaluateLogic(currentApp);
+                }
 
-                // 關閉 Modal
+                // 6. 關閉視窗並儲存
                 const modal = document.getElementById('inst-list-modal');
                 if(modal) modal.remove();
                 
-                // 刷新 Grid
+                // 如果在列表模式，重繪 Grid
                 if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
                 
                 // 存檔
@@ -5591,17 +5512,19 @@
             const select = document.getElementById('inst-version-select');
             const applyBtn = document.getElementById('apply-inst-version-btn');
             
-            // 綁定下拉選單事件
+            // 綁定下拉選單事件 (切換顯示內容)
             select.onchange = updateContent;
 
-            // ★★★ 核心修正 B：綁定套用按鈕的事件 ★★★
+            // ★★★ 綁定套用按鈕事件 ★★★
             applyBtn.onclick = () => {
-                // 取得下拉選單當前選定的索引 (這是 entries.reverse() 陣列的索引)
+                // 1. 取得下拉選單的值 (這是反轉後的索引：0, 1, 2...)
                 const reversedIndex = parseInt(select.value); 
-                // 換算回原始 entries 陣列的索引
+                
+                // 2. 換算回 entries 陣列的【原始索引】
+                // 因為下拉選單是把最新的放上面 (reverse)，所以要倒扣回來
                 const originalIndex = entries.length - 1 - reversedIndex;
                 
-                // 呼叫新的套用函式
+                // 3. 呼叫套用函式，傳入正確的原始索引
                 applyInstitutionVersion(name, originalIndex);
             };
             
