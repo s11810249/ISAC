@@ -807,6 +807,20 @@
                     <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">批次處理</div>
                     <button onclick="toolAutoFill()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fas fa-magic"></i></div><span>智慧填入預設值</span></button>
                     <button onclick="toolCheckData()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fas fa-check-double"></i></div><span>資料完整性檢查</span></button>
+                    
+                    <div class="border-t border-slate-100 my-1"></div>
+                    <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">機構管理</div>
+                    
+                    <button onclick="openInstitutionHelper()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center"><i class="fas fa-magic"></i></div>
+                        <span>帶入常用機構資訊</span>
+                    </button>
+                    
+                    <button onclick="openInstitutionList()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
+                        <div class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fas fa-building"></i></div>
+                        <span>機構清單與關聯查詢</span>
+                    </button>
+
                     <div class="border-t border-slate-100 my-1"></div>
                     <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">分析</div>
                     <button onclick="toolStats()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fas fa-chart-pie"></i></div><span>目前填報統計</span></button>
@@ -1244,7 +1258,7 @@
             if (localStorage.getItem(STORAGE_KEY + '_enabled') !== 'true') return;
             if (!allRawData || allRawData.length === 0) return;
 
-            // 提取所有歸戶資料 (Flatten Applications)
+            // 提取所有歸戶資料
             const allApps = [];
             Object.values(groupedStudents).forEach(s => {
                 if(s.applications) {
@@ -1260,17 +1274,20 @@
             });
 
             const state = {
-                rawData: allRawData, // 包含最新的課程欄位修改
-                apps: allApps,       // 包含所有的歸戶設定與表單內容
+                rawData: allRawData,
+                apps: allApps,
                 year: activeYear,
-                studentId: currentStudentId, // 記住當前查看的學生
-                mode: currentViewMode,       // 記住當前是列表還是表單
+                studentId: currentStudentId,
+                mode: currentViewMode,
                 timestamp: Date.now()
             };
             
             try {
                 localStorage.setItem(STORAGE_KEY, JSON.stringify(state));
-                // console.log('Auto-saved to local storage');
+                
+                // ★ 新增：同步儲存機構庫到 LocalStorage
+                localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify(institutionLibrary));
+                
             } catch (e) {
                 console.error("Storage full or error", e);
                 showToast('warning', '暫存失敗：瀏覽器空間不足');
@@ -1330,6 +1347,15 @@
         // Change Log Store
         let changeLogs = []; // { time, field, oldVal, newVal, student, app }
 
+        let institutionLibrary = {}; // 結構: { "機構名稱": [ {data_v1}, {data_v2} ] }
+        const LIB_STORAGE_KEY = 'thu_isac_inst_lib_v1';
+
+        // 初始化時嘗試讀取
+        try {
+            const savedLib = localStorage.getItem(LIB_STORAGE_KEY);
+            if(savedLib) institutionLibrary = JSON.parse(savedLib);
+        } catch(e) { console.error("Library load error", e); }
+        
         let sortConfig = { key: 'id', direction: 'asc' }; 
 
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
@@ -1733,6 +1759,11 @@
                                 el.title = newVal;
                             }
                         });
+
+                        // ★ 新增：若變更的是機構相關欄位，觸發收集
+                        if (fieldDef.id.startsWith('internship_institution_')) {
+                            collectInstitutionData(app.formData);
+                        }
                     }
                 }
             } else {
@@ -3018,14 +3049,18 @@
                             let newVal = e.target.value;
                             const oldVal = app.formData[f.id];
                             if (f.type === 'address' && e.type === 'change') {
-                                // Address 只有在 change/blur 時才做格式化，避免打字打一半被改掉
                                 processAddress(e.target, f);
                                 newVal = e.target.value;
                             }
                             
-                            // 只有值真的變了才處理 (避免重複觸發)
                             if (oldVal !== newVal) {
                                 app.formData[f.id] = newVal;
+                                
+                                // ★ 新增：觸發機構資料收集
+                                if (f.id.startsWith('internship_institution_')) {
+                                    collectInstitutionData(app.formData);
+                                }
+
                                 evaluateLogic(app);
                                 hasUnsavedChanges = true;
                                 logChange(f.id, appId, oldVal, newVal, groupedStudents[currentStudentId].id);
@@ -4854,7 +4889,294 @@
                     details.removeAttribute('open');
                 }
             });
-        }        
+        }
+
+        // 1. 自動收集機構資訊 (支援同名多版本比對)
+        function collectInstitutionData(formData) {
+            const targetFields = [
+                'internship_institution_country',
+                'internship_institution_place',
+                'internship_institution_industry',
+                'internship_institution_name',
+                'internship_institution_tax_id',
+                'internship_institution_city',
+                'internship_institution_address',
+                'internship_institution_contact'
+            ];
+
+            const name = formData['internship_institution_name'];
+            if (!name || typeof name !== 'string' || name.trim() === '') return;
+            const safeName = name.trim();
+
+            // 準備新資料物件
+            const newEntry = {};
+            let hasContent = false;
+            targetFields.forEach(field => {
+                const val = formData[field];
+                if (val !== undefined && val !== null && String(val).trim() !== "") {
+                    newEntry[field] = String(val).trim();
+                    hasContent = true;
+                }
+            });
+
+            if (!hasContent) return;
+
+            // 檢查歷史庫
+            if (!institutionLibrary[safeName]) {
+                institutionLibrary[safeName] = [];
+            }
+            const existingEntries = institutionLibrary[safeName];
+
+            // 比對指紋 (排除時間戳記後比對 JSON)
+            const newFingerprint = JSON.stringify(newEntry, Object.keys(newEntry).sort());
+            
+            const isDuplicate = existingEntries.some(entry => {
+                const { _last_updated, ...cleanEntry } = entry;
+                return JSON.stringify(cleanEntry, Object.keys(cleanEntry).sort()) === newFingerprint;
+            });
+
+            // 若無重複版本，則新增
+            if (!isDuplicate) {
+                newEntry._last_updated = Date.now();
+                existingEntries.push(newEntry);
+                saveToLocal(); // 更新 LocalStorage
+            }
+        }
+
+        // 2. 開啟「帶入常用機構」小幫手
+        function openInstitutionHelper() {
+            if (!currentStudentId) return showToast('error', '請先選擇一位學生');
+            const student = groupedStudents[currentStudentId];
+            if (student.applications.length === 0) return showToast('error', '該學生尚未建立任何實習紀錄');
+
+            const names = Object.keys(institutionLibrary).sort();
+            if (names.length === 0) return showToast('info', '目前尚無機構歷史紀錄，請先手動填寫一筆資料。');
+
+            const modalId = 'inst-helper-modal';
+            if(document.getElementById(modalId)) document.getElementById(modalId).remove();
+
+            let listHtml = '';
+            names.forEach(name => {
+                const entries = institutionLibrary[name];
+                entries.forEach((entry, index) => {
+                    const subTitle = entry.internship_institution_address || entry.internship_institution_city || `版本 ${index + 1}`;
+                    const entryJson = encodeURIComponent(JSON.stringify(entry));
+
+                    listHtml += `
+                    <div onclick="applyInstitutionDataV2('${entryJson}')" 
+                         class="cursor-pointer p-3 border border-slate-200 rounded hover:bg-orange-50 hover:border-orange-300 transition group mb-2 bg-white">
+                        <div class="flex justify-between items-start">
+                            <div class="font-bold text-slate-700 group-hover:text-orange-700">${name}</div>
+                            <div class="text-[10px] text-slate-400 bg-slate-100 px-2 py-0.5 rounded">V${index + 1}</div>
+                        </div>
+                        <div class="text-xs text-slate-500 mt-1 flex items-center gap-1">
+                            <i class="fas fa-map-marker-alt text-orange-400"></i> ${subTitle}
+                        </div>
+                    </div>`;
+                });
+            });
+
+            const modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'fixed inset-0 z-[160] flex items-center justify-center modal-overlay p-4';
+            modal.innerHTML = `
+                <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl flex flex-col max-h-[80vh] overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-orange-50 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-orange-800"><i class="fas fa-magic mr-2"></i>選擇常用機構帶入</h3>
+                        <button onclick="document.getElementById('${modalId}').remove()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+                    </div>
+                    <div class="p-4 overflow-y-auto custom-scroll bg-slate-50">
+                        ${listHtml}
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+        }
+
+        // 3. 執行帶入資料
+        function applyInstitutionDataV2(jsonStr) {
+            const data = JSON.parse(decodeURIComponent(jsonStr));
+            const student = groupedStudents[currentStudentId];
+            const activeBtn = document.querySelector('.tab-btn.active');
+            // 優先套用至當前 Tab，若無則套用至第一筆
+            let targetAppId = activeBtn ? activeBtn.dataset.tab : (student.applications[0] ? student.applications[0].id : null);
+            
+            if (!targetAppId) return;
+            const app = student.applications.find(a => a.id === targetAppId);
+
+            let count = 0;
+            Object.keys(data).forEach(key => {
+                if (key.startsWith('_')) return;
+                // 只更新不同的值
+                if (app.formData[key] !== data[key]) {
+                    app.formData[key] = data[key];
+                    count++;
+                }
+            });
+
+            if (count > 0) {
+                hasUnsavedChanges = true;
+                if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
+                else switchTab(targetAppId);
+                
+                showToast('success', `已成功帶入 ${count} 個欄位資料`);
+                document.getElementById('inst-helper-modal').remove();
+            } else {
+                showToast('info', '資料完全相同，無需更新');
+            }
+        }
+
+        // 4. 開啟「機構清單與關聯查詢」視窗 (反查功能)
+        function openInstitutionList() {
+            const names = Object.keys(institutionLibrary).sort();
+            if (names.length === 0) return showToast('info', '目前尚無機構資料');
+
+            const modalId = 'inst-list-modal';
+            if(document.getElementById(modalId)) document.getElementById(modalId).remove();
+
+            const modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'fixed inset-0 z-[160] flex items-center justify-center modal-overlay p-6';
+            
+            // 建立兩欄式佈局：左側清單，右側詳情
+            modal.innerHTML = `
+                <div class="bg-white w-full max-w-5xl rounded-xl shadow-2xl flex flex-col h-[85vh] overflow-hidden">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-indigo-50 flex justify-between items-center flex-shrink-0">
+                        <h3 class="text-lg font-bold text-indigo-800"><i class="fas fa-building mr-2"></i>機構清單與關聯查詢</h3>
+                        <button onclick="document.getElementById('${modalId}').remove()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div class="flex flex-grow overflow-hidden">
+                        <div class="w-1/3 border-r border-slate-200 bg-slate-50 flex flex-col">
+                            <div class="p-3 border-b border-slate-200">
+                                <input type="text" id="inst-list-search" placeholder="搜尋機構..." class="w-full px-3 py-2 text-sm border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500" oninput="filterInstList()">
+                            </div>
+                            <div id="inst-list-container" class="flex-grow overflow-y-auto custom-scroll p-2 space-y-1">
+                                </div>
+                        </div>
+
+                        <div class="w-2/3 bg-white flex flex-col relative" id="inst-detail-panel">
+                            <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                                <i class="fas fa-mouse-pointer text-4xl mb-2 opacity-50"></i>
+                                <p>請從左側選擇一個機構以查看詳情</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>`;
+            
+            document.body.appendChild(modal);
+            renderInstitutionListItems(names);
+        }
+
+        // 渲染左側清單
+        function renderInstitutionListItems(names) {
+            const container = document.getElementById('inst-list-container');
+            container.innerHTML = '';
+            
+            names.forEach(name => {
+                const el = document.createElement('div');
+                el.className = 'inst-list-item cursor-pointer px-4 py-3 rounded-lg hover:bg-white hover:shadow-sm transition text-slate-700 font-bold text-sm border border-transparent hover:border-slate-200';
+                el.innerText = name;
+                el.onclick = () => showInstitutionDetail(name);
+                container.appendChild(el);
+            });
+        }
+
+        // 搜尋過濾
+        function filterInstList() {
+            const term = document.getElementById('inst-list-search').value.toLowerCase();
+            const allNames = Object.keys(institutionLibrary).sort();
+            const filtered = allNames.filter(n => n.toLowerCase().includes(term));
+            renderInstitutionListItems(filtered);
+        }
+
+        // 顯示右側詳情 (核心查詢邏輯)
+        function showInstitutionDetail(name) {
+            const panel = document.getElementById('inst-detail-panel');
+            const entries = institutionLibrary[name]; // 取得該機構所有版本
+            
+            // 1. 找出所有關聯的學生與填報單
+            const linkedRecords = [];
+            Object.values(groupedStudents).forEach(student => {
+                student.applications.forEach(app => {
+                    if (app.formData['internship_institution_name'] === name) {
+                        linkedRecords.push({
+                            studentName: student.name,
+                            studentId: student.id,
+                            appId: app.id,
+                            appName: app.formData['internship_institution_name'] // 雖然一樣，但可作為確認
+                        });
+                    }
+                });
+            });
+
+            // 2. 建立詳情 HTML
+            // 顯示所有歷史版本
+            let versionsHtml = entries.map((entry, idx) => {
+                const date = new Date(entry._last_updated).toLocaleDateString();
+                return `
+                    <div class="mb-3 p-3 bg-slate-50 border border-slate-200 rounded-lg text-sm">
+                        <div class="flex justify-between mb-2">
+                            <span class="font-bold text-indigo-600">版本 ${idx + 1}</span>
+                            <span class="text-xs text-slate-400">更新於: ${date}</span>
+                        </div>
+                        <div class="grid grid-cols-2 gap-2 text-slate-600">
+                            <div><span class="text-slate-400">統編:</span> ${entry.internship_institution_tax_id || '-'}</div>
+                            <div><span class="text-slate-400">縣市:</span> ${entry.internship_institution_city || '-'}</div>
+                            <div class="col-span-2"><span class="text-slate-400">地址:</span> ${entry.internship_institution_address || '-'}</div>
+                        </div>
+                    </div>`;
+            }).join('');
+
+            // 顯示關聯學生列表
+            let studentsHtml = '';
+            if (linkedRecords.length === 0) {
+                studentsHtml = `<div class="text-center py-8 text-slate-400 bg-slate-50 rounded-lg border border-dashed"><i class="fas fa-user-slash mr-1"></i> 目前無學生連結至此機構</div>`;
+            } else {
+                studentsHtml = linkedRecords.map(rec => `
+                    <div class="flex items-center justify-between p-3 border-b border-slate-100 hover:bg-slate-50 transition cursor-pointer" onclick="selectStudent('${rec.studentId}')">
+                        <div class="flex items-center gap-3">
+                            <div class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-xs">${rec.studentName[0]}</div>
+                            <div>
+                                <div class="font-bold text-slate-700">${rec.studentName}</div>
+                                <div class="text-xs text-slate-500 font-mono">${rec.studentId}</div>
+                            </div>
+                        </div>
+                        <div class="text-xs text-indigo-500 font-bold bg-indigo-50 px-2 py-1 rounded">查看</div>
+                    </div>
+                `).join('');
+            }
+
+            // 渲染
+            panel.innerHTML = `
+                <div class="p-6 h-full overflow-y-auto custom-scroll">
+                    <h2 class="text-2xl font-bold text-slate-800 mb-1">${name}</h2>
+                    <div class="text-sm text-slate-500 mb-6 flex items-center gap-2">
+                        <span class="bg-orange-100 text-orange-700 px-2 py-0.5 rounded text-xs">共 ${entries.length} 個歷史版本</span>
+                        <span class="bg-blue-100 text-blue-700 px-2 py-0.5 rounded text-xs">目前關聯 ${linkedRecords.length} 筆紀錄</span>
+                    </div>
+
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                        <div>
+                            <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><i class="fas fa-history text-slate-400"></i> 機構資料庫紀錄</h4>
+                            ${versionsHtml}
+                        </div>
+
+                        <div>
+                            <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2"><i class="fas fa-link text-slate-400"></i> 使用此機構的學生</h4>
+                            <div class="border border-slate-200 rounded-lg overflow-hidden">
+                                ${studentsHtml}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            // Highlight selected item in list
+            document.querySelectorAll('.inst-list-item').forEach(el => {
+                if(el.innerText === name) el.classList.add('bg-indigo-50', 'text-indigo-700', 'border-indigo-200');
+                else el.classList.remove('bg-indigo-50', 'text-indigo-700', 'border-indigo-200');
+            });
+        }
     </script>
 </body>
 </html>
