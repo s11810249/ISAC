@@ -1760,9 +1760,11 @@
                             }
                         });
 
-                        // ★ 新增：若變更的是機構相關欄位，觸發收集
-                        if (fieldDef.type === 'internship_institution_info') {
-                            collectInstitutionData(app.formData);
+                        // ★★★ 新增：只要分類是機構資訊，就觸發收集 ★★★
+                        if (fieldDef.category === 'internship_institution_info') {
+                            if (typeof collectInstitutionData === 'function') {
+                                collectInstitutionData(app.formData);
+                            }
                         }
                     }
                 }
@@ -3049,7 +3051,6 @@
                             let newVal = e.target.value;
                             const oldVal = app.formData[f.id];
                             
-                            // (地址特殊處理...)
                             if (f.type === 'address' && e.type === 'change') {
                                 processAddress(e.target, f);
                                 newVal = e.target.value;
@@ -3058,8 +3059,8 @@
                             if (oldVal !== newVal) {
                                 app.formData[f.id] = newVal;
                                 
-                                // ★★★ 修正處：改為判斷 type ★★★
-                                if (f.type === 'internship_institution_info') {
+                                // ★★★ 修正處：只要分類對了，就觸發收集 ★★★
+                                if (f.category === 'internship_institution_info') {
                                     collectInstitutionData(app.formData);
                                 }
 
@@ -4895,38 +4896,41 @@
 
         // 1. 自動收集機構資訊 (支援同名多版本比對)
         function collectInstitutionData(formData) {
+            // ★ 設定目標分類名稱
+            const TARGET_CATEGORY = 'internship_institution_info';
+            
             let targetFields = [];
             let nameFieldId = 'internship_institution_name'; // 預設 Key 欄位
 
-            // ★ 修正：動態找出所有 type 為 'internship_institution_info' 的欄位
+            // 1. 動態找出該分類下的所有欄位
             if (currentYearConfig && currentYearConfig.fields) {
-                const groupFields = currentYearConfig.fields.filter(f => f.type === 'internship_institution_info');
+                const groupFields = currentYearConfig.fields.filter(f => f.category === TARGET_CATEGORY);
                 
                 if (groupFields.length > 0) {
                     targetFields = groupFields.map(f => f.id);
                     
-                    // 嘗試智慧判斷哪一個欄位是「機構名稱」(用來當索引 Key)
+                    // 嘗試智慧判斷哪一個欄位是「機構名稱」(作為索引 Key)
                     // 優先找 id 包含 'name' 或 label 包含 '名稱' 的欄位
                     const nameField = groupFields.find(f => f.id.includes('name') || f.label.includes('名稱'));
                     if (nameField) nameFieldId = nameField.id;
                 }
             }
 
-            // 若設定檔尚未載入或找不到該類型，回退使用預設 ID (避免報錯)
+            // 若找不到該分類 (可能是 JSON 還沒改)，回退使用預設清單以防報錯
             if (targetFields.length === 0) {
+                // console.warn(`找不到分類 ${TARGET_CATEGORY}，使用預設欄位`);
                 targetFields = [
-                    'internship_institution_name', 'internship_institution_address', 
-                    'internship_institution_tax_id', 'internship_institution_contact',
-                    'internship_institution_country', 'internship_institution_city'
+                    'internship_institution_name', 'internship_address', 
+                    'internship_country', 'internship_city', 'company_tax_id'
                 ];
             }
 
-            // 取得機構名稱 (Key)
+            // 2. 取得機構名稱 (Key)
             const name = formData[nameFieldId];
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 準備資料物件
+            // 3. 準備資料物件
             const newEntry = {};
             let hasContent = false;
             targetFields.forEach(fieldId => {
@@ -4939,13 +4943,13 @@
 
             if (!hasContent) return;
 
-            // 檢查歷史庫
+            // 4. 檢查歷史庫
             if (!institutionLibrary[safeName]) {
                 institutionLibrary[safeName] = [];
             }
             const existingEntries = institutionLibrary[safeName];
 
-            // 比對指紋 (防止重複儲存完全一樣的版本)
+            // 5. 比對指紋 (防止重複)
             const newFingerprint = JSON.stringify(newEntry, Object.keys(newEntry).sort());
             
             const isDuplicate = existingEntries.some(entry => {
@@ -4957,7 +4961,6 @@
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 saveToLocal();
-                // console.log(`機構庫更新: ${safeName} (版本 ${existingEntries.length})`);
             }
         }
         
