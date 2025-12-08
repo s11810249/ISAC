@@ -5357,18 +5357,26 @@
                             <span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full">共 ${entries.length} 個版本</span>
                         </h2>
                         
-                        <div class="version-select-wrapper">
-                            <select id="inst-version-select" class="version-select">
-                                ${entries.map((entry, idx) => {
-                                    const date = new Date(entry._last_updated).toLocaleDateString();
-                                    const info = entry.internship_address || entry.internship_institution_address || entry.internship_city || '無詳細地址';
-                                    const tax = entry.company_tax_id ? `(統編:${entry.company_tax_id})` : '';
-                                    const isSelected = idx === entries.length - 1 ? 'selected' : '';
-                                    return `<option value="${idx}" ${isSelected}>版本 ${idx + 1} - ${info} ${tax} [${date}]</option>`;
-                                }).reverse().join('')} 
-                            </select>
-                            <i class="fas fa-chevron-down version-select-icon"></i>
+                        <div class="flex items-center gap-3">
+                            <div class="version-select-wrapper flex-grow">
+                                <select id="inst-version-select" class="version-select">
+                                    ${entries.map((entry, idx) => {
+                                        const date = new Date(entry._last_updated).toLocaleDateString();
+                                        const info = entry.internship_address || entry.internship_institution_address || entry.internship_city || '無詳細地址';
+                                        const tax = entry.company_tax_id ? `(統編:${entry.company_tax_id})` : '';
+                                        const isSelected = idx === entries.length - 1 ? 'selected' : '';
+                                        // 儲存 index (從 0 到 length-1)
+                                        return `<option value="${entries.length - 1 - idx}" ${isSelected}>版本 ${entries.length - idx} - ${info} ${tax} [${date}]</option>`;
+                                    }).reverse().join('')} 
+                                </select>
+                                <i class="fas fa-chevron-down version-select-icon"></i>
+                            </div>
+                            <button id="apply-inst-version-btn" 
+                                class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition shadow-md text-sm whitespace-nowrap">
+                                <i class="fas fa-download mr-2"></i> 套用此版本
+                            </button>
                         </div>
+
                     </div>
                     <div class="flex-grow overflow-y-auto custom-scroll px-8 pb-8 space-y-6">
                         <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3"></div>
@@ -5386,8 +5394,10 @@
             // 2. 定義更新內容的函式
             const updateContent = () => {
                 const select = document.getElementById('inst-version-select');
-                const idx = parseInt(select.value);
-                const entry = entries[idx];
+                const reversedIndex = parseInt(select.value);
+                const originalIndex = entries.length - 1 - reversedIndex; // 換算回 entries 的原始索引
+                const entry = entries[originalIndex];
+                
                 const contentDiv = document.getElementById('inst-version-content');
                 const studentListDiv = document.getElementById('inst-student-list');
                 const countBadge = document.getElementById('inst-student-count');
@@ -5423,7 +5433,6 @@
                 const matchedStudents = [];
                 const { _last_updated, ...entryData } = entry;
                 
-                // ★ 為了避免重複，這裡必須使用與 collectInstitutionData 相同的指紋產生邏輯
                 const generateFingerprint = (e) => {
                     const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
                     const cleanObj = {};
@@ -5443,14 +5452,14 @@
                             const appFingerprint = generateFingerprint(appInstData);
                             
                             if (appFingerprint === entryFingerprint) {
-                                // ★★★ 修正點：計算並儲存實習紀錄編號 ★★★
+                                // 取得實習紀錄索引 (X)
                                 const appIndex = student.applications.findIndex(a => a.id === app.id);
                                 const appLabel = appIndex !== -1 ? `實習紀錄 ${appIndex + 1}` : '未知紀錄';
 
                                 matchedStudents.push({ 
                                     student: student, 
                                     appId: app.id,
-                                    appLabel: appLabel // 將標籤傳給渲染器
+                                    appLabel: appLabel
                                 });
                             }
                         }
@@ -5477,30 +5486,25 @@
                 }
             };
 
+            const select = document.getElementById('inst-version-select');
+            const applyBtn = document.getElementById('apply-inst-version-btn');
+            
             // 綁定下拉選單事件
-            document.getElementById('inst-version-select').onchange = updateContent;
-            updateContent();
-        }
+            select.onchange = updateContent;
 
-        // 5. 跳轉到學生 (關閉視窗並定位)
-        function jumpToStudent(sid, appId) {
-            // 1. 關閉 Modal
-            const modal = document.getElementById('inst-list-modal');
-            if(modal) modal.remove();
-
-            // 2. 切換學生
-            selectStudent(sid);
-
-            // 3. 切換到該填報單 (Tab)
-            // 需要等待一下讓 DOM 渲染完成
-            setTimeout(() => {
-                switchTab(appId);
-                // 捲動到頂部
-                const formArea = document.getElementById('form-content-area');
-                if(formArea) formArea.scrollTo({ top: 0, behavior: 'smooth' });
+            // ★★★ 核心修正 B：綁定套用按鈕的事件 ★★★
+            applyBtn.onclick = () => {
+                // 取得下拉選單當前選定的索引 (這是 entries.reverse() 陣列的索引)
+                const reversedIndex = parseInt(select.value); 
+                // 換算回原始 entries 陣列的索引
+                const originalIndex = entries.length - 1 - reversedIndex;
                 
-                showToast('success', '已跳轉至該學生資料');
-            }, 100);
+                // 呼叫新的套用函式
+                applyInstitutionVersion(name, originalIndex);
+            };
+            
+            // 初始化顯示 (最新版)
+            updateContent();
         }
     </script>
 </body>
