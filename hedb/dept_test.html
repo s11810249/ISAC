@@ -5067,36 +5067,54 @@
                 
                 if (instFields.length > 0) {
                     targetFields = instFields.map(f => f.id);
-                    const foundNameField = instFields.find(f => f.id.includes('name') || f.label.includes('名稱'));
+                    const foundNameField = instFields.find(f => f.id === 'internship_institution_name' || f.id.includes('name'));
                     if (foundNameField) nameFieldId = foundNameField.id;
                 }
             }
 
             if (targetFields.length === 0) return;
 
-            // ★★★ 核心修正 A：前置檢查必填項目是否完成 ★★★
+            // ★★★ 核心修正 A：前置檢查必填項目是否完成 (修復邏輯) ★★★
             let allRequiredFilled = true;
             for (const f of allConfigFields) {
+                // 只檢查機構類別且被標記為必填的欄位
                 if (f.category !== INST_CATEGORY || !f.required) continue;
 
-                // 檢查 Visibility Logic (Option Logic 通常會導致 input disabled，Visibility 是最嚴謹的檢查)
-                let isVisibleAndUnlocked = true;
+                // 1. 檢查 Visibility Logic: 判斷該必填欄位在目前的 formData 狀態下是否應該是「可見」的
+                let isVisibleAndRequired = true; // 預設為可見且必填 (除非規則判定它該被隱藏)
+
                 if (f.visibilityRule) {
-                    const depVal = formData[f.visibilityRule.dep];
-                    const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
+                    const { dep, action, val: ruleValue } = f.visibilityRule;
+                    const depVal = formData[dep];
+                    // 確保依賴欄位的值為字串，並去除空白，方便比對
+                    const depValString = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
                     
-                    if (hasDepValue) {
-                        const shouldShow = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
-                        if (!shouldShow) isVisibleAndUnlocked = false; 
-                    } else {
-                        isVisibleAndUnlocked = false;
+                    // 判斷 Rule 是否被觸發 (依賴欄位的值是否等於規則值)
+                    const ruleMet = (depValString === ruleValue); 
+
+                    let shouldShow = false;
+                    
+                    if (action === 'show') {
+                        // Rule: show if depVal == ruleValue (如果規則觸發，則應該顯示)
+                        shouldShow = ruleMet;
+                    } else if (action === 'hide') {
+                        // Rule: hide if depVal == ruleValue (如果規則觸發，則應該隱藏，所以 shouldShow = false)
+                        shouldShow = !ruleMet;
+                    }
+                    
+                    // 如果根據 Rule 判斷不該顯示，則這個欄位目前不是「必填」狀態，跳過檢查
+                    if (!shouldShow) {
+                        isVisibleAndRequired = false;
                     }
                 }
-
-                if (isVisibleAndUnlocked) {
+                
+                // 2. 如果欄位是可見且必填 (isVisibleAndRequired == true)，則檢查是否有填寫
+                if (isVisibleAndRequired) {
                     const val = formData[f.id];
                     if (val === undefined || val === null || String(val).trim() === "") {
                         allRequiredFilled = false;
+                        // 為了除錯，這裡可以取消註解：
+                        // console.log(`Missing required field: ${f.id} - ${f.label}`);
                         break; 
                     }
                 }
@@ -5112,7 +5130,7 @@
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 3. 準備資料物件 (與之前邏輯相同，用於指紋比對)
+            // 3. 準備資料物件 (與之前邏輯相同，只保留非空值)
             const newEntry = {};
             targetFields.forEach(fieldId => {
                 let val = formData[fieldId];
@@ -5121,7 +5139,7 @@
                 } else {
                     val = "";
                 }
-                if (val !== "") {
+                if (val !== "") { 
                     newEntry[fieldId] = val;
                 }
             });
@@ -5146,6 +5164,9 @@
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
+                // ★★★ 關鍵修正 B：儲存成功後，強制更新機構列表 ★★★
+                renderInstitutionList(); 
+
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
