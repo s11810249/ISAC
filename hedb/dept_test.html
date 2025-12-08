@@ -2346,10 +2346,8 @@
                 // ★ 計算狀態與顏色
                 const stats = calculateAppStats(app);
                 let statusHtml = '';
-                let statusColor = '';
                 
                 // 判斷狀態邏輯
-                // 這裡暫時無法自動判斷「無須填報」，預留邏輯給您
                 const isNotRequired = false; // 未來可根據 app.formData['status'] === 'not_required' 判斷
         
                 if (isNotRequired) {
@@ -2362,12 +2360,13 @@
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="text-xs text-blue-600">填報中</span>';
                 }
                 
+                // ★★★ 修改處：將 flex-col 改為水平排列，並移除 pl-5 ★★★
                 btn.innerHTML = `
-                    <div class="flex flex-col items-start gap-0.5">
+                    <div class="flex items-center gap-3">
                         <div class="flex items-center gap-2 text-sm">
                             <i class="fas fa-file-alt text-slate-400"></i> ${label}
                         </div>
-                        <div class="flex items-center gap-1.5 pl-5 opacity-90">
+                        <div class="flex items-center gap-1.5 opacity-90">
                             ${statusHtml}
                         </div>
                     </div>
@@ -2375,7 +2374,7 @@
                 container.appendChild(btn);
             });
         }
-
+        
         // ★ 新增：計算單一歸戶的填報數據 (供頁籤與進度條共用)
         function calculateAppStats(app) {
             const fields = currentYearConfig.fields || [];
