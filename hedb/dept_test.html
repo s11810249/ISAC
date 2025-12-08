@@ -3100,7 +3100,8 @@
 
                             evaluateLogic(app);
                             hasUnsavedChanges = true;
-                            logChange(f.id, appId, oldVal, newVal, groupedStudents[currentStudentId].id);
+                            // 修正: 將 appId 改為 app.id
+                            logChange(f.id, app.id, oldVal, newVal, groupedStudents[currentStudentId].id); 
                         }
                     };
 
@@ -3122,7 +3123,7 @@
                         wrapper.appendChild(input);
                         
                     } 
-                    // ★★★ 處理機構名稱 (新增帶按鈕邏輯) ★★★
+                    // ★★★ 處理機構名稱 (新增帶按鈕邏輯 - 無輸入驗證) ★★★
                     else if (f.id === 'internship_institution_name') {
                         // 建立群組容器
                         const inputGroup = document.createElement('div');
@@ -3145,10 +3146,9 @@
                             e.stopPropagation();
                             const currentName = input.value;
                             
-                            // ★★★ 核心修正：移除輸入驗證 ★★★
-                            // 不再檢查 currentName 是否為空，直接開啟視窗
+                            // 核心修正：移除輸入驗證，直接開啟視窗
                             if (typeof openInstitutionList === 'function') {
-                                openInstitutionList(currentName); // 傳入空白名稱，視窗會開啟但不會預選
+                                openInstitutionList(currentName); 
                             } else {
                                 showToast('error', '系統錯誤：機構查詢功能尚未載入');
                             }
