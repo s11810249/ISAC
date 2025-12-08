@@ -5059,12 +5059,10 @@
             const allConfigFields = currentYearConfig.fields || [];
             
             let targetFields = [];
-            let nameFieldId = 'internship_institution_name'; // 預設 Key
+            let nameFieldId = 'internship_institution_name'; 
             
-            // 1. 動態取得目標欄位列表
             if (allConfigFields.length > 0) {
                 const instFields = allConfigFields.filter(f => f.category === INST_CATEGORY);
-                
                 if (instFields.length > 0) {
                     targetFields = instFields.map(f => f.id);
                     const foundNameField = instFields.find(f => f.id === 'internship_institution_name' || f.id.includes('name'));
@@ -5074,35 +5072,9 @@
 
             if (targetFields.length === 0) return;
 
-            // ★★★ 核心檢查：確保所有【可見且必填】的欄位都已完成 ★★★
-            let allRequiredFilled = true;
-            for (const f of allConfigFields) {
-                if (f.category !== INST_CATEGORY || !f.required) continue;
-
-                // 檢查 Visibility
-                let isFieldVisible = true;
-                if (f.visibilityRule) {
-                    const { dep, action, val: ruleValue } = f.visibilityRule;
-                    const depVal = formData[dep];
-                    const depValString = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
-                    const ruleMet = (depValString === ruleValue); 
-                    if (action === 'show') isFieldVisible = ruleMet;
-                    else if (action === 'hide') isFieldVisible = !ruleMet;
-                }
-                
-                if (isFieldVisible) {
-                    const val = formData[f.id];
-                    if (val === undefined || val === null || String(val).trim() === "") {
-                        allRequiredFilled = false;
-                        break; 
-                    }
-                }
-            }
-
-            if (!allRequiredFilled) return; // 必填未完，不儲存
-
+            // ★ 核心修正 A：只要「機構名稱」跟「核心資訊」有填，就允許收集，不要被 visibilityRule 卡死
             const name = formData[nameFieldId];
-            if (!name || typeof name !== 'string' || name.trim() === '') return;
+            if (!name || name.trim() === '') return;
             const safeName = name.trim();
 
             // 3. 準備資料物件
@@ -5113,6 +5085,9 @@
                 else val = "";
                 if (val !== "") newEntry[fieldId] = val;
             });
+
+            // 如果除了名稱以外什麼都沒填，就不存
+            if (Object.keys(newEntry).length <= 1) return;
 
             // 4. 檢查與儲存
             if (!institutionLibrary[safeName]) {
@@ -5134,21 +5109,17 @@
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
-                // ★★★ 新增：即時刷新介面 ★★★
-                // 1. 如果列表開著，刷新左側清單
+                // ★ 修正 B：存檔成功給予提示
+                showToast('success', `機構「${safeName}」版本已更新`);
+
+                // 即時刷新介面
                 if (typeof renderInstitutionListItems === 'function' && document.getElementById('inst-list-container')) {
-                    const term = document.getElementById('inst-list-search')?.value.toLowerCase() || "";
                     const allNames = Object.keys(institutionLibrary).sort();
-                    const filtered = allNames.filter(n => n.toLowerCase().includes(term));
-                    renderInstitutionListItems(filtered);
+                    renderInstitutionListItems(allNames);
                 }
 
-                // 2. 如果詳情面板正好開著這個機構，重新渲染以顯示新版本
-                const detailHeader = document.getElementById('inst-detail-title'); // 需要在 showInstitutionDetail 加 ID
                 if (detailHeader && detailHeader.innerText.trim().startsWith(safeName)) {
-                    if (typeof showInstitutionDetail === 'function') {
-                        showInstitutionDetail(safeName);
-                    }
+                    showInstitutionDetail(safeName);
                 }
                 
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
