@@ -1054,7 +1054,7 @@
     </div>
     
     <!-- Custom Confirmation Modal -->
-    <div id="confirm-modal" class="fixed inset-0 z-[140] hidden flex items-center justify-center modal-overlay p-4">
+    <div id="confirm-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center modal-overlay p-4">
         <div class="confirm-modal-content">
             <div class="mb-4 text-red-500">
                 <i class="fas fa-exclamation-triangle text-4xl"></i>
@@ -5074,61 +5074,44 @@
 
             if (targetFields.length === 0) return;
 
-            // ★★★ 核心修正 A：嚴格檢查所有【目前可見且必填】的欄位是否完成 ★★★
+            // ★★★ 核心檢查：確保所有【可見且必填】的欄位都已完成 ★★★
             let allRequiredFilled = true;
             for (const f of allConfigFields) {
                 if (f.category !== INST_CATEGORY || !f.required) continue;
 
-                // 1. 檢查 Visibility Logic: 判斷該必填欄位在目前的 formData 狀態下是否應該是「可見」的
+                // 檢查 Visibility
                 let isFieldVisible = true;
                 if (f.visibilityRule) {
                     const { dep, action, val: ruleValue } = f.visibilityRule;
                     const depVal = formData[dep];
                     const depValString = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
-                    
                     const ruleMet = (depValString === ruleValue); 
-
-                    // 這段邏輯必須與 evaluateLogic 完全一致
-                    if (action === 'show') {
-                        isFieldVisible = ruleMet;
-                    } else if (action === 'hide') {
-                        isFieldVisible = !ruleMet;
-                    }
+                    if (action === 'show') isFieldVisible = ruleMet;
+                    else if (action === 'hide') isFieldVisible = !ruleMet;
                 }
                 
-                // 2. 如果欄位可見，則必須檢查是否有值
                 if (isFieldVisible) {
                     const val = formData[f.id];
                     if (val === undefined || val === null || String(val).trim() === "") {
                         allRequiredFilled = false;
-                        // console.log(`Missing required field: ${f.id} - ${f.label}`); // 可取消註解用於除錯
                         break; 
                     }
                 }
             }
 
-            if (!allRequiredFilled) {
-                // console.log('Required fields incomplete, skipping save.');
-                return; 
-            }
-            // ★★★ 核心修正 A 結束 ★★★
+            if (!allRequiredFilled) return; // 必填未完，不儲存
 
             const name = formData[nameFieldId];
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 3. 準備資料物件 (與之前邏輯相同，用於指紋比對)
+            // 3. 準備資料物件
             const newEntry = {};
             targetFields.forEach(fieldId => {
                 let val = formData[fieldId];
-                if (val !== undefined && val !== null) {
-                    val = String(val).trim();
-                } else {
-                    val = "";
-                }
-                if (val !== "") { 
-                    newEntry[fieldId] = val;
-                }
+                if (val !== undefined && val !== null) val = String(val).trim();
+                else val = "";
+                if (val !== "") newEntry[fieldId] = val;
             });
 
             // 4. 檢查與儲存
@@ -5151,11 +5134,21 @@
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
-                // 儲存成功後，強制更新列表 (如果視窗是開著的)
-                if (typeof renderInstitutionListItems === 'function') {
-                    // 如果列表模式的搜尋視窗開著，刷新左側列表
-                    const names = Object.keys(institutionLibrary).sort();
-                    renderInstitutionListItems(names);
+                // ★★★ 新增：即時刷新介面 ★★★
+                // 1. 如果列表開著，刷新左側清單
+                if (typeof renderInstitutionListItems === 'function' && document.getElementById('inst-list-container')) {
+                    const term = document.getElementById('inst-list-search')?.value.toLowerCase() || "";
+                    const allNames = Object.keys(institutionLibrary).sort();
+                    const filtered = allNames.filter(n => n.toLowerCase().includes(term));
+                    renderInstitutionListItems(filtered);
+                }
+
+                // 2. 如果詳情面板正好開著這個機構，重新渲染以顯示新版本
+                const detailHeader = document.getElementById('inst-detail-title'); // 需要在 showInstitutionDetail 加 ID
+                if (detailHeader && detailHeader.innerText.trim().startsWith(safeName)) {
+                    if (typeof showInstitutionDetail === 'function') {
+                        showInstitutionDetail(safeName);
+                    }
                 }
                 
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
@@ -5362,6 +5355,71 @@
             }
         }
         
+        async function deleteInstitutionVersion(name, index) {
+            const entries = institutionLibrary[name];
+            if (!entries || !entries[index]) return;
+
+            const yes = await showConfirm('刪除版本？', `確定要刪除「${name}」的版本 ${index + 1} 嗎？\n此動作無法復原。`);
+            if (yes) {
+                // 再次檢查是否有被使用 (防呆雙重確認)
+                const entry = entries[index];
+                const { _last_updated, ...entryData } = entry;
+                
+                // 簡易指紋生成
+                const generateFingerprint = (e) => {
+                    const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
+                    const values = keys.map(k => e[k]);
+                    return JSON.stringify(values);
+                };
+                const targetFP = generateFingerprint(entryData);
+                
+                let isUsed = false;
+                Object.values(groupedStudents).forEach(s => {
+                    s.applications.forEach(app => {
+                        if (app.formData['internship_institution_name'] === name) {
+                            const appInstData = {};
+                            Object.keys(entryData).forEach(k => appInstData[k] = app.formData[k]);
+                            if (generateFingerprint(appInstData) === targetFP) isUsed = true;
+                        }
+                    });
+                });
+
+                if (isUsed) {
+                    showToast('error', '刪除失敗：資料正在使用中');
+                    return;
+                }
+
+                // 執行刪除
+                entries.splice(index, 1);
+                
+                // 如果刪光了，移除該機構 Key
+                if (entries.length === 0) {
+                    delete institutionLibrary[name];
+                    // 回到列表頁 (清空右側)
+                    document.getElementById('inst-detail-panel').innerHTML = `
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                            <i class="fas fa-trash-alt text-4xl mb-4 opacity-30"></i>
+                            <p>機構已刪除</p>
+                        </div>`;
+                }
+
+                // 存檔
+                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                    saveToLocal();
+                }
+
+                // 刷新左側列表
+                filterInstList();
+
+                // 如果還有剩餘版本，刷新右側詳情
+                if (institutionLibrary[name]) {
+                    showInstitutionDetail(name);
+                }
+
+                showToast('success', '已刪除該版本');
+            }
+        }
+        
         // ★★★ 核心修改：顯示機構詳情 (包含下拉選單與版本過濾) ★★★
         function showInstitutionDetail(name) {
             const panel = document.getElementById('inst-detail-panel');
@@ -5375,10 +5433,11 @@
             });
 
             // 1. 建立基本框架
+            // 修改: 加入 id="inst-detail-title" 以便 collectInstitutionData 辨識
             panel.innerHTML = `
                 <div class="flex flex-col h-full">
                     <div class="px-8 py-6 pb-2">
-                        <h2 class="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-3">
+                        <h2 id="inst-detail-title" class="text-2xl font-bold text-slate-800 mb-4 flex items-center gap-3">
                             ${name}
                             <span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full">共 ${entries.length} 個版本</span>
                         </h2>
@@ -5397,6 +5456,11 @@
                                 </select>
                                 <i class="fas fa-chevron-down version-select-icon"></i>
                             </div>
+                            
+                            <button id="del-inst-version-btn" class="flex-shrink-0 w-10 h-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm" title="刪除此版本">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+
                             <button id="apply-inst-version-btn" 
                                 class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold py-2 px-4 rounded-lg transition shadow-md text-sm whitespace-nowrap">
                                 <i class="fas fa-download mr-2"></i> 套用此版本
@@ -5419,6 +5483,8 @@
             // 2. 更新內容函式
             const updateContent = () => {
                 const select = document.getElementById('inst-version-select');
+                if(!select) return;
+                
                 const reversedIndex = parseInt(select.value);
                 const originalIndex = entries.length - 1 - reversedIndex; 
                 const entry = entries[originalIndex];
@@ -5479,12 +5545,23 @@
                 });
 
                 countBadge.innerText = matchedStudents.length;
+                
+                // 將使用數量存入按鈕的 dataset，供刪除功能檢查
+                const delBtn = document.getElementById('del-inst-version-btn');
+                if(delBtn) {
+                    delBtn.dataset.usageCount = matchedStudents.length;
+                    delBtn.className = matchedStudents.length > 0 
+                        ? "flex-shrink-0 w-10 h-10 flex items-center justify-center bg-slate-100 text-slate-300 border border-slate-200 rounded-lg cursor-not-allowed"
+                        : "flex-shrink-0 w-10 h-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm cursor-pointer";
+                    delBtn.title = matchedStudents.length > 0 ? "無法刪除：有學生正在使用此版本" : "刪除此版本";
+                }
+
                 if (matchedStudents.length === 0) {
                     studentListDiv.innerHTML = `<div class="p-8 text-center bg-slate-50 text-slate-500">沒有學生完全符合此版本資料</div>`;
                 } else {
                     studentListDiv.innerHTML = matchedStudents.map(item => `
                         <div class="flex items-center justify-between p-3 hover:bg-indigo-50/50 transition cursor-pointer" 
-                             onclick="jumpToStudent('${item.student.id}', '${item.appId}')">
+                             onclick="selectStudent('${item.student.id}')">
                             <div class="flex flex-col items-start">
                                 <div class="font-bold text-slate-700 text-sm">${item.student.name} (${item.student.id})</div>
                                 <div class="text-xs text-indigo-600 font-bold mt-0.5">${item.appLabel}</div>
@@ -5499,15 +5576,26 @@
 
             const select = document.getElementById('inst-version-select');
             const applyBtn = document.getElementById('apply-inst-version-btn');
+            const delBtn = document.getElementById('del-inst-version-btn');
             
             select.onchange = updateContent;
 
-            // ★★★ 綁定套用按鈕事件 ★★★
             applyBtn.onclick = () => {
                 const reversedIndex = parseInt(select.value); 
                 const originalIndex = entries.length - 1 - reversedIndex;
-                // 呼叫我們剛剛在步驟 1 定義好的函式
                 applyInstitutionVersion(name, originalIndex);
+            };
+
+            // ★★★ 新增：刪除按鈕事件 ★★★
+            delBtn.onclick = () => {
+                const usage = parseInt(delBtn.dataset.usageCount || 0);
+                if (usage > 0) {
+                    showToast('warning', '無法刪除：目前有學生正在使用此版本的機構資料');
+                    return;
+                }
+                const reversedIndex = parseInt(select.value);
+                const originalIndex = entries.length - 1 - reversedIndex;
+                deleteInstitutionVersion(name, originalIndex);
             };
             
             updateContent();
