@@ -2032,43 +2032,23 @@
                     // 5. Read Institution Library (還原機構庫)
                     const libSheet = workbook.getWorksheet('_Institution_Library');
                     if (libSheet) {
-                        // 選擇：是否要先清空現有的？(通常建議保留現有並合併，或看您的需求)
-                        // institutionLibrary = {}; 
-                        
                         libSheet.eachRow((row, rowNumber) => {
                             if (rowNumber > 1) {
                                 const name = row.getCell(1).value;
-                                const jsonStr = row.getCell(4).value; // 第 4 欄是 JSON
-                                
+                                const jsonStr = row.getCell(2).value;
                                 if (name && jsonStr) {
                                     try {
                                         const entry = JSON.parse(jsonStr);
+                                        if (!institutionLibrary[name]) institutionLibrary[name] = [];
                                         
-                                        if (!institutionLibrary[name]) {
-                                            institutionLibrary[name] = [];
-                                        }
-                                        
-                                        // 檢查是否已存在 (避免重複匯入)
-                                        // 使用與 collectInstitutionData 相同的指紋邏輯
-                                        const generateFingerprint = (e) => {
-                                            const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
-                                            const clean = {};
-                                            keys.forEach(k => clean[k] = e[k]);
-                                            return JSON.stringify(clean);
-                                        };
-                                        const newFingerprint = generateFingerprint(entry);
-                                        
-                                        const exists = institutionLibrary[name].some(e => generateFingerprint(e) === newFingerprint);
-                                        
-                                        if (!exists) {
-                                            institutionLibrary[name].push(entry);
-                                        }
-                                    } catch (e) { console.error("Lib entry parse error", e); }
+                                        // 簡單指紋檢查避免重複
+                                        const fp = JSON.stringify(entry);
+                                        const exists = institutionLibrary[name].some(e => JSON.stringify(e) === fp);
+                                        if(!exists) institutionLibrary[name].push(entry);
+                                    } catch(e){}
                                 }
                             }
                         });
-                        // console.log("Restored Institution Library");
-                        // 如果有啟用暫存，立即同步
                         if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                             localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify(institutionLibrary));
                         }
@@ -3489,13 +3469,34 @@
                 });
             });
 
-            const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
+           const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
             logSheet.columns = [
                 {header: 'Time', key: 'time'}, {header: 'Field', key: 'field'}, 
                 {header: 'Old_Value', key: 'old'}, {header: 'New_Value', key: 'new'}, 
                 {header: 'Student', key: 'student'}, {header: 'App_ID', key: 'app'}
             ];
             changeLogs.forEach(l => logSheet.addRow(l));
+
+            // ★★★ 請將您的程式碼貼在這裡 (第 1759 行) ★★★
+            // 5. Export Institution Library (新增：匯出機構庫)
+            const libSheet = workbook.addWorksheet('_Institution_Library', {state: 'hidden'});
+            libSheet.columns = [
+                { header: 'Institution_Name', key: 'name' },
+                { header: 'Data_JSON', key: 'json' }
+            ];
+            Object.keys(institutionLibrary).forEach(name => {
+                const entries = institutionLibrary[name];
+                // 確保 entries 是陣列 (防呆)
+                if (Array.isArray(entries)) {
+                    entries.forEach(entry => {
+                        libSheet.addRow({
+                            name: name,
+                            json: JSON.stringify(entry)
+                        });
+                    });
+                }
+            });
+            // ★★★ 結束貼上 ★★★
 
             const metaSheet = workbook.addWorksheet('_System_Metadata', {state: 'hidden'});
             metaSheet.columns = [{header:'Field_ID', key:'id'}, {header:'Field_Label', key:'label'}];
