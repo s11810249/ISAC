@@ -3139,19 +3139,18 @@
                         // 建立按鈕
                         const viewBtn = document.createElement('div');
                         viewBtn.className = 'input-group-append-btn';
-                        viewBtn.title = '查看此機構的詳細資訊與關聯學生';
+                        viewBtn.title = '點擊選擇要套用的機構版本';
                         viewBtn.innerHTML = '<i class="fas fa-building"></i>';
                         viewBtn.onclick = (e) => {
                             e.stopPropagation();
                             const currentName = input.value;
-                            if(currentName) {
-                                if (typeof openInstitutionList === 'function') {
-                                    openInstitutionList(currentName);
-                                } else {
-                                    showToast('error', '系統錯誤：機構查詢功能尚未載入');
-                                }
+                            
+                            // ★★★ 核心修正：移除輸入驗證 ★★★
+                            // 不再檢查 currentName 是否為空，直接開啟視窗
+                            if (typeof openInstitutionList === 'function') {
+                                openInstitutionList(currentName); // 傳入空白名稱，視窗會開啟但不會預選
                             } else {
-                                showToast('info', '請先輸入機構名稱');
+                                showToast('error', '系統錯誤：機構查詢功能尚未載入');
                             }
                         };
 
@@ -5505,6 +5504,45 @@
             
             // 初始化顯示 (最新版)
             updateContent();
+        }
+
+        function applyInstitutionVersion(versionValue) {
+            // 檢查是否有選取版本
+            if (!versionValue) {
+                if (typeof showToast === 'function') {
+                    showToast('warning', '請選擇一個版本');
+                }
+                return;
+            }
+        
+            // 1. 更新當前版本（假設您用一個全域變數來儲存）
+            // ⚠️ 注意: 您的應用程式可能使用不同的全域變數或狀態管理方式。
+            // 請確認 `currentInstitutionVersion` 或類似變數是否為正確的目標。
+            if (typeof window.currentInstitutionVersion !== 'undefined') {
+                window.currentInstitutionVersion = versionValue; 
+            }
+            
+            // 2. 應用新版本並重新載入/渲染資料
+            // 假設您有一個名為 `loadData` 或 `initDepartmentView` 的函式來重新載入或更新介面。
+            // 請根據您應用程式中實際用於載入部門資料的函式名稱進行調整。
+            if (typeof loadData === 'function' && window.currentDeptId) {
+                loadData(window.currentDeptId); 
+            } else if (typeof updateContent === 'function') {
+                updateContent(); 
+            }
+        
+            // 3. 關閉版本選擇 Modal (假設 Modal 的 ID 是 inst-version-modal 或 inst-list-modal)
+            const modal = document.getElementById('inst-version-modal') || document.getElementById('inst-list-modal');
+            if (modal) {
+                modal.remove();
+            }
+        
+            // 4. 顯示成功訊息
+            if (typeof showToast === 'function') {
+                showToast('success', `已套用版本: ${versionValue}`);
+            } else {
+                console.log(`Version applied: ${versionValue}`);
+            }
         }
     </script>
 </body>
