@@ -5059,10 +5059,12 @@
             const allConfigFields = currentYearConfig.fields || [];
             
             let targetFields = [];
-            let nameFieldId = 'internship_institution_name'; 
+            let nameFieldId = 'internship_institution_name'; // 預設 Key
             
+            // 1. 動態取得目標欄位列表
             if (allConfigFields.length > 0) {
                 const instFields = allConfigFields.filter(f => f.category === INST_CATEGORY);
+                
                 if (instFields.length > 0) {
                     targetFields = instFields.map(f => f.id);
                     const foundNameField = instFields.find(f => f.id === 'internship_institution_name' || f.id.includes('name'));
@@ -5072,22 +5074,34 @@
 
             if (targetFields.length === 0) return;
 
-            // ★ 核心修正 A：只要「機構名稱」跟「核心資訊」有填，就允許收集，不要被 visibilityRule 卡死
+            // ★★★ 核心修正：移除嚴格的 allRequiredFilled 檢查，改為檢查名稱與數據存在 ★★★
             const name = formData[nameFieldId];
-            if (!name || name.trim() === '') return;
+            if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
             // 3. 準備資料物件
             const newEntry = {};
+            let hasOtherData = false;
             targetFields.forEach(fieldId => {
                 let val = formData[fieldId];
-                if (val !== undefined && val !== null) val = String(val).trim();
-                else val = "";
-                if (val !== "") newEntry[fieldId] = val;
+                if (val !== undefined && val !== null) {
+                    val = String(val).trim();
+                } else {
+                    val = "";
+                }
+                
+                if (val !== "") { 
+                    newEntry[fieldId] = val;
+                    // 排除名稱欄位本身，只要有其他機構資訊就算有資料
+                    if (fieldId !== nameFieldId && !fieldId.startsWith('_')) {
+                        hasOtherData = true; 
+                    }
+                }
             });
+            
+            // 如果只有名稱，沒有其他任何機構資訊，則不儲存
+            if (!hasOtherData) return;
 
-            // 如果除了名稱以外什麼都沒填，就不存
-            if (Object.keys(newEntry).length <= 1) return;
 
             // 4. 檢查與儲存
             if (!institutionLibrary[safeName]) {
@@ -5101,25 +5115,38 @@
                 keys.forEach(k => cleanObj[k] = entry[k]);
                 return JSON.stringify(cleanObj);
             };
+            
+            // 過濾掉 _last_updated 再做指紋比對
+            const { _last_updated, ...entryData } = newEntry; 
+            const newFingerprint = generateFingerprint(entryData);
 
-            const newFingerprint = generateFingerprint(newEntry);
-            const isDuplicate = existingEntries.some(entry => generateFingerprint(entry) === newFingerprint);
+            // 檢查是否重複 (使用過濾後的 entryData)
+            const isDuplicate = existingEntries.some(entry => {
+                const { _last_updated, ...existingEntryData } = entry;
+                return generateFingerprint(existingEntryData) === newFingerprint;
+            });
+
 
             if (!isDuplicate) {
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
-                // ★ 修正 B：存檔成功給予提示
+                // ★ 新增：存檔成功給予提示
                 showToast('success', `機構「${safeName}」版本已更新`);
 
-                // 即時刷新介面
+                // 儲存成功後，強制更新列表 (如果視窗是開著的)
                 if (typeof renderInstitutionListItems === 'function' && document.getElementById('inst-list-container')) {
                     const allNames = Object.keys(institutionLibrary).sort();
                     renderInstitutionListItems(allNames);
                 }
-
+                
+                // ★ 關鍵：如果詳情面板正好開著這個機構，重新渲染以顯示新版本
+                const detailHeader = document.getElementById('inst-detail-title'); 
                 if (detailHeader && detailHeader.innerText.trim().startsWith(safeName)) {
-                    showInstitutionDetail(safeName);
+                    if (typeof showInstitutionDetail === 'function') {
+                        // 重新顯示詳情，這樣下拉選單會更新
+                        showInstitutionDetail(safeName); 
+                    }
                 }
                 
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
@@ -5380,7 +5407,12 @@
                 }
 
                 // 刷新左側列表
-                filterInstList();
+                if (typeof filterInstList === 'function') {
+                    filterInstList();
+                } else {
+                    const names = Object.keys(institutionLibrary).sort();
+                    renderInstitutionListItems(names);
+                }
 
                 // 如果還有剩餘版本，刷新右側詳情
                 if (institutionLibrary[name]) {
