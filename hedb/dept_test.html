@@ -5528,35 +5528,50 @@
             const input = document.getElementById('parent-name-input');
             setTimeout(() => input.focus(), 100);
 
-            document.getElementById('btn-save-parent').onclick = () => {
+            // ★ 修改：加入 async 以便使用 await showConfirm
+            document.getElementById('btn-save-parent').onclick = async () => {
                 const newParent = input.value.trim();
+                
                 if (newParent === "") {
                     showToast('warning', '請輸入名稱，或點擊左下角解除關係');
                     return;
                 }
                 if (newParent === childName) {
-                    showToast('error', '不能設定自己為總公司');
+                    showToast('error', '不能設定自己為總公司/機構');
                     return;
                 }
+                // 簡易循環檢查
                 if (institutionRelations[newParent] === childName) {
                     showToast('error', '無法設定：會造成循環參照');
                     return;
                 }
+
+                // ★ 修改：使用 showConfirm 取代原生 confirm，並更新文字
                 if (!institutionLibrary[newParent]) {
-                    if (confirm(`總公司「${newParent}」不存在，是否立即建立？`)) {
+                    const yes = await showConfirm(
+                        '建立新機構？', 
+                        `總公司/機構「${newParent}」不存在，是否立即建立？`
+                    );
+                    
+                    if (yes) {
                         institutionLibrary[newParent] = [];
-                    } else { return; }
+                    } else {
+                        return; // 使用者取消
+                    }
                 }
+                
                 institutionRelations[childName] = newParent;
-                finishUpdate(`已設定 ${newParent} 為總公司`);
+                finishUpdate(`已設定 ${newParent} 為總公司/機構`);
             };
 
             const clearBtn = document.getElementById('btn-clear-parent');
             if (clearBtn) {
-                clearBtn.onclick = () => {
-                    if (confirm('確定要解除目前的總公司關係嗎？')) {
+                // ★ 修改：解除關係也改用 showConfirm
+                clearBtn.onclick = async () => {
+                    const yes = await showConfirm('確認解除？', '確定要解除目前的總公司/機構關係嗎？');
+                    if (yes) {
                         delete institutionRelations[childName];
-                        finishUpdate('已解除總公司關係');
+                        finishUpdate('已解除總公司/機構關係');
                     }
                 };
             }
