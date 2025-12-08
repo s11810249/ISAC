@@ -3094,7 +3094,7 @@
                         if (oldVal !== newVal) {
                             app.formData[f.id] = newVal;
                             
-                            // ★★★ 修正處：動態檢查分類 ★★★
+                            // ★★★ 修正：動態檢查分類 ★★★
                             if (f.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
                                 collectInstitutionData(app.formData);
                             }
@@ -3291,7 +3291,8 @@
             
             fields.forEach(f => {
                 const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
-                const inputEl = document.getElementById(`input-${app.id}-${f.id}`);
+                // 嘗試抓取 input，若被包在 group 裡也抓得到
+                let inputEl = document.getElementById(`input-${app.id}-${f.id}`);
                 const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
                 
                 if (!wrapper) return;
@@ -3301,18 +3302,12 @@
                 // --- 1. Visibility 檢查 ---
                 if (f.visibilityRule) {
                     const depVal = app.formData[f.visibilityRule.dep];
-                    // ★ 嚴謹檢查 ★
                     const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
                     
                     if (!hasDepValue) {
-                        isLocked = true; // 沒填依賴 -> 鎖定
+                        isLocked = true;
                     } else {
-                        let shouldShow = false;
-                        if (f.visibilityRule.action === 'show') {
-                            shouldShow = (depVal === f.visibilityRule.val);
-                        } else {
-                            shouldShow = (depVal !== f.visibilityRule.val);
-                        }
+                        let shouldShow = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
                         if (!shouldShow) isLocked = true;
                     }
                 }
@@ -3327,18 +3322,16 @@
                     } else {
                         const rule = f.filterRules.find(r => r.val === parentVal);
                         if (!rule) isLocked = true;
-                        else {
-                            if (inputEl && inputEl.tagName === 'SELECT') {
-                                Array.from(inputEl.options).forEach(opt => {
-                                    if (opt.value === "") return;
-                                    const show = rule.limitTo && rule.limitTo.includes(opt.value);
-                                    opt.hidden = !show;
-                                    opt.disabled = !show;
-                                });
-                                if (inputEl.value && rule.limitTo && !rule.limitTo.includes(inputEl.value)) {
-                                    inputEl.value = "";
-                                    app.formData[f.id] = "";
-                                }
+                        else if (inputEl && inputEl.tagName === 'SELECT') {
+                            Array.from(inputEl.options).forEach(opt => {
+                                if (opt.value === "") return;
+                                const show = rule.limitTo && rule.limitTo.includes(opt.value);
+                                opt.hidden = !show;
+                                opt.disabled = !show;
+                            });
+                            if (inputEl.value && rule.limitTo && !rule.limitTo.includes(inputEl.value)) {
+                                inputEl.value = "";
+                                app.formData[f.id] = "";
                             }
                         }
                     }
@@ -3355,16 +3348,27 @@
                         }
                     }
                     if (rocContainer) {
-                        rocContainer.querySelector('input').value = "";
-                        rocContainer.querySelector('input').disabled = true;
+                        const ri = rocContainer.querySelector('input');
+                        if(ri) { ri.value = ""; ri.disabled = true; }
+                    }
+                    // ★ 新增：鎖定旁邊的按鈕
+                    const btn = wrapper.querySelector('.input-group-append-btn');
+                    if(btn) {
+                        btn.style.pointerEvents = 'none';
+                        btn.style.opacity = '0.5';
                     }
                 } else {
                     wrapper.classList.remove('field-locked');
                     if (inputEl) inputEl.disabled = false;
                     if (rocContainer) rocContainer.querySelector('input').disabled = false;
+                    // ★ 解鎖按鈕
+                    const btn = wrapper.querySelector('.input-group-append-btn');
+                    if(btn) {
+                        btn.style.pointerEvents = 'auto';
+                        btn.style.opacity = '1';
+                    }
                 }
             });
-            
             updateAppProgress(app.id);
         }
 
@@ -5035,42 +5039,30 @@
             // ★ 設定：機構資訊的分類 ID (需與 JSON 設定檔一致)
             const INST_CATEGORY = 'internship_institution_info';
             
-            // 1. 動態取得屬於該分類的欄位 ID 列表
             let targetFields = [];
             let nameFieldId = 'internship_institution_name'; // 預設 Key
             
             if (currentYearConfig && currentYearConfig.fields) {
-                // 找出所有屬於該分類的欄位
                 const instFields = currentYearConfig.fields.filter(f => f.category === INST_CATEGORY);
-                
                 if (instFields.length > 0) {
                     targetFields = instFields.map(f => f.id);
-                    
-                    // 嘗試智慧找出「機構名稱」欄位 (通常含 name 或 名稱)
-                    // 若設定檔中有明確定義，則使用找到的；否則維持預設
                     const foundNameField = instFields.find(f => f.id.includes('name') || f.label.includes('名稱'));
                     if (foundNameField) nameFieldId = foundNameField.id;
                 }
             }
 
-            // 若設定檔沒載入或沒找到該分類，為避免報錯，可設定一組最小預設值 (或直接 return)
-            if (targetFields.length === 0) {
-                // console.warn("未偵測到機構欄位設定，跳過收集");
-                return; 
-            }
+            if (targetFields.length === 0) return;
 
-            // 2. 取得機構名稱 (Key)
             const name = formData[nameFieldId];
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 3. 準備資料物件
             const newEntry = {};
             let hasContent = false;
             
             targetFields.forEach(fieldId => {
                 let val = formData[fieldId];
-                // 資料正規化
+                // ★ 資料正規化：轉字串並去空白，確保比對準確
                 if (val !== undefined && val !== null) {
                     val = String(val).trim();
                 } else {
@@ -5082,17 +5074,13 @@
                     hasContent = true;
                 }
             });
-            
-            // 如果除了名字以外沒有其他資訊，通常不值得存 (看需求，這裡先允許存)
-            // if (!hasContent) return;
 
-            // 4. 檢查與儲存 (與之前邏輯相同)
             if (!institutionLibrary[safeName]) {
                 institutionLibrary[safeName] = [];
             }
             const existingEntries = institutionLibrary[safeName];
 
-            // 產生指紋 (Key 排序確保比對準確)
+            // ★ 產生指紋 (Key 排序)
             const generateFingerprint = (entry) => {
                 const keys = Object.keys(entry).filter(k => !k.startsWith('_')).sort();
                 const cleanObj = {};
@@ -5103,10 +5091,12 @@
             const newFingerprint = generateFingerprint(newEntry);
             const isDuplicate = existingEntries.some(entry => generateFingerprint(entry) === newFingerprint);
 
+            // 若無重複才新增
             if (!isDuplicate) {
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
+                // 只有啟用暫存才寫入
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
@@ -5287,7 +5277,7 @@
         // ★★★ 核心修改：顯示機構詳情 (包含下拉選單與版本過濾) ★★★
         function showInstitutionDetail(name) {
             const panel = document.getElementById('inst-detail-panel');
-            const entries = institutionLibrary[name]; // 取得該機構所有版本陣列
+            const entries = institutionLibrary[name];
             
             // Highlight 左側選單
             document.querySelectorAll('.inst-list-item').forEach(el => {
@@ -5308,11 +5298,10 @@
                         <div class="version-select-wrapper">
                             <select id="inst-version-select" class="version-select">
                                 ${entries.map((entry, idx) => {
-                                    // 產生下拉選項，顯示地址或統編來區分
                                     const date = new Date(entry._last_updated).toLocaleDateString();
-                                    const info = entry.internship_institution_address || entry.internship_institution_city || '無詳細地址';
+                                    // ★ 修正：優先讀取正確的地址欄位 ID
+                                    const info = entry.internship_address || entry.internship_institution_address || entry.internship_city || '無詳細地址';
                                     const tax = entry.company_tax_id ? `(統編:${entry.company_tax_id})` : '';
-                                    // 預設選最後一筆 (最新)
                                     const isSelected = idx === entries.length - 1 ? 'selected' : '';
                                     return `<option value="${idx}" ${isSelected}>版本 ${idx + 1} - ${info} ${tax} [${date}]</option>`;
                                 }).reverse().join('')} 
@@ -5320,19 +5309,14 @@
                             <i class="fas fa-chevron-down version-select-icon"></i>
                         </div>
                     </div>
-
                     <div class="flex-grow overflow-y-auto custom-scroll px-8 pb-8 space-y-6">
-                        
-                        <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-                            </div>
-
+                        <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3"></div>
                         <div>
                             <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
                                 <i class="fas fa-users text-indigo-500"></i> 使用此版本的學生
                                 <span id="inst-student-count" class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full">0</span>
                             </h4>
-                            <div id="inst-student-list" class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100">
-                                </div>
+                            <div id="inst-student-list" class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100"></div>
                         </div>
                     </div>
                 </div>
@@ -5353,12 +5337,11 @@
                 // 為了美觀，可以定義欄位名稱對照 (可選)
                 const labelMap = {
                     'company_tax_id': '統一編號',
-                    'internship_address': '地址',
+                    'internship_address': '地址', // 修正 ID
                     'internship_city': '縣市',
                     'internship_country': '國別',
                     'industry_category': '行業別',
-                    'internship_location': '實習場所',
-                    'internship_institution_contact': '聯絡人'
+                    'internship_location': '實習場所'
                 };
 
                 let fieldsHtml = displayFields.map(key => {
@@ -5378,84 +5361,57 @@
                     `;
                 }).join('');
                 
-                if(!fieldsHtml) fieldsHtml = '<div class="text-slate-400 text-sm italic">此版本僅有名稱，無其他詳細資料</div>';
+                let fieldsHtml = displayFields.map(key => {
+                    let finalLabel = labelMap[key] || key;
+                    // 嘗試從 config 抓取最新 Label
+                    if (currentYearConfig && currentYearConfig.fields) {
+                        const f = currentYearConfig.fields.find(field => field.id === key);
+                        if(f) finalLabel = f.label;
+                    }
+                    return `
+                        <div class="flex flex-col pb-2 border-b border-slate-50 last:border-0 last:pb-0">
+                            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">${finalLabel}</span>
+                            <span class="text-slate-700 font-medium break-all">${entry[key] || '-'}</span>
+                        </div>
+                    `;
+                }).join('');
                 
-                contentDiv.innerHTML = `
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        ${fieldsHtml}
-                    </div>
-                    <div class="mt-2 pt-2 border-t border-slate-100 text-right">
-                        <span class="text-[10px] text-slate-300">資料指紋: ${idx}</span>
-                    </div>
-                `;
+                contentDiv.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fieldsHtml || '無詳細資料'}</div>`;
 
                 // B. 渲染學生列表 (過濾邏輯)
                 // 邏輯：找出填報單中，機構名稱相同，且「所有機構欄位內容」都與目前選中的 version 一致的學生
                 const matchedStudents = [];
                 
                 // 準備指紋比對 (排除 timestamp)
+                const matchedStudents = [];
                 const { _last_updated, ...entryData } = entry;
                 const entryFingerprint = JSON.stringify(entryData, Object.keys(entryData).sort());
 
                 Object.values(groupedStudents).forEach(student => {
                     student.applications.forEach(app => {
-                        // 1. 先比對名稱 (快速篩選)
                         if (app.formData['internship_institution_name'] === name) {
-                            
-                            // 2. 比對內容 (嚴謹篩選：是否為此分公司/版本)
-                            // 我們只比對 entry 裡面有的欄位 (INSTITUTION_FIELDS)
                             const appInstData = {};
                             Object.keys(entryData).forEach(key => {
                                 const val = app.formData[key];
                                 if(val) appInstData[key] = String(val).trim();
                             });
-                            
-                            // 這裡需要注意：如果學生只填了部分欄位，可能指紋不符。
-                            // 但依照我們「收集」的邏輯，entry 是來自學生的，所以應該至少會有一位學生完全符合。
-                            // 若是其他學生套用，理論上也會符合。
                             const appFingerprint = JSON.stringify(appInstData, Object.keys(appInstData).sort());
-                            
                             if (appFingerprint === entryFingerprint) {
-                                matchedStudents.push({
-                                    student: student,
-                                    appId: app.id,
-                                    matchType: 'perfect' // 完全符合
-                                });
-                            } else {
-                                // 思考：是否要顯示「名稱相同但內容不完全相符」的學生？
-                                // 使用者說「想查分公司」，所以應該嚴格區分。
-                                // 但為了避免找不到人，或許可以列在下方？
-                                // 目前依照需求，先只顯示完全符合此版本的。
+                                matchedStudents.push({ student: student, appId: app.id });
                             }
                         }
                     });
                 });
 
                 countBadge.innerText = matchedStudents.length;
-
                 if (matchedStudents.length === 0) {
-                    studentListDiv.innerHTML = `
-                        <div class="p-8 text-center bg-slate-50">
-                            <i class="fas fa-user-slash text-slate-300 text-3xl mb-2"></i>
-                            <p class="text-slate-500 text-sm">沒有學生完全符合此版本資料</p>
-                            <p class="text-xs text-slate-400 mt-1">(可能該學生資料已被修改，成為了新的版本)</p>
-                        </div>`;
+                    studentListDiv.innerHTML = `<div class="p-8 text-center bg-slate-50 text-slate-500">沒有學生完全符合此版本資料</div>`;
                 } else {
                     studentListDiv.innerHTML = matchedStudents.map(item => `
                         <div class="flex items-center justify-between p-3 hover:bg-indigo-50/50 transition cursor-pointer" 
                              onclick="jumpToStudent('${item.student.id}', '${item.appId}')">
-                            <div class="flex items-center gap-3">
-                                <div class="w-8 h-8 rounded-full bg-slate-200 text-slate-600 flex items-center justify-center font-bold text-xs">
-                                    ${item.student.name[0]}
-                                </div>
-                                <div>
-                                    <div class="font-bold text-slate-700 text-sm">${item.student.name}</div>
-                                    <div class="text-xs text-slate-500 font-mono">${item.student.id}</div>
-                                </div>
-                            </div>
-                            <button class="text-xs font-bold text-indigo-600 bg-white border border-indigo-200 px-3 py-1 rounded-full hover:bg-indigo-600 hover:text-white transition">
-                                查看 <i class="fas fa-arrow-right ml-1"></i>
-                            </button>
+                            <div class="font-bold text-slate-700 text-sm">${item.student.name} (${item.student.id})</div>
+                            <i class="fas fa-arrow-right text-xs text-indigo-400"></i>
                         </div>
                     `).join('');
                 }
@@ -5463,8 +5419,6 @@
 
             // 綁定下拉選單事件
             document.getElementById('inst-version-select').onchange = updateContent;
-            
-            // 初始化顯示 (最新版)
             updateContent();
         }
 
