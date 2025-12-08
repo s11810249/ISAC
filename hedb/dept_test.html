@@ -5056,14 +5056,15 @@
 
         // 1. 自動收集機構資訊 (支援同名多版本比對)
         function collectInstitutionData(formData) {
-            // ★ 設定：機構資訊的分類 ID (需與 JSON 設定檔一致)
             const INST_CATEGORY = 'internship_institution_info';
-            
             let targetFields = [];
             let nameFieldId = 'internship_institution_name'; // 預設 Key
             
-            if (currentYearConfig && currentYearConfig.fields) {
-                const instFields = currentYearConfig.fields.filter(f => f.category === INST_CATEGORY);
+            const allConfigFields = currentYearConfig.fields || [];
+            
+            if (allConfigFields.length > 0) {
+                const instFields = allConfigFields.filter(f => f.category === INST_CATEGORY);
+                
                 if (instFields.length > 0) {
                     targetFields = instFields.map(f => f.id);
                     const foundNameField = instFields.find(f => f.id.includes('name') || f.label.includes('名稱'));
@@ -5073,34 +5074,64 @@
 
             if (targetFields.length === 0) return;
 
+            // ★★★ 核心修正 A：前置檢查必填項目是否完成 ★★★
+            let allRequiredFilled = true;
+            for (const f of allConfigFields) {
+                if (f.category !== INST_CATEGORY || !f.required) continue;
+
+                // 檢查 Visibility Logic (Option Logic 通常會導致 input disabled，Visibility 是最嚴謹的檢查)
+                let isVisibleAndUnlocked = true;
+                if (f.visibilityRule) {
+                    const depVal = formData[f.visibilityRule.dep];
+                    const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
+                    
+                    if (hasDepValue) {
+                        const shouldShow = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
+                        if (!shouldShow) isVisibleAndUnlocked = false; 
+                    } else {
+                        isVisibleAndUnlocked = false;
+                    }
+                }
+
+                if (isVisibleAndUnlocked) {
+                    const val = formData[f.id];
+                    if (val === undefined || val === null || String(val).trim() === "") {
+                        allRequiredFilled = false;
+                        break; 
+                    }
+                }
+            }
+
+            if (!allRequiredFilled) {
+                // 如果必填不完整，不儲存該版本
+                return; 
+            }
+            // ★★★ 核心修正 A 結束 ★★★
+
             const name = formData[nameFieldId];
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
+            // 3. 準備資料物件 (與之前邏輯相同，用於指紋比對)
             const newEntry = {};
-            let hasContent = false;
-            
             targetFields.forEach(fieldId => {
                 let val = formData[fieldId];
-                // ★ 資料正規化：轉字串並去空白，確保比對準確
                 if (val !== undefined && val !== null) {
                     val = String(val).trim();
                 } else {
                     val = "";
                 }
-                
                 if (val !== "") {
                     newEntry[fieldId] = val;
-                    hasContent = true;
                 }
             });
 
+            // 4. 檢查與儲存
             if (!institutionLibrary[safeName]) {
                 institutionLibrary[safeName] = [];
             }
             const existingEntries = institutionLibrary[safeName];
 
-            // ★ 產生指紋 (Key 排序)
             const generateFingerprint = (entry) => {
                 const keys = Object.keys(entry).filter(k => !k.startsWith('_')).sort();
                 const cleanObj = {};
@@ -5111,12 +5142,10 @@
             const newFingerprint = generateFingerprint(newEntry);
             const isDuplicate = existingEntries.some(entry => generateFingerprint(entry) === newFingerprint);
 
-            // 若無重複才新增
             if (!isDuplicate) {
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
-                // 只有啟用暫存才寫入
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
@@ -5319,8 +5348,7 @@
                             <select id="inst-version-select" class="version-select">
                                 ${entries.map((entry, idx) => {
                                     const date = new Date(entry._last_updated).toLocaleDateString();
-                                    // ★ 修正：優先讀取正確的地址欄位 ID
-                                    const info = entry.internship_address || entry.internship_address || entry.internship_city || '無詳細地址';
+                                    const info = entry.internship_address || entry.internship_institution_address || entry.internship_city || '無詳細地址';
                                     const tax = entry.company_tax_id ? `(統編:${entry.company_tax_id})` : '';
                                     const isSelected = idx === entries.length - 1 ? 'selected' : '';
                                     return `<option value="${idx}" ${isSelected}>版本 ${idx + 1} - ${info} ${tax} [${date}]</option>`;
@@ -5352,17 +5380,14 @@
                 const countBadge = document.getElementById('inst-student-count');
 
                 // A. 渲染版本詳情
-                // 排除系統欄位
                 const displayFields = Object.keys(entry).filter(k => !k.startsWith('_') && k !== 'internship_institution_name');
-                // 為了美觀，可以定義欄位名稱對照 (可選)
                 const labelMap = {
                     'company_tax_id': '統一編號',
-                    'internship_address': '地址', 
+                    'internship_address': '地址',
                     'internship_city': '縣市',
                     'internship_country': '國別',
                     'industry_category': '行業別',
-                    'internship_location': '實習場所',
-                    'internship_institution_contact': '聯絡人'
+                    'internship_location': '實習場所'
                 };
 
                 let fieldsHtml = displayFields.map(key => {
@@ -5371,7 +5396,6 @@
                         const f = currentYearConfig.fields.find(field => field.id === key);
                         if(f) finalLabel = f.label;
                     }
-                    
                     return `
                         <div class="flex flex-col pb-2 border-b border-slate-50 last:border-0 last:pb-0">
                             <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">${finalLabel}</span>
@@ -5380,41 +5404,63 @@
                     `;
                 }).join('');
                 
-                if(!fieldsHtml) fieldsHtml = '<div class="text-slate-400 text-sm italic">此版本僅有名稱，無其他詳細資料</div>';
-            
-                contentDiv.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fieldsHtml}</div>`;
-                
+                contentDiv.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fieldsHtml || '無詳細資料'}</div>`;
+
                 // B. 渲染學生列表 (過濾邏輯)
-                // 邏輯：找出填報單中，機構名稱相同，且「所有機構欄位內容」都與目前選中的 version 一致的學生
                 const matchedStudents = [];
                 const { _last_updated, ...entryData } = entry;
-                const entryFingerprint = JSON.stringify(entryData, Object.keys(entryData).sort());
+                
+                // ★ 為了避免重複，這裡必須使用與 collectInstitutionData 相同的指紋產生邏輯
+                const generateFingerprint = (e) => {
+                    const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
+                    const cleanObj = {};
+                    keys.forEach(k => cleanObj[k] = e[k]);
+                    return JSON.stringify(cleanObj);
+                };
+                const entryFingerprint = generateFingerprint(entryData);
 
                 Object.values(groupedStudents).forEach(student => {
                     student.applications.forEach(app => {
                         if (app.formData['internship_institution_name'] === name) {
                             const appInstData = {};
+                            // 只比對 entry 裡面有的欄位
                             Object.keys(entryData).forEach(key => {
                                 const val = app.formData[key];
                                 if(val) appInstData[key] = String(val).trim();
                             });
-                            const appFingerprint = JSON.stringify(appInstData, Object.keys(appInstData).sort());
+                            
+                            const appFingerprint = generateFingerprint(appInstData);
+                            
                             if (appFingerprint === entryFingerprint) {
-                                matchedStudents.push({ student: student, appId: app.id });
+                                // ★★★ 取得實習紀錄索引 (X) ★★★
+                                const appIndex = student.applications.findIndex(a => a.id === app.id);
+                                const appLabel = appIndex !== -1 ? `實習紀錄 ${appIndex + 1}` : '未知紀錄';
+
+                                matchedStudents.push({ 
+                                    student: student, 
+                                    appId: app.id,
+                                    appLabel: appLabel
+                                });
                             }
                         }
                     });
                 });
 
                 countBadge.innerText = matchedStudents.length;
+
                 if (matchedStudents.length === 0) {
                     studentListDiv.innerHTML = `<div class="p-8 text-center bg-slate-50 text-slate-500">沒有學生完全符合此版本資料</div>`;
                 } else {
                     studentListDiv.innerHTML = matchedStudents.map(item => `
                         <div class="flex items-center justify-between p-3 hover:bg-indigo-50/50 transition cursor-pointer" 
                              onclick="jumpToStudent('${item.student.id}', '${item.appId}')">
-                            <div class="font-bold text-slate-700 text-sm">${item.student.name} (${item.student.id})</div>
-                            <i class="fas fa-arrow-right text-xs text-indigo-400"></i>
+                            <div class="flex flex-col items-start">
+                                <div class="font-bold text-slate-700 text-sm">${item.student.name} (${item.student.id})</div>
+                                <div class="text-xs text-indigo-600 font-bold mt-0.5">${item.appLabel}</div>
+                            </div>
+                            <button class="text-xs font-bold text-indigo-600 bg-white border border-indigo-200 px-3 py-1 rounded-full hover:bg-indigo-600 hover:text-white transition">
+                                查看 <i class="fas fa-arrow-right ml-1"></i>
+                            </button>
                         </div>
                     `).join('');
                 }
