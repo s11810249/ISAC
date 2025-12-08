@@ -5139,7 +5139,7 @@
             names.forEach(name => {
                 const entries = institutionLibrary[name];
                 entries.forEach((entry, index) => {
-                    const subTitle = entry.internship_institution_address || entry.internship_institution_city || `版本 ${index + 1}`;
+                    const subTitle = entry.internship_address || entry.internship_institution_city || `版本 ${index + 1}`;
                     const entryJson = encodeURIComponent(JSON.stringify(entry));
 
                     listHtml += `
@@ -5320,7 +5320,7 @@
                                 ${entries.map((entry, idx) => {
                                     const date = new Date(entry._last_updated).toLocaleDateString();
                                     // ★ 修正：優先讀取正確的地址欄位 ID
-                                    const info = entry.internship_address || entry.internship_institution_address || entry.internship_city || '無詳細地址';
+                                    const info = entry.internship_address || entry.internship_address || entry.internship_city || '無詳細地址';
                                     const tax = entry.company_tax_id ? `(統編:${entry.company_tax_id})` : '';
                                     const isSelected = idx === entries.length - 1 ? 'selected' : '';
                                     return `<option value="${idx}" ${isSelected}>版本 ${idx + 1} - ${info} ${tax} [${date}]</option>`;
