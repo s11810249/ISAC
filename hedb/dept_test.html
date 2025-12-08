@@ -5351,15 +5351,14 @@
         async function applyInstitutionVersion(name, index) {
             const entries = institutionLibrary[name];
             
-            // 換算索引 (因為下拉選單是反向顯示的)
-            const versionIndex = entries.length - 1 - index; 
-
-            if (!entries || versionIndex < 0 || versionIndex >= entries.length) {
+            // ★ 修正 1：直接使用傳入的 index，不再重複換算
+            // 前端 onclick 事件已經算好正確的原始索引了
+            if (!entries || index < 0 || index >= entries.length) {
                 showToast('error', '機構版本資料錯誤或找不到');
                 return;
             }
 
-            const versionData = entries[versionIndex];
+            const versionData = entries[index];
             const currentApp = getCurrentApplication();
 
             if (!currentApp) {
@@ -5369,8 +5368,7 @@
             
             const formId = currentApp.id;
 
-            // 詢問使用者
-            const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${versionIndex + 1} 資料套用到目前的實習紀錄嗎？這將會覆蓋現有的機構相關欄位。`);
+            const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${index + 1} 資料套用到目前的實習紀錄嗎？這將會覆蓋現有的機構相關欄位。`);
             
             if (yes) {
                 let changesCount = 0;
@@ -5379,32 +5377,52 @@
                 Object.keys(versionData).forEach(fieldId => {
                     if (fieldId.startsWith('_')) return; 
 
-                    const newValue = versionData[fieldId];
+                    let newValue = versionData[fieldId];
                     
-                    // 優先查找使用 class 的元素，確保找到可視輸入框
+                    // ★ 修正 2：檢查是否為 ROC 日期欄位，若是則需轉換格式
+                    // 必須從 config 找定義，因為 versionData 裡存的是西元字串 (YYYY-MM-DD)
+                    // 但 UI 輸入框期望的是 ROC 字串 (yyy/mm/dd)
+                    if (currentYearConfig && currentYearConfig.fields) {
+                        const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
+                        if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC') {
+                            if (newValue && newValue.includes('-')) {
+                                const p = newValue.split('-'); // 2025-01-01
+                                if (p.length === 3) {
+                                    const rocY = parseInt(p[0]) - 1911;
+                                    newValue = `${rocY}/${p[1]}/${p[2]}`; // 轉為 114/01/01
+                                }
+                            }
+                        }
+                    }
+
+                    // 優先查找使用 class 的元素 (可視輸入框)
                     let inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
-                    
                     if (!inputElement) {
                         inputElement = document.getElementById(`input-${formId}-${fieldId}`);
                     }
                     
                     if (inputElement) {
-                        if (inputElement.value !== newValue) {
-                            inputElement.value = newValue;
-                            // 觸發 change 事件以更新資料與連動邏輯
-                            inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-                            changesCount++;
+                        // 強制更新值並觸發事件
+                        // 即使值看起來一樣，為了確保格式正確(如日期)，還是強制寫入一次
+                        inputElement.value = newValue;
+                        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
+                        
+                        // 對於 textarea 等元素，觸發 input 事件以調整高度
+                        if(inputElement.tagName === 'TEXTAREA') {
+                            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
                         }
+                        
+                        changesCount++;
                     }
                 });
 
-                // 重新評估所有邏輯
+                // 重新收集與評估邏輯
                 if (typeof collectInstitutionData === 'function') {
                     collectInstitutionData(currentApp.formData);
                 }
                 evaluateLogic(currentApp);
 
-                // 關閉視窗
+                // 關閉 Modal
                 const modal = document.getElementById('inst-list-modal');
                 if(modal) modal.remove();
                 
@@ -5416,7 +5434,7 @@
                     saveToLocal();
                 }
 
-                showToast('success', `已成功套用機構版本 ${versionIndex + 1}，共更新 ${changesCount} 個欄位！`);
+                showToast('success', `已成功套用機構版本 ${index + 1}，更新完成！`);
             }
         }
         
