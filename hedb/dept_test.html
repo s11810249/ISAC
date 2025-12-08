@@ -818,6 +818,16 @@
             background-color: #dbeafe;
             color: #1e40af;
         }
+
+        /* 隱藏 Chrome/Edge 瀏覽器 datalist 的倒三角形圖示 */
+        input::-webkit-calendar-picker-indicator {
+            display: none !important;
+        }
+        
+        /* 確保選取時的藍色外框不會被裁切 */
+        .inst-child-container {
+            overflow: visible !important;
+        }
         /* --- style結尾 --- */
     </style> 
 </head>
@@ -5269,7 +5279,7 @@
                 const paddingLeft = level * 1.5 + 0.5;
                 
                 const wrapper = document.createElement('div');
-                wrapper.className = 'mb-0.5 select-none relative'; // relative 確保 z-index 生效
+                wrapper.className = 'mb-0.5 select-none relative'; 
 
                 const bgClass = level === 0 ? 'hover:bg-slate-50' : 'bg-slate-50 hover:bg-indigo-50/50';
                 
@@ -5307,7 +5317,8 @@
                 let childContainer = null;
                 if (hasChildren) {
                     childContainer = document.createElement('div');
-                    childContainer.className = 'hidden overflow-hidden transition-all duration-300 ease-in-out border-l border-slate-200 ml-4 pl-1'; 
+                    // ★ 修正：移除 overflow-hidden，確保外框不被切掉
+                    childContainer.className = 'hidden transition-all duration-300 ease-in-out border-l border-slate-200 ml-4 pl-1 inst-child-container'; 
                     children.forEach(child => {
                         childContainer.appendChild(renderNode(child, level + 1));
                     });
@@ -5318,15 +5329,15 @@
                     e.stopPropagation();
                     showInstitutionDetail(name);
                     
-                    // 重置所有項目的選取狀態與層級
+                    // 重置選取狀態
                     document.querySelectorAll('.inst-list-item').forEach(i => {
-                        i.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'text-indigo-700', 'z-10', 'relative');
+                        i.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'text-indigo-700', 'z-20', 'relative');
                         const title = i.querySelector('.inst-list-item-title');
                         if(title) title.classList.remove('text-indigo-800');
                     });
                     
-                    // 設定當前項目為選取狀態，並提升層級
-                    el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-10', 'relative');
+                    // 設定選取狀態 (加入 z-20 確保浮在上方)
+                    el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
                     el.querySelector('.inst-list-item-title').classList.add('text-indigo-800');
 
                     if (childContainer) {
@@ -5710,18 +5721,17 @@
             const panel = document.getElementById('inst-detail-panel');
             const entries = institutionLibrary[name] || [];
             
-            // Highlight 左側選單 (保持同步)
+            // Highlight 同步邏輯 (保持不變)
             document.querySelectorAll('.inst-list-item').forEach(el => {
                 const title = el.querySelector('.inst-list-item-title');
                 const text = title ? title.innerText : el.innerText;
-                
                 if(text.trim() === name) {
                     el.classList.remove('border-transparent', 'hover:border-slate-200');
-                    el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-10', 'relative');
+                    el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
                     if(title) title.classList.add('text-indigo-800');
                 } else {
                     el.classList.add('border-transparent', 'hover:border-slate-200');
-                    el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-10', 'relative');
+                    el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
                     if(title) title.classList.remove('text-indigo-800');
                 }
             });
@@ -5745,9 +5755,9 @@
                             </button>
                         </div>
                         
-                        <div class="flex items-center gap-3">
-                            <div class="version-select-wrapper flex-grow" style="height: 42px;">
-                                <select id="inst-version-select" class="version-select w-full h-full border border-slate-300 rounded-lg px-3 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        <div class="flex items-stretch gap-3 h-[42px]">
+                            <div class="version-select-wrapper flex-grow relative h-full">
+                                <select id="inst-version-select" class="version-select w-full h-full border border-slate-300 rounded-lg px-4 pl-4 pr-10 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-f1f5f9 appearance-none leading-[40px] py-0">
                                     ${entries.length === 0 ? '<option>無資料 (純架構)</option>' : ''}
                                     ${entries.map((entry, idx) => {
                                         const info = entry.internship_address || entry.internship_internship_address || '無詳細地址';
@@ -5756,21 +5766,19 @@
                                         return `<option value="${entries.length - 1 - idx}" ${isSelected}>版本 ${entries.length - idx} - ${info} ${tax}</option>`;
                                     }).reverse().join('')} 
                                 </select>
-                                <i class="fas fa-chevron-down version-select-icon"></i>
+                                <i class="fas fa-chevron-down version-select-icon absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                             </div>
                             
-                            <button id="del-inst-version-btn" class="flex-shrink-0 w-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm" 
-                                style="height: 42px;" title="刪除此版本">
+                            <button id="del-inst-version-btn" class="flex-shrink-0 w-12 h-full flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm" title="刪除此版本">
                                 <i class="fas fa-trash-alt"></i>
                             </button>
 
                             <button id="apply-inst-version-btn" 
-                                class="flex-shrink-0 bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-4 rounded-lg transition shadow-md text-sm whitespace-nowrap flex items-center"
-                                style="height: 42px;">
+                                class="flex-shrink-0 h-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 rounded-lg transition shadow-md text-sm whitespace-nowrap flex items-center">
                                 <i class="fas fa-download mr-2"></i> 套用此版本
                             </button>
                         </div>
-                    </div>
+                        </div>
                     <div class="flex-grow overflow-y-auto custom-scroll px-8 pb-8 space-y-6">
                         <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3"></div>
                         <div>
@@ -5797,13 +5805,10 @@
                 
                 if (entries.length === 0) {
                     document.getElementById('inst-version-content').innerHTML = '<div class="text-center text-slate-400 py-4">此機構目前僅作為分類架構使用，尚無詳細資料版本。</div>';
-                    
                     const applyBtn = document.getElementById('apply-inst-version-btn');
                     if(applyBtn) { applyBtn.disabled = true; applyBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
-                    
                     const delBtn = document.getElementById('del-inst-version-btn');
                     if(delBtn) { delBtn.disabled = true; delBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
-                    
                     return;
                 }
 
@@ -5867,9 +5872,8 @@
                 if(delBtn) {
                     delBtn.dataset.usageCount = matchedStudents.length;
                     delBtn.className = matchedStudents.length > 0 
-                        ? "flex-shrink-0 w-10 flex items-center justify-center bg-slate-100 text-slate-300 border border-slate-200 rounded-lg cursor-not-allowed"
-                        : "flex-shrink-0 w-10 flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm cursor-pointer";
-                    delBtn.style.height = "42px";
+                        ? "flex-shrink-0 w-12 h-full flex items-center justify-center bg-slate-100 text-slate-300 border border-slate-200 rounded-lg cursor-not-allowed"
+                        : "flex-shrink-0 w-12 h-full flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm cursor-pointer";
                     delBtn.title = matchedStudents.length > 0 ? "無法刪除：有學生正在使用此版本" : "刪除此版本";
                 }
 
