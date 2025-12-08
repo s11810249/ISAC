@@ -5058,97 +5058,129 @@
             const INST_CATEGORY = 'internship_institution_info';
             const allConfigFields = currentYearConfig.fields || [];
             
-            let targetFields = [];
-            let nameFieldId = 'internship_institution_name'; // 預設 Key
-            
-            // 1. 動態取得目標欄位列表
+            // 1. 取得該分類下的所有欄位定義
+            let instFields = [];
             if (allConfigFields.length > 0) {
-                const instFields = allConfigFields.filter(f => f.category === INST_CATEGORY);
+                instFields = allConfigFields.filter(f => f.category === INST_CATEGORY);
+            }
+
+            if (instFields.length === 0) return;
+
+            // 2. 尋找機構名稱欄位 Key
+            let nameFieldId = 'internship_institution_name';
+            const foundNameField = instFields.find(f => f.id === 'internship_institution_name' || f.id.includes('name'));
+            if (foundNameField) nameFieldId = foundNameField.id;
+
+            // 3. ★★★ 核心檢查：確認所有「可見且必填」的欄位都已填寫 ★★★
+            let isComplete = true;
+            
+            for (const f of instFields) {
+                // 如果欄位不是必填，就不用檢查是否有值
+                if (!f.required) continue;
+
+                // 檢查 Visibility (欄位顯示邏輯)
+                // 只有當欄位「顯示中」時，我們才檢查它有沒有填
+                let isVisible = true;
+                if (f.visibilityRule) {
+                    const { dep, action, val: ruleValue } = f.visibilityRule;
+                    const depVal = formData[dep];
+                    
+                    // 寬鬆比對 (轉字串後 trim) 以避免型別問題導致的誤判
+                    const depValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
+                    const ruleValStr = (ruleValue !== undefined && ruleValue !== null) ? String(ruleValue).trim() : "";
+                    
+                    const ruleMet = (depValStr === ruleValStr); 
+
+                    if (action === 'show') {
+                        isVisible = ruleMet;
+                    } else if (action === 'hide') {
+                        isVisible = !ruleMet;
+                    }
+                }
                 
-                if (instFields.length > 0) {
-                    targetFields = instFields.map(f => f.id);
-                    const foundNameField = instFields.find(f => f.id === 'internship_institution_name' || f.id.includes('name'));
-                    if (foundNameField) nameFieldId = foundNameField.id;
+                // 如果欄位是可見的，檢查是否有值
+                if (isVisible) {
+                    const val = formData[f.id];
+                    if (val === undefined || val === null || String(val).trim() === "") {
+                        isComplete = false;
+                        // console.log(`欄位未填: ${f.label} (${f.id})`); // 除錯用
+                        break; // 只要有一格沒填，就視為不完整，不存檔
+                    }
                 }
             }
 
-            if (targetFields.length === 0) return;
+            if (!isComplete) return; // 資料不完整，直接退出，不執行比對與存檔
 
-            // ★★★ 核心修正：移除嚴格的 allRequiredFilled 檢查，改為檢查名稱與數據存在 ★★★
+            // 4. 取得機構名稱 (作為 Key)
             const name = formData[nameFieldId];
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 3. 準備資料物件
+            // 5. 準備要儲存的資料物件
             const newEntry = {};
-            let hasOtherData = false;
-            targetFields.forEach(fieldId => {
-                let val = formData[fieldId];
+            instFields.forEach(f => {
+                let val = formData[f.id];
                 if (val !== undefined && val !== null) {
                     val = String(val).trim();
                 } else {
                     val = "";
                 }
-                
+                // 只儲存有值的欄位，或是空字串 (視需求而定，這裡存完整狀態)
                 if (val !== "") { 
-                    newEntry[fieldId] = val;
-                    // 排除名稱欄位本身，只要有其他機構資訊就算有資料
-                    if (fieldId !== nameFieldId && !fieldId.startsWith('_')) {
-                        hasOtherData = true; 
-                    }
+                    newEntry[f.id] = val;
                 }
             });
-            
-            // 如果只有名稱，沒有其他任何機構資訊，則不儲存
-            if (!hasOtherData) return;
 
-
-            // 4. 檢查與儲存
+            // 6. 檢查與儲存
             if (!institutionLibrary[safeName]) {
                 institutionLibrary[safeName] = [];
             }
             const existingEntries = institutionLibrary[safeName];
 
+            // 指紋產生器：將物件轉為字串以便比對內容
             const generateFingerprint = (entry) => {
+                // 排除系統欄位 (_ 開頭) 後排序鍵值
                 const keys = Object.keys(entry).filter(k => !k.startsWith('_')).sort();
                 const cleanObj = {};
                 keys.forEach(k => cleanObj[k] = entry[k]);
                 return JSON.stringify(cleanObj);
             };
-            
-            // 過濾掉 _last_updated 再做指紋比對
-            const { _last_updated, ...entryData } = newEntry; 
-            const newFingerprint = generateFingerprint(entryData);
 
-            // 檢查是否重複 (使用過濾後的 entryData)
+            const newFingerprint = generateFingerprint(newEntry);
+            
+            // 比對現有版本中，是否已經有完全一樣的資料
             const isDuplicate = existingEntries.some(entry => {
-                const { _last_updated, ...existingEntryData } = entry;
-                return generateFingerprint(existingEntryData) === newFingerprint;
+                return generateFingerprint(entry) === newFingerprint;
             });
 
-
+            // 7. 如果沒有重複 (代表是新版本或新機構)，則儲存
             if (!isDuplicate) {
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
-                // ★ 新增：存檔成功給予提示
-                showToast('success', `機構「${safeName}」版本已更新`);
+                // 顯示成功訊息 (提示使用者產生了新版本)
+                const verCount = existingEntries.length;
+                if (verCount > 1) {
+                    showToast('success', `機構「${safeName}」資料變更，已建立為版本 ${verCount}`);
+                } else {
+                    showToast('success', `已新增機構「${safeName}」至資料庫`);
+                }
 
-                // 儲存成功後，強制更新列表 (如果視窗是開著的)
+                // 介面即時刷新邏輯
                 if (typeof renderInstitutionListItems === 'function' && document.getElementById('inst-list-container')) {
                     const allNames = Object.keys(institutionLibrary).sort();
                     renderInstitutionListItems(allNames);
                 }
                 
-                // ★ 關鍵：如果詳情面板正好開著這個機構，重新渲染以顯示新版本
+                // 如果詳情面板正好開著，刷新它
                 const detailHeader = document.getElementById('inst-detail-title'); 
                 if (detailHeader && detailHeader.innerText.trim().startsWith(safeName)) {
                     if (typeof showInstitutionDetail === 'function') {
-                        // 重新顯示詳情，這樣下拉選單會更新
                         showInstitutionDetail(safeName); 
                     }
                 }
                 
+                // 寫入 LocalStorage
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
