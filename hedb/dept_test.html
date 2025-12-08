@@ -1398,9 +1398,10 @@
         
         let allRawData = [];         
         let groupedStudents = {};    
-        let currentStudentId = null; 
+        let currentStudentId = null;
+        let currentActiveAppId = null; // ★★★ 新增這一行：用來記錄目前選中的填報單 ID
         let activeYear = "";         
-        let hasUnsavedChanges = false; // Flag for unsaved changes
+        let hasUnsavedChanges = false;
 
         // Change Log Store
         let changeLogs = []; // { time, field, oldVal, newVal, student, app }
@@ -2423,7 +2424,8 @@
         
         function selectStudent(sid) {
             currentStudentId = sid;
-            renderStudentList(); 
+            currentActiveAppId = null; // ★★★ 新增：切換學生時，先重置選中的填報單
+            renderStudentList();
             
             const student = groupedStudents[sid];
             document.getElementById('form-empty-state').classList.add('hidden');
@@ -2466,6 +2468,7 @@
 
             if (appCount > 0) {
                 dynamicArea.innerHTML = '';
+                // switchTab 會自動設定 currentActiveAppId
                 switchTab(student.applications[0].id);
             } else {
                 document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active')); 
