@@ -5057,11 +5057,12 @@
         // 1. 自動收集機構資訊 (支援同名多版本比對)
         function collectInstitutionData(formData) {
             const INST_CATEGORY = 'internship_institution_info';
+            const allConfigFields = currentYearConfig.fields || [];
+            
             let targetFields = [];
             let nameFieldId = 'internship_institution_name'; // 預設 Key
             
-            const allConfigFields = currentYearConfig.fields || [];
-            
+            // 1. 動態取得目標欄位列表
             if (allConfigFields.length > 0) {
                 const instFields = allConfigFields.filter(f => f.category === INST_CATEGORY);
                 
@@ -5074,54 +5075,41 @@
 
             if (targetFields.length === 0) return;
 
-            // ★★★ 核心修正 A：前置檢查必填項目是否完成 (修復邏輯) ★★★
+            // ★★★ 核心修正 A：嚴格檢查所有【目前可見且必填】的欄位是否完成 ★★★
             let allRequiredFilled = true;
             for (const f of allConfigFields) {
-                // 只檢查機構類別且被標記為必填的欄位
                 if (f.category !== INST_CATEGORY || !f.required) continue;
 
                 // 1. 檢查 Visibility Logic: 判斷該必填欄位在目前的 formData 狀態下是否應該是「可見」的
-                let isVisibleAndRequired = true; // 預設為可見且必填 (除非規則判定它該被隱藏)
-
+                let isFieldVisible = true;
                 if (f.visibilityRule) {
                     const { dep, action, val: ruleValue } = f.visibilityRule;
                     const depVal = formData[dep];
-                    // 確保依賴欄位的值為字串，並去除空白，方便比對
                     const depValString = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
                     
-                    // 判斷 Rule 是否被觸發 (依賴欄位的值是否等於規則值)
                     const ruleMet = (depValString === ruleValue); 
 
-                    let shouldShow = false;
-                    
+                    // 這段邏輯必須與 evaluateLogic 完全一致
                     if (action === 'show') {
-                        // Rule: show if depVal == ruleValue (如果規則觸發，則應該顯示)
-                        shouldShow = ruleMet;
+                        isFieldVisible = ruleMet;
                     } else if (action === 'hide') {
-                        // Rule: hide if depVal == ruleValue (如果規則觸發，則應該隱藏，所以 shouldShow = false)
-                        shouldShow = !ruleMet;
-                    }
-                    
-                    // 如果根據 Rule 判斷不該顯示，則這個欄位目前不是「必填」狀態，跳過檢查
-                    if (!shouldShow) {
-                        isVisibleAndRequired = false;
+                        isFieldVisible = !ruleMet;
                     }
                 }
                 
-                // 2. 如果欄位是可見且必填 (isVisibleAndRequired == true)，則檢查是否有填寫
-                if (isVisibleAndRequired) {
+                // 2. 如果欄位可見，則必須檢查是否有值
+                if (isFieldVisible) {
                     const val = formData[f.id];
                     if (val === undefined || val === null || String(val).trim() === "") {
                         allRequiredFilled = false;
-                        // 為了除錯，這裡可以取消註解：
-                        // console.log(`Missing required field: ${f.id} - ${f.label}`);
+                        // console.log(`Missing required field: ${f.id} - ${f.label}`); // 可取消註解用於除錯
                         break; 
                     }
                 }
             }
 
             if (!allRequiredFilled) {
-                // 如果必填不完整，不儲存該版本
+                // console.log('Required fields incomplete, skipping save.');
                 return; 
             }
             // ★★★ 核心修正 A 結束 ★★★
@@ -5130,7 +5118,7 @@
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 3. 準備資料物件 (與之前邏輯相同，只保留非空值)
+            // 3. 準備資料物件 (與之前邏輯相同，用於指紋比對)
             const newEntry = {};
             targetFields.forEach(fieldId => {
                 let val = formData[fieldId];
@@ -5164,9 +5152,13 @@
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
-                // ★★★ 關鍵修正 B：儲存成功後，強制更新機構列表 ★★★
-                renderInstitutionList(); 
-
+                // 儲存成功後，強制更新列表 (如果視窗是開著的)
+                if (typeof renderInstitutionListItems === 'function') {
+                    // 如果列表模式的搜尋視窗開著，刷新左側列表
+                    const names = Object.keys(institutionLibrary).sort();
+                    renderInstitutionListItems(names);
+                }
+                
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
@@ -5444,23 +5436,21 @@
                     student.applications.forEach(app => {
                         if (app.formData['internship_institution_name'] === name) {
                             const appInstData = {};
-                            // 只比對 entry 裡面有的欄位
                             Object.keys(entryData).forEach(key => {
                                 const val = app.formData[key];
                                 if(val) appInstData[key] = String(val).trim();
                             });
-                            
                             const appFingerprint = generateFingerprint(appInstData);
                             
                             if (appFingerprint === entryFingerprint) {
-                                // ★★★ 取得實習紀錄索引 (X) ★★★
+                                // ★★★ 修正點：計算並儲存實習紀錄編號 ★★★
                                 const appIndex = student.applications.findIndex(a => a.id === app.id);
                                 const appLabel = appIndex !== -1 ? `實習紀錄 ${appIndex + 1}` : '未知紀錄';
 
                                 matchedStudents.push({ 
                                     student: student, 
                                     appId: app.id,
-                                    appLabel: appLabel
+                                    appLabel: appLabel // 將標籤傳給渲染器
                                 });
                             }
                         }
