@@ -5253,12 +5253,14 @@
             const student = groupedStudents[currentStudentId];
             if (!student || student.applications.length === 0) return null;
             
-            // 抓取目前 active 的頁籤按鈕
+            // 嚴格檢查：必須有 "active" 的頁籤按鈕，才視為有選中
             const activeBtn = document.querySelector('.tab-btn.active');
             
-            // 如果有選中頁籤，就用頁籤的 ID；否則（例如剛載入）預設抓第一筆
-            let targetAppId = activeBtn ? activeBtn.dataset.tab : student.applications[0].id;
+            if (!activeBtn) {
+                return null; // 沒選中頁籤，回傳 null
+            }
             
+            const targetAppId = activeBtn.dataset.tab;
             return student.applications.find(a => a.id === targetAppId);
         }
 
@@ -5266,96 +5268,100 @@
         async function applyInstitutionVersion(name, index) {
             const entries = institutionLibrary[name];
             
-            // 防呆檢查
+            // 檢查索引 (前端傳來的 index 已經是換算好的原始索引，直接用)
             if (!entries || index < 0 || index >= entries.length) {
                 showToast('error', '機構版本資料錯誤或找不到');
                 return;
             }
 
-            // 1. 取得來源資料 (機構版本)
             const versionData = entries[index];
-            
-            // 2. 取得目標資料 (當下打開的填報單)
             const currentApp = getCurrentApplication();
 
+            // 修正 1：如果沒打開頁籤，這裡會收到 null，並阻擋執行
             if (!currentApp) {
-                showToast('error', '請先選擇或新增一個填報單，才能套用資料');
+                showToast('error', '請先點擊上方的「實習紀錄」頁籤，打開您要填寫的表單');
                 return;
             }
             
             const formId = currentApp.id;
 
-            // 3. 確認提示
             const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${index + 1} 資料套用到目前的實習紀錄嗎？\n這將會覆蓋現有的機構相關欄位。`);
             
             if (yes) {
                 let changesCount = 0;
                 
-                // 4. 遍歷版本資料，逐一更新欄位
+                // --- A. 更新底層資料 (Source of Truth) ---
                 Object.keys(versionData).forEach(fieldId => {
                     if (fieldId.startsWith('_')) return; // 跳過系統欄位
 
                     let newValue = versionData[fieldId];
                     
-                    // ★ 特別處理：ROC 日期轉換 (如果資料庫存的是 YYYY-MM-DD，轉回 yyy/mm/dd)
-                    if (currentYearConfig && currentYearConfig.fields) {
-                        const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
-                        if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC') {
-                            if (newValue && newValue.includes('-')) {
-                                const p = newValue.split('-'); // 2025-01-01
-                                if (p.length === 3) {
-                                    const rocY = parseInt(p[0]) - 1911;
-                                    newValue = `${rocY}/${p[1]}/${p[2]}`; // 轉為 114/01/01
-                                }
-                            }
-                        }
+                    // 特別處理：ROC 日期轉換 (資料庫存 YYYY-MM-DD -> 轉回 yyy/mm/dd 給 UI 顯示用)
+                    // 但 formData 本身通常存 ROC 或是西元取決於您的實作，這裡假設 formData 存原始值
+                    // 為了保險，我們先更新 formData 為原始值
+                    
+                    if (currentApp.formData[fieldId] !== newValue) {
+                        currentApp.formData[fieldId] = newValue;
+                        changesCount++;
                     }
 
-                    // ★ 關鍵：優先查找【可視輸入框】 (Input Element)
-                    // 我們使用 renderFields 產生的 class (.app-input-{appId}-{fieldId}) 來精確定位
-                    let inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
+                    // --- B. 更新畫面顯示 (View) ---
+                    // 嘗試找到輸入框
+                    let inputElement = document.getElementById(`input-${formId}-${fieldId}`);
                     
-                    // 如果找不到 (有些 hidden 欄位可能沒 class)，嘗試用 ID
+                    // 如果找不到，試試看 app-input class (有些動態生成的元素)
                     if (!inputElement) {
-                        inputElement = document.getElementById(`input-${formId}-${fieldId}`);
+                        inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
                     }
                     
                     if (inputElement) {
-                        // 強制更新值並觸發 change 事件
-                        // (即使值相同也觸發，確保連動邏輯如 visibility 被重新評估)
-                        inputElement.value = newValue;
-                        inputElement.dispatchEvent(new Event('change', { bubbles: true }));
-                        
-                        // 如果是 Textarea，額外觸發 input 以調整高度
-                        if(inputElement.tagName === 'TEXTAREA') {
-                            inputElement.dispatchEvent(new Event('input', { bubbles: true }));
+                        // 如果是 ROC 日期欄位，需要將 YYYY-MM-DD 轉為 ROC 顯示
+                        if (currentYearConfig) {
+                            const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
+                            if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC' && newValue.includes('-')) {
+                                const p = newValue.split('-');
+                                if (p.length === 3) {
+                                    const rocY = parseInt(p[0]) - 1911;
+                                    inputElement.value = `${rocY}/${p[1]}/${p[2]}`;
+                                } else {
+                                    inputElement.value = newValue;
+                                }
+                            } else {
+                                inputElement.value = newValue;
+                            }
+                        } else {
+                            inputElement.value = newValue;
                         }
                         
-                        changesCount++;
+                        // 視覺回饋：閃爍一下背景
+                        inputElement.style.transition = 'background-color 0.3s';
+                        inputElement.style.backgroundColor = '#dcfce7'; // 淺綠色
+                        setTimeout(() => inputElement.style.backgroundColor = '', 500);
                     }
                 });
 
-                // 5. 重新收集與評估邏輯 (確保資料一致性)
-                if (typeof collectInstitutionData === 'function') {
-                    collectInstitutionData(currentApp.formData);
-                }
-                if (typeof evaluateLogic === 'function') {
-                    evaluateLogic(currentApp);
-                }
+                // --- C. 後續處理 ---
+                
+                // 1. 觸發邏輯檢查 (Visibility/Option)
+                evaluateLogic(currentApp);
 
-                // 6. 關閉視窗並儲存
+                // 2. 關閉視窗
                 const modal = document.getElementById('inst-list-modal');
                 if(modal) modal.remove();
                 
-                // 如果在列表模式，重繪 Grid
+                // 3. 如果在列表模式，重繪 Grid
                 if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
                 
-                // 存檔
+                // 4. 強制存檔
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
 
-                showToast('success', `已成功套用機構版本 ${index + 1}，更新完成！`);
+                if (changesCount > 0) {
+                    showToast('success', `已成功套用機構版本 ${index + 1}，更新了 ${changesCount} 個欄位！`);
+                } else {
+                    showToast('info', '資料完全相同，未進行變更');
+                }
             }
         }
         
