@@ -1930,7 +1930,7 @@
 
         // --- Logic: File Import (Using ExcelJS for hidden sheet support) ---
         async function handleFileUpload(event) {
-            // 2. Alert on file overwrite (Using Custom Modal)
+            // 2. Alert on file overwrite
             if(allRawData.length > 0) {
                 const confirmOverwrite = await showConfirm('確認覆蓋？', '確定要匯入新檔案嗎？這將會清除目前的資料與歸戶設定。');
                 if(!confirmOverwrite) {
@@ -1949,27 +1949,25 @@
                     const workbook = new ExcelJS.Workbook();
                     await workbook.xlsx.load(arrayBuffer);
 
-                    // 1. Read Metadata (ID Mapping)
-                    let fieldMap = {}; // Label -> ID
+                    // 1. Read Metadata
+                    let fieldMap = {}; 
                     const metaSheet = workbook.getWorksheet('_System_Metadata');
                     if (metaSheet) {
                         metaSheet.eachRow((row, rowNumber) => {
-                            if (rowNumber > 1) { // Skip header
+                            if (rowNumber > 1) { 
                                 const id = row.getCell(1).value;
                                 const label = row.getCell(2).value;
                                 if (id && label) fieldMap[label] = id;
                             }
                         });
-                        console.log("Loaded Metadata:", fieldMap);
                     }
 
                     // 2. Read Main Data
-                    // Usually first visible sheet
                     let mainSheet = null;
                     workbook.eachSheet((sheet) => {
                         if (!mainSheet && sheet.state === 'visible') mainSheet = sheet;
                     });
-                    if (!mainSheet) mainSheet = workbook.getWorksheet(1); // Fallback
+                    if (!mainSheet) mainSheet = workbook.getWorksheet(1); 
 
                     const jsonData = [];
                     const headers = [];
@@ -1982,7 +1980,6 @@
                             const rowData = {};
                             row.eachCell((cell, colNumber) => {
                                 let header = headers[colNumber];
-                                // Apply ID mapping
                                 if (fieldMap[header]) header = fieldMap[header];
                                 rowData[header] = cell.value;
                             });
@@ -2012,7 +2009,6 @@
                                 });
                             }
                         });
-                        console.log("Restored Apps:", savedApps);
                     }
                     
                     // 4. Read Audit Log
@@ -2029,34 +2025,49 @@
                         });
                     }
 
-                    // 5. Read Institution Library (還原機構庫)
+                    // 5. ★★★ Read Institution Library (還原機構庫) ★★★
                     const libSheet = workbook.getWorksheet('_Institution_Library');
                     if (libSheet) {
                         libSheet.eachRow((row, rowNumber) => {
                             if (rowNumber > 1) {
                                 const name = row.getCell(1).value;
-                                const jsonStr = row.getCell(2).value;
+                                const jsonStr = row.getCell(2).value; // 注意欄位索引要對應 export
+                                
                                 if (name && jsonStr) {
                                     try {
                                         const entry = JSON.parse(jsonStr);
-                                        if (!institutionLibrary[name]) institutionLibrary[name] = [];
                                         
-                                        // 簡單指紋檢查避免重複
-                                        const fp = JSON.stringify(entry);
-                                        const exists = institutionLibrary[name].some(e => JSON.stringify(e) === fp);
-                                        if(!exists) institutionLibrary[name].push(entry);
-                                    } catch(e){}
+                                        if (!institutionLibrary[name]) {
+                                            institutionLibrary[name] = [];
+                                        }
+                                        
+                                        // 指紋檢查 (避免重複)
+                                        const generateFingerprint = (e) => {
+                                            const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
+                                            const clean = {};
+                                            keys.forEach(k => clean[k] = e[k]);
+                                            return JSON.stringify(clean);
+                                        };
+                                        const newFingerprint = generateFingerprint(entry);
+                                        
+                                        const exists = institutionLibrary[name].some(e => generateFingerprint(e) === newFingerprint);
+                                        
+                                        if (!exists) {
+                                            institutionLibrary[name].push(entry);
+                                        }
+                                    } catch (e) { console.error("Lib entry parse error", e); }
                                 }
                             }
                         });
+                        
+                        // 若啟用暫存則同步寫入
                         if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                             localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify(institutionLibrary));
                         }
                     }
-                    
+
                     if (jsonData.length === 0) throw new Error("檔案無內容");
                     
-                    // 關鍵修正 1：使用 await 確保 changeYear 完成後才呼叫 processUploadedData
                     await processUploadedData(jsonData, savedApps);
                     
                     event.target.value = ''; 
@@ -5338,17 +5349,16 @@
                 // 為了美觀，可以定義欄位名稱對照 (可選)
                 const labelMap = {
                     'company_tax_id': '統一編號',
-                    'internship_address': '地址', // 修正 ID
+                    'internship_address': '地址', 
                     'internship_city': '縣市',
                     'internship_country': '國別',
                     'industry_category': '行業別',
-                    'internship_location': '實習場所'
+                    'internship_location': '實習場所',
+                    'internship_institution_contact': '聯絡人'
                 };
 
                 let fieldsHtml = displayFields.map(key => {
-                    const label = labelMap[key] || key; // 如果沒對照表就顯示 ID (或需查詢 config，這裡從簡)
-                    // 嘗試從 globalConfig 找 Label (如果有的話)
-                    let finalLabel = label;
+                    let finalLabel = labelMap[key] || key;
                     if (currentYearConfig && currentYearConfig.fields) {
                         const f = currentYearConfig.fields.find(field => field.id === key);
                         if(f) finalLabel = f.label;
@@ -5362,23 +5372,10 @@
                     `;
                 }).join('');
                 
-                let fieldsHtml = displayFields.map(key => {
-                    let finalLabel = labelMap[key] || key;
-                    // 嘗試從 config 抓取最新 Label
-                    if (currentYearConfig && currentYearConfig.fields) {
-                        const f = currentYearConfig.fields.find(field => field.id === key);
-                        if(f) finalLabel = f.label;
-                    }
-                    return `
-                        <div class="flex flex-col pb-2 border-b border-slate-50 last:border-0 last:pb-0">
-                            <span class="text-xs text-slate-400 font-bold uppercase tracking-wider">${finalLabel}</span>
-                            <span class="text-slate-700 font-medium break-all">${entry[key] || '-'}</span>
-                        </div>
-                    `;
-                }).join('');
+                if(!fieldsHtml) fieldsHtml = '<div class="text-slate-400 text-sm italic">此版本僅有名稱，無其他詳細資料</div>';
+            
+                contentDiv.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fieldsHtml}</div>`;
                 
-                contentDiv.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fieldsHtml || '無詳細資料'}</div>`;
-
                 // B. 渲染學生列表 (過濾邏輯)
                 // 邏輯：找出填報單中，機構名稱相同，且「所有機構欄位內容」都與目前選中的 version 一致的學生
                 const matchedStudents = [];
