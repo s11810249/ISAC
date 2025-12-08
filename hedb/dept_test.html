@@ -2609,6 +2609,7 @@
         }
         
         function switchTab(tabId) {
+            currentActiveAppId = tabId;
             // 更新按鈕狀態
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
@@ -5253,20 +5254,18 @@
         }
 
         function getCurrentApplication() {
+            // 1. 檢查是否已選取學生
             if (!currentStudentId) return null;
-            const student = groupedStudents[currentStudentId];
-            if (!student || student.applications.length === 0) return null;
             
-            // 抓取目前 active 的頁籤
-            const activeBtn = document.querySelector('.tab-btn.active');
-            
-            // 嚴格檢查：如果沒選中頁籤，回傳 null (避免誤套用到錯誤的紀錄)
-            if (!activeBtn) return null;
-            
-            const targetAppId = activeBtn.dataset.tab;
-            return student.applications.find(a => a.id === targetAppId);
-        }
+            // 2. 檢查是否有作用中的填報單 ID (取代原本抓取 .active 按鈕的邏輯)
+            if (!currentActiveAppId) return null;
 
+            const student = groupedStudents[currentStudentId];
+            if (!student || !student.applications) return null;
+            
+            // 3. 直接用 ID 尋找對應的 Application 物件
+            return student.applications.find(a => a.id === currentActiveAppId);
+        }
         // ★★★ 核心函式：套用選定的機構版本資料 (修復版：強制更新畫面與資料) ★★★
         async function applyInstitutionVersion(name, index) {
             const entries = institutionLibrary[name];
