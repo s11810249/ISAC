@@ -5084,64 +5084,48 @@
             const foundNameField = instFields.find(f => f.id === 'internship_institution_name' || f.id.includes('name'));
             if (foundNameField) nameFieldId = foundNameField.id;
 
-            // 3. ★★★ 核心檢查：確認所有「可見且必填」的欄位都已填寫 ★★★
+            // 3. 核心檢查：確認所有「可見且必填」的欄位都已填寫
             let isComplete = true;
             
             for (const f of instFields) {
-                // 如果欄位不是必填，就不用檢查是否有值
                 if (!f.required) continue;
 
-                // 檢查 Visibility (欄位顯示邏輯)
-                // 只有當欄位「顯示中」時，我們才檢查它有沒有填
+                // 檢查 Visibility
                 let isVisible = true;
                 if (f.visibilityRule) {
                     const { dep, action, val: ruleValue } = f.visibilityRule;
                     const depVal = formData[dep];
-                    
-                    // 寬鬆比對 (轉字串後 trim) 以避免型別問題導致的誤判
                     const depValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
                     const ruleValStr = (ruleValue !== undefined && ruleValue !== null) ? String(ruleValue).trim() : "";
-                    
                     const ruleMet = (depValStr === ruleValStr); 
 
-                    if (action === 'show') {
-                        isVisible = ruleMet;
-                    } else if (action === 'hide') {
-                        isVisible = !ruleMet;
-                    }
+                    if (action === 'show') isVisible = ruleMet;
+                    else if (action === 'hide') isVisible = !ruleMet;
                 }
                 
-                // 如果欄位是可見的，檢查是否有值
                 if (isVisible) {
                     const val = formData[f.id];
                     if (val === undefined || val === null || String(val).trim() === "") {
                         isComplete = false;
-                        // console.log(`欄位未填: ${f.label} (${f.id})`); // 除錯用
-                        break; // 只要有一格沒填，就視為不完整，不存檔
+                        break; 
                     }
                 }
             }
 
-            if (!isComplete) return; // 資料不完整，直接退出，不執行比對與存檔
+            if (!isComplete) return; 
 
-            // 4. 取得機構名稱 (作為 Key)
+            // 4. 取得機構名稱
             const name = formData[nameFieldId];
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 5. 準備要儲存的資料物件
+            // 5. 準備要儲存的資料
             const newEntry = {};
             instFields.forEach(f => {
                 let val = formData[f.id];
-                if (val !== undefined && val !== null) {
-                    val = String(val).trim();
-                } else {
-                    val = "";
-                }
-                // 只儲存有值的欄位，或是空字串 (視需求而定，這裡存完整狀態)
-                if (val !== "") { 
-                    newEntry[f.id] = val;
-                }
+                if (val !== undefined && val !== null) val = String(val).trim();
+                else val = "";
+                if (val !== "") newEntry[f.id] = val;
             });
 
             // 6. 檢查與儲存
@@ -5150,9 +5134,7 @@
             }
             const existingEntries = institutionLibrary[safeName];
 
-            // 指紋產生器：將物件轉為字串以便比對內容
             const generateFingerprint = (entry) => {
-                // 排除系統欄位 (_ 開頭) 後排序鍵值
                 const keys = Object.keys(entry).filter(k => !k.startsWith('_')).sort();
                 const cleanObj = {};
                 keys.forEach(k => cleanObj[k] = entry[k]);
@@ -5160,18 +5142,12 @@
             };
 
             const newFingerprint = generateFingerprint(newEntry);
-            
-            // 比對現有版本中，是否已經有完全一樣的資料
-            const isDuplicate = existingEntries.some(entry => {
-                return generateFingerprint(entry) === newFingerprint;
-            });
+            const isDuplicate = existingEntries.some(entry => generateFingerprint(entry) === newFingerprint);
 
-            // 7. 如果沒有重複 (代表是新版本或新機構)，則儲存
             if (!isDuplicate) {
                 newEntry._last_updated = Date.now();
                 existingEntries.push(newEntry);
                 
-                // 顯示成功訊息 (提示使用者產生了新版本)
                 const verCount = existingEntries.length;
                 if (verCount > 1) {
                     showToast('success', `機構「${safeName}」資料變更，已建立為版本 ${verCount}`);
@@ -5179,28 +5155,23 @@
                     showToast('success', `已新增機構「${safeName}」至資料庫`);
                 }
 
-                // 介面即時刷新邏輯
+                // 刷新介面
                 if (typeof renderInstitutionListItems === 'function' && document.getElementById('inst-list-container')) {
-                    const allNames = Object.keys(institutionLibrary).sort();
-                    renderInstitutionListItems(allNames);
+                    filterInstList();
                 }
                 
-                // 如果詳情面板正好開著，刷新它
                 const detailHeader = document.getElementById('inst-detail-title'); 
                 if (detailHeader && detailHeader.innerText.trim().startsWith(safeName)) {
-                    if (typeof showInstitutionDetail === 'function') {
-                        showInstitutionDetail(safeName); 
-                    }
+                    showInstitutionDetail(safeName); 
                 }
                 
-                // 寫入 LocalStorage
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
             }
         }
         
-        // 4. 開啟「機構清單與關聯查詢」視窗 (反查功能)
+        // 4. 開啟「機構清單與關聯查詢」視窗 (含手動新增功能)
         function openInstitutionList(preSelectName = null) {
             const modalId = 'inst-list-modal';
             if(document.getElementById(modalId)) document.getElementById(modalId).remove();
@@ -5243,10 +5214,8 @@
             
             document.body.appendChild(modal);
             
-            // 初始渲染
             filterInstList(); 
 
-            // 自動選取邏輯
             if (preSelectName) {
                 setTimeout(() => {
                     const searchInput = document.getElementById('inst-list-search');
@@ -5254,7 +5223,7 @@
                         searchInput.value = preSelectName;
                         filterInstList();
                     }
-                    // 嘗試點擊 (需配合新的渲染邏輯)
+                    // 嘗試點擊 
                     const items = document.querySelectorAll('.inst-list-item-title');
                     for (let item of items) {
                         if (item.innerText.trim() === preSelectName.trim()) {
@@ -5266,427 +5235,7 @@
             }
         }
 
-        // ★ 新增：自訂設定總公司視窗 (美觀 Modal)
-        function openSetParentModal(childName, currentParent) {
-            const modalId = 'set-parent-modal';
-            if(document.getElementById(modalId)) document.getElementById(modalId).remove();
-
-            const modal = document.createElement('div');
-            modal.id = modalId;
-            modal.className = 'fixed inset-0 z-[180] flex items-center justify-center modal-overlay p-4';
-            
-            modal.innerHTML = `
-                <div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 animate-fade-in">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-sitemap text-indigo-500"></i> 設定總公司
-                        </h3>
-                        <button onclick="document.getElementById('${modalId}').remove()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
-                    </div>
-                    
-                    <div class="p-6 space-y-4">
-                        <div class="bg-blue-50 text-blue-800 text-sm p-3 rounded-lg border border-blue-100">
-                            正在為 <strong>${childName}</strong> 設定上層機構。
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">總公司 / 上層機構名稱</label>
-                            <input type="text" id="parent-name-input" class="input-stylish" 
-                                placeholder="請輸入機構名稱..." value="${currentParent || ''}" list="inst-names-list">
-                            <datalist id="inst-names-list">
-                                ${Object.keys(institutionLibrary).sort().map(n => `<option value="${n}">`).join('')}
-                            </datalist>
-                            <p class="text-xs text-slate-400 mt-1">※ 若該機構不存在，系統將自動建立一個架構用的空機構。</p>
-                        </div>
-                    </div>
-
-                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <button id="btn-clear-parent" class="text-red-500 hover:text-red-700 text-sm font-bold px-3 py-2 rounded hover:bg-red-50 transition ${!currentParent ? 'hidden' : ''}">
-                            <i class="fas fa-unlink mr-1"></i> 解除關係
-                        </button>
-                        <div class="flex gap-2 ml-auto">
-                            <button onclick="document.getElementById('${modalId}').remove()" class="px-4 py-2 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-200 transition">取消</button>
-                            <button id="btn-save-parent" class="px-6 py-2 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition">確認設定</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            const input = document.getElementById('parent-name-input');
-            setTimeout(() => input.focus(), 100);
-
-            document.getElementById('btn-save-parent').onclick = () => {
-                const newParent = input.value.trim();
-                if (newParent === "") {
-                    showToast('warning', '請輸入名稱，或點擊左下角解除關係');
-                    return;
-                }
-                if (newParent === childName) {
-                    showToast('error', '不能設定自己為總公司');
-                    return;
-                }
-                if (institutionRelations[newParent] === childName) {
-                    showToast('error', '無法設定：會造成循環參照');
-                    return;
-                }
-                if (!institutionLibrary[newParent]) {
-                    if (confirm(`總公司「${newParent}」不存在，是否立即建立？`)) {
-                        institutionLibrary[newParent] = [];
-                    } else { return; }
-                }
-                institutionRelations[childName] = newParent;
-                finishUpdate(`已設定 ${newParent} 為總公司`);
-            };
-
-            const clearBtn = document.getElementById('btn-clear-parent');
-            if (clearBtn) {
-                clearBtn.onclick = () => {
-                    if (confirm('確定要解除目前的總公司關係嗎？')) {
-                        delete institutionRelations[childName];
-                        finishUpdate('已解除總公司關係');
-                    }
-                };
-            }
-
-            function finishUpdate(msg) {
-                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                    saveToLocal();
-                }
-                showToast('success', msg);
-                filterInstList(); 
-                showInstitutionDetail(childName);
-                document.getElementById(modalId).remove();
-            }
-        }
-        
-        // ★ 新增：手動建立機構函式
-        async function addManualInstitution() {
-            const name = prompt("請輸入新機構名稱 (例如總公司名稱)：");
-            if (!name || name.trim() === "") return;
-            const safeName = name.trim();
-            
-            if (institutionLibrary[safeName]) {
-                showToast('warning', '該機構已存在');
-                return;
-            }
-            institutionLibrary[safeName] = []; 
-            showToast('success', '已建立機構，請繼續設定其子分公司');
-            
-            if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') saveToLocal();
-            filterInstList();
-            showInstitutionDetail(safeName); 
-        }
-        
-        function getCurrentApplication() {
-            // 1. 檢查是否已選取學生
-            if (!currentStudentId) return null;
-            
-            // 2. 檢查是否有作用中的填報單 ID (取代原本抓取 .active 按鈕的邏輯)
-            if (!currentActiveAppId) return null;
-
-            const student = groupedStudents[currentStudentId];
-            if (!student || !student.applications) return null;
-            
-            // 3. 直接用 ID 尋找對應的 Application 物件
-            return student.applications.find(a => a.id === currentActiveAppId);
-        }
-        // ★★★ 核心函式：套用選定的機構版本資料 (修復版：強制更新畫面與資料) ★★★
-        async function applyInstitutionVersion(name, index) {
-            const entries = institutionLibrary[name];
-            
-            // 防呆：檢查索引有效性
-            if (!entries || index < 0 || index >= entries.length) {
-                showToast('error', '機構版本資料錯誤或找不到');
-                return;
-            }
-
-            const versionData = entries[index];
-            const currentApp = getCurrentApplication();
-
-            // 防呆：確保已開啟填報單
-            if (!currentApp) {
-                showToast('error', '請先點擊上方的「實習紀錄」頁籤，打開您要填寫的表單');
-                return;
-            }
-            
-            const formId = currentApp.id;
-
-            const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${index + 1} 資料套用到目前的實習紀錄嗎？\n這將會覆蓋現有的機構相關欄位。`);
-            
-            if (yes) {
-                let changesCount = 0;
-                
-                // 遍歷版本資料
-                Object.keys(versionData).forEach(fieldId => {
-                    if (fieldId.startsWith('_')) return; // 跳過系統欄位
-
-                    let rawValue = versionData[fieldId];     // 資料庫值 (例如 2025-01-01)
-                    let displayValue = rawValue;             // 畫面顯示值 (例如 114/01/01)
-
-                    // 1. 處理 ROC 日期格式轉換
-                    // 資料庫存西元 (YYYY-MM-DD)，但畫面輸入框需要 ROC (yyy/mm/dd)
-                    if (currentYearConfig && currentYearConfig.fields) {
-                        const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
-                        if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC' && rawValue.includes('-')) {
-                            const p = rawValue.split('-');
-                            if (p.length === 3) {
-                                const rocY = parseInt(p[0]) - 1911;
-                                displayValue = `${rocY}/${p[1]}/${p[2]}`;
-                            }
-                        }
-                    }
-
-                    // 2. 更新底層資料 (FormData)
-                    if (currentApp.formData[fieldId] !== rawValue) {
-                        currentApp.formData[fieldId] = rawValue;
-                        changesCount++;
-                    }
-
-                    // 3. 更新畫面顯示 (UI)
-                    // 優先使用 class 查找 (最準確)，找不到才用 ID
-                    let inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
-                    if (!inputElement) {
-                        inputElement = document.getElementById(`input-${formId}-${fieldId}`);
-                    }
-                    
-                    if (inputElement) {
-                        // 強制寫入顯示值
-                        inputElement.value = displayValue;
-                        
-                        // 視覺回饋：閃爍綠色背景
-                        inputElement.style.transition = 'background-color 0.3s';
-                        inputElement.style.backgroundColor = '#dcfce7';
-                        setTimeout(() => inputElement.style.backgroundColor = '', 500);
-                        
-                        // 針對 Textarea 自動調整高度
-                        if(inputElement.tagName === 'TEXTAREA') {
-                            inputElement.style.height = 'auto';
-                            inputElement.style.height = inputElement.scrollHeight + 'px';
-                        }
-                    }
-                });
-
-                // 4. 後續處理
-                // 重新評估連動邏輯 (Visibility/Option)
-                evaluateLogic(currentApp);
-
-                // 關閉視窗
-                const modal = document.getElementById('inst-list-modal');
-                if(modal) modal.remove();
-                
-                // 如果在列表模式，重繪 Grid 以顯示新資料
-                if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
-                
-                // 強制存檔
-                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                    saveToLocal();
-                }
-
-                showToast('success', `已成功套用機構版本 ${index + 1}，更新了 ${changesCount} 個欄位！`);
-            }
-        }
-        
-        async function deleteInstitutionVersion(name, index) {
-            const entries = institutionLibrary[name];
-            if (!entries || !entries[index]) return;
-
-            const yes = await showConfirm('刪除版本？', `確定要刪除「${name}」的版本 ${index + 1} 嗎？\n此動作無法復原。`);
-            if (yes) {
-                // 再次檢查是否有被使用 (防呆雙重確認)
-                const entry = entries[index];
-                const { _last_updated, ...entryData } = entry;
-                
-                // 簡易指紋生成
-                const generateFingerprint = (e) => {
-                    const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
-                    const values = keys.map(k => e[k]);
-                    return JSON.stringify(values);
-                };
-                const targetFP = generateFingerprint(entryData);
-                
-                let isUsed = false;
-                Object.values(groupedStudents).forEach(s => {
-                    s.applications.forEach(app => {
-                        if (app.formData['internship_institution_name'] === name) {
-                            const appInstData = {};
-                            Object.keys(entryData).forEach(k => appInstData[k] = app.formData[k]);
-                            if (generateFingerprint(appInstData) === targetFP) isUsed = true;
-                        }
-                    });
-                });
-
-                if (isUsed) {
-                    showToast('error', '刪除失敗：資料正在使用中');
-                    return;
-                }
-
-                // 執行刪除
-                entries.splice(index, 1);
-                
-                // 如果刪光了，移除該機構 Key
-                if (entries.length === 0) {
-                    delete institutionLibrary[name];
-                    // 回到列表頁 (清空右側)
-                    document.getElementById('inst-detail-panel').innerHTML = `
-                        <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
-                            <i class="fas fa-trash-alt text-4xl mb-4 opacity-30"></i>
-                            <p>機構已刪除</p>
-                        </div>`;
-                }
-
-                // 存檔
-                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                    saveToLocal();
-                }
-
-                // 刷新左側列表
-                if (typeof filterInstList === 'function') {
-                    filterInstList();
-                } else {
-                    const names = Object.keys(institutionLibrary).sort();
-                    renderInstitutionListItems(names);
-                }
-
-                // 如果還有剩餘版本，刷新右側詳情
-                if (institutionLibrary[name]) {
-                    showInstitutionDetail(name);
-                }
-
-                showToast('success', '已刪除該版本');
-            }
-        }
-
-        // ★ 新增：自訂設定總公司視窗 (取代 Prompt)
-        function openSetParentModal(childName, currentParent) {
-            // 移除舊 Modal
-            const modalId = 'set-parent-modal';
-            if(document.getElementById(modalId)) document.getElementById(modalId).remove();
-
-            // 建立 Modal HTML
-            const modal = document.createElement('div');
-            modal.id = modalId;
-            modal.className = 'fixed inset-0 z-[180] flex items-center justify-center modal-overlay p-4';
-            
-            modal.innerHTML = `
-                <div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 animate-fade-in">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-sitemap text-indigo-500"></i> 設定總公司
-                        </h3>
-                        <button onclick="document.getElementById('${modalId}').remove()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
-                    </div>
-                    
-                    <div class="p-6 space-y-4">
-                        <div class="bg-blue-50 text-blue-800 text-sm p-3 rounded-lg border border-blue-100">
-                            正在為 <strong>${childName}</strong> 設定上層機構。
-                        </div>
-
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">總公司 / 上層機構名稱</label>
-                            <input type="text" id="parent-name-input" class="input-stylish" 
-                                placeholder="請輸入機構名稱..." value="${currentParent || ''}" list="inst-names-list">
-                            <datalist id="inst-names-list">
-                                ${Object.keys(institutionLibrary).sort().map(n => `<option value="${n}">`).join('')}
-                            </datalist>
-                            <p class="text-xs text-slate-400 mt-1">※ 若該機構不存在，系統將自動建立一個架構用的空機構。</p>
-                        </div>
-                    </div>
-
-                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
-                        <button id="btn-clear-parent" class="text-red-500 hover:text-red-700 text-sm font-bold px-3 py-2 rounded hover:bg-red-50 transition ${!currentParent ? 'hidden' : ''}">
-                            <i class="fas fa-unlink mr-1"></i> 解除關係
-                        </button>
-                        <div class="flex gap-2 ml-auto">
-                            <button onclick="document.getElementById('${modalId}').remove()" class="px-4 py-2 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-200 transition">取消</button>
-                            <button id="btn-save-parent" class="px-6 py-2 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition">確認設定</button>
-                        </div>
-                    </div>
-                </div>
-            `;
-            
-            document.body.appendChild(modal);
-            
-            const input = document.getElementById('parent-name-input');
-            setTimeout(() => input.focus(), 100);
-
-            // 綁定儲存事件
-            document.getElementById('btn-save-parent').onclick = () => {
-                const newParent = input.value.trim();
-                
-                if (newParent === "") {
-                    showToast('warning', '請輸入名稱，或點擊左下角解除關係');
-                    return;
-                }
-                if (newParent === childName) {
-                    showToast('error', '不能設定自己為總公司');
-                    return;
-                }
-
-                // 檢查是否循環 (簡易檢查：目前只支援一層，若要多層需遞迴檢查，暫不複雜化)
-                if (institutionRelations[newParent] === childName) {
-                    showToast('error', '無法設定：會造成循環參照');
-                    return;
-                }
-
-                // 檢查總公司是否存在，不存在則建立
-                if (!institutionLibrary[newParent]) {
-                    if (confirm(`總公司「${newParent}」不存在，是否立即建立？`)) {
-                        institutionLibrary[newParent] = [];
-                    } else {
-                        return; 
-                    }
-                }
-
-                // 更新關係
-                institutionRelations[childName] = newParent;
-                
-                finishUpdate(`已設定 ${newParent} 為總公司`);
-            };
-
-            // 綁定解除事件
-            const clearBtn = document.getElementById('btn-clear-parent');
-            if (clearBtn) {
-                clearBtn.onclick = () => {
-                    if (confirm('確定要解除目前的總公司關係嗎？')) {
-                        delete institutionRelations[childName];
-                        finishUpdate('已解除總公司關係');
-                    }
-                };
-            }
-
-            // 完成後的動作
-            function finishUpdate(msg) {
-                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                    saveToLocal();
-                }
-                showToast('success', msg);
-                filterInstList(); // 刷新左側樹狀圖
-                showInstitutionDetail(childName); // 刷新右側標頭
-                document.getElementById(modalId).remove();
-            }
-        }
-
-        function jumpToStudent(sid, appId) {
-            // 1. 關閉機構查詢視窗
-            const modal = document.getElementById('inst-list-modal');
-            if (modal) modal.remove();
-
-            // 2. 選取該學生 (這會渲染該學生的畫面)
-            selectStudent(sid);
-
-            // 3. 如果有指定歸戶 ID，切換到該頁籤
-            if (appId) {
-                // 使用 setTimeout 確保 DOM 渲染完畢後才切換
-                setTimeout(() => {
-                    switchTab(appId);
-                    // 捲動到頂部
-                    const contentArea = document.getElementById('form-content-area');
-                    if(contentArea) contentArea.scrollTop = 0;
-                }, 50);
-            }
-        }
-
+        // 渲染可收合的機構樹狀列表
         function renderInstitutionListItems(names) {
             const container = document.getElementById('inst-list-container');
             container.innerHTML = '';
@@ -5791,13 +5340,322 @@
                 container.appendChild(renderNode(rootName));
             });
         }
+
+        // 搜尋過濾 (含父子層級顯示邏輯)
+        function filterInstList() {
+            const searchInput = document.getElementById('inst-list-search');
+            if (!searchInput) return;
+            
+            const term = searchInput.value.toLowerCase();
+            const allNames = Object.keys(institutionLibrary).sort();
+            
+            let matchedNames = new Set();
+            
+            allNames.forEach(name => {
+                if (name.toLowerCase().includes(term)) {
+                    matchedNames.add(name);
+                    // 顯示父層
+                    let parent = institutionRelations[name];
+                    while (parent) {
+                        matchedNames.add(parent);
+                        parent = institutionRelations[parent];
+                    }
+                }
+            });
+            
+            renderInstitutionListItems(Array.from(matchedNames));
+        }
+
+        // 手動建立機構
+        async function addManualInstitution() {
+            const name = prompt("請輸入新機構名稱 (例如總公司名稱)：");
+            if (!name || name.trim() === "") return;
+            const safeName = name.trim();
+            
+            if (institutionLibrary[safeName]) {
+                showToast('warning', '該機構已存在');
+                return;
+            }
+            
+            institutionLibrary[safeName] = []; 
+            showToast('success', '已建立機構，請繼續設定其子分公司');
+            
+            if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                saveToLocal();
+            }
+            filterInstList();
+            showInstitutionDetail(safeName); 
+        }
+
+        function getCurrentApplication() {
+            if (!currentStudentId) return null;
+            if (!currentActiveAppId) return null;
+
+            const student = groupedStudents[currentStudentId];
+            if (!student || !student.applications) return null;
+            
+            return student.applications.find(a => a.id === currentActiveAppId);
+        }
+
+        // 跳轉輔助函式
+        function jumpToStudent(sid, appId) {
+            const modal = document.getElementById('inst-list-modal');
+            if (modal) modal.remove();
+
+            selectStudent(sid);
+
+            if (appId) {
+                setTimeout(() => {
+                    switchTab(appId);
+                    const contentArea = document.getElementById('form-content-area');
+                    if(contentArea) contentArea.scrollTop = 0;
+                }, 50);
+            }
+        }
+
+        // 自訂設定總公司視窗
+        function openSetParentModal(childName, currentParent) {
+            const modalId = 'set-parent-modal';
+            if(document.getElementById(modalId)) document.getElementById(modalId).remove();
+
+            const modal = document.createElement('div');
+            modal.id = modalId;
+            modal.className = 'fixed inset-0 z-[180] flex items-center justify-center modal-overlay p-4';
+            
+            modal.innerHTML = `
+                <div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 animate-fade-in">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                            <i class="fas fa-sitemap text-indigo-500"></i> 設定總公司
+                        </h3>
+                        <button onclick="document.getElementById('${modalId}').remove()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
+                    </div>
+                    
+                    <div class="p-6 space-y-4">
+                        <div class="bg-blue-50 text-blue-800 text-sm p-3 rounded-lg border border-blue-100">
+                            正在為 <strong>${childName}</strong> 設定上層機構。
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-bold text-slate-700 mb-1">總公司 / 上層機構名稱</label>
+                            <input type="text" id="parent-name-input" class="input-stylish" 
+                                placeholder="請輸入機構名稱..." value="${currentParent || ''}" list="inst-names-list">
+                            <datalist id="inst-names-list">
+                                ${Object.keys(institutionLibrary).sort().map(n => `<option value="${n}">`).join('')}
+                            </datalist>
+                            <p class="text-xs text-slate-400 mt-1">※ 若該機構不存在，系統將自動建立一個架構用的空機構。</p>
+                        </div>
+                    </div>
+
+                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-between items-center">
+                        <button id="btn-clear-parent" class="text-red-500 hover:text-red-700 text-sm font-bold px-3 py-2 rounded hover:bg-red-50 transition ${!currentParent ? 'hidden' : ''}">
+                            <i class="fas fa-unlink mr-1"></i> 解除關係
+                        </button>
+                        <div class="flex gap-2 ml-auto">
+                            <button onclick="document.getElementById('${modalId}').remove()" class="px-4 py-2 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-200 transition">取消</button>
+                            <button id="btn-save-parent" class="px-6 py-2 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition">確認設定</button>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            document.body.appendChild(modal);
+            const input = document.getElementById('parent-name-input');
+            setTimeout(() => input.focus(), 100);
+
+            document.getElementById('btn-save-parent').onclick = () => {
+                const newParent = input.value.trim();
+                if (newParent === "") {
+                    showToast('warning', '請輸入名稱，或點擊左下角解除關係');
+                    return;
+                }
+                if (newParent === childName) {
+                    showToast('error', '不能設定自己為總公司');
+                    return;
+                }
+                if (institutionRelations[newParent] === childName) {
+                    showToast('error', '無法設定：會造成循環參照');
+                    return;
+                }
+                if (!institutionLibrary[newParent]) {
+                    if (confirm(`總公司「${newParent}」不存在，是否立即建立？`)) {
+                        institutionLibrary[newParent] = [];
+                    } else { return; }
+                }
+                institutionRelations[childName] = newParent;
+                finishUpdate(`已設定 ${newParent} 為總公司`);
+            };
+
+            const clearBtn = document.getElementById('btn-clear-parent');
+            if (clearBtn) {
+                clearBtn.onclick = () => {
+                    if (confirm('確定要解除目前的總公司關係嗎？')) {
+                        delete institutionRelations[childName];
+                        finishUpdate('已解除總公司關係');
+                    }
+                };
+            }
+
+            function finishUpdate(msg) {
+                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                    saveToLocal();
+                }
+                showToast('success', msg);
+                filterInstList(); 
+                showInstitutionDetail(childName);
+                document.getElementById(modalId).remove();
+            }
+        }
+
+        // 套用機構版本 (正確邏輯版)
+        async function applyInstitutionVersion(name, index) {
+            const entries = institutionLibrary[name];
+            
+            if (!entries || index < 0 || index >= entries.length) {
+                showToast('error', '機構版本資料錯誤或找不到');
+                return;
+            }
+
+            const versionData = entries[index];
+            const currentApp = getCurrentApplication();
+
+            if (!currentApp) {
+                showToast('error', '請先點擊上方的「實習紀錄」頁籤，打開您要填寫的表單');
+                return;
+            }
+            
+            const formId = currentApp.id;
+
+            const yes = await showConfirm('確認套用機構版本', `您確定要將「${name}」的版本 ${index + 1} 資料套用到目前的實習紀錄嗎？\n這將會覆蓋現有的機構相關欄位。`);
+            
+            if (yes) {
+                let changesCount = 0;
+                
+                Object.keys(versionData).forEach(fieldId => {
+                    if (fieldId.startsWith('_')) return; 
+
+                    let rawValue = versionData[fieldId];     
+                    let displayValue = rawValue;             
+
+                    // ROC 日期轉換
+                    if (currentYearConfig && currentYearConfig.fields) {
+                        const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
+                        if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC' && rawValue.includes('-')) {
+                            const p = rawValue.split('-');
+                            if (p.length === 3) {
+                                const rocY = parseInt(p[0]) - 1911;
+                                displayValue = `${rocY}/${p[1]}/${p[2]}`;
+                            }
+                        }
+                    }
+
+                    if (currentApp.formData[fieldId] !== rawValue) {
+                        currentApp.formData[fieldId] = rawValue;
+                        changesCount++;
+                    }
+
+                    // UI 更新
+                    let inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
+                    if (!inputElement) {
+                        inputElement = document.getElementById(`input-${formId}-${fieldId}`);
+                    }
+                    
+                    if (inputElement) {
+                        inputElement.value = displayValue;
+                        
+                        inputElement.style.transition = 'background-color 0.3s';
+                        inputElement.style.backgroundColor = '#dcfce7';
+                        setTimeout(() => inputElement.style.backgroundColor = '', 500);
+                        
+                        if(inputElement.tagName === 'TEXTAREA') {
+                            inputElement.style.height = 'auto';
+                            inputElement.style.height = inputElement.scrollHeight + 'px';
+                        }
+                    }
+                });
+
+                evaluateLogic(currentApp);
+
+                const modal = document.getElementById('inst-list-modal');
+                if(modal) modal.remove();
+                
+                if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
+                
+                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                    saveToLocal();
+                }
+
+                showToast('success', `已成功套用機構版本 ${index + 1}，更新了 ${changesCount} 個欄位！`);
+            }
+        }
         
-        // ★★★ 核心修改：顯示機構詳情 (包含下拉選單與版本過濾) ★★★
+        // 刪除機構版本 (含防呆)
+        async function deleteInstitutionVersion(name, index) {
+            const entries = institutionLibrary[name];
+            if (!entries || !entries[index]) return;
+
+            const yes = await showConfirm('刪除版本？', `確定要刪除「${name}」的版本 ${index + 1} 嗎？\n此動作無法復原。`);
+            if (yes) {
+                // 指紋檢查 (防呆)
+                const entry = entries[index];
+                const { _last_updated, ...entryData } = entry;
+                
+                const generateFingerprint = (e) => {
+                    const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
+                    const values = keys.map(k => e[k]);
+                    return JSON.stringify(values);
+                };
+                const targetFP = generateFingerprint(entryData);
+                
+                let isUsed = false;
+                Object.values(groupedStudents).forEach(s => {
+                    s.applications.forEach(app => {
+                        if (app.formData['internship_institution_name'] === name) {
+                            const appInstData = {};
+                            Object.keys(entryData).forEach(k => appInstData[k] = app.formData[k]);
+                            if (generateFingerprint(appInstData) === targetFP) isUsed = true;
+                        }
+                    });
+                });
+
+                if (isUsed) {
+                    showToast('error', '刪除失敗：資料正在使用中');
+                    return;
+                }
+
+                entries.splice(index, 1);
+                
+                if (entries.length === 0) {
+                    delete institutionLibrary[name];
+                    // 若有設為總公司，也應移除其父子關係 (選擇性)
+                    if (institutionRelations[name]) delete institutionRelations[name];
+                    
+                    document.getElementById('inst-detail-panel').innerHTML = `
+                        <div class="absolute inset-0 flex flex-col items-center justify-center text-slate-400">
+                            <i class="fas fa-trash-alt text-4xl mb-4 opacity-30"></i>
+                            <p>機構已刪除</p>
+                        </div>`;
+                }
+
+                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
+                    saveToLocal();
+                }
+
+                filterInstList();
+
+                if (institutionLibrary[name]) {
+                    showInstitutionDetail(name);
+                }
+
+                showToast('success', '已刪除該版本');
+            }
+        }
+        
+        // 顯示機構詳情 (最終整合版)
         function showInstitutionDetail(name) {
             const panel = document.getElementById('inst-detail-panel');
             const entries = institutionLibrary[name] || [];
             
-            // Highlight 左側選單
             document.querySelectorAll('.inst-list-item').forEach(el => {
                 const title = el.querySelector('.inst-list-item-title');
                 const text = title ? title.innerText : el.innerText;
@@ -5813,7 +5671,6 @@
                 }
             });
 
-            // 1. 建立基本框架
             const parentName = institutionRelations[name] || null;
             const parentHtml = parentName 
                 ? `<div class="mb-2 text-xs text-indigo-600 bg-indigo-50 inline-block px-2 py-1 rounded cursor-pointer hover:bg-indigo-100" onclick="showInstitutionDetail('${parentName}')"><i class="fas fa-level-up-alt rotate-90 mr-1"></i>隸屬於: <strong>${parentName}</strong></div>`
@@ -5838,7 +5695,6 @@
                                 <select id="inst-version-select" class="version-select h-full">
                                     ${entries.length === 0 ? '<option>無資料 (純架構)</option>' : ''}
                                     ${entries.map((entry, idx) => {
-                                        // 移除日期顯示
                                         const info = entry.internship_address || entry.internship_internship_address || '無詳細地址';
                                         const tax = entry.company_tax_id ? `(統編:${entry.company_tax_id})` : '';
                                         const isSelected = idx === entries.length - 1 ? 'selected' : '';
@@ -5884,10 +5740,13 @@
                 
                 if (entries.length === 0) {
                     document.getElementById('inst-version-content').innerHTML = '<div class="text-center text-slate-400 py-4">此機構目前僅作為分類架構使用，尚無詳細資料版本。</div>';
+                    
                     const applyBtn = document.getElementById('apply-inst-version-btn');
                     if(applyBtn) { applyBtn.disabled = true; applyBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+                    
                     const delBtn = document.getElementById('del-inst-version-btn');
                     if(delBtn) { delBtn.disabled = true; delBtn.classList.add('opacity-50', 'cursor-not-allowed'); }
+                    
                     return;
                 }
 
@@ -5899,7 +5758,6 @@
                 const studentListDiv = document.getElementById('inst-student-list');
                 const countBadge = document.getElementById('inst-student-count');
 
-                // 欄位定義 (請確保這裡有定義，避免 SyntaxError)
                 const displayFields = Object.keys(entry).filter(k => !k.startsWith('_') && k !== 'internship_institution_name');
                 const labelMap = { 'company_tax_id': '統一編號', 'internship_address': '地址', 'internship_city': '縣市', 'internship_country': '國別', 'industry_category': '行業別', 'internship_location': '實習場所' };
 
@@ -5919,7 +5777,6 @@
                 
                 contentDiv.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fieldsHtml || '無詳細資料'}</div>`;
 
-                // 渲染學生列表 (指紋比對)
                 const matchedStudents = [];
                 const { _last_updated, ...entryData } = entry;
                 const generateFingerprint = (e) => {
@@ -5934,10 +5791,7 @@
                     student.applications.forEach(app => {
                         if (app.formData['internship_institution_name'] === name) {
                             const appInstData = {};
-                            Object.keys(entryData).forEach(key => {
-                                const val = app.formData[key];
-                                if(val) appInstData[key] = String(val).trim();
-                            });
+                            Object.keys(entryData).forEach(k => appInstData[k] = app.formData[k]);
                             if (generateFingerprint(appInstData) === entryFP) {
                                 const appIndex = student.applications.findIndex(a => a.id === app.id);
                                 matchedStudents.push({ 
