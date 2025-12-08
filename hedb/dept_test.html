@@ -3137,11 +3137,12 @@
                         viewBtn.className = 'input-group-append-btn';
                         viewBtn.title = '點擊選擇要套用的機構版本';
                         viewBtn.innerHTML = '<i class="fas fa-building"></i>';
+                        
+                        // ★★★ 修改：直接開啟視窗，不檢查內容 ★★★
                         viewBtn.onclick = (e) => {
                             e.stopPropagation();
-                            const currentName = input.value;
+                            const currentName = input.value; // 即使是空字串也傳進去
                             
-                            // 核心修正：移除輸入驗證，直接開啟視窗
                             if (typeof openInstitutionList === 'function') {
                                 openInstitutionList(currentName); 
                             } else {
@@ -5253,22 +5254,21 @@
             const student = groupedStudents[currentStudentId];
             if (!student || student.applications.length === 0) return null;
             
-            // 嚴格檢查：必須有 "active" 的頁籤按鈕，才視為有選中
+            // 抓取目前 active 的頁籤
             const activeBtn = document.querySelector('.tab-btn.active');
             
-            if (!activeBtn) {
-                return null; // 沒選中頁籤，回傳 null
-            }
+            // 嚴格檢查：如果沒選中頁籤，回傳 null (避免誤套用到錯誤的紀錄)
+            if (!activeBtn) return null;
             
             const targetAppId = activeBtn.dataset.tab;
             return student.applications.find(a => a.id === targetAppId);
         }
 
-        // ★★★ 2. 核心函式：套用選定的機構版本資料到目前填報單 ★★★
+        // ★★★ 核心函式：套用選定的機構版本資料 (修復版：強制更新畫面與資料) ★★★
         async function applyInstitutionVersion(name, index) {
             const entries = institutionLibrary[name];
             
-            // 檢查索引 (前端傳來的 index 已經是換算好的原始索引，直接用)
+            // 防呆：檢查索引有效性
             if (!entries || index < 0 || index >= entries.length) {
                 showToast('error', '機構版本資料錯誤或找不到');
                 return;
@@ -5277,7 +5277,7 @@
             const versionData = entries[index];
             const currentApp = getCurrentApplication();
 
-            // 修正 1：如果沒打開頁籤，這裡會收到 null，並阻擋執行
+            // 防呆：確保已開啟填報單
             if (!currentApp) {
                 showToast('error', '請先點擊上方的「實習紀錄」頁籤，打開您要填寫的表單');
                 return;
@@ -5290,78 +5290,73 @@
             if (yes) {
                 let changesCount = 0;
                 
-                // --- A. 更新底層資料 (Source of Truth) ---
+                // 遍歷版本資料
                 Object.keys(versionData).forEach(fieldId => {
                     if (fieldId.startsWith('_')) return; // 跳過系統欄位
 
-                    let newValue = versionData[fieldId];
-                    
-                    // 特別處理：ROC 日期轉換 (資料庫存 YYYY-MM-DD -> 轉回 yyy/mm/dd 給 UI 顯示用)
-                    // 但 formData 本身通常存 ROC 或是西元取決於您的實作，這裡假設 formData 存原始值
-                    // 為了保險，我們先更新 formData 為原始值
-                    
-                    if (currentApp.formData[fieldId] !== newValue) {
-                        currentApp.formData[fieldId] = newValue;
+                    let rawValue = versionData[fieldId];     // 資料庫值 (例如 2025-01-01)
+                    let displayValue = rawValue;             // 畫面顯示值 (例如 114/01/01)
+
+                    // 1. 處理 ROC 日期格式轉換
+                    // 資料庫存西元 (YYYY-MM-DD)，但畫面輸入框需要 ROC (yyy/mm/dd)
+                    if (currentYearConfig && currentYearConfig.fields) {
+                        const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
+                        if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC' && rawValue.includes('-')) {
+                            const p = rawValue.split('-');
+                            if (p.length === 3) {
+                                const rocY = parseInt(p[0]) - 1911;
+                                displayValue = `${rocY}/${p[1]}/${p[2]}`;
+                            }
+                        }
+                    }
+
+                    // 2. 更新底層資料 (FormData)
+                    if (currentApp.formData[fieldId] !== rawValue) {
+                        currentApp.formData[fieldId] = rawValue;
                         changesCount++;
                     }
 
-                    // --- B. 更新畫面顯示 (View) ---
-                    // 嘗試找到輸入框
-                    let inputElement = document.getElementById(`input-${formId}-${fieldId}`);
-                    
-                    // 如果找不到，試試看 app-input class (有些動態生成的元素)
+                    // 3. 更新畫面顯示 (UI)
+                    // 優先使用 class 查找 (最準確)，找不到才用 ID
+                    let inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
                     if (!inputElement) {
-                        inputElement = document.querySelector(`.app-input-${formId}-${fieldId}`);
+                        inputElement = document.getElementById(`input-${formId}-${fieldId}`);
                     }
                     
                     if (inputElement) {
-                        // 如果是 ROC 日期欄位，需要將 YYYY-MM-DD 轉為 ROC 顯示
-                        if (currentYearConfig) {
-                            const fDef = currentYearConfig.fields.find(f => f.id === fieldId);
-                            if (fDef && fDef.type === 'date' && fDef.inputFormat === 'ROC' && newValue.includes('-')) {
-                                const p = newValue.split('-');
-                                if (p.length === 3) {
-                                    const rocY = parseInt(p[0]) - 1911;
-                                    inputElement.value = `${rocY}/${p[1]}/${p[2]}`;
-                                } else {
-                                    inputElement.value = newValue;
-                                }
-                            } else {
-                                inputElement.value = newValue;
-                            }
-                        } else {
-                            inputElement.value = newValue;
-                        }
+                        // 強制寫入顯示值
+                        inputElement.value = displayValue;
                         
-                        // 視覺回饋：閃爍一下背景
+                        // 視覺回饋：閃爍綠色背景
                         inputElement.style.transition = 'background-color 0.3s';
-                        inputElement.style.backgroundColor = '#dcfce7'; // 淺綠色
+                        inputElement.style.backgroundColor = '#dcfce7';
                         setTimeout(() => inputElement.style.backgroundColor = '', 500);
+                        
+                        // 針對 Textarea 自動調整高度
+                        if(inputElement.tagName === 'TEXTAREA') {
+                            inputElement.style.height = 'auto';
+                            inputElement.style.height = inputElement.scrollHeight + 'px';
+                        }
                     }
                 });
 
-                // --- C. 後續處理 ---
-                
-                // 1. 觸發邏輯檢查 (Visibility/Option)
+                // 4. 後續處理
+                // 重新評估連動邏輯 (Visibility/Option)
                 evaluateLogic(currentApp);
 
-                // 2. 關閉視窗
+                // 關閉視窗
                 const modal = document.getElementById('inst-list-modal');
                 if(modal) modal.remove();
                 
-                // 3. 如果在列表模式，重繪 Grid
+                // 如果在列表模式，重繪 Grid 以顯示新資料
                 if (currentViewMode === 'grid') renderStudentLocalGrid(currentStudentId);
                 
-                // 4. 強制存檔
+                // 強制存檔
                 if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
                     saveToLocal();
                 }
 
-                if (changesCount > 0) {
-                    showToast('success', `已成功套用機構版本 ${index + 1}，更新了 ${changesCount} 個欄位！`);
-                } else {
-                    showToast('info', '資料完全相同，未進行變更');
-                }
+                showToast('success', `已成功套用機構版本 ${index + 1}，更新了 ${changesCount} 個欄位！`);
             }
         }
         
@@ -5377,7 +5372,7 @@
                 else el.className = 'inst-list-item cursor-pointer px-4 py-3 rounded-lg hover:bg-white hover:shadow-sm transition text-slate-700 font-bold text-sm border border-transparent hover:border-slate-200 flex justify-between items-center group';
             });
 
-            // 1. 建立基本框架 (標題 + 下拉選單區 + 內容區)
+            // 1. 建立基本框架
             panel.innerHTML = `
                 <div class="flex flex-col h-full">
                     <div class="px-8 py-6 pb-2">
@@ -5391,10 +5386,10 @@
                                 <select id="inst-version-select" class="version-select">
                                     ${entries.map((entry, idx) => {
                                         const date = new Date(entry._last_updated).toLocaleDateString();
-                                        const info = entry.internship_address || entry.internship_address || entry.internship_city || '無詳細地址';
+                                        const info = entry.internship_address || entry.internship_institution_address || entry.internship_city || '無詳細地址';
                                         const tax = entry.company_tax_id ? `(統編:${entry.company_tax_id})` : '';
                                         const isSelected = idx === entries.length - 1 ? 'selected' : '';
-                                        // 儲存 index (從 0 到 length-1)
+                                        // value 存的是反轉後的索引 (0, 1, 2...)
                                         return `<option value="${entries.length - 1 - idx}" ${isSelected}>版本 ${entries.length - idx} - ${info} ${tax} [${date}]</option>`;
                                     }).reverse().join('')} 
                                 </select>
@@ -5405,7 +5400,6 @@
                                 <i class="fas fa-download mr-2"></i> 套用此版本
                             </button>
                         </div>
-
                     </div>
                     <div class="flex-grow overflow-y-auto custom-scroll px-8 pb-8 space-y-6">
                         <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3"></div>
@@ -5420,27 +5414,20 @@
                 </div>
             `;
 
-            // 2. 定義更新內容的函式
+            // 2. 更新內容函式
             const updateContent = () => {
                 const select = document.getElementById('inst-version-select');
                 const reversedIndex = parseInt(select.value);
-                const originalIndex = entries.length - 1 - reversedIndex; // 換算回 entries 的原始索引
+                const originalIndex = entries.length - 1 - reversedIndex; 
                 const entry = entries[originalIndex];
                 
                 const contentDiv = document.getElementById('inst-version-content');
                 const studentListDiv = document.getElementById('inst-student-list');
                 const countBadge = document.getElementById('inst-student-count');
 
-                // A. 渲染版本詳情
+                // 渲染詳情
                 const displayFields = Object.keys(entry).filter(k => !k.startsWith('_') && k !== 'internship_institution_name');
-                const labelMap = {
-                    'company_tax_id': '統一編號',
-                    'internship_address': '地址',
-                    'internship_city': '縣市',
-                    'internship_country': '國別',
-                    'industry_category': '行業別',
-                    'internship_location': '實習場所'
-                };
+                const labelMap = { 'company_tax_id': '統一編號', 'internship_address': '地址', 'internship_city': '縣市', 'internship_country': '國別', 'industry_category': '行業別', 'internship_location': '實習場所' };
 
                 let fieldsHtml = displayFields.map(key => {
                     let finalLabel = labelMap[key] || key;
@@ -5458,10 +5445,9 @@
                 
                 contentDiv.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-2 gap-4">${fieldsHtml || '無詳細資料'}</div>`;
 
-                // B. 渲染學生列表 (過濾邏輯)
+                // 渲染學生列表 (指紋比對)
                 const matchedStudents = [];
                 const { _last_updated, ...entryData } = entry;
-                
                 const generateFingerprint = (e) => {
                     const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
                     const cleanObj = {};
@@ -5478,17 +5464,12 @@
                                 const val = app.formData[key];
                                 if(val) appInstData[key] = String(val).trim();
                             });
-                            const appFingerprint = generateFingerprint(appInstData);
-                            
-                            if (appFingerprint === entryFingerprint) {
-                                // 取得實習紀錄索引 (X)
+                            if (generateFingerprint(appInstData) === entryFingerprint) {
                                 const appIndex = student.applications.findIndex(a => a.id === app.id);
-                                const appLabel = appIndex !== -1 ? `實習紀錄 ${appIndex + 1}` : '未知紀錄';
-
                                 matchedStudents.push({ 
                                     student: student, 
                                     appId: app.id,
-                                    appLabel: appLabel
+                                    appLabel: appIndex !== -1 ? `實習紀錄 ${appIndex + 1}` : '未知紀錄'
                                 });
                             }
                         }
@@ -5496,7 +5477,6 @@
                 });
 
                 countBadge.innerText = matchedStudents.length;
-
                 if (matchedStudents.length === 0) {
                     studentListDiv.innerHTML = `<div class="p-8 text-center bg-slate-50 text-slate-500">沒有學生完全符合此版本資料</div>`;
                 } else {
@@ -5518,23 +5498,16 @@
             const select = document.getElementById('inst-version-select');
             const applyBtn = document.getElementById('apply-inst-version-btn');
             
-            // 綁定下拉選單事件 (切換顯示內容)
             select.onchange = updateContent;
 
             // ★★★ 綁定套用按鈕事件 ★★★
             applyBtn.onclick = () => {
-                // 1. 取得下拉選單的值 (這是反轉後的索引：0, 1, 2...)
                 const reversedIndex = parseInt(select.value); 
-                
-                // 2. 換算回 entries 陣列的【原始索引】
-                // 因為下拉選單是把最新的放上面 (reverse)，所以要倒扣回來
                 const originalIndex = entries.length - 1 - reversedIndex;
-                
-                // 3. 呼叫套用函式，傳入正確的原始索引
+                // 呼叫我們剛剛在步驟 1 定義好的函式
                 applyInstitutionVersion(name, originalIndex);
             };
             
-            // 初始化顯示 (最新版)
             updateContent();
         }
 
