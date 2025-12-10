@@ -2427,15 +2427,16 @@
             if(!container) return;
             
             // 清空內容並顯示提示
+            // 修改：使用 absolute inset-0 強制填滿容器並置中，確保與列表模式位置完全一致
             container.innerHTML = `
-                <div class="flex flex-col items-center justify-center h-[60vh] text-slate-400 animate-fade-in">
+                <div class="flex flex-col items-center justify-center w-full h-full absolute inset-0 text-slate-400 animate-fade-in">
                     <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
                         <i class="fas fa-folder-plus text-4xl text-slate-300"></i>
                     </div>
                     <h3 class="text-xl font-bold text-slate-600 mb-2">尚無實習紀錄</h3>
                     <p class="text-sm text-slate-500 mb-6">請先進行歸戶設定以開始填報</p>
-                    <button onclick="openStudentSettingsModal(currentStudentId)" class="px-6 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-sky-700 transition transform hover:scale-105">
-                        <i class="fas fa-cog mr-2"></i> 開啟歸戶設定
+                    <button onclick="openStudentSettingsModal(currentStudentId)" class="px-6 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-sky-700 transition transform hover:scale-105 flex items-center gap-2">
+                        <i class="fas fa-cog"></i> 開啟歸戶設定
                     </button>
                 </div>
             `;
