@@ -860,21 +860,12 @@
                     <i class="fas fa-toolbox"></i> 輔助工具 <i class="fas fa-chevron-down text-[10px] opacity-50"></i>
                 </button>
                 <div class="absolute right-0 top-full mt-1 w-56 bg-white border border-slate-200 rounded-xl shadow-xl hidden group-hover:block z-50 p-1">
-                    <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">批次處理</div>
-                    <button onclick="toolAutoFill()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center"><i class="fas fa-magic"></i></div><span>智慧填入預設值</span></button>
-                    <button onclick="toolCheckData()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center"><i class="fas fa-check-double"></i></div><span>資料完整性檢查</span></button>
-                    
-                    <div class="border-t border-slate-100 my-1"></div>
                     <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">機構管理</div>
                     
                     <button onclick="openInstitutionList()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3">
                         <div class="w-8 h-8 rounded-full bg-indigo-50 text-indigo-600 flex items-center justify-center"><i class="fas fa-building"></i></div>
                         <span>機構清單與關聯查詢</span>
                     </button>
-
-                    <div class="border-t border-slate-100 my-1"></div>
-                    <div class="text-[10px] font-bold text-slate-400 px-3 py-2 uppercase tracking-wider">分析</div>
-                    <button onclick="toolStats()" class="w-full text-left px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 hover:text-primary rounded-lg transition flex items-center gap-3"><div class="w-8 h-8 rounded-full bg-purple-50 text-purple-600 flex items-center justify-center"><i class="fas fa-chart-pie"></i></div><span>目前填報統計</span></button>
                 </div>
             </div>
 
@@ -4141,114 +4132,6 @@
             saveToLocal();
         }
         
-    function toolAutoFill() {
-        let count = 0;
-        // ... (保留中間邏輯) ...
-        Object.values(groupedStudents).forEach(s => {
-            s.applications.forEach(app => {
-                if (!app.formData['internship_country']) {
-                    app.formData['internship_country'] = '中華民國';
-                    count++;
-                }
-            });
-        });
-        
-        if (count > 0) {
-            hasUnsavedChanges = true;
-            // 若當前有選中學生，重新渲染畫面以顯示變更
-            if(currentStudentId) selectStudent(currentStudentId);
-            
-            // ★★★ 請刪除下面這段關於 Grid 的判斷 ★★★
-            // if(!document.getElementById('grid-view-container').classList.contains('hidden')) {
-            //    renderGlobalGrid();
-            // }
-    
-            showToast('success', `已自動為 ${count} 筆歸戶資料填入預設國別 (中華民國)`);
-            logChange('ToolAutoFill', '', '', `Auto-filled ${count} items`, 'System');
-            saveToLocal();
-        } else {
-            showToast('info', '所有歸戶資料皆已填寫國別，無需處理');
-        }
-    }
-
-        /**
-         * 工具 2: 資料完整性檢查
-         * 掃描所有「已建立的歸戶」，檢查是否有「必填」欄位未填寫
-         */
-        function toolCheckData() {
-            let issueCount = 0;
-            const fields = currentYearConfig.fields || [];
-            
-            Object.values(groupedStudents).forEach(s => {
-                s.applications.forEach(app => {
-                    let isComplete = true;
-                    for (const f of fields) {
-                        // 只檢查非系統、且為必填的欄位
-                        if (f.required && !f.isSystem && f.category !== 'sys_course_info') {
-                            
-                            // 檢查是否被隱藏 (Visibility Rule)
-                            let isVisible = true;
-                            if (f.visibilityRule) {
-                                const depVal = app.formData[f.visibilityRule.dep];
-                                isVisible = f.visibilityRule.action === 'show' ? depVal === f.visibilityRule.val : depVal !== f.visibilityRule.val;
-                            }
-                            
-                            // 若欄位可見，且值為空，則標記為缺失
-                            if (isVisible) {
-                                const val = app.formData[f.id];
-                                if (val === undefined || val === null || String(val).trim() === "") {
-                                    isComplete = false;
-                                    break; // 只要有一個沒填就算該筆資料不完整
-                                }
-                            }
-                        }
-                    }
-                    if(!isComplete) issueCount++;
-                });
-            });
-
-            if(issueCount > 0) {
-                showToast('warning', `檢查完成：偵測到 ${issueCount} 筆歸戶資料有必填欄位缺漏`);
-            } else {
-                showToast('success', '檢查完成：所有已建立的歸戶資料皆符合必填規則');
-            }
-        }
-
-        /**
-         * 工具 3: 目前填報統計
-         * 簡單的 Alert 視窗顯示統計數據
-         */
-        function toolStats() {
-            const totalStudents = Object.values(groupedStudents).length;
-            let totalApps = 0;
-            let totalCourses = 0;
-            let coveredCourses = 0;
-
-            Object.values(groupedStudents).forEach(s => {
-                totalApps += s.applications.length;
-                totalCourses += s.courses.length;
-                
-                // 計算已被歸戶的課程數
-                s.courses.forEach(c => {
-                    if (c._app_id) coveredCourses++;
-                });
-            });
-
-            const coverage = totalCourses > 0 ? Math.round((coveredCourses / totalCourses) * 100) : 0;
-            const appAvg = totalApps > 0 ? (coveredCourses / totalApps).toFixed(1) : 0;
-
-            alert(
-                `📊 目前填報統計概覽\n` +
-                `━━━━━━━━━━━━━━━━\n` +
-                `👥 學生總數：${totalStudents} 人\n` +
-                `📚 課程總數：${totalCourses} 門\n\n` +
-                `✅ 已建立歸戶：${totalApps} 筆\n` +
-                `🔗 已歸戶課程：${coveredCourses} 門\n` +
-                `📈 填報覆蓋率：${coverage}%\n` +
-                `🔄 平均每筆歸戶包含：${appAvg} 門課程`
-            );
-        }
-
     // --- Weighted Distribution Logic (總數分配邏輯) ---
         
         let distContext = null; // 暫存目前的分配上下文
@@ -4429,12 +4312,16 @@
                 if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
                 if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
                 
-                // 【修正】: 檢查是否有活躍頁籤，並強制觸發 switchTab 以顯示進度框
-                const activeTab = document.querySelector('.tab-btn.active');
-                if(activeTab) {
-                    switchTab(activeTab.dataset.tab); 
+                // 【修正】: 優先使用 currentActiveAppId 強制刷新進度條
+                if (currentActiveAppId) {
+                     updateAppProgress(currentActiveAppId);
                 } else {
-                    if(stickyHeader) stickyHeader.classList.add('hidden');
+                    const activeTab = document.querySelector('.tab-btn.active');
+                    if(activeTab) {
+                        switchTab(activeTab.dataset.tab); 
+                    } else {
+                        if(stickyHeader) stickyHeader.classList.add('hidden');
+                    }
                 }
             }
         }
@@ -4644,16 +4531,17 @@
             rowsData.forEach((row, rowIndex) => {
                 const { student, course, appData, appId } = row;
 
-                // 【修正】: 固定顏色模式 (Zebra Striping)
-                const isAltRow = rowIndex % 2 === 1;
-                const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
-                const bgReadOnly = isAltRow ? '#f1f5f9' : '#f8fafc'; 
+                // 【修正】移除單雙行變色邏輯，統一固定顏色
+                const bgBase = '#ffffff'; 
+                const bgReadOnly = '#f8fafc'; 
 
                 const tr = document.createElement('tr');
                 tr.className = "transition border-b border-slate-100 hover:bg-slate-50"; 
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
-                tr.classList.add(isAltRow ? 'row-group-alt' : 'row-group-normal');
+                
+                // 仍保留 class 標記供 updateRowLogic 使用，但不影響顏色
+                tr.classList.add('row-group-normal');
 
                 currentStickyLeft = 0;
 
@@ -4675,7 +4563,6 @@
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
-                    // 取值邏輯
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -4688,7 +4575,6 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
 
-                    // 日期顯示邏輯
                     if (f.type === 'date' && val) {
                         let displayVal = val.replace(/-/g, '/'); 
                         if (f.inputFormat === 'ROC') {
