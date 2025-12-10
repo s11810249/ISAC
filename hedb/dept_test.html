@@ -4585,34 +4585,67 @@
                 });
             }
 
-            // 計算欄寬
+            // --- 計算欄位寬度 (修正重點) ---
             const colgroup = document.createElement('colgroup');
             const columnWidths = {};
             let totalTableWidth = 0; 
 
             allColumns.forEach(f => {
-                const iconWidth = f.description ? 25 : 0;
-                let headerW = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 30 + iconWidth;
-                let finalW = headerW;
+                // 1. 計算「標題基本寬度」
+                // 標題文字 + Icon寬度(約20px) + 表頭左右內距(約20px)
+                const iconWidth = f.description ? 20 : 0;
+                let baseHeaderWidth = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
+                
+                // 2. 計算「內容最大寬度」
+                let maxContentWidth = 0;
 
+                // (A) 如果是單選/清單，先掃描所有選項 (Option Content)
+                if ((f.type === 'single_select' || f.type === 'list') && f.options) {
+                    f.options.forEach(opt => {
+                        // 下拉選單有右側箭頭 (padding-right: 2.5rem ≈ 40px) + 左側內距 (8px)
+                        // 給予 50px 的緩衝空間以確保不被切掉
+                        const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 50;
+                        if (w > maxContentWidth) maxContentWidth = w;
+                    });
+                }
+
+                // (B) 掃描目前頁面上的所有資料列 (Row Content)
                 rowsData.forEach(row => {
-                    let val = row.appId && row.appData[f.id] ? row.appData[f.id] : row.course[f.id];
-                    if(!val && f.id === 'student_id') val = row.student.id;
-                    if(!val && f.id === 'student_name') val = row.student.name;
-                    if(!val && f.id === 'student_dept') val = row.student.dept;
+                    let val = "";
+                    if (f.calcMode === 'average' || f.calcMode === 'weighted') {
+                        val = row.course[f.id]; 
+                    } else if (row.appId && row.appData[f.id] !== undefined) {
+                        val = row.appData[f.id]; 
+                    } else {
+                        val = row.course[f.id];
+                        if ((val === undefined || val === "") && f.id === 'student_id') val = row.student.id;
+                        if ((val === undefined || val === "") && f.id === 'student_name') val = row.student.name;
+                        if ((val === undefined || val === "") && f.id === 'student_dept') val = row.student.dept;
+                    }
+
                     if (val) {
-                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 40;
-                        finalW = Math.max(finalW, w);
+                        // 一般文字框 padding 較小 (約 16px)，下拉選單較大 (約 48px)
+                        // 這裡統一給予適當的緩衝
+                        let padding = 24; 
+                        if (f.type === 'single_select' || f.type === 'list') padding = 50; 
+                        
+                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + padding;
+                        if (w > maxContentWidth) maxContentWidth = w;
                     }
                 });
                 
-                let calculatedWidth = Math.max(finalW, 80); 
-                if(f.type === 'text' || f.type === 'address') calculatedWidth = Math.min(calculatedWidth, 300);
+                // 3. 決定最終寬度：取「標題」與「內容」的最大值
+                let finalWidth = Math.max(baseHeaderWidth, maxContentWidth);
 
-                columnWidths[f.id] = calculatedWidth;
-                totalTableWidth += calculatedWidth;
+                // 4. 最小與最大寬度限制
+                finalWidth = Math.max(finalWidth, 80); // 最小 80px
+                if(f.type === 'text' || f.type === 'address') finalWidth = Math.min(finalWidth, 300); // 長文字上限 300px
+
+                columnWidths[f.id] = finalWidth;
+                totalTableWidth += finalWidth;
+                
                 const col = document.createElement('col');
-                col.style.width = calculatedWidth + "px";
+                col.style.width = finalWidth + "px";
                 colgroup.appendChild(col);
             });
             table.insertBefore(colgroup, thead);
@@ -4652,18 +4685,14 @@
             rowsData.forEach((row, rowIndex) => {
                 const { student, course, appData, appId } = row;
 
-                // 【修正】: 單純的 Zebra Striping，不分顏色
                 const isAltRow = rowIndex % 2 === 1;
                 const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
-                // 唯讀欄位背景稍深
                 const bgReadOnly = isAltRow ? '#f1f5f9' : '#f8fafc'; 
 
                 const tr = document.createElement('tr');
-                tr.className = "transition border-b border-slate-100 hover:bg-slate-50"; // 移除藍色 hover，改用 slate-50
+                tr.className = "transition border-b border-slate-100 hover:bg-slate-50"; 
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
-                
-                // 標記，供 updateRowLogic 恢復背景用
                 tr.classList.add(isAltRow ? 'row-group-alt' : 'row-group-normal');
 
                 currentStickyLeft = 0;
@@ -4672,7 +4701,6 @@
                     const td = document.createElement('td');
                     td.className = "border-r border-slate-200 p-0 relative";
                     
-                    // 【修正】: 唯讀欄位判斷 (含 readOnly 屬性)
                     const isReadOnly = f.isSystem || f.readOnly === true || f.category === 'sys_student_info' || f.category === 'sys_course_info';
                     
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
@@ -4700,9 +4728,9 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
 
-                    // 【修正】: 日期顯示邏輯 (支援 ROC/西元 + 斜線)
+                    // 日期顯示邏輯
                     if (f.type === 'date' && val) {
-                        let displayVal = val.replace(/-/g, '/'); // 預設轉為斜線
+                        let displayVal = val.replace(/-/g, '/'); 
                         if (f.inputFormat === 'ROC') {
                             const parts = displayVal.split('/');
                             if (parts.length === 3) {
@@ -4713,7 +4741,6 @@
                         val = displayVal;
                     }
 
-                    // 渲染儲存格
                     if (isReadOnly) {
                         const div = document.createElement('div');
                         div.className = "cell-read-only"; 
@@ -4734,7 +4761,7 @@
                             input.style.wordBreak = 'break-all'; 
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
-                            input.style.fontSize = '14px'; // 【修正】字體一致
+                            input.style.fontSize = '14px'; 
 
                             const autoResize = (el) => {
                                 el.style.height = 'auto'; 
@@ -4746,7 +4773,7 @@
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
                             input.className = "grid-input";
-                            input.style.fontSize = '14px'; // 【修正】字體一致
+                            input.style.fontSize = '14px'; 
                             input.style.appearance = 'none';
                             input.style.textAlign = 'center';
                             input.style.textAlignLast = 'center';
@@ -4757,7 +4784,7 @@
                             input.type = "text"; 
                             input.className = "grid-input";
                             input.style.textAlign = 'center';
-                            input.style.fontSize = '14px'; // 【修正】字體一致
+                            input.style.fontSize = '14px'; 
                             
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
@@ -4787,7 +4814,6 @@
                         input.dataset.field = f.id;
                         if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
 
-                        // 事件綁定 (含日期反向解析)
                         if (f.type !== 'date') {
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         } else {
@@ -4795,30 +4821,21 @@
                                 let v = e.target.value.trim();
                                 let cleanV = v.replace(/[\/\-]/g, '');
                                 let stdDate = "";
-
                                 if (cleanV.length >= 6) {
                                     let y, m, d;
-                                    if (cleanV.length === 8) { // 20230101
-                                        y = parseInt(cleanV.substring(0, 4));
-                                        m = cleanV.substring(4, 6);
-                                        d = cleanV.substring(6, 8);
-                                    } else if (cleanV.length === 7) { // 1120101
-                                        y = parseInt(cleanV.substring(0, 3)) + 1911;
-                                        m = cleanV.substring(3, 5);
-                                        d = cleanV.substring(5, 7);
-                                    } else if (cleanV.length === 6) { // 990101
-                                        y = parseInt(cleanV.substring(0, 2)) + 1911;
-                                        m = cleanV.substring(2, 4);
-                                        d = cleanV.substring(4, 6);
+                                    if (cleanV.length === 8) { 
+                                        y = parseInt(cleanV.substring(0, 4)); m = cleanV.substring(4, 6); d = cleanV.substring(6, 8);
+                                    } else if (cleanV.length === 7) { 
+                                        y = parseInt(cleanV.substring(0, 3)) + 1911; m = cleanV.substring(3, 5); d = cleanV.substring(5, 7);
+                                    } else if (cleanV.length === 6) { 
+                                        y = parseInt(cleanV.substring(0, 2)) + 1911; m = cleanV.substring(2, 4); d = cleanV.substring(4, 6);
                                     }
-
                                     if (y && m && d) {
                                         stdDate = `${y}-${m}-${d}`; 
                                         if (f.inputFormat === 'ROC') e.target.value = `${y-1911}/${m}/${d}`;
                                         else e.target.value = `${y}/${m}/${d}`;
                                     }
                                 }
-                                
                                 if (stdDate) {
                                     if (appId) {
                                         const app = student.applications.find(a => a.id === appId);
@@ -4826,7 +4843,6 @@
                                             const oldVal = app.formData[f.id];
                                             app.formData[f.id] = stdDate;
                                             logChange(f.id, appId, oldVal, stdDate, student.id);
-                                            // 同步其他視圖
                                             const allRows = document.querySelectorAll(`tr[data-sid="${student.id}"]`);
                                             allRows.forEach(rowTR => {
                                                 const cId = rowTR.dataset.cid;
@@ -4851,7 +4867,6 @@
                 });
                 tbody.appendChild(tr);
                 
-                // 【修正】: 立即更新該行邏輯 (Visibility/Option Logic)
                 updateRowLogic(tr, appId ? appData : course, !appId);
             });
             
