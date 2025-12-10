@@ -3096,9 +3096,10 @@
                     const label = document.createElement('label');
                     
                     // ▼▼▼ 修改 1：針對 Date 欄位將 mb-1 改為 mb-0，縮減標題與輸入框的間距 ▼▼▼
-                    const labelMb = (f.type === 'date') ? 'mb-0' : 'mb-1';
-                    label.className = `block text-sm font-bold text-slate-700 ${labelMb} flex items-center`;
-                    // ▲▲▲ 修改 1 結束 ▲▲▲
+                    const isDate = (f.type === 'date');
+                    // 使用 leading-none (行高1) 或 leading-tight 消除文字框的隱形間距
+                    label.className = `block text-sm font-bold text-slate-700 flex items-center leading-none ${isDate ? 'mb-1.5' : 'mb-1'}`;
+                    // ▲▲▲ 修正結束 ▲▲▲
                     
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
                     
@@ -3137,25 +3138,17 @@
                             updateData(tempEvent);
                         });
                         
-                        // 【新增修正 1】: 確保日期選擇器外層容器沒有上邊距
-                        input.classList.add('mt-0'); 
-    
                         const visInput = input.querySelector('input');
-                        if(visInput) {
-                            visInput.classList.add(`app-input-${app.id}-${f.id}`);
-                            
-                            // 【新增修正 2】: 確保日期輸入框本身沒有上邊距
-                            visInput.classList.add('mt-0'); 
-                        }
+                        if(visInput) visInput.classList.add(`app-input-${app.id}-${f.id}`);
                         
                         const hidden = document.createElement('input');
                         hidden.type = 'hidden';
                         hidden.id = `input-${app.id}-${f.id}`;
                         
-                        wrapper.appendChild(input);
-                        wrapper.appendChild(hidden);
-                        
-                    } 
+                        wrapper.appendChild(label);   // 1. 標題
+                        wrapper.appendChild(input);   // 2. 選擇器
+                        wrapper.appendChild(hidden);  // 3. 隱藏欄位
+                    } else {
                     // ★★★ 處理機構名稱 (新增帶按鈕邏輯 - 無輸入驗證) ★★★
                     else if (f.id === 'internship_institution_name') {
                         // 建立群組容器
