@@ -3094,11 +3094,10 @@
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
                     const label = document.createElement('label');
-                    
-                    // ▼▼▼ 修改 1：針對 Date 欄位將 mb-1 改為 mb-0，縮減標題與輸入框的間距 ▼▼▼
-                    const labelMb = (f.type === 'date') ? 'mb-0' : 'mb-1';
-                    label.className = `block text-sm font-bold text-slate-700 ${labelMb} flex items-center`;
-                    // ▲▲▲ 修改 1 結束 ▲▲▲
+    
+                    // 【修正 1】針對 Date 欄位，強制將標題下方邊距設為 0 (原本為 mb-1)
+                    const mbClass = (f.type === 'date') ? 'mb-0' : 'mb-1';
+                    label.className = `block text-sm font-bold text-slate-700 ${mbClass} flex items-center`;
                     
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
                     
@@ -3110,7 +3109,7 @@
                     const val = app.formData[f.id] || '';
                     let input;
                     
-                    // ★★★ 定義更新資料的函式 (包含機構收集) ★★★
+                    // 定義 updateData 函式 (邏輯保持不變)
                     const updateData = (e) => {
                         let newVal = e.target.value;
                         const oldVal = app.formData[f.id];
@@ -3118,7 +3117,6 @@
                             processAddress(e.target, f);
                             newVal = e.target.value;
                         }
-                        
                         if (oldVal !== newVal) {
                             app.formData[f.id] = newVal;
                             if (f.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
@@ -3129,77 +3127,70 @@
                             logChange(f.id, app.id, oldVal, newVal, groupedStudents[currentStudentId].id); 
                         }
                     };
-
-                    // --- 處理 ROC 日期 (保持不變) ---
+    
+                    // --- 處理 ROC 日期 ---
                     if (f.type === 'date' && f.inputFormat === 'ROC') {
                         input = createRocDatePicker(app.id, f.id, val, (newValue) => {
                             const tempEvent = { target: { value: newValue, type: 'change' } };
                             updateData(tempEvent);
                         });
                         
-                        // 【新增修正 1】: 確保日期選擇器外層容器沒有上邊距
+                        // 【修正 2】強制移除容器與輸入框的上方邊距
                         input.classList.add('mt-0'); 
     
                         const visInput = input.querySelector('input');
                         if(visInput) {
                             visInput.classList.add(`app-input-${app.id}-${f.id}`);
-                            
-                            // 【新增修正 2】: 確保日期輸入框本身沒有上邊距
-                            visInput.classList.add('mt-0'); 
+                            visInput.classList.add('mt-0');
                         }
                         
                         const hidden = document.createElement('input');
                         hidden.type = 'hidden';
                         hidden.id = `input-${app.id}-${f.id}`;
                         
+                        // 【修正 3】關鍵：先加入可見的日期選擇器，再加入 hidden input
+                        // 這樣可以避免 hidden input 在標題與輸入框之間產生隱形的行高間隙
                         wrapper.appendChild(input);
                         wrapper.appendChild(hidden);
                         
                     } 
-                    // ★★★ 處理機構名稱 (新增帶按鈕邏輯 - 無輸入驗證) ★★★
+                    // --- 處理機構名稱 (保持原樣) ---
                     else if (f.id === 'internship_institution_name') {
-                        // 建立群組容器
                         const inputGroup = document.createElement('div');
                         inputGroup.className = 'flex w-full';
-
-                        // 建立輸入框
+    
                         input = document.createElement('input');
                         input.type = 'text';
                         input.className = "input-stylish w-full rounded-r-none border-r-0";
                         input.value = val;
                         input.id = `input-${app.id}-${f.id}`; 
                         input.classList.add(`app-input-${app.id}-${f.id}`);
-
-                        // 建立按鈕
+    
                         const viewBtn = document.createElement('div');
                         viewBtn.className = 'input-group-append-btn';
-                        viewBtn.title = '開啟機構管理視窗'; // 修改 title 讓語意更通順
+                        viewBtn.title = '開啟機構管理視窗';
                         viewBtn.innerHTML = '<i class="fas fa-building"></i>';
                         
-                        // ★★★ 修改這裡：移除傳入參數，避免自動填入搜尋框 ★★★
                         viewBtn.onclick = (e) => {
                             e.stopPropagation();
-                            // 原本是: openInstitutionList(input.value); 
-                            // 改為:
                             if (typeof openInstitutionList === 'function') {
-                                openInstitutionList(); // 不傳參數，搜尋框就會保持空白
+                                openInstitutionList(); 
                             } else {
                                 showToast('error', '系統錯誤：機構查詢功能尚未載入');
                             }
                         };
-
+    
                         inputGroup.appendChild(input);
                         inputGroup.appendChild(viewBtn);
                         wrapper.appendChild(inputGroup);
                         
-                        // 綁定事件
                         input.addEventListener('change', updateData);
                         input.addEventListener('input', (e) => {
                             app.formData[f.id] = e.target.value;
                             hasUnsavedChanges = true;
                         });
                     } 
-                    // --- 處理其他一般欄位 (保持不變) ---
+                    // --- 處理其他一般欄位 (保持原樣) ---
                     else {
                         if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
@@ -3222,12 +3213,10 @@
                             input.className = "input-stylish";
                             input.value = val;
                         }
-
-                        // 共同設定
+    
                         input.id = `input-${app.id}-${f.id}`;
                         input.classList.add(`app-input-${app.id}-${f.id}`);
             
-                        // 處理 Address 特殊邏輯 (Blur)
                         if (f.type === 'address') {
                             input.addEventListener('blur', (e) => {
                                 const oldVal = input.value;
@@ -3235,12 +3224,11 @@
                                 const newVal = e.target.value;
                                 if(oldVal !== newVal) {
                                     app.formData[f.id] = newVal;
-                                    updateData(e); // 觸發 change 邏輯
+                                    updateData(e); 
                                 }
                             });
                         }
-
-                        // 綁定事件
+    
                         input.addEventListener('change', updateData);
                         
                         if (f.type === 'text' || f.type === 'number' || f.type === 'address') {
@@ -3251,7 +3239,7 @@
                         
                         wrapper.appendChild(input);
                     }
-
+    
                     grid.appendChild(wrapper);
                 });
                 container.appendChild(grid);
