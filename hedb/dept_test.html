@@ -3094,14 +3094,19 @@
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
                     const label = document.createElement('label');
-                    label.className = "block text-sm font-bold text-slate-700 mb-1 flex items-center";
+                    
+                    // ▼▼▼ 修改 1：針對 Date 欄位將 mb-1 改為 mb-0，縮減標題與輸入框的間距 ▼▼▼
+                    const labelMb = (f.type === 'date') ? 'mb-0' : 'mb-1';
+                    label.className = `block text-sm font-bold text-slate-700 ${labelMb} flex items-center`;
+                    // ▲▲▲ 修改 1 結束 ▲▲▲
+                    
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
                     
                     if(f.description) {
                         label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${f.description}</span></div>`;
                     }
                     wrapper.appendChild(label);
-
+    
                     const val = app.formData[f.id] || '';
                     let input;
                     
@@ -3116,15 +3121,11 @@
                         
                         if (oldVal !== newVal) {
                             app.formData[f.id] = newVal;
-                            
-                            // ★★★ 修正：動態檢查分類 ★★★
                             if (f.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
                                 collectInstitutionData(app.formData);
                             }
-
                             evaluateLogic(app);
                             hasUnsavedChanges = true;
-                            // 修正: 將 appId 改為 app.id
                             logChange(f.id, app.id, oldVal, newVal, groupedStudents[currentStudentId].id); 
                         }
                     };
@@ -3132,21 +3133,22 @@
                     // --- 處理 ROC 日期 (保持不變) ---
                     if (f.type === 'date' && f.inputFormat === 'ROC') {
                         input = createRocDatePicker(app.id, f.id, val, (newValue) => {
-                            // ROC date callback: 觸發 updateData 的邏輯
                             const tempEvent = { target: { value: newValue, type: 'change' } };
                             updateData(tempEvent);
                         });
                         
-                        // 處理 ROC 日期的額外 DOM 結構
                         const visInput = input.querySelector('input');
                         if(visInput) visInput.classList.add(`app-input-${app.id}-${f.id}`);
                         const hidden = document.createElement('input');
                         hidden.type = 'hidden';
                         hidden.id = `input-${app.id}-${f.id}`;
-                        wrapper.appendChild(hidden);
-                        wrapper.appendChild(input);
                         
-                    } 
+                        // ▼▼▼ 修改 2：調整加入順序，先加入 visible input 再加入 hidden，徹底消除間隙 ▼▼▼
+                        wrapper.appendChild(input);
+                        wrapper.appendChild(hidden);
+                        // ▲▲▲ 修改 2 結束 (原為先 append hidden 再 append input) ▲▲▲
+                        
+                    }
                     // ★★★ 處理機構名稱 (新增帶按鈕邏輯 - 無輸入驗證) ★★★
                     else if (f.id === 'internship_institution_name') {
                         // 建立群組容器
