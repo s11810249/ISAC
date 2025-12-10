@@ -1745,6 +1745,16 @@
         }
 
         // --- 處理格子變更 (不重繪 DOM，解決跳焦問題) ---
+        沒問題，我了解您的需求。為了讓您能直接複製貼上，不產生混淆，以下針對這三個步驟提供完整的程式碼區塊。
+
+請依照下列指示，在 hedb/dept_test.html 中找到對應的函式或段落進行替換。
+
+第一步：修改 handleGridChange (支援布林值存取)
+請搜尋函式 handleGridChange，並用下方程式碼完全替換整個函式。
+
+JavaScript
+
+        // --- 處理格子變更 (修正版：支援 Checkbox) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
             
             // 1. 地址/文字格式化
@@ -1754,52 +1764,91 @@
                 }
             }
 
-            const newVal = inputEl.value;
+            // 【修正】判斷是否為 checkbox 來決定取 checked 還是 value
+            let newVal;
+            if (inputEl.type === 'checkbox') {
+                newVal = inputEl.checked; // 取得 true 或 false
+            } else {
+                newVal = inputEl.value;
+            }
+            
             inputEl.title = newVal;
             
             const appId = course._app_id;
             hasUnsavedChanges = true;
-            
-            // 準備資料上下文 (用於邏輯判斷)
-            let dataContext = course;
+            const isScoreField = ['score', 'grade', 'credit', 'hours', 'point', '成績', '學分', '時數'].some(k => fieldDef.id.toLowerCase().includes(k) || fieldDef.label.includes(k));
 
             if (appId) {
-                // === 情境 A: 已歸戶 (App Data) ===
+                // === 情境 A: 已歸戶 ===
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
-                    dataContext = app.formData; // 設定上下文為 App Data
+                    const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
 
                     if (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted') {
-                        // 特殊運算模式 (保持原邏輯，略為簡化示範)
-                        course[fieldDef.id] = newVal; 
-                        // ... (加權/平均運算邏輯可在此擴充) ...
-                        // 簡單將數值寫入 appData 以供顯示
-                        app.formData[fieldDef.id] = newVal; 
+                        // 數值運算模式 (平均/加權)
+                        course[fieldDef.id] = newVal; // 先更新自己
+
+                        let finalValue = 0;
+                        if (fieldDef.calcMode === 'weighted') {
+                            // 加權運算
+                            let currentTotalValue = 0;
+                            let totalWeight = 0;
+                            const weightKey = fieldDef.weightField; 
+
+                            linkedCourses.forEach(c => {
+                                const v = parseFloat(c[fieldDef.id]) || 0;
+                                const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
+                                currentTotalValue += v;
+                                totalWeight += w;
+                            });
+                            finalValue = currentTotalValue;
+
+                            // 分配回寫
+                            if (totalWeight > 0) {
+                                linkedCourses.forEach(c => {
+                                    const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
+                                    const ratio = w / totalWeight;
+                                    const distributedVal = currentTotalValue * ratio;
+                                    const formattedVal = fieldDef.decimal ? distributedVal.toFixed(fieldDef.decimal) : Math.round(distributedVal).toString();
+                                    
+                                    c[fieldDef.id] = formattedVal;
+                                    // 同步更新所有視圖 (Local + Global)
+                                    syncValueToViews(c._internal_id, student.id, fieldDef.id, formattedVal, inputEl);
+                                });
+                            }
+                        } else {
+                            // 平均/加總模式
+                            let sum = 0;
+                            linkedCourses.forEach(c => {
+                                const v = parseFloat(c[fieldDef.id]);
+                                if (!isNaN(v)) sum += v;
+                            });
+                            finalValue = sum; 
+                        }
+
+                        app.formData[fieldDef.id] = fieldDef.decimal ? finalValue.toFixed(fieldDef.decimal) : Math.round(finalValue).toString();
+                        logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
+
                     } else {
                         // 一般共用欄位：更新 App Data
                         const oldVal = app.formData[fieldDef.id];
                         app.formData[fieldDef.id] = newVal;
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
-                        // ★ 關鍵：同步更新 Grid View 中所有屬於此歸戶的列
-                        // 找出所有屬於此 appId 的課程列
-                        const allRows = document.querySelectorAll(`tr[data-sid="${student.id}"]`);
-                        allRows.forEach(tr => {
-                            const cId = tr.dataset.cid;
-                            const c = student.courses.find(x => x._internal_id === cId);
-                            if (c && c._app_id === appId) {
-                                // 1. 更新數值顯示
-                                const targetInput = tr.querySelector(`[data-field="${fieldDef.id}"]`);
-                                if (targetInput && targetInput !== inputEl) {
-                                    targetInput.value = newVal;
-                                    targetInput.title = newVal;
+                        // 同步更新所有連動格子 (使用 class 選擇器)
+                        const allRelatedInputs = document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`);
+                        allRelatedInputs.forEach(el => {
+                            if (el !== inputEl) {
+                                if (el.type === 'checkbox') {
+                                    el.checked = newVal;
+                                } else {
+                                    el.value = newVal;
+                                    el.title = newVal;
                                 }
-                                // 2. ★ 關鍵：重新評估該列的 Visibility/Option Logic
-                                updateRowLogic(tr, app.formData, false);
                             }
                         });
 
-                        // 機構收集邏輯
+                        // 機構資訊收集
                         if (fieldDef.category === 'internship_institution_info') {
                             if (typeof collectInstitutionData === 'function') {
                                 collectInstitutionData(app.formData);
@@ -1808,14 +1857,17 @@
                     }
                 }
             } else {
-                // === 情境 B: 未歸戶 (Raw Data) ===
+                // === 情境 B: 未歸戶 ===
                 course[fieldDef.id] = newVal;
                 
-                // 更新該行邏輯
-                const tr = inputEl.closest('tr');
-                if (tr) updateRowLogic(tr, course, true);
+                // 更新該行邏輯 (Local & Global)
+                const relevantRows = document.querySelectorAll(`tr[data-cid="${course._internal_id}"][data-sid="${student.id}"]`);
+                relevantRows.forEach(tr => updateRowLogic(tr, course, true));
+                
+                // 更新畫面數值 (防止 Local 改了 Global 沒變)
+                syncValueToViews(course._internal_id, student.id, fieldDef.id, newVal, inputEl);
 
-                if (newVal && newVal.trim() !== "") {
+                if (!isScoreField && newVal && newVal !== "" && newVal !== false) {
                     tryAutoMerge(student, course);
                 }
             }
@@ -3045,77 +3097,75 @@
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
                     const label = document.createElement('label');
-    
-                    // 【修正 1】統一標題間距為 mb-1，確保所有欄位標題高度對齊
-                    const mbClass = 'mb-1'; 
-                    label.className = `block text-sm font-bold text-slate-700 ${mbClass} flex items-center`;
-                    
+                    label.className = "block text-sm font-bold text-slate-700 mb-1 flex items-center";
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
                     
                     if(f.description) {
                         label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${f.description}</span></div>`;
                     }
                     wrapper.appendChild(label);
-    
-                    const val = app.formData[f.id] || '';
+
+                    const val = app.formData[f.id];
                     let input;
                     
-                    // 定義 updateData 函式 (邏輯保持不變)
+                    // ★★★ 定義更新資料的函式 (包含機構收集與 Checkbox 支援) ★★★
                     const updateData = (e) => {
-                        let newVal = e.target.value;
+                        let newVal;
+                        // 修正：依據類型取值
+                        if (e.target.type === 'checkbox') {
+                            newVal = e.target.checked;
+                        } else {
+                            newVal = e.target.value;
+                        }
+
                         const oldVal = app.formData[f.id];
                         if (f.type === 'address' && e.type === 'change') {
                             processAddress(e.target, f);
                             newVal = e.target.value;
                         }
+                        
                         if (oldVal !== newVal) {
                             app.formData[f.id] = newVal;
+                            
+                            // 機構資訊收集
                             if (f.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
                                 collectInstitutionData(app.formData);
                             }
+
                             evaluateLogic(app);
                             hasUnsavedChanges = true;
                             logChange(f.id, app.id, oldVal, newVal, groupedStudents[currentStudentId].id); 
                         }
                     };
-    
+
                     // --- 處理 ROC 日期 ---
                     if (f.type === 'date' && f.inputFormat === 'ROC') {
-                        input = createRocDatePicker(app.id, f.id, val, (newValue) => {
+                        input = createRocDatePicker(app.id, f.id, val || '', (newValue) => {
                             const tempEvent = { target: { value: newValue, type: 'change' } };
                             updateData(tempEvent);
                         });
                         
-                        // 【修正 2】加上 mt-0 消除間隙
-                        input.classList.add('mt-0'); 
-    
                         const visInput = input.querySelector('input');
-                        if(visInput) {
-                            visInput.classList.add(`app-input-${app.id}-${f.id}`);
-                            visInput.classList.add('mt-0');
-                        }
-                        
+                        if(visInput) visInput.classList.add(`app-input-${app.id}-${f.id}`);
                         const hidden = document.createElement('input');
                         hidden.type = 'hidden';
                         hidden.id = `input-${app.id}-${f.id}`;
-                        
-                        // 先 input 再 hidden，確保無隱形高度
-                        wrapper.appendChild(input);
                         wrapper.appendChild(hidden);
+                        wrapper.appendChild(input);
                         
                     } 
                     // --- 處理機構名稱 ---
                     else if (f.id === 'internship_institution_name') {
                         const inputGroup = document.createElement('div');
-                        inputGroup.className = 'flex w-full mt-0'; // 加上 mt-0
-    
+                        inputGroup.className = 'flex w-full';
+
                         input = document.createElement('input');
                         input.type = 'text';
-                        input.className = "input-stylish w-full rounded-r-none border-r-0 mt-0"; // 加上 mt-0
-                        input.value = val;
+                        input.className = "input-stylish w-full rounded-r-none border-r-0";
+                        input.value = val || '';
                         input.id = `input-${app.id}-${f.id}`; 
                         input.classList.add(`app-input-${app.id}-${f.id}`);
-    
+
                         const viewBtn = document.createElement('div');
                         viewBtn.className = 'input-group-append-btn';
                         viewBtn.title = '開啟機構管理視窗';
@@ -3129,7 +3179,7 @@
                                 showToast('error', '系統錯誤：機構查詢功能尚未載入');
                             }
                         };
-    
+
                         inputGroup.appendChild(input);
                         inputGroup.appendChild(viewBtn);
                         wrapper.appendChild(inputGroup);
@@ -3140,39 +3190,55 @@
                             hasUnsavedChanges = true;
                         });
                     } 
-                    // --- 處理其他一般欄位 (含 Select) ---
+                    // --- 【新增】處理 Checkbox 類型 ---
+                    else if (f.type === 'checkbox') {
+                        const boxWrapper = document.createElement('div');
+                        boxWrapper.className = "flex items-center h-[42px] mt-0"; 
+
+                        input = document.createElement('input');
+                        input.type = 'checkbox';
+                        input.className = "w-5 h-5 text-primary border-slate-300 rounded focus:ring-primary cursor-pointer transition";
+                        
+                        // 支援存成 boolean 或 'true' 字串
+                        input.checked = (val === true || val === 'true');
+                        
+                        const textSpan = document.createElement('span');
+                        textSpan.className = "ml-2 text-sm text-slate-600 cursor-pointer select-none";
+                        textSpan.innerText = f.placeholder || "是"; 
+                        textSpan.onclick = () => input.click();
+
+                        input.id = `input-${app.id}-${f.id}`;
+                        input.classList.add(`app-input-${app.id}-${f.id}`);
+                        input.addEventListener('change', updateData);
+
+                        boxWrapper.appendChild(input);
+                        boxWrapper.appendChild(textSpan);
+                        wrapper.appendChild(boxWrapper);
+                    }
+                    // --- 處理其他一般欄位 ---
                     else {
                         if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
-                            
-                            // 【修正 3 - 關鍵】Select 標準化處理
-                            // 加入 appearance-none 移除預設樣式，並補上 SVG 箭頭
-                            input.className = "input-stylish cursor-pointer mt-0 appearance-none";
-                            input.style.backgroundImage = `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2364748b' stroke-width='2'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E")`;
-                            input.style.backgroundRepeat = "no-repeat";
-                            input.style.backgroundPosition = "right 0.75rem center";
-                            input.style.backgroundSize = "1em";
-                            input.style.paddingRight = "2.5rem"; // 預留箭頭空間
-                            
+                            input.className = "input-stylish cursor-pointer";
                             input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
                         } else if (f.type === 'date') {
                             input = document.createElement('input');
                             input.type = 'date';
-                            input.className = "input-stylish mt-0";
-                            input.value = val;
+                            input.className = "input-stylish";
+                            input.value = val || '';
                         } else if (f.type === 'number') {
                             input = document.createElement('input');
                             input.type = 'number';
-                            input.className = "input-stylish mt-0";
+                            input.className = "input-stylish";
                             input.step = f.decimal ? '0.01' : '1';
-                            input.value = val;
+                            input.value = val || '';
                         } else {
                             input = document.createElement('input');
                             input.type = 'text';
-                            input.className = "input-stylish mt-0";
-                            input.value = val;
+                            input.className = "input-stylish";
+                            input.value = val || '';
                         }
-    
+
                         input.id = `input-${app.id}-${f.id}`;
                         input.classList.add(`app-input-${app.id}-${f.id}`);
             
@@ -3187,7 +3253,7 @@
                                 }
                             });
                         }
-    
+
                         input.addEventListener('change', updateData);
                         
                         if (f.type === 'text' || f.type === 'number' || f.type === 'address') {
@@ -3198,7 +3264,7 @@
                         
                         wrapper.appendChild(input);
                     }
-    
+
                     grid.appendChild(wrapper);
                 });
                 container.appendChild(grid);
@@ -4592,7 +4658,10 @@
                         div.className = "cell-read-only"; 
                         div.innerText = val || '';
                         div.title = val || '';
-                        div.style.fontSize = '14px'; 
+                        div.style.height = '100%';
+                        div.style.display = 'flex';
+                        div.style.alignItems = 'center';
+                        div.style.justifyContent = 'center';
                         td.appendChild(div);
                     } else {
                         let input;
@@ -4607,7 +4676,7 @@
                             input.style.wordBreak = 'break-all'; 
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
-                            input.style.fontSize = '14px'; 
+                            input.style.height = 'auto';         
 
                             const autoResize = (el) => {
                                 el.style.height = 'auto'; 
@@ -4618,20 +4687,27 @@
 
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
+                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                             input.className = "grid-input";
-                            input.style.fontSize = '14px'; 
-                            input.style.appearance = 'none';
                             input.style.textAlign = 'center';
                             input.style.textAlignLast = 'center';
-                            
-                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
-                        } else {
+                        } 
+                        // --- 【新增】列表模式的 Checkbox ---
+                        else if (f.type === 'checkbox') {
                             input = document.createElement('input');
-                            input.type = "text"; 
+                            input.type = 'checkbox';
+                            // 樣式：置中顯示
+                            input.className = "w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary cursor-pointer mx-auto block mt-0"; 
+                            input.checked = (val === true || val === 'true');
+                            
+                            // 綁定變更事件
+                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                        }
+                        else {
+                            input = document.createElement('input');
+                            input.type = "text";
                             input.className = "grid-input";
                             input.style.textAlign = 'center';
-                            input.style.fontSize = '14px'; 
-                            
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
                             }
@@ -4656,56 +4732,28 @@
                             };
                         }
 
-                        input.value = val || "";
+                        // 如果不是 checkbox，才設定 value (避免覆蓋 checked 狀態)
+                        if (f.type !== 'checkbox') {
+                            input.value = val || "";
+                        }
+                        
                         input.dataset.field = f.id;
                         if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
 
-                        if (f.type !== 'date') {
-                            input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                        } else {
-                            input.addEventListener('change', (e) => {
-                                let v = e.target.value.trim();
-                                let cleanV = v.replace(/[\/\-]/g, '');
-                                let stdDate = "";
-                                if (cleanV.length >= 6) {
-                                    let y, m, d;
-                                    if (cleanV.length === 8) { 
-                                        y = parseInt(cleanV.substring(0, 4)); m = cleanV.substring(4, 6); d = cleanV.substring(6, 8);
-                                    } else if (cleanV.length === 7) { 
-                                        y = parseInt(cleanV.substring(0, 3)) + 1911; m = cleanV.substring(3, 5); d = cleanV.substring(5, 7);
-                                    } else if (cleanV.length === 6) { 
-                                        y = parseInt(cleanV.substring(0, 2)) + 1911; m = cleanV.substring(2, 4); d = cleanV.substring(4, 6);
+                        // 事件綁定 (排除 checkbox，因為上面已經綁定了)
+                        if (f.type !== 'checkbox') {
+                            if (f.type !== 'date') {
+                                input.onchange = (e) => handleGridChange(e.target, student, course, f);
+                            } else {
+                                input.addEventListener('change', (e) => {
+                                    let v = e.target.value.trim().replace(/[^\d]/g, '');
+                                    if (f.inputFormat === 'ROC' && v.length >= 6) {
+                                         if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
+                                         else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
                                     }
-                                    if (y && m && d) {
-                                        stdDate = `${y}-${m}-${d}`; 
-                                        if (f.inputFormat === 'ROC') e.target.value = `${y-1911}/${m}/${d}`;
-                                        else e.target.value = `${y}/${m}/${d}`;
-                                    }
-                                }
-                                if (stdDate) {
-                                    if (appId) {
-                                        const app = student.applications.find(a => a.id === appId);
-                                        if(app) {
-                                            const oldVal = app.formData[f.id];
-                                            app.formData[f.id] = stdDate;
-                                            logChange(f.id, appId, oldVal, stdDate, student.id);
-                                            const allRows = document.querySelectorAll(`tr[data-sid="${student.id}"]`);
-                                            allRows.forEach(rowTR => {
-                                                const cId = rowTR.dataset.cid;
-                                                const c = student.courses.find(x => x._internal_id === cId);
-                                                if(c && c._app_id === appId) {
-                                                    updateRowLogic(rowTR, app.formData, false);
-                                                }
-                                            });
-                                        }
-                                    } else {
-                                        course[f.id] = stdDate;
-                                    }
-                                    saveToLocal();
-                                } else {
                                     handleGridChange(e.target, student, course, f);
-                                }
-                            });
+                                });
+                            }
                         }
                         td.appendChild(input);
                     }
