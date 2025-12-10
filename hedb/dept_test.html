@@ -2700,17 +2700,13 @@
             div.id = `content-${appId}`;
             div.className = 'dynamic-tab-content max-w-5xl mx-auto space-y-6';
             
-            // --- 課程資訊區塊 (可收合) ---
-            // 使用 <details> 標籤實現收合，預設 open
             const details = document.createElement('details');
             details.className = 'group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden';
-            details.open = true; // 預設展開
+            details.open = true; 
             
-            // Summary (標題列)
-            // list-none 用於隱藏預設的三角形 (某些瀏覽器需要 CSS 輔助)
             const summary = document.createElement('summary');
             summary.className = 'flex items-center justify-between px-6 py-4 cursor-pointer bg-slate-50 hover:bg-slate-100 transition select-none list-none';
-            summary.style.listStyle = 'none'; // 強制隱藏預設 marker
+            summary.style.listStyle = 'none'; 
             summary.innerHTML = `
                 <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2">
                     <i class="fas fa-info-circle text-primary"></i> 此紀錄包含之課程資訊
@@ -2720,13 +2716,11 @@
                 </span>
             `;
             
-            // 隱藏 Chrome 預設的 details marker
             const style = document.createElement('style');
             style.innerHTML = 'summary::-webkit-details-marker { display: none; }';
             details.appendChild(style);
             details.appendChild(summary);
 
-            // Table Content
             const tableContainer = document.createElement('div');
             tableContainer.className = 'p-0 border-t border-slate-200';
 
@@ -2734,17 +2728,17 @@
                 const c = student.courses.find(x => x._internal_id === cid);
                 if (!c) return '';
                 
-                // 使用 Helper 抓取值
                 const sem = getCourseValue(c, ['semester', '學期']);
                 const code = getCourseValue(c, ['course_code', '選課代號']);
                 const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']);
                 const type = getCourseValue(c, ['course_type', '修別', '選必修', '必選修']);
                 const credits = getCourseValue(c, ['credits', '學分', '學分數']);
 
+                // 【修正】: 將選課代號 (第2欄) 加入 text-center
                 return `
                     <tr class="border-t border-slate-100 hover:bg-slate-50">
                         <td class="px-4 py-2 text-center text-slate-600">${sem}</td>
-                        <td class="px-4 py-2 font-mono text-slate-600">${code}</td>
+                        <td class="px-4 py-2 font-mono text-slate-600 text-center">${code}</td> 
                         <td class="px-4 py-2 font-bold text-slate-800">${name}</td>
                         <td class="px-4 py-2 text-center text-slate-600">${type}</td>
                         <td class="px-4 py-2 text-center text-slate-600">${credits}</td>
@@ -2758,7 +2752,7 @@
                         <thead class="bg-slate-50 text-slate-500 font-bold">
                             <tr>
                                 <th class="px-4 py-2 text-center w-20">學期</th>
-                                <th class="px-4 py-2 w-28">選課代號</th>
+                                <th class="px-4 py-2 text-center w-28">選課代號</th>
                                 <th class="px-4 py-2">課程名稱</th>
                                 <th class="px-4 py-2 text-center w-24">課程屬性</th>
                                 <th class="px-4 py-2 text-center w-20">學分</th>
@@ -2773,9 +2767,7 @@
             details.appendChild(tableContainer);
             div.appendChild(details);
 
-            // --- 表單區塊 (恢復舊版全寬樣式) ---
             const formContainer = document.createElement('div');
-            // 移除 bg-white, shadow, border 等樣式，只保留 layout 必要的
             formContainer.className = 'form-body pt-2'; 
             
             renderFields(formContainer, app);
@@ -3225,21 +3217,17 @@
         }
 
         function updateAppProgress(appId) {
-            // 1. 基本檢查
             const student = groupedStudents[currentStudentId];
             if(!student) return;
             const app = student.applications.find(a => a.id === appId);
             if(!app) return;
         
-            // 2. 取得置頂容器
             const container = document.getElementById('sticky-progress-header');
             if(!container) return;
         
-            // 3. 計算數據
             const stats = calculateAppStats(app);
             const { required, filled, percent } = stats;
         
-            // 4. 設定樣式變數
             const isComplete = percent === 100;
             const colorClass = isComplete ? 'text-emerald-600' : 'text-orange-500';
             const barColor = isComplete ? 'bg-emerald-500' : 'bg-orange-400';
@@ -3247,7 +3235,6 @@
                 ? 'hidden' 
                 : 'px-3 py-1.5 bg-red-50 text-red-600 hover:bg-red-100 border border-red-200 rounded text-xs font-bold transition flex items-center gap-1 cursor-pointer';
         
-            // 5. 渲染內容 (全寬樣式)
             container.innerHTML = `
                 <div class="flex items-center gap-4 w-full">
                     <div class="w-10 h-10 rounded-full bg-slate-50 flex-shrink-0 flex items-center justify-center text-primary border border-slate-100 shadow-sm">
@@ -3275,12 +3262,16 @@
                 </div>
             `;
             
-            // 6. 顯示容器
-            container.classList.remove('hidden');
+            // 【修正】: 只有在表單模式 (form) 下才顯示進度框，避免列表模式點擊側邊欄時跳出
+            if (currentViewMode === 'form') {
+                container.classList.remove('hidden');
+            } else {
+                container.classList.add('hidden');
+            }
             
-            // 同步更新 Tab 狀態燈號
             renderTabs(student);
         }
+        
         function evaluateLogic(app) {
             const fields = currentYearConfig.fields || [];
             
@@ -4398,14 +4389,12 @@
 
         // 1. 切換視圖模式 (修正版：加入模式記憶功能)
         function setStudentViewMode(mode) {
-            // 1. 記錄使用者目前的選擇
             currentViewMode = mode;
         
-            // 2. 取得必要的 DOM 元素
             const formContainer = document.getElementById('form-content-area');
             const tabsContainer = document.getElementById('tabs-container');
             const gridWrapper = document.getElementById('student-grid-wrapper');
-            const stickyHeader = document.getElementById('sticky-progress-header'); // ★ 取得置頂進度條元素
+            const stickyHeader = document.getElementById('sticky-progress-header'); 
             
             const btnForm = document.getElementById('btn-std-view-form');
             const btnGrid = document.getElementById('btn-std-view-grid');
@@ -4413,54 +4402,38 @@
             if(!formContainer || !gridWrapper) return;
         
             if (mode === 'grid') {
-                // =======================
                 // 切換到【列表模式】
-                // =======================
-                
-                // 1. 切換容器顯示狀態
                 formContainer.classList.add('hidden');
                 tabsContainer.classList.add('hidden'); 
                 gridWrapper.classList.remove('hidden');
         
-                // ★ 關鍵修改：切換到列表時，隱藏表單專用的進度條
+                // 強制隱藏表單專用的進度條
                 if(stickyHeader) stickyHeader.classList.add('hidden');
         
-                // 2. 更新按鈕樣式 (列表按鈕亮起)
                 if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
                 if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
         
-                // 3. 渲染表格內容
                 if(currentStudentId) {
                     renderStudentLocalGrid(currentStudentId); 
-                    // 延遲渲染欄位設定器，確保 DOM 已更新
                     setTimeout(() => {
                         if(typeof renderLocalGridPicker === 'function') renderLocalGridPicker(); 
                     }, 0);
                 }
         
             } else {
-                // =======================
                 // 切換回【表單模式】
-                // =======================
-        
-                // 1. 切換容器顯示狀態
                 formContainer.classList.remove('hidden');
                 tabsContainer.classList.remove('hidden');
                 gridWrapper.classList.add('hidden');
         
-                // 2. 更新按鈕樣式 (表單按鈕亮起)
                 if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
                 if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
                 
-                // 3. ★ 關鍵修改：恢復進度條顯示
-                // 檢查是否有當前選中的頁籤 (Tab)
+                // 【修正】: 檢查是否有活躍頁籤，並強制觸發 switchTab 以顯示進度框
                 const activeTab = document.querySelector('.tab-btn.active');
                 if(activeTab) {
-                    // 如果有選中的 Tab，呼叫 switchTab
-                    // 注意：switchTab 內部已經包含了 updateAppProgress(tabId)，這會自動讓 stickyHeader 顯示出來
                     switchTab(activeTab.dataset.tab); 
                 } else {
-                    // 如果沒有選中頁籤 (例如剛載入或無資料)，確保進度條是隱藏的
                     if(stickyHeader) stickyHeader.classList.add('hidden');
                 }
             }
@@ -4585,31 +4558,23 @@
                 });
             }
 
-            // --- 計算欄位寬度 (修正重點) ---
+            // 計算欄寬
             const colgroup = document.createElement('colgroup');
             const columnWidths = {};
             let totalTableWidth = 0; 
 
             allColumns.forEach(f => {
-                // 1. 計算「標題基本寬度」
-                // 標題文字 + Icon寬度(約20px) + 表頭左右內距(約20px)
                 const iconWidth = f.description ? 20 : 0;
                 let baseHeaderWidth = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
                 
-                // 2. 計算「內容最大寬度」
                 let maxContentWidth = 0;
-
-                // (A) 如果是單選/清單，先掃描所有選項 (Option Content)
                 if ((f.type === 'single_select' || f.type === 'list') && f.options) {
                     f.options.forEach(opt => {
-                        // 下拉選單有右側箭頭 (padding-right: 2.5rem ≈ 40px) + 左側內距 (8px)
-                        // 給予 50px 的緩衝空間以確保不被切掉
                         const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 50;
                         if (w > maxContentWidth) maxContentWidth = w;
                     });
                 }
 
-                // (B) 掃描目前頁面上的所有資料列 (Row Content)
                 rowsData.forEach(row => {
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
@@ -4624,22 +4589,16 @@
                     }
 
                     if (val) {
-                        // 一般文字框 padding 較小 (約 16px)，下拉選單較大 (約 48px)
-                        // 這裡統一給予適當的緩衝
                         let padding = 24; 
                         if (f.type === 'single_select' || f.type === 'list') padding = 50; 
-                        
                         const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + padding;
                         if (w > maxContentWidth) maxContentWidth = w;
                     }
                 });
                 
-                // 3. 決定最終寬度：取「標題」與「內容」的最大值
                 let finalWidth = Math.max(baseHeaderWidth, maxContentWidth);
-
-                // 4. 最小與最大寬度限制
-                finalWidth = Math.max(finalWidth, 80); // 最小 80px
-                if(f.type === 'text' || f.type === 'address') finalWidth = Math.min(finalWidth, 300); // 長文字上限 300px
+                finalWidth = Math.max(finalWidth, 80); 
+                if(f.type === 'text' || f.type === 'address') finalWidth = Math.min(finalWidth, 300);
 
                 columnWidths[f.id] = finalWidth;
                 totalTableWidth += finalWidth;
@@ -4685,6 +4644,7 @@
             rowsData.forEach((row, rowIndex) => {
                 const { student, course, appData, appId } = row;
 
+                // 【修正】: 固定顏色模式 (Zebra Striping)
                 const isAltRow = rowIndex % 2 === 1;
                 const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
                 const bgReadOnly = isAltRow ? '#f1f5f9' : '#f8fafc'; 
