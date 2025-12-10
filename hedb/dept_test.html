@@ -4510,14 +4510,11 @@
             if(!table || !scrollContainer || !thead || !tbody) return;
 
             // --- 空狀態 (Empty State) 處理 ---
-            
-            // 1. 檢查或建立空狀態容器
             let emptyState = document.getElementById('local-grid-empty-state');
             if (!emptyState) {
                 emptyState = document.createElement('div');
                 emptyState.id = 'local-grid-empty-state';
                 emptyState.className = 'hidden flex-col items-center justify-center h-full w-full absolute top-0 left-0 bg-white z-20';
-                
                 emptyState.innerHTML = `
                     <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
                         <i class="fas fa-folder-plus text-4xl text-slate-300"></i>
@@ -4538,49 +4535,28 @@
             const gridHeader = document.getElementById('local-grid-header'); 
             
             if (student.applications.length === 0) {
-                // === 情境：無資料 ===
-                
-                // 1. 徹底隱藏表格，避免佔位
                 table.style.display = 'none'; 
-                
-                // 2. 顯示空狀態
                 emptyState.classList.remove('hidden');
                 emptyState.classList.add('flex');
-                
-                // 3. 隱藏標題列
                 if(gridHeader) gridHeader.style.display = 'none'; 
-
-                // 4. 【關鍵修正】強制重置容器高度，使其填滿畫面，解除上一位學生的樣式限制
                 scrollContainer.style.height = '100%';
                 scrollContainer.style.maxHeight = 'none';
-                scrollContainer.style.overflow = 'hidden'; // 空狀態時隱藏捲軸
-                
+                scrollContainer.style.overflow = 'hidden';
                 return; 
             } else {
-                // === 情境：有資料 ===
-                
-                // 1. 恢復表格顯示
                 table.style.display = ''; 
                 table.style.visibility = 'visible';
-                
-                // 2. 隱藏空狀態
                 emptyState.classList.add('hidden');
                 emptyState.classList.remove('flex');
-                
-                // 3. 恢復標題列
                 if(gridHeader) gridHeader.style.display = 'flex'; 
             }
 
-            // --- 以下為標準表格渲染邏輯 (有資料時才會執行) ---
-
-            // A. 容器樣式重置 (針對有內容的表格設定)
-            scrollContainer.classList.remove('flex-grow');
-            scrollContainer.classList.remove('h-full');
+            // --- 標準表格渲染 ---
+            scrollContainer.classList.remove('flex-grow', 'h-full');
             scrollContainer.style.height = 'auto';
-            scrollContainer.style.maxHeight = 'calc(100% - 60px)'; // 預留空間給置頂標頭
-            scrollContainer.style.overflow = 'auto'; // 恢復捲軸
+            scrollContainer.style.maxHeight = 'calc(100% - 60px)'; 
+            scrollContainer.style.overflow = 'auto';
 
-            // 重置表格內容
             thead.innerHTML = '';
             tbody.innerHTML = '';
             const oldColgroup = table.querySelector('colgroup');
@@ -4588,7 +4564,7 @@
 
             const fields = currentYearConfig.fields || [];
             
-            // B. 欄位準備
+            // 欄位排序與準備
             let allColumns = fields
                 .filter(f => !['course_id', '_internal_id'].includes(f.id)) 
                 .filter(f => !localGridState.hiddenCols.includes(f.id));
@@ -4605,7 +4581,7 @@
                 allColumns.sort((a,b) => getOrder(a) - getOrder(b));
             }
 
-            // C. 資料準備
+            // 資料準備
             let rowsData = [];
             student.courses.forEach(c => {
                 if (searchTerm) {
@@ -4620,7 +4596,7 @@
                 rowsData.push({ course: c, appData: appData, student: student, appId: c._app_id });
             });
 
-            // 資料排序
+            // 排序資料
             if (localGridState.sortKey) {
                 rowsData.sort((a, b) => {
                     const getVal = (row, key) => {
@@ -4640,7 +4616,7 @@
                 });
             }
 
-            // D. 計算欄位寬度
+            // 計算欄寬
             const colgroup = document.createElement('colgroup');
             const columnWidths = {};
             let totalTableWidth = 0; 
@@ -4655,7 +4631,6 @@
                     if(!val && f.id === 'student_id') val = row.student.id;
                     if(!val && f.id === 'student_name') val = row.student.name;
                     if(!val && f.id === 'student_dept') val = row.student.dept;
-
                     if (val) {
                         const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + 40;
                         finalW = Math.max(finalW, w);
@@ -4667,21 +4642,18 @@
 
                 columnWidths[f.id] = calculatedWidth;
                 totalTableWidth += calculatedWidth;
-
                 const col = document.createElement('col');
                 col.style.width = calculatedWidth + "px";
                 colgroup.appendChild(col);
             });
-
             table.insertBefore(colgroup, thead);
 
-            // E. 表格樣式
             table.classList.remove('w-full');
             table.style.tableLayout = 'fixed';
             table.style.width = totalTableWidth + 'px';
             table.style.minWidth = totalTableWidth + 'px';
 
-            // F. 渲染表頭
+            // 渲染表頭
             const freezeLimit = localGridState.frozenCount;
             let currentStickyLeft = 0; 
             let trHead = document.createElement('tr');
@@ -4707,26 +4679,21 @@
             });
             thead.appendChild(trHead);
 
-            // G. 渲染內容
-            let lastAppId = null;
-            let isAltRow = false;
-
-            rowsData.forEach(row => {
+            // 渲染內容 (Rows)
+            rowsData.forEach((row, rowIndex) => {
                 const { student, course, appData, appId } = row;
-                if (appId) {
-                    if (appId !== lastAppId) isAltRow = !isAltRow;
-                } else {
-                    isAltRow = false; 
-                }
-                lastAppId = appId;
 
+                // 【需求6修正】: 不依歸戶分色，改用單純的單雙行 Zebra Striping，且移除 blue hover
+                const isAltRow = rowIndex % 2 === 1;
                 const bgBase = isAltRow ? '#f8fafc' : '#ffffff'; 
-                const bgReadOnly = isAltRow ? '#e2e8f0' : '#f1f5f9';
+                const bgReadOnly = isAltRow ? '#f1f5f9' : '#f8fafc'; // 唯讀格稍深一點
 
                 const tr = document.createElement('tr');
-                tr.className = "transition border-b border-slate-100 group hover:bg-blue-50"; 
+                tr.className = "transition border-b border-slate-100"; // 移除 group hover:bg-blue-50
                 tr.dataset.cid = course._internal_id; 
                 tr.dataset.sid = student.id; 
+                // 標記行背景類別，供 updateRowLogic 使用
+                tr.classList.add(isAltRow ? 'row-group-alt' : 'row-group-normal');
 
                 currentStickyLeft = 0;
 
@@ -4734,7 +4701,9 @@
                     const td = document.createElement('td');
                     td.className = "border-r border-slate-200 p-0 relative";
                     
-                    const isReadOnly = f.isSystem || f.category === 'sys_student_info' || f.category === 'sys_course_info';
+                    // 【需求3修正】: 加入 f.readOnly 判斷
+                    const isReadOnly = f.isSystem || f.readOnly === true || f.category === 'sys_student_info' || f.category === 'sys_course_info';
+                    
                     let cellBgColor = isReadOnly ? bgReadOnly : bgBase;
                     td.style.backgroundColor = cellBgColor;
                     td.style.whiteSpace = 'nowrap'; 
@@ -4747,7 +4716,7 @@
                         if (index === freezeLimit - 1) td.classList.add('sticky-border-right');
                     }
 
-                    // 取值
+                    // 取值邏輯
                     let val = "";
                     if (f.calcMode === 'average' || f.calcMode === 'weighted') {
                         val = course[f.id]; 
@@ -4760,15 +4729,30 @@
                         if ((val === undefined || val === "") && f.id === 'student_dept') val = student.dept;
                     }
 
+                    // 【需求2修正】: 日期顯示邏輯 (ROC/西元 + 斜線)
+                    if (f.type === 'date' && val) {
+                        // 先將儲存的 YYYY-MM-DD 轉為顯示格式
+                        let displayVal = val.replace(/-/g, '/'); // 預設轉為斜線
+                        
+                        if (f.inputFormat === 'ROC') {
+                            const parts = displayVal.split('/');
+                            if (parts.length === 3) {
+                                const rocY = parseInt(parts[0]) - 1911;
+                                displayVal = `${rocY}/${parts[1]}/${parts[2]}`;
+                            }
+                        }
+                        // 如果是西元，上面 replace 已經處理了 '-' -> '/'
+                        val = displayVal;
+                    }
+
+                    // 渲染儲存格內容
                     if (isReadOnly) {
                         const div = document.createElement('div');
                         div.className = "cell-read-only"; 
                         div.innerText = val || '';
                         div.title = val || '';
-                        div.style.height = '100%';
-                        div.style.display = 'flex';
-                        div.style.alignItems = 'center';
-                        div.style.justifyContent = 'center';
+                        // 確保樣式一致
+                        div.style.fontSize = '14px'; 
                         td.appendChild(div);
                     } else {
                         let input;
@@ -4783,7 +4767,9 @@
                             input.style.wordBreak = 'break-all'; 
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
-                            input.style.height = 'auto';         
+                            
+                            // 【需求5修正】: 強制字體大小一致
+                            input.style.fontSize = '14px';
 
                             const autoResize = (el) => {
                                 el.style.height = 'auto'; 
@@ -4794,15 +4780,23 @@
 
                         } else if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
-                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                             input.className = "grid-input";
+                            input.style.fontSize = '14px'; // 字體一致
+                            
+                            // Select 樣式標準化
+                            input.style.appearance = 'none';
                             input.style.textAlign = 'center';
                             input.style.textAlignLast = 'center';
+                            
+                            input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                         } else {
+                            // Date 與 Number 使用 input type="text" 以支援自訂格式顯示
                             input = document.createElement('input');
-                            input.type = "text";
+                            input.type = "text"; 
                             input.className = "grid-input";
                             input.style.textAlign = 'center';
+                            input.style.fontSize = '14px'; // 字體一致
+                            
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
                             }
@@ -4831,16 +4825,74 @@
                         input.dataset.field = f.id;
                         if(appId) input.classList.add(`app-input-${appId}-${f.id}`);
 
+                        // 事件綁定 (含日期反向解析)
                         if (f.type !== 'date') {
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
                         } else {
                             input.addEventListener('change', (e) => {
-                                let v = e.target.value.trim().replace(/[^\d]/g, '');
-                                if (f.inputFormat === 'ROC' && v.length >= 6) {
-                                     if (v.length === 7) e.target.value = `${v.substring(0,3)}/${v.substring(3,5)}/${v.substring(5,7)}`;
-                                     else if (v.length === 6) e.target.value = `${v.substring(0,2)}/${v.substring(2,4)}/${v.substring(4,6)}`;
+                                let v = e.target.value.trim();
+                                // 日期格式反向解析: 將使用者輸入的 yyy/mm/dd 或 yyyy/mm/dd 轉回 YYYY-MM-DD 存檔
+                                // 1. 移除分隔符
+                                let cleanV = v.replace(/[\/\-]/g, '');
+                                let stdDate = "";
+
+                                if (cleanV.length >= 6) {
+                                    let y, m, d;
+                                    // 簡單判斷：若長度為 7 (例如 1120101) 或設定為 ROC 且長度為 6 (990101)，視為民國
+                                    // 若長度為 8 (20230101)，視為西元
+                                    
+                                    if (cleanV.length === 8) { // 西元 20230101
+                                        y = parseInt(cleanV.substring(0, 4));
+                                        m = cleanV.substring(4, 6);
+                                        d = cleanV.substring(6, 8);
+                                    } else if (cleanV.length === 7) { // 民國 1120101
+                                        y = parseInt(cleanV.substring(0, 3)) + 1911;
+                                        m = cleanV.substring(3, 5);
+                                        d = cleanV.substring(5, 7);
+                                    } else if (cleanV.length === 6) { // 民國 990101
+                                        y = parseInt(cleanV.substring(0, 2)) + 1911;
+                                        m = cleanV.substring(2, 4);
+                                        d = cleanV.substring(4, 6);
+                                    }
+
+                                    if (y && m && d) {
+                                        stdDate = `${y}-${m}-${d}`; // 存檔格式固定為 YYYY-MM-DD
+                                        // 同步更新 UI 顯示 (轉回斜線格式)
+                                        if (f.inputFormat === 'ROC') {
+                                            e.target.value = `${y-1911}/${m}/${d}`;
+                                        } else {
+                                            e.target.value = `${y}/${m}/${d}`;
+                                        }
+                                    }
                                 }
-                                handleGridChange(e.target, student, course, f);
+                                
+                                // 若解析失敗，傳入原值讓 handleGridChange 處理 (或清空)
+                                // 修改 target.value 為標準格式以供 handleGridChange 使用? 
+                                // 不，handleGridChange 會讀取 input.value。
+                                // 這裡我們需要一個技巧：暫時將 input.value 設為標準格式給 handleGridChange 讀取，然後再改回顯示格式？
+                                // 更安全的作法是修改 handleGridChange 讓它接收值，但為避免改動過大，
+                                // 我們直接呼叫 handleGridChange 邏輯。
+                                
+                                // 因為 handleGridChange 內部是讀取 input.value，我們這裡手動觸發資料更新
+                                if (stdDate) {
+                                    // 1. 更新資料
+                                    if (appId) {
+                                        const app = student.applications.find(a => a.id === appId);
+                                        if(app) {
+                                            const oldVal = app.formData[f.id];
+                                            app.formData[f.id] = stdDate;
+                                            logChange(f.id, appId, oldVal, stdDate, student.id);
+                                            // 同步其他視圖
+                                            syncValueToViews(course._internal_id, student.id, f.id, stdDate, e.target); 
+                                        }
+                                    } else {
+                                        course[f.id] = stdDate;
+                                    }
+                                    saveToLocal();
+                                } else {
+                                    // 清空或格式錯誤
+                                    handleGridChange(e.target, student, course, f);
+                                }
                             });
                         }
                         td.appendChild(input);
@@ -4848,6 +4900,8 @@
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
+                
+                // 【需求4修正】: 呼叫 updateRowLogic 確保 Visibility / Option Logic 生效
                 updateRowLogic(tr, appId ? appData : course, !appId);
             });
             
