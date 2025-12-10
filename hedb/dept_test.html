@@ -3137,18 +3137,25 @@
                             updateData(tempEvent);
                         });
                         
+                        // 【新增修正 1】: 確保日期選擇器外層容器沒有上邊距
+                        input.classList.add('mt-0'); 
+    
                         const visInput = input.querySelector('input');
-                        if(visInput) visInput.classList.add(`app-input-${app.id}-${f.id}`);
+                        if(visInput) {
+                            visInput.classList.add(`app-input-${app.id}-${f.id}`);
+                            
+                            // 【新增修正 2】: 確保日期輸入框本身沒有上邊距
+                            visInput.classList.add('mt-0'); 
+                        }
+                        
                         const hidden = document.createElement('input');
                         hidden.type = 'hidden';
                         hidden.id = `input-${app.id}-${f.id}`;
                         
-                        // ▼▼▼ 修改 2：調整加入順序，先加入 visible input 再加入 hidden，徹底消除間隙 ▼▼▼
                         wrapper.appendChild(input);
                         wrapper.appendChild(hidden);
-                        // ▲▲▲ 修改 2 結束 (原為先 append hidden 再 append input) ▲▲▲
                         
-                    }
+                    } 
                     // ★★★ 處理機構名稱 (新增帶按鈕邏輯 - 無輸入驗證) ★★★
                     else if (f.id === 'internship_institution_name') {
                         // 建立群組容器
