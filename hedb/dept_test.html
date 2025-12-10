@@ -3095,8 +3095,8 @@
                     
                     const label = document.createElement('label');
     
-                    // 【修正 1】針對 Date 欄位，強制將標題下方邊距設為 0 (原本為 mb-1)
-                    const mbClass = (f.type === 'date') ? 'mb-0' : 'mb-1';
+                    // 【修正 1】將這裡改回 'mb-1'，確保與單選框、文字框的標題高度完全一致
+                    const mbClass = 'mb-1'; 
                     label.className = `block text-sm font-bold text-slate-700 ${mbClass} flex items-center`;
                     
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
@@ -3109,7 +3109,7 @@
                     const val = app.formData[f.id] || '';
                     let input;
                     
-                    // 定義 updateData 函式 (邏輯保持不變)
+                    // 定義 updateData 函式 (保持不變)
                     const updateData = (e) => {
                         let newVal = e.target.value;
                         const oldVal = app.formData[f.id];
@@ -3135,7 +3135,7 @@
                             updateData(tempEvent);
                         });
                         
-                        // 【修正 2】強制移除容器與輸入框的上方邊距
+                        // 【修正 2】保留 mt-0 確保容器本身無邊距
                         input.classList.add('mt-0'); 
     
                         const visInput = input.querySelector('input');
@@ -3148,13 +3148,12 @@
                         hidden.type = 'hidden';
                         hidden.id = `input-${app.id}-${f.id}`;
                         
-                        // 【修正 3】關鍵：先加入可見的日期選擇器，再加入 hidden input
-                        // 這樣可以避免 hidden input 在標題與輸入框之間產生隱形的行高間隙
+                        // 【修正 3】維持此順序 (先 input 再 hidden)，避免隱形斷行
                         wrapper.appendChild(input);
                         wrapper.appendChild(hidden);
                         
                     } 
-                    // --- 處理機構名稱 (保持原樣) ---
+                    // --- 處理機構名稱 ---
                     else if (f.id === 'internship_institution_name') {
                         const inputGroup = document.createElement('div');
                         inputGroup.className = 'flex w-full';
@@ -3190,7 +3189,7 @@
                             hasUnsavedChanges = true;
                         });
                     } 
-                    // --- 處理其他一般欄位 (保持原樣) ---
+                    // --- 處理其他一般欄位 ---
                     else {
                         if (f.type === 'single_select' || f.type === 'list') {
                             input = document.createElement('select');
