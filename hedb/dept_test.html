@@ -4508,17 +4508,15 @@
 
             if(!table || !scrollContainer || !thead || !tbody) return;
 
-            // --- ★★★ 新增：空狀態 (Empty State) 處理 ★★★ ---
+            // --- 空狀態 (Empty State) 處理 ---
             
             // 1. 檢查或建立空狀態容器
             let emptyState = document.getElementById('local-grid-empty-state');
             if (!emptyState) {
                 emptyState = document.createElement('div');
                 emptyState.id = 'local-grid-empty-state';
-                // 設定樣式：絕對定位蓋住表格，Flex 置中
                 emptyState.className = 'hidden flex-col items-center justify-center h-full w-full absolute top-0 left-0 bg-white z-20';
                 
-                // 設定內容 (依照您的要求)
                 emptyState.innerHTML = `
                     <div class="w-24 h-24 bg-slate-100 rounded-full flex items-center justify-center mb-4 shadow-inner">
                         <i class="fas fa-folder-plus text-4xl text-slate-300"></i>
@@ -4532,42 +4530,54 @@
                 scrollContainer.appendChild(emptyState);
             }
 
-            // 2. 確保容器有定位屬性 (讓 absolute 生效)
             if(window.getComputedStyle(scrollContainer).position === 'static') {
                 scrollContainer.style.position = 'relative';
             }
 
-            // 3. 判斷顯示邏輯
-            const gridHeader = document.getElementById('local-grid-header'); // ★ 取得 Header 元素
+            const gridHeader = document.getElementById('local-grid-header'); 
             
             if (student.applications.length === 0) {
-                // 無資料：顯示空狀態，隱藏表格
-                table.style.visibility = 'hidden'; 
+                // === 情境：無資料 ===
+                
+                // 1. 徹底隱藏表格，避免佔位
+                table.style.display = 'none'; 
+                
+                // 2. 顯示空狀態
                 emptyState.classList.remove('hidden');
                 emptyState.classList.add('flex');
                 
-                if(gridHeader) gridHeader.style.display = 'none'; // ★ 隱藏標題列 (解決問題 1)
+                // 3. 隱藏標題列
+                if(gridHeader) gridHeader.style.display = 'none'; 
+
+                // 4. 【關鍵修正】強制重置容器高度，使其填滿畫面，解除上一位學生的樣式限制
+                scrollContainer.style.height = '100%';
+                scrollContainer.style.maxHeight = 'none';
+                scrollContainer.style.overflow = 'hidden'; // 空狀態時隱藏捲軸
                 
                 return; 
             } else {
-                // 有資料：顯示表格，隱藏空狀態
+                // === 情境：有資料 ===
+                
+                // 1. 恢復表格顯示
+                table.style.display = ''; 
                 table.style.visibility = 'visible';
+                
+                // 2. 隱藏空狀態
                 emptyState.classList.add('hidden');
                 emptyState.classList.remove('flex');
                 
-                if(gridHeader) gridHeader.style.display = 'flex'; // ★ 顯示標題列
+                // 3. 恢復標題列
+                if(gridHeader) gridHeader.style.display = 'flex'; 
             }
-            // --- ★★★ 結束空狀態邏輯 ★★★ ---
 
+            // --- 以下為標準表格渲染邏輯 (有資料時才會執行) ---
 
-            // --- 以下為標準表格渲染邏輯 (保持捲軸與欄寬設定) ---
-
-            // A. 容器樣式重置
+            // A. 容器樣式重置 (針對有內容的表格設定)
             scrollContainer.classList.remove('flex-grow');
             scrollContainer.classList.remove('h-full');
             scrollContainer.style.height = 'auto';
-            scrollContainer.style.maxHeight = 'calc(100% - 60px)'; 
-            scrollContainer.style.overflow = 'auto';
+            scrollContainer.style.maxHeight = 'calc(100% - 60px)'; // 預留空間給置頂標頭
+            scrollContainer.style.overflow = 'auto'; // 恢復捲軸
 
             // 重置表格內容
             thead.innerHTML = '';
