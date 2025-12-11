@@ -2572,15 +2572,33 @@
                 // 檢查 Visibility
                 let isVisible = true;
                 if (f.visibilityRule) {
-                    const depVal = app.formData[f.visibilityRule.dep];
-                    const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
-                    if (!hasDepValue) isVisible = false;
-                    else isVisible = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
+                    const depId = f.visibilityRule.dep;
+                    const depVal = app.formData[depId];
+                    const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
+                    
+                    // 判斷依賴欄位是否為 Checkbox
+                    const depFieldDef = fields.find(field => field.id === depId);
+                    const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
+
+                    // 規則 A: 非 Checkbox 且為空值 -> 視為隱藏 (與 evaluateLogic 同步)
+                    if (!isDepCheckbox && currentValStr === "") {
+                        isVisible = false;
+                    } 
+                    // 規則 B: 正常比對
+                    else {
+                        const ruleValStr = String(f.visibilityRule.val).trim();
+                        if (f.visibilityRule.action === 'show') {
+                            isVisible = (currentValStr === ruleValStr);
+                        } else {
+                            isVisible = (currentValStr !== ruleValStr);
+                        }
+                    }
                 }
         
                 if (isVisible) {
                     required++;
                     const val = app.formData[f.id];
+                    // 修正：嚴謹判斷空值 (0 或 false 視為有效值)
                     if (val !== undefined && val !== null && String(val).trim() !== "") {
                         filled++;
                     }
@@ -2607,12 +2625,26 @@
             fields.forEach(f => {
                 if(f.isSystem || !f.required || f.category === 'sys_course_info') return;
         
-                // Visibility Check
+                // Visibility Check (與 calculateAppStats 邏輯保持一致)
                 let isVisible = true;
                 if (f.visibilityRule) {
-                    const depVal = app.formData[f.visibilityRule.dep];
-                    if (!depVal) isVisible = false;
-                    else isVisible = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
+                    const depId = f.visibilityRule.dep;
+                    const depVal = app.formData[depId];
+                    const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
+                    
+                    const depFieldDef = fields.find(field => field.id === depId);
+                    const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
+
+                    if (!isDepCheckbox && currentValStr === "") {
+                        isVisible = false;
+                    } else {
+                        const ruleValStr = String(f.visibilityRule.val).trim();
+                        if (f.visibilityRule.action === 'show') {
+                            isVisible = (currentValStr === ruleValStr);
+                        } else {
+                            isVisible = (currentValStr !== ruleValStr);
+                        }
+                    }
                 }
         
                 if (isVisible) {
@@ -2635,27 +2667,22 @@
             if(errorCount > 0) {
                 showToast('warning', `共有 ${errorCount} 個必填欄位未完成，已用紅色標示`);
                 
-                // ★★★ 修正捲動邏輯：手動計算位置以避開標題遮擋 ★★★
+                // 捲動邏輯 (保持不變)
                 if(firstErrorId) {
                     const el = document.getElementById(firstErrorId);
                     const container = document.getElementById('form-content-area');
                     const header = document.getElementById('sticky-progress-header');
                     
                     if (el && container) {
-                        // 1. 取得標題高度 (若標題隱藏則為 0)
                         const headerHeight = (header && !header.classList.contains('hidden')) ? header.offsetHeight : 0;
-                        const paddingBuffer = 20; // 額外緩衝空間
+                        const paddingBuffer = 20; 
                         
-                        // 2. 計算元素相對於容器頂部的距離
-                        // (元素視窗位置 - 容器視窗位置 + 容器當前捲動量)
                         const elRect = el.getBoundingClientRect();
                         const containerRect = container.getBoundingClientRect();
                         const absoluteElTop = elRect.top - containerRect.top + container.scrollTop;
                         
-                        // 3. 計算目標捲動位置 (扣除標題高度)
                         const targetScroll = absoluteElTop - headerHeight - paddingBuffer;
 
-                        // 4. 執行平滑捲動
                         container.scrollTo({
                             top: targetScroll,
                             behavior: 'smooth'
