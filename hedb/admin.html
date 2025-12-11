@@ -562,6 +562,16 @@
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位說明 (Help Text)</label><textarea id="ed-desc" class="w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-primary outline-none resize-none h-20" placeholder="例如: 請填寫學生所屬學院..."></textarea><p class="text-[10px] text-slate-400 mt-1">此說明僅顯示於填報介面提示，不會匯出至 Excel。</p></div>
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">所屬分類</label><select id="ed-category" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none"></select></div>
                     <div><label class="text-xs font-bold text-slate-600 mb-1 block">欄位類型</label><select id="ed-type" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none" onchange="renderOpts()"></select></div>
+                    <div class="mt-3">
+                        <label class="block text-xs font-bold text-slate-600 mb-1">欄位寬度 (Grid Width)</label>
+                        <select id="field-colspan" class="w-full border border-slate-300 rounded-lg p-2 text-sm bg-white focus:ring-primary outline-none">
+                            <option value="1">1 (標準 - 1/4)</option>
+                            <option value="2">2 (半寬 - 2/4)</option>
+                            <option value="3">3 (3/4)</option>
+                            <option value="4">4 (全寬 - 4/4)</option>
+                        </select>
+                        <p class="text-[10px] text-slate-400 mt-1">設定該欄位在表單中佔據的格數 (每行最多 4 格)</p>
+                    </div>
                     <div class="pt-2 space-y-3">
                         <div>
                             <label class="flex items-center text-sm cursor-pointer mb-1"><input type="checkbox" id="ed-system" class="custom-checkbox mr-2" onchange="toggleSystemHint(this.checked)"> <span class="font-bold text-slate-700">系統自動帶入 (唯讀/匯入)</span></label>
@@ -3742,6 +3752,7 @@
             const typeSel = document.getElementById('ed-type'); typeSel.innerHTML = '';
             configData.fieldTypes.forEach(t => typeSel.innerHTML += `<option value="${t.key}" ${f.type===t.key?'selected':''}>${t.label}</option>`);
             if(!f.type) typeSel.value = 'text';
+            document.getElementById('field-colspan').value = f.colSpan || 1;
 
             const visToggle = document.getElementById('vis-toggle');
             const visSettings = document.getElementById('vis-settings');
@@ -4059,6 +4070,7 @@
             
             f.id = id; f.label = label; f.type = document.getElementById('ed-type').value; f.category = document.getElementById('ed-category').value || undefined;
             f.description = document.getElementById('ed-desc').value.trim(); 
+            f.colSpan = parseInt(document.getElementById('field-colspan').value) || 1;
             f.required = document.getElementById('ed-required').checked; f.isSystem = document.getElementById('ed-system').checked;
 
             if(document.getElementById('vis-toggle').checked) { 
