@@ -3340,31 +3340,37 @@
 
                 let isLocked = false;
 
-                // --- 1. Visibility 檢查 (修正：支援反向邏輯與 Checkbox) ---
+                // --- 1. Visibility 檢查 (修正：區分 Checkbox 與一般欄位的空值邏輯) ---
                 if (f.visibilityRule && f.visibilityRule.dep) {
-                    let depVal = app.formData[f.visibilityRule.dep];
-                    
-                    // 統一轉為字串進行比對 (處理 null, undefined, boolean)
-                    // 若 depVal 為 undefined/null，視為空字串
+                    const depId = f.visibilityRule.dep;
+                    const depVal = app.formData[depId];
                     const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
-                    const ruleValStr = String(f.visibilityRule.val).trim();
                     
-                    let shouldShow = true;
+                    // 判斷依賴欄位是否為 Checkbox (透過設定檔查找)
+                    const depFieldDef = fields.find(field => field.id === depId);
+                    const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
 
-                    if (f.visibilityRule.action === 'show') {
-                        // 規則：符合才顯示 (Show if match)
-                        // 若依賴欄位為空，則不符合 -> 鎖定 (符合下拉選單邏輯)
-                        shouldShow = (currentValStr === ruleValStr);
-                    } else {
-                        // 規則：符合則隱藏 (Hide if match) -> 您的案例
-                        // 若依賴欄位為空(預設沒勾)，則 "" !== "true" -> 顯示 (符合您的需求)
-                        shouldShow = (currentValStr !== ruleValStr);
+                    // 規則 A: 如果依賴欄位「不是」Checkbox 且值為空 (例如 Select 被鎖定清空時)，強制鎖定子欄位
+                    // 這解決了「給付類型」被鎖定變成空值時，「給付金額」卻因為 "" !== "無" 而沒被鎖定的問題
+                    if (!isDepCheckbox && currentValStr === "") {
+                        isLocked = true;
+                    } 
+                    // 規則 B: 正常比對邏輯 (支援 Checkbox 的空值/False 視為 Show)
+                    else {
+                        const ruleValStr = String(f.visibilityRule.val).trim();
+                        let shouldShow = true;
+                        
+                        if (f.visibilityRule.action === 'show') {
+                            shouldShow = (currentValStr === ruleValStr);
+                        } else {
+                            shouldShow = (currentValStr !== ruleValStr);
+                        }
+                        
+                        if (!shouldShow) isLocked = true;
                     }
-                    
-                    if (!shouldShow) isLocked = true;
                 }
 
-                // --- 2. Filter Rules 檢查 (選項過濾) ---
+                // --- 2. Filter Rules 檢查 (選項連動) ---
                 if (!isLocked && f.filterRules && f.filterRules.length > 0) {
                     const parentId = f.filterRules[0].dep;
                     const parentVal = app.formData[parentId];
@@ -3970,22 +3976,31 @@
                 let isLocked = false;
                 let lockReason = "";
 
-                // --- 1. Visibility 檢查 (修正：支援反向邏輯與 Checkbox) ---
+                // --- 1. Visibility 檢查 (修正：區分 Checkbox 與一般欄位的空值邏輯) ---
                 if (f.visibilityRule && f.visibilityRule.dep) {
-                    let depVal = dataContext[f.visibilityRule.dep];
-                    
-                    // 統一轉為字串進行比對
+                    const depId = f.visibilityRule.dep;
+                    const depVal = dataContext[depId];
                     const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
-                    const ruleValStr = String(f.visibilityRule.val).trim();
 
-                    let shouldShow = true;
-                    if (f.visibilityRule.action === 'show') {
-                        shouldShow = (currentValStr === ruleValStr);
-                    } else {
-                        shouldShow = (currentValStr !== ruleValStr);
+                    // 判斷依賴欄位是否為 Checkbox
+                    const depFieldDef = fields.find(field => field.id === depId);
+                    const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
+
+                    // 規則 A: 非 Checkbox 且為空值 -> 強制鎖定
+                    if (!isDepCheckbox && currentValStr === "") {
+                        isLocked = true;
+                    } 
+                    // 規則 B: 正常比對
+                    else {
+                        const ruleValStr = String(f.visibilityRule.val).trim();
+                        let shouldShow = true;
+                        if (f.visibilityRule.action === 'show') {
+                            shouldShow = (currentValStr === ruleValStr);
+                        } else {
+                            shouldShow = (currentValStr !== ruleValStr);
+                        }
+                        if (!shouldShow) isLocked = true;
                     }
-                    
-                    if (!shouldShow) isLocked = true;
                 }
 
                 // --- 2. Option Logic 檢查 ---
