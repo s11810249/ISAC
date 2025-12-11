@@ -2611,7 +2611,7 @@
                 let isVisible = true;
                 if (f.visibilityRule) {
                     const depVal = app.formData[f.visibilityRule.dep];
-                    if (!depVal) isVisible = false; // 簡化判斷
+                    if (!depVal) isVisible = false;
                     else isVisible = f.visibilityRule.action === 'show' ? (depVal === f.visibilityRule.val) : (depVal !== f.visibilityRule.val);
                 }
         
@@ -2624,7 +2624,8 @@
                         const wrapper = document.getElementById(`wrapper-${appId}-${f.id}`);
                         if(wrapper) {
                             wrapper.classList.add('field-error');
-                            if(!firstErrorId) firstErrorId = `input-${appId}-${f.id}`;
+                            // 紀錄第一個錯誤的 ID (優先找 wrapper，視覺上比較準)
+                            if(!firstErrorId) firstErrorId = `wrapper-${appId}-${f.id}`;
                             errorCount++;
                         }
                     }
@@ -2633,10 +2634,33 @@
         
             if(errorCount > 0) {
                 showToast('warning', `共有 ${errorCount} 個必填欄位未完成，已用紅色標示`);
-                // 捲動到第一個錯誤
+                
+                // ★★★ 修正捲動邏輯：手動計算位置以避開標題遮擋 ★★★
                 if(firstErrorId) {
                     const el = document.getElementById(firstErrorId);
-                    if(el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const container = document.getElementById('form-content-area');
+                    const header = document.getElementById('sticky-progress-header');
+                    
+                    if (el && container) {
+                        // 1. 取得標題高度 (若標題隱藏則為 0)
+                        const headerHeight = (header && !header.classList.contains('hidden')) ? header.offsetHeight : 0;
+                        const paddingBuffer = 20; // 額外緩衝空間
+                        
+                        // 2. 計算元素相對於容器頂部的距離
+                        // (元素視窗位置 - 容器視窗位置 + 容器當前捲動量)
+                        const elRect = el.getBoundingClientRect();
+                        const containerRect = container.getBoundingClientRect();
+                        const absoluteElTop = elRect.top - containerRect.top + container.scrollTop;
+                        
+                        // 3. 計算目標捲動位置 (扣除標題高度)
+                        const targetScroll = absoluteElTop - headerHeight - paddingBuffer;
+
+                        // 4. 執行平滑捲動
+                        container.scrollTo({
+                            top: targetScroll,
+                            behavior: 'smooth'
+                        });
+                    }
                 }
             } else {
                 showToast('success', '太棒了！所有必填欄位皆已完成');
