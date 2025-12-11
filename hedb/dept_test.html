@@ -2522,18 +2522,26 @@
             
             student.applications.forEach((app, idx) => {
                 const btn = document.createElement('button');
-                btn.className = 'tab-btn';
+                
+                // ★★★ 修正點：判斷是否為當前選中的 App ID，如果是則加上 'active' class ★★★
+                const isActive = (app.id === currentActiveAppId);
+                btn.className = isActive ? 'tab-btn active' : 'tab-btn';
+                
                 btn.dataset.tab = app.id;
                 btn.onclick = () => switchTab(app.id);
                 
                 let label = `實習紀錄${idx+1}`;
+                if(app.formData['internship_institution_name']) {
+                    // (選用) 如果想要頁籤顯示機構名稱，可取消註解下面這行
+                    // label = app.formData['internship_institution_name'];
+                }
                 
                 // ★ 計算狀態與顏色
                 const stats = calculateAppStats(app);
                 let statusHtml = '';
                 
                 // 判斷狀態邏輯
-                const isNotRequired = false; // 未來可根據 app.formData['status'] === 'not_required' 判斷
+                const isNotRequired = false; 
         
                 if (isNotRequired) {
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-slate-400"></span><span class="text-xs text-slate-400">無須填報</span>';
@@ -2545,7 +2553,6 @@
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="text-xs text-blue-600">填報中</span>';
                 }
                 
-                // ★★★ 修改處：將 flex-col 改為水平排列，並移除 pl-5 ★★★
                 btn.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="flex items-center gap-2 text-sm">
