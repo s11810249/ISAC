@@ -2523,7 +2523,7 @@
             student.applications.forEach((app, idx) => {
                 const btn = document.createElement('button');
                 
-                // ★★★ 修正點：判斷是否為當前選中的 App ID，如果是則加上 'active' class ★★★
+                // 1. 保持上一動修正：判斷是否為當前選中的頁籤，加上 active class
                 const isActive = (app.id === currentActiveAppId);
                 btn.className = isActive ? 'tab-btn active' : 'tab-btn';
                 
@@ -2531,19 +2531,18 @@
                 btn.onclick = () => switchTab(app.id);
                 
                 let label = `實習紀錄${idx+1}`;
-                if(app.formData['internship_institution_name']) {
-                    // (選用) 如果想要頁籤顯示機構名稱，可取消註解下面這行
-                    // label = app.formData['internship_institution_name'];
-                }
+                // if(app.formData['internship_institution_name']) label = app.formData['internship_institution_name'];
                 
-                // ★ 計算狀態與顏色
+                // 2. 計算填報率 (用於一般狀態)
                 const stats = calculateAppStats(app);
                 let statusHtml = '';
                 
-                // 判斷狀態邏輯
-                const isNotRequired = false; 
+                // ★★★ 修改處：讀取 ineligible_reporting_check 欄位 ★★★
+                // 系統儲存 checkbox 時可能是 boolean true 或字串 'true'，建議都檢查
+                const isNotRequired = (app.formData['ineligible_reporting_check'] === true || app.formData['ineligible_reporting_check'] === 'true');
         
                 if (isNotRequired) {
+                    // ★★★ 指定樣式：無須填報 (灰色燈號) ★★★
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-slate-400"></span><span class="text-xs text-slate-400">無須填報</span>';
                 } else if (stats.percent === 100) {
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-xs text-emerald-600">完成填報</span>';
