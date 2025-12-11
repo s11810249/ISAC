@@ -1744,7 +1744,7 @@
             }
         }
 
-        // --- 處理格子變更 (修正版：支援 Checkbox) ---
+        // --- 處理格子變更 (修正版：同步觸發表單與列表邏輯) ---
         function handleGridChange(inputEl, student, course, fieldDef) {
             
             // 1. 地址/文字格式化
@@ -1754,10 +1754,10 @@
                 }
             }
 
-            // 【修正】判斷是否為 checkbox 來決定取 checked 還是 value
+            // 判斷是否為 checkbox
             let newVal;
             if (inputEl.type === 'checkbox') {
-                newVal = inputEl.checked; // 取得 true 或 false
+                newVal = inputEl.checked;
             } else {
                 newVal = inputEl.value;
             }
@@ -1766,21 +1766,19 @@
             
             const appId = course._app_id;
             hasUnsavedChanges = true;
-            const isScoreField = ['score', 'grade', 'credit', 'hours', 'point', '成績', '學分', '時數'].some(k => fieldDef.id.toLowerCase().includes(k) || fieldDef.label.includes(k));
 
             if (appId) {
-                // === 情境 A: 已歸戶 ===
+                // === 情境 A: 已歸戶 (App Context) ===
                 const app = student.applications.find(a => a.id === appId);
                 if (app) {
                     const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
 
                     if (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted') {
-                        // 數值運算模式 (平均/加權)
-                        course[fieldDef.id] = newVal; // 先更新自己
+                        // 數值運算模式 (平均/加權) - 保持原有邏輯
+                        course[fieldDef.id] = newVal; 
 
                         let finalValue = 0;
                         if (fieldDef.calcMode === 'weighted') {
-                            // 加權運算
                             let currentTotalValue = 0;
                             let totalWeight = 0;
                             const weightKey = fieldDef.weightField; 
@@ -1793,7 +1791,6 @@
                             });
                             finalValue = currentTotalValue;
 
-                            // 分配回寫
                             if (totalWeight > 0) {
                                 linkedCourses.forEach(c => {
                                     const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
@@ -1802,7 +1799,6 @@
                                     const formattedVal = fieldDef.decimal ? distributedVal.toFixed(fieldDef.decimal) : Math.round(distributedVal).toString();
                                     
                                     c[fieldDef.id] = formattedVal;
-                                    // 同步更新所有視圖 (Local + Global)
                                     syncValueToViews(c._internal_id, student.id, fieldDef.id, formattedVal, inputEl);
                                 });
                             }
@@ -1825,17 +1821,30 @@
                         app.formData[fieldDef.id] = newVal;
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
-                        // 同步更新所有連動格子 (使用 class 選擇器)
+                        // 1. 同步數值到所有視圖
                         const allRelatedInputs = document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`);
                         allRelatedInputs.forEach(el => {
                             if (el !== inputEl) {
-                                if (el.type === 'checkbox') {
-                                    el.checked = newVal;
-                                } else {
-                                    el.value = newVal;
-                                    el.title = newVal;
-                                }
+                                if (el.type === 'checkbox') el.checked = newVal;
+                                else { el.value = newVal; el.title = newVal; }
                             }
+                        });
+
+                        // ★★★ 關鍵修正：同時觸發「表單邏輯」與「列表邏輯」 ★★★
+                        
+                        // A. 觸發表單模式的邏輯檢查 (確保切換回去時狀態正確)
+                        evaluateLogic(app);
+
+                        // B. 觸發列表模式的邏輯檢查 (針對該歸戶下的所有課程列)
+                        // 找出所有屬於此 App 的課程列，並更新它們的鎖定/解鎖狀態
+                        const gridRows = document.querySelectorAll(`tr[data-sid="${student.id}"]`);
+                        gridRows.forEach(tr => {
+                             const cid = tr.dataset.cid;
+                             const rowCourse = student.courses.find(c => c._internal_id === cid);
+                             if (rowCourse && rowCourse._app_id === appId) {
+                                 // 使用最新的 app.formData 更新該列的邏輯
+                                 updateRowLogic(tr, app.formData, false);
+                             }
                         });
 
                         // 機構資訊收集
@@ -1847,23 +1856,22 @@
                     }
                 }
             } else {
-                // === 情境 B: 未歸戶 ===
+                // === 情境 B: 未歸戶 (Course Context) ===
                 course[fieldDef.id] = newVal;
                 
-                // 更新該行邏輯 (Local & Global)
+                // 更新該行邏輯
                 const relevantRows = document.querySelectorAll(`tr[data-cid="${course._internal_id}"][data-sid="${student.id}"]`);
                 relevantRows.forEach(tr => updateRowLogic(tr, course, true));
                 
-                // 更新畫面數值 (防止 Local 改了 Global 沒變)
                 syncValueToViews(course._internal_id, student.id, fieldDef.id, newVal, inputEl);
 
-                if (!isScoreField && newVal && newVal !== "" && newVal !== false) {
+                if (newVal && newVal !== "" && newVal !== false) {
                     tryAutoMerge(student, course);
                 }
             }
             saveToLocal();
         }
-
+        
         // ★ 輔助：同步數值到所有視圖的函式
         function syncValueToViews(cid, sid, fieldId, value, sourceInput) {
             // 尋找所有對應這門課、這個欄位的輸入框
@@ -3324,7 +3332,6 @@
             
             fields.forEach(f => {
                 const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
-                // 嘗試抓取 input，若被包在 group 裡也抓得到
                 let inputEl = document.getElementById(`input-${app.id}-${f.id}`);
                 const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
                 
@@ -3332,7 +3339,7 @@
 
                 let isLocked = false;
 
-                // --- 1. Visibility 檢查 ---
+                // --- 1. Visibility 檢查 (規則：不符則鎖定，非隱藏) ---
                 if (f.visibilityRule) {
                     const depVal = app.formData[f.visibilityRule.dep];
                     const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
@@ -3345,24 +3352,31 @@
                     }
                 }
 
-                // --- 2. Filter Rules 檢查 ---
+                // --- 2. Filter Rules 檢查 (選項過濾) ---
                 if (!isLocked && f.filterRules && f.filterRules.length > 0) {
                     const parentId = f.filterRules[0].dep;
                     const parentVal = app.formData[parentId];
 
                     if (!parentVal || parentVal === "") {
+                        // 若依賴的欄位未填，則鎖定
                         isLocked = true;
                     } else {
                         const rule = f.filterRules.find(r => r.val === parentVal);
-                        if (!rule) isLocked = true;
-                        else if (inputEl && inputEl.tagName === 'SELECT') {
+                        if (!rule) {
+                            // 若無匹配規則，視需求鎖定或開放 (此處選擇鎖定)
+                            isLocked = true;
+                        } else if (inputEl && inputEl.tagName === 'SELECT') {
+                            // 執行選項過濾
+                            let isValid = false;
                             Array.from(inputEl.options).forEach(opt => {
-                                if (opt.value === "") return;
+                                if (opt.value === "") { isValid = true; return; }
                                 const show = rule.limitTo && rule.limitTo.includes(opt.value);
                                 opt.hidden = !show;
-                                opt.disabled = !show;
+                                opt.disabled = !show; // Safari/Mobile 支援
+                                if(inputEl.value === opt.value && show) isValid = true;
                             });
-                            if (inputEl.value && rule.limitTo && !rule.limitTo.includes(inputEl.value)) {
+                            // 若當前值被隱藏，則清空
+                            if (inputEl.value && !isValid) {
                                 inputEl.value = "";
                                 app.formData[f.id] = "";
                             }
@@ -3370,21 +3384,25 @@
                     }
                 }
 
-                // --- 3. UI 更新 ---
+                // --- 3. UI 更新 (套用鎖定樣式) ---
                 if (isLocked) {
-                    wrapper.classList.add('field-locked');
+                    wrapper.classList.add('field-locked'); // 使用 CSS 變灰
                     if (inputEl && inputEl.type !== 'hidden') {
                         inputEl.disabled = true;
+                        // 鎖定時清空值，以免送出髒資料
                         if(inputEl.value !== "") {
                             inputEl.value = "";
                             app.formData[f.id] = "";
                         }
+                        if(inputEl.type === 'checkbox') inputEl.checked = false;
                     }
                     if (rocContainer) {
                         const ri = rocContainer.querySelector('input');
                         if(ri) { ri.value = ""; ri.disabled = true; }
+                        // 鎖定 ROC 開關
+                        const btn = rocContainer.querySelector('.date-picker-trigger');
+                        if(btn) btn.style.pointerEvents = 'none';
                     }
-                    // ★ 新增：鎖定旁邊的按鈕
                     const btn = wrapper.querySelector('.input-group-append-btn');
                     if(btn) {
                         btn.style.pointerEvents = 'none';
@@ -3393,8 +3411,11 @@
                 } else {
                     wrapper.classList.remove('field-locked');
                     if (inputEl) inputEl.disabled = false;
-                    if (rocContainer) rocContainer.querySelector('input').disabled = false;
-                    // ★ 解鎖按鈕
+                    if (rocContainer) {
+                        rocContainer.querySelector('input').disabled = false;
+                        const btn = rocContainer.querySelector('.date-picker-trigger');
+                        if(btn) btn.style.pointerEvents = 'auto';
+                    }
                     const btn = wrapper.querySelector('.input-group-append-btn');
                     if(btn) {
                         btn.style.pointerEvents = 'auto';
@@ -3934,16 +3955,18 @@
             
             const fields = currentYearConfig.fields || [];
             fields.forEach(f => {
+                // 找出該列對應的輸入框
                 const input = tr.querySelector(`[data-field="${f.id}"]`);
                 if (!input) return;
                 
-                // 找到父層 TD (這是填滿顏色的關鍵)
-                const td = input.closest('td');
+                // 找到父層 TD (用於填滿背景色)
+                let td = input.closest('td');
+                if (!td) return;
 
                 let isLocked = false;
                 let lockReason = "";
 
-                // --- 1. Visibility 檢查 ---
+                // --- 1. Visibility 檢查 (規則：不符則鎖定) ---
                 if (f.visibilityRule) {
                     const depVal = dataContext[f.visibilityRule.dep];
                     const hasDepValue = (depVal !== undefined && depVal !== null && String(depVal).trim() !== "");
@@ -3959,7 +3982,7 @@
                     }
                 }
 
-                // --- 2. Option Logic 檢查 ---
+                // --- 2. Option Logic 檢查 (選項過濾) ---
                 if (!isLocked && f.filterRules && f.filterRules.length > 0 && input.tagName === 'SELECT') {
                     const parentId = f.filterRules[0].dep;
                     const parentVal = dataContext[parentId];
@@ -3972,17 +3995,19 @@
                         if (!rule) {
                             isLocked = true;
                         } else {
-                            // 更新選項邏輯 (略，與之前相同)
+                            // 執行選項過濾 (同步 Grid 的下拉選單)
                             const currentVal = input.value;
                             let isValid = false;
+                            
                             Array.from(input.options).forEach(opt => {
-                                if (opt.value === "") { isValid = true; return; }
+                                if (opt.value === "") { isValid = true; return; } // 空值永遠保留
                                 const show = rule.limitTo && rule.limitTo.includes(opt.value);
                                 opt.hidden = !show;
                                 opt.disabled = !show;
                                 if(opt.value === currentVal && show) isValid = true;
                             });
                             
+                            // 若當前值被過濾掉，清空
                             if (!isValid && currentVal !== "") {
                                 input.value = "";
                                 dataContext[f.id] = "";
@@ -3991,37 +4016,38 @@
                     }
                 }
 
-                // --- 3. 執行 UI 更新 (確保整格變色) ---
+                // --- 3. 執行 UI 更新 ---
                 if (isLocked) {
                     input.disabled = true;
                     if (lockReason) input.title = lockReason;
                     
-                    if (input.value !== "") {
+                    // 鎖定時清空值
+                    if (input.type === 'checkbox') {
+                         input.checked = false;
+                    } else if (input.value !== "") {
                         input.value = "";
                         if (dataContext[f.id] !== "") dataContext[f.id] = "";
                     }
                     
-                    // ★ 關鍵：將背景色設定在 TD 上，並且設為 !important 效果的灰色
-                    // 使用 #e2e8f0 (Slate-200) 讓它看起來像無法編輯區域
-                    if (td) {
-                        td.style.backgroundColor = "#e2e8f0"; 
-                        // 如果需要強制覆蓋 hover 效果，可以考慮 inline css text，但通常這樣就夠了
-                    }
+                    // ★ 視覺呈現：背景變灰 (模擬 Disable 區域)
+                    // 使用 !important 確保覆蓋任何 hover 效果
+                    td.style.backgroundColor = "#f1f5f9"; // Slate-100
+                    td.style.color = "#cbd5e1"; // 文字變淡
+                    input.style.backgroundColor = "transparent"; // 確保 input 透明以顯示 TD 背景
                     
                 } else {
                     input.disabled = false;
                     input.title = input.value; 
+                    td.style.color = ""; // 恢復文字顏色
                     
                     // ★ 解鎖時，恢復背景色邏輯
-                    if (td) {
-                        if (td.classList.contains('sticky-col')) {
-                            // 凍結欄位：依據 TR 的 class 恢復背景 (避免透明導致透視)
-                            const isAlt = tr.classList.contains('row-group-alt');
-                            td.style.backgroundColor = isAlt ? '#f8fafc' : '#ffffff';
-                        } else {
-                            // 一般欄位：清空背景色，讓它透出 TR 的 Hover 效果
-                            td.style.backgroundColor = ""; 
-                        }
+                    if (td.classList.contains('sticky-col')) {
+                        // 凍結欄位：依據 TR 的 class 恢復 (避免透明導致透視)
+                        const isAlt = tr.classList.contains('row-group-alt');
+                        td.style.backgroundColor = isAlt ? '#f8fafc' : '#ffffff';
+                    } else {
+                        // 一般欄位：清空背景色，讓它透出 TR 的 Hover 效果
+                        td.style.backgroundColor = ""; 
                     }
                 }
             });
