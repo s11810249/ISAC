@@ -2796,7 +2796,7 @@
             
             const div = document.createElement('div');
             div.id = `content-${appId}`;
-            div.className = 'dynamic-tab-content max-w-5xl mx-auto space-y-6';
+            div.className = 'dynamic-tab-content w-[95%] mx-auto space-y-6';
             
             const details = document.createElement('details');
             details.className = 'group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden';
@@ -3144,11 +3144,12 @@
                 container.appendChild(title);
 
                 const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-4 mb-6'; 
+                grid.className = 'grid grid-cols-1 md:grid-cols-4 gap-4 mb-6';
 
                 catFields.forEach(f => {
                     const wrapper = document.createElement('div');
-                    wrapper.className = `field-group ${f.id}-wrapper`; 
+                    const span = f.colSpan || 1; 
+                    wrapper.className = `field-group ${f.id}-wrapper md:col-span-${span}`;
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
                     const label = document.createElement('label');
