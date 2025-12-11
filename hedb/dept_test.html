@@ -4655,6 +4655,8 @@
                         td.appendChild(div);
                     } else {
                         let input;
+                        let wrapperDiv = null; // ★ 新增：用於置中的容器
+
                         if (f.type === 'text' || f.type === 'address') {
                             input = document.createElement('textarea');
                             input.rows = 1; 
@@ -4682,17 +4684,25 @@
                             input.style.textAlign = 'center';
                             input.style.textAlignLast = 'center';
                         } 
-                        // --- 【新增】列表模式的 Checkbox ---
+                        // --- 【修改】列表模式的 Checkbox (美化 + 絕對置中) ---
                         else if (f.type === 'checkbox') {
+                            // 1. 建立彈性容器，確保水平與垂直都完美置中
+                            wrapperDiv = document.createElement('div');
+                            wrapperDiv.className = "flex items-center justify-center w-full h-full";
+
+                            // 2. 建立 Checkbox 本體
                             input = document.createElement('input');
                             input.type = 'checkbox';
-                            // 樣式：置中顯示
-                            input.className = "w-4 h-4 text-primary border-slate-300 rounded focus:ring-primary cursor-pointer mx-auto block mt-0"; 
+                            // 樣式優化：w-5 h-5(加大), text-primary(品牌色), rounded(圓角), border-slate-300(邊框)
+                            input.className = "w-5 h-5 text-primary border-slate-300 rounded focus:ring-primary focus:ring-offset-0 cursor-pointer transition-all duration-200 ease-in-out"; 
                             input.checked = (val === true || val === 'true');
                             
                             // 綁定變更事件
                             input.onchange = (e) => handleGridChange(e.target, student, course, f);
-                        }
+
+                            // 將 input 放入容器
+                            wrapperDiv.appendChild(input);
+                        } 
                         else {
                             input = document.createElement('input');
                             input.type = "text";
@@ -4745,7 +4755,13 @@
                                 });
                             }
                         }
-                        td.appendChild(input);
+
+                        // ★ 關鍵：如果有 wrapperDiv (Checkbox)，則加入 wrapper，否則加入 input
+                        if (wrapperDiv) {
+                            td.appendChild(wrapperDiv);
+                        } else {
+                            td.appendChild(input);
+                        }
                     }
                     tr.appendChild(td);
                 });
