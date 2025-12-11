@@ -117,13 +117,16 @@
             font-size: 1em; 
             font-weight: 600; 
             color: #64748b; 
-            border-bottom: 3px solid transparent; /* ★ 關鍵：預設佔位 */
+            /* 使用透明邊框佔位，避免切換時跳動 */
+            border-bottom: 3px solid transparent; 
             transition: all 0.2s; 
             cursor: pointer; 
             display: flex; 
             align-items: center; 
             gap: 0.5rem; 
             white-space: nowrap;
+            position: relative; /* 確保層級正確 */
+            z-index: 1;
         }
 
         .tab-btn:hover { 
@@ -131,12 +134,17 @@
             background-color: #f8fafc; 
         }
 
-        /* 選取狀態 (明確設定藍色底線) */
+        /* 選取狀態 (修正版：使用 inset shadow 避免被遮擋) */
         .tab-btn.active { 
             color: #002E5D; 
             background-color: #eff6ff; /* 淺藍色背景 */
-            border-bottom: 3px solid #002E5D !important; /* ★ 強制顯示 3px 實線藍色邊框 */
+            
+            /* 改用內陰影繪製底部藍線，確保不會被 overflow 裁切 */
+            box-shadow: inset 0 -3px 0 0 #002E5D; 
+            border-bottom-color: transparent; /* 隱藏原本的邊框以免重複 */
+            
             border-radius: 6px 6px 0 0; /* 上方圓角 */
+            z-index: 10; /* 確保浮在最上層 */
         }
         
         .tab-btn:hover { color: #002E5D; background-color: #f8fafc; }
