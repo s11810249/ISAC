@@ -1786,6 +1786,31 @@
                 hasUnsavedChanges = true;
             }
         }
+
+        // --- Helper: 同步調整列表模式單列(Row)所有 Textarea 的高度 ---
+        function autoResizeGridRow(tr) {
+            if (!tr) return;
+            const textareas = tr.querySelectorAll('textarea.grid-input');
+            if (textareas.length === 0) return;
+
+            // 1. 先全部強制縮為 1px，讓 TR 能釋放高度 (允許縮小)
+            textareas.forEach(ta => {
+                ta.style.setProperty('height', '1px', 'important');
+            });
+
+            // 2. 找出該列中需要的最巨量高度 (以內容最多的那格為準)
+            let maxH = 34; // 預設最小高度
+            textareas.forEach(ta => {
+                if (ta.scrollHeight > maxH) {
+                    maxH = ta.scrollHeight;
+                }
+            });
+
+            // 3. 將最大高度統一套用到該列的所有 textarea，讓大家對齊
+            textareas.forEach(ta => {
+                ta.style.setProperty('height', maxH + 'px', 'important');
+            });
+        }
         
         // --- Helper: 計算文字寬度 ---
         function getTextWidth(text, font = "bold 14px 'Noto Sans TC'") {
@@ -4889,13 +4914,10 @@
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
                             
-                            const autoResize = (el) => {
-                                // ★ 強制縮小至 1px 並使用 important 覆蓋 CSS，取得真實內容高度
-                                el.style.setProperty('height', '1px', 'important');
-                                el.style.setProperty('height', Math.max(el.scrollHeight, 34) + 'px', 'important');
-                            };
-                            input.addEventListener('input', function() { autoResize(this); });
-                            setTimeout(() => autoResize(input), 0);
+                            // ★ 修改：移除原本個別的 autoResize，改呼叫整列同步函式
+                            input.addEventListener('input', function() { 
+                                autoResizeGridRow(tr); 
+                            });
                             
                             // 綁定智慧編號事件
                             if (f.type === 'list') {
@@ -4904,7 +4926,7 @@
                                 input.addEventListener('focus', function() {
                                     if (this.value.trim() === '') {
                                         this.value = '1. ';
-                                        this.dispatchEvent(new Event('input')); // 觸發高度重算
+                                        this.dispatchEvent(new Event('input')); // 觸發同步調整
                                     }
                                 });
                             }
@@ -5003,10 +5025,8 @@
             });
             
             setTimeout(() => {
-                document.querySelectorAll('#local-grid-tbody textarea').forEach(ta => {
-                    ta.style.setProperty('height', '1px', 'important');
-                    ta.style.setProperty('height', Math.max(ta.scrollHeight, 34) + 'px', 'important');
-                });
+                const rows = document.querySelectorAll('#local-grid-tbody tr');
+                rows.forEach(tr => autoResizeGridRow(tr));
             }, 0);
         }
         
