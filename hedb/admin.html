@@ -3240,12 +3240,10 @@
             const thinBorder = { style: 'thin', color: { argb: 'FFB2B2B2' } };
             const borderStyle = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
             
-            // 4. 設定所有儲存格樣式 (含標頭) & ★★★ 設定鎖定屬性 ★★★
-            const safeEndRow = Math.max(rows.length + 100, 100); // 確保樣式涵蓋到下方空白區
+            // 4. 設定所有儲存格樣式 (含標頭) & 設定鎖定屬性
+            const safeEndRow = Math.max(rows.length + 100, 100); 
     
-            // 針對每一列、每一格設定基本樣式
             for (let r = 1; r <= safeEndRow; r++) {
-                // 確保 Row 物件存在
                 const row = worksheet.getRow(r);
                 
                 outputFields.forEach((field, idx) => {
@@ -3254,32 +3252,24 @@
                     cell.border = borderStyle;
                     cell.alignment = { vertical: 'middle', wrapText: true };
                     
-                    // ★★★ 新增：鎖定邏輯處理 ★★★
-                    // Excel 預設所有儲存格都是 "Locked"。必須 Unprotect sheet 才能編輯。
-                    // 若要讓某些欄位可編輯，必須將 locked 設為 false，然後 Protect sheet。
                     let isLocked = false;
     
                     if (r === 1) {
-                        // 標題列永遠鎖定
                         cell.font = headerFont;
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + getCategoryColor(field.category) } };
                         cell.alignment = { vertical: 'middle', horizontal: 'center' };
                         isLocked = true;
                     } else {
                         cell.font = fontStyle;
-                        // 資料列：依照設定決定是否鎖定
-                        // 若 field.excelLocked 為 true，則 locked = true (不可編輯)
-                        // 若 field.excelLocked 為 false/undefined，則 locked = false (可編輯)
                         isLocked = !!field.excelLocked;
     
-                        if (field._isMapped && r <= rows.length + 1) { // 只有資料區才顯示灰底
+                        if (field._isMapped && r <= rows.length + 1) { 
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
                         } else {
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
                         }
                     }
                     
-                    // 套用保護屬性
                     cell.protection = { locked: isLocked };
                 });
             }
@@ -3308,26 +3298,35 @@
                 }
             });
     
-            // 6. ★★★ 關鍵修正：啟用工作表保護 (Protect Sheet) ★★★
-            // 若不呼叫此行，cell.protection 的設定將無效。
-            // 空字串代表無密碼 (使用者可直接點擊「取消保護工作表」來解鎖，方便後續作業)
+            // 6. 啟用工作表保護 (Protect Sheet)
             await worksheet.protect('', {
                 selectLockedCells: true,
                 selectUnlockedCells: true,
-                formatCells: true,     // 允許格式化
-                formatColumns: true,   // 允許調整欄寬
-                formatRows: true,      // 允許調整列高
-                insertRows: false,     // 禁止插入列 (保持結構)
-                deleteRows: false,     // 禁止刪除列
-                autoFilter: true,      // 允許篩選
-                sort: true             // 允許排序
+                formatCells: true,     
+                formatColumns: true,   
+                formatRows: true,      
+                insertRows: false,     
+                deleteRows: false,     
+                autoFilter: true,      
+                sort: true             
+            });
+    
+            // ★★★ 7. 新增：加入隱藏的 Metadata 工作表供 dept_test 讀取對應欄位 ★★★
+            const metaSheet = workbook.addWorksheet('_System_Metadata', { state: 'hidden' });
+            metaSheet.columns = [
+                { header: 'Field_ID', key: 'id' },
+                { header: 'Field_Label', key: 'label' }
+            ];
+            outputFields.forEach(f => {
+                // 確保 Label 和主表頭完全一致（去除 "(必填)" 字樣）
+                const cleanLabel = f.label.replace(/\s*\(必填\)/g, '');
+                metaSheet.addRow({ id: f.dataKey, label: cleanLabel });
             });
     
             // 產生 Buffer
             const buffer = await workbook.xlsx.writeBuffer();
             return buffer;
         }
-
         async function downloadBatch(groupName) {
             const groupData = groupName === 'all' ? Object.values(currentConsolidatedResults).flat() : currentConsolidatedResults[groupName];
             if (!groupData || groupData.length === 0) return;
