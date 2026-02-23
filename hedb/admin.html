@@ -3276,8 +3276,7 @@
     
             // 5. 使用 dataValidations.add 進行批次範圍設定
             outputFields.forEach((field, idx) => {
-                if ((field.type === 'single_select' || field.type === 'list') && 
-                    field.options && field.options.length > 0) {
+                if (field.type === 'single_select' && field.options && field.options.length > 0) { // ★ 只針對 single_select 建立下拉驗證
                     
                     const colLetter = worksheet.getColumn(idx + 1).letter;
                     const range = `${colLetter}2:${colLetter}${safeEndRow}`;
