@@ -1230,6 +1230,8 @@
     <script>
         // --- Local Storage Manager (暫存管理系統) ---
         const STORAGE_KEY = 'thu_isac_hedb_temp_v1';
+        const LIB_STORAGE_KEY = 'thu_isac_inst_lib_v1'; // ★ 新增：補齊缺失的常數
+        const REL_STORAGE_KEY = 'thu_isac_inst_rels_v1'; // (原本在下方，統一移到這裡比較好)
 
         // 1. 切換暫存狀態 (按鈕點擊事件)
         function toggleLocalStorage() {
@@ -1327,10 +1329,10 @@
             };
             
             try {
-                const compressedState = LZString.compress(JSON.stringify(state));
-                const compressedLib = LZString.compress(JSON.stringify(institutionLibrary));
-                // ★ 新增：壓縮機構關係
-                const compressedRels = LZString.compress(JSON.stringify(institutionRelations));
+                // ★ 關鍵修正：改用 compressToUTF16，完美貼合 localStorage 編碼，大幅減少體積
+                const compressedState = LZString.compressToUTF16(JSON.stringify(state));
+                const compressedLib = LZString.compressToUTF16(JSON.stringify(institutionLibrary));
+                const compressedRels = LZString.compressToUTF16(JSON.stringify(institutionRelations));
         
                 localStorage.setItem(STORAGE_KEY, compressedState);
                 localStorage.setItem(LIB_STORAGE_KEY, compressedLib);
@@ -1338,7 +1340,10 @@
                 
             } catch (e) {
                 console.error("Storage full or error", e);
-                showToast('warning', '暫存失敗：瀏覽器空間不足');
+                // ★ 新增防呆：若空間依然不足，自動關閉暫存並跳出紅色警告
+                showToast('error', '暫存失敗：資料量過大，瀏覽器可用空間不足。已暫時關閉暫存保護。');
+                localStorage.setItem(STORAGE_KEY + '_enabled', 'false');
+                updateStorageBtn(false);
             }
         }
 
@@ -1347,21 +1352,18 @@
             const saved = localStorage.getItem(STORAGE_KEY);
             const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true'; // 檢查暫存狀態
             
-            // ★★★ 修正點：在還原前，先依據狀態決定是否載入機構庫 ★★★
             if (isEnabled) {
                 try {
-                    // 修改：使用 LZString.decompress 進行解壓縮
                     const savedLib = localStorage.getItem(LIB_STORAGE_KEY);
                     if(savedLib) {
-                        const decompressed = LZString.decompress(savedLib);
-                        // 相容性檢查：如果解壓縮出來是空(代表可能是舊版沒壓縮的資料)，則嘗試直接 Parse
+                        // ★ 修正：優先嘗試新版 UTF16 解碼，失敗再用舊版解碼相容
+                        let decompressed = LZString.decompressFromUTF16(savedLib) || LZString.decompress(savedLib);
                         institutionLibrary = JSON.parse(decompressed || savedLib);
                     }
         
-                    // 同樣處理 Relations
                     const savedRels = localStorage.getItem(REL_STORAGE_KEY);
                     if(savedRels) {
-                        const decompressed = LZString.decompress(savedRels);
+                        let decompressed = LZString.decompressFromUTF16(savedRels) || LZString.decompress(savedRels);
                         institutionRelations = JSON.parse(decompressed || savedRels);
                     }
                 } catch(e) { 
@@ -1374,8 +1376,9 @@
                 const yes = await showConfirm('發現未完成的暫存', '系統發現您上次有未儲存的填報進度，是否還原？');
                 if (yes) {
                     try {
-                        const decompressedState = LZString.decompress(saved);
-                        const state = JSON.parse(decompressedState || saved); // 相容舊資料
+                        // ★ 修正：相容解碼
+                        let decompressedState = LZString.decompressFromUTF16(saved) || LZString.decompress(saved);
+                        const state = JSON.parse(decompressedState || saved); 
                         
                         // 1. 還原資料 (使用既有的處理函式)
                         await processUploadedData(state.rawData, state.apps);
@@ -1395,11 +1398,9 @@
                         showToast('error', '還原失敗：暫存資料可能已損毀');
                     }
                 } else {
-                    // 使用者選擇不還原 -> 視為放棄，但也許想保留設定？
                     updateStorageBtn(true); 
                 }
             } else {
-                // 檢查是否曾啟用過 (按鈕狀態同步)
                 updateStorageBtn(isEnabled);
             }
         }
@@ -2009,17 +2010,44 @@
 
                     const jsonData = [];
                     const headers = [];
+                    
+                    // ★★★ 核心修正：純文字安全過濾器 ★★★
+                    // 防止 Excel 的 RichText (粗體/顏色樣式) 或公式物件被轉成巨大 JSON 塞爆暫存
+                    const getSafeValue = (cell) => {
+                        const val = cell.value;
+                        if (val === null || val === undefined) return '';
+                        
+                        if (typeof val === 'object') {
+                            if (val.richText) return val.richText.map(rt => rt.text).join(''); // 剝除格式，只留文字
+                            if (val.result !== undefined) return val.result; // 如果是公式，只取計算結果
+                            if (val.text !== undefined) return val.text;     // 如果是超連結，只取顯示文字
+                            if (val instanceof Date) {
+                                // 安全處理日期格式，避免時區偏移
+                                const y = val.getFullYear();
+                                const m = String(val.getMonth() + 1).padStart(2, '0');
+                                const d = String(val.getDate()).padStart(2, '0');
+                                return `${y}-${m}-${d}`;
+                            }
+                            return String(val); // 其他未知物件強制轉字串
+                        }
+                        return String(val).trim();
+                    };
+
+                    // 讀取表頭 (同樣套用安全過濾)
                     mainSheet.getRow(1).eachCell((cell, colNumber) => {
-                        headers[colNumber] = cell.value;
+                        headers[colNumber] = getSafeValue(cell);
                     });
 
+                    // 讀取資料內容
                     mainSheet.eachRow((row, rowNumber) => {
                         if (rowNumber > 1) {
                             const rowData = {};
                             row.eachCell((cell, colNumber) => {
                                 let header = headers[colNumber];
                                 if (fieldMap[header]) header = fieldMap[header];
-                                rowData[header] = cell.value;
+                                
+                                // ★ 套用安全讀取，將乾淨的字串存入
+                                rowData[header] = getSafeValue(cell); 
                             });
                             if(Object.keys(rowData).length > 0) jsonData.push(rowData);
                         }
@@ -2100,7 +2128,8 @@
                         
                         // 若啟用暫存則同步寫入
                         if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                            localStorage.setItem(LIB_STORAGE_KEY, JSON.stringify(institutionLibrary));
+                            // ★ 修正：加入 compressToUTF16 壓縮
+                            localStorage.setItem(LIB_STORAGE_KEY, LZString.compressToUTF16(JSON.stringify(institutionLibrary)));
                         }
                     }
 
