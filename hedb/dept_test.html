@@ -3376,11 +3376,25 @@
                         } else if (f.type === 'list') { 
                             input = document.createElement('textarea');
                             input.className = "input-stylish custom-scroll";
-                            input.rows = 3;
-                            input.style.minHeight = "80px";
-                            input.placeholder = "輸入文字後按 Enter 自動編號\n(Shift+Enter 換行不編號)";
+                            // ★ 修改：移除預設高度限制與 placeholder，改為自動調整
+                            input.rows = 1;
+                            input.style.minHeight = "42px"; 
+                            input.style.resize = "none";     // 禁止手動拉高
+                            input.style.overflow = "hidden"; // 隱藏卷軸
                             input.value = val || '';
+                            input.placeholder = "請輸入..."; // 或留空 ""
+                            
+                            // ★ 新增：自動高度調整函式
+                            const autoResize = (el) => {
+                                el.style.height = 'auto';
+                                el.style.height = (el.scrollHeight + 2) + 'px'; // +2 微調邊框
+                            };
+                            
+                            input.addEventListener('input', function() { autoResize(this); });
                             input.addEventListener('keydown', handleListKeydown); 
+                            
+                            // 初始化高度
+                            setTimeout(() => autoResize(input), 0);
                         } else if (f.type === 'date') { // ★★★ 就是這裡，補上遺漏的大括號 {
                             input = document.createElement('input');
                             input.type = 'date';
@@ -4857,11 +4871,13 @@
                         let input;
                         let wrapperDiv = null; // ★ 新增：用於置中的容器
 
-                        if (f.type === 'text' || f.type === 'address' || f.type === 'list') { // ★ 加入 f.type === 'list'
+                        if (f.type === 'text' || f.type === 'address' || f.type === 'list') {
                             input = document.createElement('textarea');
                             input.rows = 1; 
                             input.className = "grid-input";
-                            input.style.resize = "none";
+                            
+                            // ★ 確保設定：禁止手動拉高，依內容自動撐開
+                            input.style.resize = "none"; 
                             input.style.textAlign = 'left';
                             input.style.whiteSpace = 'pre-wrap'; 
                             input.style.overflow = 'hidden';     
@@ -4875,13 +4891,13 @@
                                 el.style.height = Math.max(el.scrollHeight, 34) + 'px';
                             };
                             input.addEventListener('input', function() { autoResize(this); });
+                            
+                            // ★ 確保初始化時執行一次
                             setTimeout(() => autoResize(input), 0);
                             
-                            // ★ 新增：若為 list 則綁定智慧編號事件
                             if (f.type === 'list') {
                                 input.addEventListener('keydown', handleListKeydown);
                             }
-
                         } else if (f.type === 'single_select') { // ★ 從這裡把 || f.type === 'list' 刪除
                             input = document.createElement('select');
                             input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
