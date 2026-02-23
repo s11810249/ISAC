@@ -1718,6 +1718,74 @@
             if(headers.length === 0) CORE_FIELDS.forEach(k => headers.push({id:k, label:k}));
             return headers;
         }
+
+        // --- Helper: List 欄位自動編號邏輯 ---
+        function handleListKeydown(e) {
+            if (e.key === 'Enter') {
+                if (e.shiftKey) {
+                    // Shift+Enter: 原生預設換行 (不自動編號)
+                    return;
+                }
+
+                // Enter (無 Shift): 自動換行並計算編號
+                e.preventDefault();
+                const el = e.target;
+                const start = el.selectionStart;
+                const end = el.selectionEnd;
+                const val = el.value;
+
+                const textBefore = val.substring(0, start);
+                const textAfter = val.substring(end);
+
+                const lines = textBefore.split('\n');
+                const currentLine = lines[lines.length - 1];
+
+                // 找尋目前的編號 (例如 "1. ", "2. ")
+                const match = currentLine.match(/^(\d+)\.\s*/);
+                
+                let insertText = '';
+                let newTextBefore = textBefore;
+
+                if (match) {
+                    // 如果目前這行只有編號沒有文字，且按下 Enter，代表想結束清單
+                    if (currentLine.trim() === match[0].trim()) {
+                        newTextBefore = textBefore.substring(0, textBefore.length - currentLine.length);
+                        insertText = '\n';
+                    } else {
+                        // 繼續編號
+                        const nextNum = parseInt(match[1], 10) + 1;
+                        insertText = `\n${nextNum}. `;
+                    }
+                } else {
+                    // 如果目前這行沒有編號
+                    if (lines.length === 1 && currentLine.trim() !== '') {
+                        // 如果是第一行且有打字，自動把第一行前面補上 1.，並換行加上 2.
+                        newTextBefore = `1. ${currentLine}`;
+                        insertText = `\n2. `;
+                    } else {
+                        // 往前找最後一個出現的編號，來決定下一個號碼
+                        let lastNum = 0;
+                        for (let i = lines.length - 1; i >= 0; i--) {
+                            const m = lines[i].match(/^(\d+)\.\s*/);
+                            if (m) {
+                                lastNum = parseInt(m[1], 10);
+                                break;
+                            }
+                        }
+                        // 若都找不到，就從 1. 開始
+                        insertText = lastNum > 0 ? `\n${lastNum + 1}. ` : `\n1. `;
+                    }
+                }
+                
+                // 更新內容與游標位置
+                el.value = newTextBefore + insertText + textAfter;
+                el.selectionStart = el.selectionEnd = newTextBefore.length + insertText.length;
+                
+                // 觸發 input 事件以觸發自動調整高度等邏輯
+                el.dispatchEvent(new Event('input'));
+                hasUnsavedChanges = true;
+            }
+        }
         
         // --- Helper: 計算文字寬度 ---
         function getTextWidth(text, font = "bold 14px 'Noto Sans TC'") {
@@ -3301,11 +3369,19 @@
                     }
                     // --- 處理其他一般欄位 ---
                     else {
-                        if (f.type === 'single_select' || f.type === 'list') {
+                        if (f.type === 'single_select') { // ★ 移除了 list
                             input = document.createElement('select');
                             input.className = "input-stylish cursor-pointer";
                             input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
-                        } else if (f.type === 'date') {
+                        } else if (f.type === 'list') { // ★ 新增：list 獨立處理
+                            input = document.createElement('textarea');
+                            input.className = "input-stylish custom-scroll";
+                            input.rows = 3;
+                            input.style.minHeight = "80px";
+                            input.placeholder = "輸入文字後按 Enter 自動編號\n(Shift+Enter 換行不編號)";
+                            input.value = val || '';
+                            input.addEventListener('keydown', handleListKeydown); // 綁定智慧編號
+                        } else if (f.type === 'date')
                             input = document.createElement('input');
                             input.type = 'date';
                             input.className = "input-stylish";
@@ -4781,7 +4857,7 @@
                         let input;
                         let wrapperDiv = null; // ★ 新增：用於置中的容器
 
-                        if (f.type === 'text' || f.type === 'address') {
+                        if (f.type === 'text' || f.type === 'address' || f.type === 'list') { // ★ 加入 f.type === 'list'
                             input = document.createElement('textarea');
                             input.rows = 1; 
                             input.className = "grid-input";
@@ -4800,14 +4876,19 @@
                             };
                             input.addEventListener('input', function() { autoResize(this); });
                             setTimeout(() => autoResize(input), 0);
+                            
+                            // ★ 新增：若為 list 則綁定智慧編號事件
+                            if (f.type === 'list') {
+                                input.addEventListener('keydown', handleListKeydown);
+                            }
 
-                        } else if (f.type === 'single_select' || f.type === 'list') {
+                        } else if (f.type === 'single_select') { // ★ 從這裡把 || f.type === 'list' 刪除
                             input = document.createElement('select');
                             input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                             input.className = "grid-input";
                             input.style.textAlign = 'center';
                             input.style.textAlignLast = 'center';
-                        } 
+                        }
                         // --- 【修改】列表模式的 Checkbox (美化 + 絕對置中) ---
                         else if (f.type === 'checkbox') {
                             // 1. 建立彈性容器，確保水平與垂直都完美置中
