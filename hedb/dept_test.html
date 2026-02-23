@@ -4890,8 +4890,9 @@
                             input.style.padding = '6px 8px';     
                             
                             const autoResize = (el) => {
-                                el.style.height = '1px'; // ★ 關鍵：覆蓋 CSS 的 height: 100%，強迫重新計算高度
-                                el.style.height = Math.max(el.scrollHeight, 34) + 'px';
+                                // ★ 強制縮小至 1px 並使用 important 覆蓋 CSS，取得真實內容高度
+                                el.style.setProperty('height', '1px', 'important');
+                                el.style.setProperty('height', Math.max(el.scrollHeight, 34) + 'px', 'important');
                             };
                             input.addEventListener('input', function() { autoResize(this); });
                             setTimeout(() => autoResize(input), 0);
@@ -4899,6 +4900,13 @@
                             // 綁定智慧編號事件
                             if (f.type === 'list') {
                                 input.addEventListener('keydown', handleListKeydown);
+                                
+                                input.addEventListener('focus', function() {
+                                    if (this.value.trim() === '') {
+                                        this.value = '1. ';
+                                        this.dispatchEvent(new Event('input')); // 觸發高度重算
+                                    }
+                                });
                             }
 
                         } else if (f.type === 'single_select') {
@@ -4996,8 +5004,8 @@
             
             setTimeout(() => {
                 document.querySelectorAll('#local-grid-tbody textarea').forEach(ta => {
-                    ta.style.height = 'auto';
-                    ta.style.height = (ta.scrollHeight) + 'px';
+                    ta.style.setProperty('height', '1px', 'important');
+                    ta.style.setProperty('height', Math.max(ta.scrollHeight, 34) + 'px', 'important');
                 });
             }, 0);
         }
