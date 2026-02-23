@@ -3376,26 +3376,23 @@
                         } else if (f.type === 'list') { 
                             input = document.createElement('textarea');
                             input.className = "input-stylish custom-scroll";
-                            // ★ 修改：移除預設高度限制與 placeholder，改為自動調整
                             input.rows = 1;
                             input.style.minHeight = "42px"; 
-                            input.style.resize = "none";     // 禁止手動拉高
-                            input.style.overflow = "hidden"; // 隱藏卷軸
+                            input.style.resize = "none";
+                            input.style.overflow = "hidden"; 
                             input.value = val || '';
-                            input.placeholder = "請輸入..."; // 或留空 ""
+                            // (已移除 placeholder 提示文字)
                             
-                            // ★ 新增：自動高度調整函式
                             const autoResize = (el) => {
-                                el.style.height = 'auto';
-                                el.style.height = (el.scrollHeight + 2) + 'px'; // +2 微調邊框
+                                el.style.height = '1px'; // ★ 關鍵：先強制縮小，才能讀到真實的 scrollHeight
+                                el.style.height = (el.scrollHeight + 2) + 'px'; 
                             };
                             
                             input.addEventListener('input', function() { autoResize(this); });
                             input.addEventListener('keydown', handleListKeydown); 
                             
-                            // 初始化高度
                             setTimeout(() => autoResize(input), 0);
-                        } else if (f.type === 'date') { // ★★★ 就是這裡，補上遺漏的大括號 {
+                        } else if (f.type === 'date') {
                             input = document.createElement('input');
                             input.type = 'date';
                             input.className = "input-stylish";
@@ -4871,34 +4868,31 @@
                         let input;
                         let wrapperDiv = null; // ★ 新增：用於置中的容器
 
-                        if (f.type === 'text' || f.type === 'address' || f.type === 'list') {
+                        if (f.type === 'text' || f.type === 'address' || f.type === 'list') { 
                             input = document.createElement('textarea');
                             input.rows = 1; 
                             input.className = "grid-input";
-                            
-                            // ★ 確保設定：禁止手動拉高，依內容自動撐開
-                            input.style.resize = "none"; 
+                            input.style.resize = "none";
                             input.style.textAlign = 'left';
                             input.style.whiteSpace = 'pre-wrap'; 
                             input.style.overflow = 'hidden';     
                             input.style.wordBreak = 'break-all'; 
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
-                            input.style.height = 'auto';         
-
+                            
                             const autoResize = (el) => {
-                                el.style.height = 'auto'; 
+                                el.style.height = '1px'; // ★ 關鍵：覆蓋 CSS 的 height: 100%，強迫重新計算高度
                                 el.style.height = Math.max(el.scrollHeight, 34) + 'px';
                             };
                             input.addEventListener('input', function() { autoResize(this); });
-                            
-                            // ★ 確保初始化時執行一次
                             setTimeout(() => autoResize(input), 0);
                             
+                            // 綁定智慧編號事件
                             if (f.type === 'list') {
                                 input.addEventListener('keydown', handleListKeydown);
                             }
-                        } else if (f.type === 'single_select') { // ★ 從這裡把 || f.type === 'list' 刪除
+
+                        } else if (f.type === 'single_select') {
                             input = document.createElement('select');
                             input.innerHTML = `<option value=""></option>` + (f.options||[]).map(o => `<option value="${o}" ${o==val?'selected':''}>${o}</option>`).join('');
                             input.className = "grid-input";
