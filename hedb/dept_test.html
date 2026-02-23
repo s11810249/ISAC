@@ -3381,17 +3381,26 @@
                             input.style.resize = "none";
                             input.style.overflow = "hidden"; 
                             input.value = val || '';
-                            // (已移除 placeholder 提示文字)
                             
                             const autoResize = (el) => {
-                                el.style.height = '1px'; // ★ 關鍵：先強制縮小，才能讀到真實的 scrollHeight
-                                el.style.height = (el.scrollHeight + 2) + 'px'; 
+                                // ★ 關鍵破解：使用 setProperty 加上 'important'，強行突破 CSS 的 42px !important 鎖定
+                                el.style.setProperty('height', '1px', 'important');
+                                el.style.setProperty('height', (el.scrollHeight + 2) + 'px', 'important');
                             };
                             
                             input.addEventListener('input', function() { autoResize(this); });
                             input.addEventListener('keydown', handleListKeydown); 
                             
+                            input.addEventListener('focus', function() {
+                                if (this.value.trim() === '') {
+                                    this.value = '1. ';
+                                    this.dispatchEvent(new Event('input')); // 觸發高度重算
+                                }
+                            });
+                            
+                            // 延遲初始化，確保 DOM 已經渲染完成能抓到正確高度
                             setTimeout(() => autoResize(input), 0);
+                            
                         } else if (f.type === 'date') {
                             input = document.createElement('input');
                             input.type = 'date';
