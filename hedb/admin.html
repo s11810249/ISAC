@@ -3199,7 +3199,7 @@
         async function createExcelBuffer(groupName, groupData, outputFields, outputYear) {
             const workbook = new ExcelJS.Workbook();
             const worksheet = workbook.addWorksheet(groupName === 'all' ? '總表' : groupName);
-
+    
             // 1. 設定欄位標頭 (Columns)
             const columns = outputFields.map(f => {
                 let len = 0;
@@ -3215,7 +3215,7 @@
                 };
             });
             worksheet.columns = columns;
-
+    
             // 2. 處理資料並填入
             const rows = groupData.map(row => {
                 const rowObj = {};
@@ -3225,24 +3225,24 @@
                         const deptId = row[f.dataKey];
                         if (deptId) cellValue = getDeptDisplayName(deptId, false, outputYear) || deptId;
                     } else if (f.type === 'college') {
-                         const collegeId = row[f.dataKey];
-                         if (collegeId) cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
+                            const collegeId = row[f.dataKey];
+                            if (collegeId) cellValue = getCollegeDisplayName(collegeId, false) || collegeId;
                     }
                     rowObj[f.dataKey] = cellValue;
                 });
                 return rowObj;
             });
             worksheet.addRows(rows);
-
+    
             // 3. 定義樣式
             const fontStyle = { name: 'Microsoft JhengHei', size: 11 };
             const headerFont = { name: 'Microsoft JhengHei', size: 12, bold: true, color: { argb: 'FFFFFFFF' } };
             const thinBorder = { style: 'thin', color: { argb: 'FFB2B2B2' } };
             const borderStyle = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
             
-            // 4. 設定所有儲存格樣式 (含標頭)
+            // 4. 設定所有儲存格樣式 (含標頭) & ★★★ 設定鎖定屬性 ★★★
             const safeEndRow = Math.max(rows.length + 100, 100); // 確保樣式涵蓋到下方空白區
-
+    
             // 針對每一列、每一格設定基本樣式
             for (let r = 1; r <= safeEndRow; r++) {
                 // 確保 Row 物件存在
@@ -3254,62 +3254,75 @@
                     cell.border = borderStyle;
                     cell.alignment = { vertical: 'middle', wrapText: true };
                     
+                    // ★★★ 新增：鎖定邏輯處理 ★★★
+                    // Excel 預設所有儲存格都是 "Locked"。必須 Unprotect sheet 才能編輯。
+                    // 若要讓某些欄位可編輯，必須將 locked 設為 false，然後 Protect sheet。
+                    let isLocked = false;
+    
                     if (r === 1) {
+                        // 標題列永遠鎖定
                         cell.font = headerFont;
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + getCategoryColor(field.category) } };
                         cell.alignment = { vertical: 'middle', horizontal: 'center' };
+                        isLocked = true;
                     } else {
                         cell.font = fontStyle;
+                        // 資料列：依照設定決定是否鎖定
+                        // 若 field.excelLocked 為 true，則 locked = true (不可編輯)
+                        // 若 field.excelLocked 為 false/undefined，則 locked = false (可編輯)
+                        isLocked = !!field.excelLocked;
+    
                         if (field._isMapped && r <= rows.length + 1) { // 只有資料區才顯示灰底
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
                         } else {
                             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
                         }
                     }
+                    
+                    // 套用保護屬性
+                    cell.protection = { locked: isLocked };
                 });
             }
-
-            // 5. ★★★ 關鍵修正：使用 dataValidations.add 進行批次範圍設定 ★★★
-            // 這種寫法對應 Excel 內部的 <dataValidations> 標籤，比單一儲存格設定更穩定
-            
+    
+            // 5. 使用 dataValidations.add 進行批次範圍設定
             outputFields.forEach((field, idx) => {
                 if ((field.type === 'single_select' || field.type === 'list') && 
                     field.options && field.options.length > 0) {
                     
-                    // 1. 取得欄位英文字母 (例如 A, B, AA)
                     const colLetter = worksheet.getColumn(idx + 1).letter;
-                    
-                    // 2. 定義套用範圍 (從第 2 列到 safeEndRow)
                     const range = `${colLetter}2:${colLetter}${safeEndRow}`;
-                    
-                    // 3. 處理選項字串 (轉義雙引號)
                     const safeOptions = field.options.map(o => o.toString().replace(/"/g, '""').trim()).join(',');
                     
                     if (safeOptions.length < 255) {
-                        // 4. 準備規則物件
                         const rule = {
                             type: 'list',
                             allowBlank: true,
                             showErrorMessage: true,
                             errorTitle: '輸入限制',
                             error: '請從下拉選單中選擇有效項目',
-                            formulas: [`"${safeOptions}"`] // 標準寫法: 雙引號包字串
+                            formulas: [`"${safeOptions}"`]
                         };
-
-                        // ★ 相容性修正：同時寫入 formulae 屬性 (針對部分舊版 ExcelJS 或特定環境)
                         rule.formulae = rule.formulas;
-
-                        // 5. 加入驗證規則到 Worksheet
                         worksheet.dataValidations.add(range, rule);
-                        
-                        console.log(`[Excel] 範圍下拉設定成功: ${range} => "${safeOptions}"`);
-                    } else {
-                        // 字串過長，略過 (改為提示)
-                        console.warn(`[Excel] 欄位 [${field.label}] 選項過長，略過下拉`);
                     }
                 }
             });
-
+    
+            // 6. ★★★ 關鍵修正：啟用工作表保護 (Protect Sheet) ★★★
+            // 若不呼叫此行，cell.protection 的設定將無效。
+            // 空字串代表無密碼 (使用者可直接點擊「取消保護工作表」來解鎖，方便後續作業)
+            await worksheet.protect('', {
+                selectLockedCells: true,
+                selectUnlockedCells: true,
+                formatCells: true,     // 允許格式化
+                formatColumns: true,   // 允許調整欄寬
+                formatRows: true,      // 允許調整列高
+                insertRows: false,     // 禁止插入列 (保持結構)
+                deleteRows: false,     // 禁止刪除列
+                autoFilter: true,      // 允許篩選
+                sort: true             // 允許排序
+            });
+    
             // 產生 Buffer
             const buffer = await workbook.xlsx.writeBuffer();
             return buffer;
