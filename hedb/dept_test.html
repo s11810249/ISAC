@@ -3373,15 +3373,15 @@
                             input = document.createElement('select');
                             input.className = "input-stylish cursor-pointer";
                             input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
-                        } else if (f.type === 'list') { // ★ 新增：list 獨立處理
+                        } else if (f.type === 'list') { 
                             input = document.createElement('textarea');
                             input.className = "input-stylish custom-scroll";
                             input.rows = 3;
                             input.style.minHeight = "80px";
                             input.placeholder = "輸入文字後按 Enter 自動編號\n(Shift+Enter 換行不編號)";
                             input.value = val || '';
-                            input.addEventListener('keydown', handleListKeydown); // 綁定智慧編號
-                        } else if (f.type === 'date')
+                            input.addEventListener('keydown', handleListKeydown); 
+                        } else if (f.type === 'date') { // ★★★ 就是這裡，補上遺漏的大括號 {
                             input = document.createElement('input');
                             input.type = 'date';
                             input.className = "input-stylish";
