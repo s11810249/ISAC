@@ -2533,7 +2533,7 @@
             const studentDepts = new Set();
             
             Object.values(groupedStudents).forEach(s => {
-                if (s.student_dept) studentDepts.add(s.student_dept);
+                if (s.dept) studentDepts.add(s.dept); // ★ 修復：正確抓取學生的 s.dept 屬性
                 if (s.courses) {
                     s.courses.forEach(c => {
                         if (c.course_dept) courseDepts.add(c.course_dept);
@@ -2549,7 +2549,7 @@
                 courseSel.innerHTML = '<option value="">全部開課系</option>' + 
                     Array.from(courseDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
                 courseSel.value = currCourse; 
-                courseSel.onchange = renderStudentList; // ★ 確保綁定篩選觸發事件
+                courseSel.onchange = renderStudentList; 
             }
 
             if (studentSel) {
@@ -2557,16 +2557,16 @@
                 studentSel.innerHTML = '<option value="">全部學生系</option>' + 
                     Array.from(studentDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
                 studentSel.value = currStudent; 
-                studentSel.onchange = renderStudentList; // ★ 確保綁定篩選觸發事件
+                studentSel.onchange = renderStudentList; 
             }
             
             const searchInput = document.getElementById('search-student');
             if (searchInput) {
-                 searchInput.oninput = renderStudentList; // ★ 確保搜尋框也能即時篩選
+                 searchInput.oninput = renderStudentList; 
             }
         }
 
-        // --- 修正: 渲染左側名單與精細化狀態標籤 ---
+        // --- 修正: 渲染左側名單 (修復系所顯示、卡片式排版、選取高亮) ---
         function renderStudentList() {
             const listEl = document.getElementById('student-list');
             if (!listEl) return;
@@ -2579,9 +2579,9 @@
             
             let count = 0;
             Object.values(groupedStudents).forEach(s => {
-                // 1. 篩選邏輯
+                // 1. 篩選邏輯 (修復對應屬性 s.dept)
                 if (filterCourseDept && filterCourseDept !== '' && !s.courses.some(c => c.course_dept === filterCourseDept)) return;
-                if (filterStudentDept && filterStudentDept !== '' && s.student_dept !== filterStudentDept) return;
+                if (filterStudentDept && filterStudentDept !== '' && s.dept !== filterStudentDept) return;
                 if (searchKw && !(s.id.toLowerCase().includes(searchKw) || (s.name && s.name.toLowerCase().includes(searchKw)))) return;
 
                 // 2. 狀態精細化計算
@@ -2606,7 +2606,7 @@
                     statusColor = 'bg-slate-100 text-slate-500';
                 } else if (completeCount === apps.length && unassignedCount === 0) {
                     statusText = `${completeCount}筆已填報`;
-                    statusColor = 'bg-emerald-100 text-emerald-700'; // 綠底綠字 (拿掉邊框，更清爽)
+                    statusColor = 'bg-emerald-100 text-emerald-700'; 
                 } else {
                     let parts = [];
                     if (completeCount > 0) parts.push(`${completeCount}已填報`);
@@ -2616,16 +2616,15 @@
                     statusColor = 'bg-amber-100 text-amber-700'; 
                 }
 
-                // 3. ★ 處理系所簡稱轉換 ★
-                let displayDept = s.student_dept || '未知學系';
-                // 去後台 departmentData 結構中尋找全名，若符合則取出 shortName
+                // 3. ★ 處理系所簡稱轉換 (修復：改抓 s.dept) ★
+                let displayDept = s.dept || '未知學系';
                 if (typeof departmentData !== 'undefined' && Array.isArray(departmentData)) {
                     let foundShortName = null;
                     for (let college of departmentData) {
                         if (college.departments && Array.isArray(college.departments)) {
                             for (let dept of college.departments) {
                                 if (dept.name === displayDept || dept.fullName === displayDept) {
-                                    foundShortName = dept.shortName || dept.name; // 若無簡稱則用原名
+                                    foundShortName = dept.shortName || dept.name; 
                                     break;
                                 }
                             }
@@ -2635,34 +2634,38 @@
                     if (foundShortName) displayDept = foundShortName;
                 }
 
-                // 4. ★ 處理年級字串 ★
+                // 4. 處理年級字串
                 let rawGrade = s.grade || s.student_grade;
-                // 若物件本身沒有年級，從他的修課紀錄中隨便抓一堂課的年級來用
                 if (!rawGrade && s.courses && s.courses.length > 0) {
                     rawGrade = s.courses[0].grade || s.courses[0].student_grade || s.courses[0]['學生年級'] || s.courses[0]['年級'];
                 }
                 
                 let gradeLine = displayDept;
                 if (rawGrade) {
-                    // 把數字或已有的「年級」字樣標準化，例如 3 -> 3年級
                     let cleanGrade = String(rawGrade).replace(/年級/g, '').trim();
                     gradeLine += ` ｜ ${cleanGrade}年級`;
                 }
 
-                // 5. 渲染 UI (經典乾淨排版)
-                const isActive = s.id === currentStudentId ? 'active' : '';
+                // 5. ★ 全新卡片式 UI 渲染 ★
+                // 判斷是否被選取，給予完全不同的背景、邊框與陰影
+                const isActiveClass = s.id === currentStudentId 
+                    ? 'bg-indigo-50 border-indigo-200 shadow-sm ring-1 ring-indigo-500' // 選取狀態：淺藍底、立體外框
+                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm'; // 未選取狀態：白底卡片
                 
+                // 選取時姓名變成深藍色，未選取時維持深灰色
+                const nameColor = s.id === currentStudentId ? 'text-indigo-800' : 'text-slate-800';
+
                 const html = `
-                    <div class="list-item ${isActive}" onclick="selectStudent('${s.id}')">
-                        <div class="flex justify-between items-center mb-1">
-                            <div class="font-bold text-slate-800 text-sm truncate pr-2">
-                                ${s.name || '未知姓名'} <span class="font-normal text-xs text-slate-500">(${s.id})</span>
+                    <div class="cursor-pointer transition-all duration-200 p-3 rounded-xl border mb-2 ${isActiveClass}" onclick="selectStudent('${s.id}')">
+                        <div class="flex justify-between items-center mb-1.5">
+                            <div class="font-bold ${nameColor} text-sm truncate pr-2">
+                                ${s.name || '未知姓名'} <span class="font-normal text-xs opacity-70">(${s.id})</span>
                             </div>
                             <div class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${statusColor}">
                                 ${statusText}
                             </div>
                         </div>
-                        <div class="text-xs text-slate-500 truncate" title="原系名: ${s.student_dept || ''}">
+                        <div class="text-xs text-slate-500 truncate" title="原系名: ${s.dept || ''}">
                             ${gradeLine}
                         </div>
                     </div>
