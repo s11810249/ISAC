@@ -2646,20 +2646,21 @@
                     gradeLine += ` ｜ ${cleanGrade}年級`;
                 }
 
-                // 5. ★ 全新卡片式 UI 渲染 ★
-                // 判斷是否被選取，給予完全不同的背景、邊框與陰影
-                const isActiveClass = s.id === currentStudentId 
-                    ? 'bg-indigo-50 border-indigo-200 shadow-sm ring-1 ring-indigo-500' // 選取狀態：淺藍底、立體外框
-                    : 'bg-white border-slate-200 hover:bg-slate-50 hover:border-slate-300 shadow-sm'; // 未選取狀態：白底卡片
+                // 5. 渲染 UI (極簡扁平清單，移除所有卡片框線與圓角)
+                const isActive = s.id === currentStudentId;
                 
-                // 選取時姓名變成深藍色，未選取時維持深灰色
-                const nameColor = s.id === currentStudentId ? 'text-indigo-800' : 'text-slate-800';
+                // 選取狀態：淺藍底、左側加粗標示線 (東海藍)；未選取：白底、滑鼠移入變淺灰
+                const activeBg = isActive 
+                    ? 'bg-blue-50 border-l-4 border-primary' 
+                    : 'bg-transparent border-l-4 border-transparent hover:bg-slate-50';
+                
+                const nameColor = isActive ? 'text-primary' : 'text-slate-800';
 
                 const html = `
-                    <div class="cursor-pointer transition-all duration-200 p-3 rounded-xl border mb-2 ${isActiveClass}" onclick="selectStudent('${s.id}')">
-                        <div class="flex justify-between items-center mb-1.5">
+                    <div class="cursor-pointer transition-colors p-3 border-b border-slate-100 ${activeBg}" onclick="selectStudent('${s.id}')">
+                        <div class="flex justify-between items-center mb-1">
                             <div class="font-bold ${nameColor} text-sm truncate pr-2">
-                                ${s.name || '未知姓名'} <span class="font-normal text-xs opacity-70">(${s.id})</span>
+                                ${s.name || '未知姓名'} <span class="font-normal text-xs text-slate-400">(${s.id})</span>
                             </div>
                             <div class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${statusColor}">
                                 ${statusText}
