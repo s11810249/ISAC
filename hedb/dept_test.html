@@ -3650,7 +3650,7 @@
             const workbook = new ExcelJS.Workbook();
             const ws = workbook.addWorksheet('填報資料');
 
-            // ★ 修正：統一取得並「確保排序」的欄位定義，避免欄寬套用到錯誤欄位
+            // 統一取得並「確保排序」的欄位定義
             let outputFields = [];
             if (currentYearConfig.fields) {
                 outputFields = [...currentYearConfig.fields].sort((a,b) => (a.order||0) - (b.order||0));
@@ -3661,7 +3661,7 @@
             const headers = outputFields.map(f => ({ key: f.id, header: f.label.replace(/\s*\(必填\)/g, '') }));
             ws.columns = headers;
 
-            // --- 寫入資料邏輯 (保持不變) ---
+            // --- 寫入資料邏輯 ---
             Object.values(groupedStudents).forEach(s => {
                 s.applications.forEach(app => {
                     const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
@@ -3705,46 +3705,59 @@
                 });
             });
 
-            // ★★★ 新增：樣式美化與寬度設定 (比照後台 admin.html) ★★★
+            // ★★★ 完全比照後台：樣式美化、顏色與唯讀鎖定設定 ★★★
             const fontStyle = { name: 'Microsoft JhengHei', size: 11 };
-            const headerFont = { name: 'Microsoft JhengHei', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+            const headerFont = { name: 'Microsoft JhengHei', size: 12, bold: true, color: { argb: 'FFFFFFFF' } }; // 後台標題字體大小為 12
             const thinBorder = { style: 'thin', color: { argb: 'FFB2B2B2' } };
             const borderStyle = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
 
-            // 取得分類顏色的輔助函式 (與後台相同)
-            const getCategoryColor = (cat) => {
-                const colors = {
-                    'sys_student_info': '64748B',          // Slate
-                    'sys_course_info': '475569',           // Slate Dark
-                    'internship_institution_info': '0284C7',// Light Blue
-                    'internship_job_info': '059669',       // Green
-                    'internship_insurance_info': 'EA580C', // Orange
-                    'internship_allowance_info': 'DC2626'  // Red
+            // ★ 修正 1：動態讀取 currentYearConfig 內的設定顏色 (完全比照 admin.html)
+            const getCategoryColor = (catId) => {
+                if (currentYearConfig.categoryColors && currentYearConfig.categoryColors[catId]) {
+                    return currentYearConfig.categoryColors[catId].replace('#', '');
+                }
+                const defaults = {
+                    'sys_course_info': '4F46E5', 
+                    'sys_student_info': '219653',
+                    'uncategorized': '94A3B8'
                 };
-                return colors[cat] || '002E5D'; // 預設深藍色
+                return defaults[catId] || '64748B'; 
             };
 
             const rowCount = ws.rowCount;
+            const safeEndRow = Math.max(rowCount + 100, 100); // 確保樣式涵蓋到下方 100 列空白區
             
             // 1. 套用所有儲存格的框線、字體與背景色
-            for (let r = 1; r <= rowCount; r++) {
+            for (let r = 1; r <= safeEndRow; r++) {
                 const row = ws.getRow(r);
                 outputFields.forEach((field, idx) => {
                     const cell = row.getCell(idx + 1);
                     
-                    // 設定框線與對齊 (自動換行)
                     cell.border = borderStyle;
                     cell.alignment = { vertical: 'middle', wrapText: true };
                     
+                    let isLocked = false;
+
                     if (r === 1) {
-                        // 表頭樣式：套用分類專屬顏色
                         cell.font = headerFont;
+                        // 表頭套用後台設定顏色
                         cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + getCategoryColor(field.category) } };
                         cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                        isLocked = true; // 標題列永遠鎖定
                     } else {
-                        // 內容樣式
                         cell.font = fontStyle;
+                        isLocked = !!field.excelLocked; // 讀取設定檔的鎖定狀態
+
+                        // ★ 唯讀(鎖定)欄位給予淺灰底色，可編輯欄位維持白底
+                        if (isLocked) {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFF3F4F6' } };
+                        } else {
+                            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFFFFFF' } };
+                        }
                     }
+                    
+                    // ★ 寫入保護屬性
+                    cell.protection = { locked: isLocked };
                 });
             }
 
@@ -3752,7 +3765,6 @@
             outputFields.forEach((f, i) => {
                 const col = ws.getColumn(i + 1);
                 
-                // 設定寬度：優先使用設定的 excelWidth，否則根據標題字數給予合理預設值
                 let len = 0;
                 for (let k = 0; k < f.label.length; k++) {
                     len += (f.label.charCodeAt(k) > 255) ? 2 : 1;
@@ -3760,12 +3772,12 @@
                 const minWidth = Math.max(len + 2, 12);
                 col.width = f.excelWidth ? parseInt(f.excelWidth) : Math.min(minWidth, 50);
                 
-                // 下拉選單驗證
+                // 下拉選單驗證 (延伸到 safeEndRow 範圍)
                 if (f.type === 'single_select' && f.options && f.options.length > 0) {
                      const char = col.letter;
                      const listStr = f.options.join(',');
                      if(listStr.length < 255) {
-                         ws.dataValidations.add(`${char}2:${char}9999`, {
+                         ws.dataValidations.add(`${char}2:${char}${safeEndRow}`, {
                              type: 'list',
                              allowBlank: true,
                              showErrorMessage: true,
@@ -3775,6 +3787,19 @@
                          });
                      }
                 }
+            });
+
+            // ★ 修正 2：啟用工作表保護 (沒有這段程式，上述的 locked 不會生效)
+            await ws.protect('', {
+                selectLockedCells: true,
+                selectUnlockedCells: true,
+                formatCells: true,     
+                formatColumns: true,   
+                formatRows: true,      
+                insertRows: false,     
+                deleteRows: false,     
+                autoFilter: true,      
+                sort: true             
             });
 
             // --- 隱藏工作表備份邏輯 (保持不變) ---
