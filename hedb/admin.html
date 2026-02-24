@@ -4189,33 +4189,34 @@
         
         // --- FIXED: Ensure saveDepartmentData is called unconditionally if data exists ---
         async function saveAll() {
-            const btn=document.getElementById('btn-save');btn.disabled=true;btn.innerHTML='<div class="spinner"></div>';
+            const btn = document.getElementById('btn-save');
+            btn.disabled = true;
+            btn.innerHTML = '<div class="spinner border-slate-500 border-t-white w-4 h-4 inline-block mr-2"></div>儲存中...';
             try { 
-                let deptDataChanged = unsavedChanges; // Use existing flag for dept changes
-                
-                // 1. Save Main Config
+                // 1. 儲存全域設定
                 await saveConfig(); 
                 
-                // 2. Save Dept Master Data
+                // 2. 儲存系所主檔
                 await saveDeptMasterData();
                 
-                // 3. Save Dept Grouping Data (Always attempt save if data is present, relying on Git SHA for change detection)
-                if (departmentData.length > 0 && deptDataChanged) {
-                    await saveDepartmentData();
-                }
+                // 3. 無條件儲存學院分組資料 (移除 length > 0 限制)
+                await saveDepartmentData();
                 
-                // 4. Save active Year Template
-                if(activeYearId){
-                    const p=`hedb/year_templates/year_${activeYearId}_templates.json`;
-                    const c=await apiFetch(p);
-                    await uploadFile(p,yearTemplateData,c.status===200?c.sha:null);
+                // 4. 儲存當前學年度模組
+                if (activeYearId) {
+                    const p = `hedb/year_templates/year_${activeYearId}_templates.json`;
+                    const c = await apiFetch(p);
+                    await uploadFile(p, yearTemplateData, c.status === 200 ? c.sha : null);
                 } 
                 
                 setUnsaved(false); 
                 showMsg('success', '儲存成功', '所有設定已更新至 GitHub'); 
+            } catch (e) {
+                showMsg('error', '儲存失敗', `發生錯誤: ${e.message}`);
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 儲存設定';
             }
-            catch(e){showMsg('error', '儲存失敗', e.message);} 
-            finally{btn.disabled=false;btn.innerHTML='<i class="fas fa-cloud-upload-alt"></i> 儲存設定';}
         }
         // --- END FIXED ---
 
@@ -4269,7 +4270,29 @@
         // --- END FIXED/REINFORCED apiFetch function ---
 
 
-        async function uploadFile(path,data,sha){const r=await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`,{method:'PUT',headers:{'Authorization':`token ${ghConfig.token}`,'Content-Type':'application/json'},body:JSON.stringify({message:'Update',content:btoa(unescape(encodeURIComponent(JSON.stringify(data,null,2)))),sha:sha})});if(!r.ok)throw new Error(r.status);const d=await r.json();return d.content.sha;}
+        async function uploadFile(path, data, sha) {
+            const payload = {
+                message: 'Update',
+                content: btoa(unescape(encodeURIComponent(JSON.stringify(data, null, 2))))
+            };
+            // 只有在 sha 確實存在 (更新檔案) 時才加入 payload，新建檔案時直接省略
+            if (sha) {
+                payload.sha = sha;
+            }
+
+            const r = await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${ghConfig.token}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(payload)
+            });
+            
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const d = await r.json();
+            return d.content.sha;
+        }
         async function deleteFile(path,sha){await fetch(`https://api.github.com/repos/${ghConfig.user}/${ghConfig.repo}/contents/${path}`,{method:'DELETE',headers:{'Authorization':`token ${ghConfig.token}`,'Content-Type':'application/json'},body:JSON.stringify({message:'Del',sha:sha})});}
 
         function switchView(v) {
