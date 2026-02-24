@@ -2355,18 +2355,24 @@
                 if (cdept) courseDepts.add(cdept);
 
                 if (!sid) return;
-                
-                // ★ 新增：標準化課程屬性，確保篩選器能讀到 course_dept
-                row.course_dept = cdept; 
 
                 // 建立或更新學生
                 if (!groupedStudents[sid]) {
-                    // ... (中間代碼不變)
+                    let deptDisplay = rawDept;
+                    const master = findDeptMaster(rawDept);
+                    
+                    if (master) {
+                        deptDisplay = master.short_name || 
+                                      (master.historical_names && master.historical_names[currentY]) || 
+                                      master.name || 
+                                      rawDept;
+                    }
+                    if (!deptDisplay || deptDisplay === 'undefined') deptDisplay = '未分系';
+
                     groupedStudents[sid] = {
                         id: sid,
                         name: sname || '未知',
                         dept: deptDisplay, 
-                        dept_full: rawDept, // ★ 新增：儲存系所全名供篩選比對
                         grade: sgrade, 
                         courses: [],
                         applications: [] 
@@ -2528,8 +2534,8 @@
             const studentDepts = new Set();
             
             Object.values(groupedStudents).forEach(s => {
-                // 使用 dept_full (全名) 建立下拉選單，與 Excel 內容一致
-                if (s.dept_full) studentDepts.add(s.dept_full); 
+                // ★ 修正：改用 s.dept 才能正確顯示學生系所下拉選單
+                if (s.dept) studentDepts.add(s.dept); 
                 if (s.courses) {
                     s.courses.forEach(c => {
                         if (c.course_dept) courseDepts.add(c.course_dept);
@@ -2545,7 +2551,7 @@
                 courseSel.innerHTML = '<option value="">全部開課系</option>' + 
                     Array.from(courseDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
                 courseSel.value = currCourse; 
-                courseSel.onchange = renderStudentList;
+                courseSel.onchange = renderStudentList; 
             }
 
             if (studentSel) {
@@ -2553,12 +2559,12 @@
                 studentSel.innerHTML = '<option value="">全部學生系</option>' + 
                     Array.from(studentDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
                 studentSel.value = currStudent; 
-                studentSel.onchange = renderStudentList;
+                studentSel.onchange = renderStudentList; 
             }
             
             const searchInput = document.getElementById('search-input');
             if (searchInput) {
-                 searchInput.oninput = renderStudentList;
+                 searchInput.oninput = renderStudentList; 
             }
         }
 
@@ -2575,13 +2581,17 @@
 
             listEl.innerHTML = '';
             
-            // 1. 篩選邏輯
-            let filtered = Object.values(groupedStudents).filter(s => {
+            // 1. 將物件轉為陣列並執行「篩選」
+            const studentsArr = Object.values(groupedStudents);
+            const filtered = studentsArr.filter(s => {
+                // A. 開課系篩選
                 if (filterCourseDept !== '' && !s.courses.some(c => c.course_dept === filterCourseDept)) return false;
-                if (filterStudentDept !== '' && s.dept_full !== filterStudentDept) return false;
+                // B. 學生系篩選 (正確對應 s.dept)
+                if (filterStudentDept !== '' && s.dept !== filterStudentDept) return false;
+                // C. 關鍵字搜尋
                 if (searchKw !== '' && !(s.id.toLowerCase().includes(searchKw) || (s.name && s.name.toLowerCase().includes(searchKw)))) return false;
                 
-                // 填報進度篩選
+                // D. 填報進度細分篩選
                 const apps = s.applications || [];
                 const assignedIds = new Set();
                 apps.forEach(app => { (app.courseIds || []).forEach(id => assignedIds.add(id)); });
@@ -2589,20 +2599,21 @@
                 let completeCount = 0;
                 apps.forEach(app => { if (getAppFillStatus(app)) completeCount++; });
 
-                const isFullyDone = (apps.length > 0 && completeCount === apps.length && unassignedCount === 0);
+                const isFullyCompleted = (apps.length > 0 && completeCount === apps.length && unassignedCount === 0);
                 const isNotStarted = (apps.length === 0);
 
-                if (filterStatus === 'completed' && !isFullyDone) return false;
+                if (filterStatus === 'completed' && !isFullyCompleted) return false;
                 if (filterStatus === 'not_started' && !isNotStarted) return false;
-                if (filterStatus === 'in_progress' && (isFullyDone || isNotStarted)) return false;
+                if (filterStatus === 'in_progress' && (isFullyCompleted || isNotStarted)) return false;
                 
                 return true;
             });
 
-            // 2. 排序邏輯 (正倒序)
+            // 2. 執行「排序」
             filtered.sort((a, b) => {
                 const valA = String(a[sortConfig.key] || '');
                 const valB = String(b[sortConfig.key] || '');
+                // 使用 numeric: true 讓學號排序更直覺 (例如 100 會排在 20 後面)
                 const res = valA.localeCompare(valB, 'zh-Hant', { numeric: true });
                 return sortConfig.direction === 'asc' ? res : -res;
             });
@@ -2610,12 +2621,13 @@
             // 3. 更新總計人數
             if (countEl) countEl.innerText = filtered.length;
 
-            // 4. 渲染 UI
+            // 4. 渲染結果
             filtered.forEach(s => {
                 const apps = s.applications || [];
                 const assignedIds = new Set();
                 apps.forEach(app => { (app.courseIds || []).forEach(id => assignedIds.add(id)); });
                 const unassignedCount = (s.courses || []).filter(c => !assignedIds.has(c._internal_id)).length;
+                
                 let completeCount = 0;
                 let inProgressCount = 0;
                 apps.forEach(app => {
@@ -2623,11 +2635,14 @@
                     else inProgressCount++;
                 });
 
-                let statusText = '', statusColor = '';
+                let statusText = '';
+                let statusColor = '';
                 if (apps.length === 0) {
-                    statusText = '未開始'; statusColor = 'bg-slate-100 text-slate-500';
+                    statusText = '未開始';
+                    statusColor = 'bg-slate-100 text-slate-500';
                 } else if (completeCount === apps.length && unassignedCount === 0) {
-                    statusText = `${completeCount}筆已填報`; statusColor = 'bg-emerald-100 text-emerald-700';
+                    statusText = `${completeCount}筆已填報`;
+                    statusColor = 'bg-emerald-100 text-emerald-700';
                 } else {
                     let parts = [];
                     if (completeCount > 0) parts.push(`${completeCount}已填報`);
@@ -2637,14 +2652,37 @@
                     statusColor = 'bg-amber-100 text-amber-700'; 
                 }
 
-                // 系所簡稱與年級處理
                 let displayDept = s.dept || '未知學系';
-                let rawGrade = s.grade || (s.courses[0] ? s.courses[0].grade : '');
-                let gradeLine = displayDept + (rawGrade ? ` ｜ ${String(rawGrade).replace(/年級/g,'')}年級` : '');
+                if (typeof departmentData !== 'undefined' && Array.isArray(departmentData)) {
+                    let foundShortName = null;
+                    for (let college of departmentData) {
+                        if (college.departments && Array.isArray(college.departments)) {
+                            for (let dept of college.departments) {
+                                if (dept.name === displayDept || dept.fullName === displayDept) {
+                                    foundShortName = dept.shortName || dept.name;
+                                    break;
+                                }
+                            }
+                        }
+                        if (foundShortName) break;
+                    }
+                    if (foundShortName) displayDept = foundShortName;
+                }
+
+                let rawGrade = s.grade || s.student_grade;
+                if (!rawGrade && s.courses && s.courses.length > 0) {
+                    rawGrade = s.courses[0].grade || s.courses[0].student_grade || s.courses[0]['學生年級'] || s.courses[0]['年級'];
+                }
+                
+                let gradeLine = displayDept;
+                if (rawGrade) {
+                    let cleanGrade = String(rawGrade).replace(/年級/g, '').trim();
+                    gradeLine += ` ｜ ${cleanGrade}年級`;
+                }
 
                 const isActive = s.id === currentStudentId ? 'active' : '';
                 const html = `
-                    <div class="student-item p-3 ${isActive}" 
+                    <div class="student-item p-3 border-b border-slate-100 ${isActive}" 
                          style="box-shadow: inset 0 -1px 0 0 #e2e8f0;"
                          onclick="selectStudent('${s.id}')">
                         <div class="flex justify-between items-center mb-1">
@@ -2655,7 +2693,9 @@
                                 ${statusText}
                             </div>
                         </div>
-                        <div class="text-xs text-slate-500 truncate">${gradeLine}</div>
+                        <div class="text-xs text-slate-500 truncate">
+                            ${gradeLine}
+                        </div>
                     </div>
                 `;
                 listEl.insertAdjacentHTML('beforeend', html);
