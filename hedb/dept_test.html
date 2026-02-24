@@ -1983,6 +1983,16 @@
                 }
             });
         }
+
+        document.addEventListener('change', (e) => {
+            // 確保只有在表單區域或列表區域的變更才觸發
+            if (e.target.closest('#form-container') || e.target.closest('#local-grid-tbody')) {
+                setTimeout(() => {
+                    renderStudentList();
+                }, 150);
+            }
+        });
+        
         // --- Initialization ---
         window.onload = async function() {
             try {
@@ -2445,84 +2455,168 @@
             document.getElementById('header-avatar').innerText = '?';
             saveToLocal();
         }
+
+        function getAppFillStatus(app) {
+            if (!currentYearConfig || !currentYearConfig.fields) return false;
+            let isComplete = true;
+            
+            for (let f of currentYearConfig.fields) {
+                // 只檢查後台被勾選為「必填」的欄位
+                if (!f.required) continue;
+                
+                // 檢查該欄位目前是否因為「顯示條件(Visibility)」邏輯而被隱藏
+                // 如果被隱藏了，就算沒填也算是完整
+                let isVisible = true;
+                if (f.visibilityRule && f.visibilityRule.dep) {
+                    let depVal = app.formData[f.visibilityRule.dep];
+                    if (depVal === undefined) depVal = '';
+                    
+                    let targetVal = f.visibilityRule.val;
+                    if (typeof targetVal === 'boolean') {
+                        depVal = (depVal === 'true' || depVal === true);
+                    }
+                    
+                    let conditionMet = (String(depVal) === String(targetVal));
+                    if (f.visibilityRule.action === 'hide') {
+                        isVisible = !conditionMet;
+                    } else {
+                        isVisible = conditionMet;
+                    }
+                }
+                
+                // 如果欄位可見且必填，但完全沒有值，則視為未完成 (填報中)
+                if (isVisible) {
+                    let val = app.formData[f.id];
+                    if (val === undefined || val === null || String(val).trim() === '') {
+                        isComplete = false;
+                        break;
+                    }
+                }
+            }
+            return isComplete;
+        }
         
-        function renderStudentList() {
-            const container = document.getElementById('student-list');
-            container.innerHTML = '';
+        function updateSidebarFilters() {
+            const courseDepts = new Set();
+            const studentDepts = new Set();
             
-            const term = document.getElementById('search-input').value.toLowerCase();
-            const fCourseDept = document.getElementById('filter-course-dept').value;
-            const fStudentDept = document.getElementById('filter-student-dept').value;
-            const fStatus = document.getElementById('filter-status').value;
-
-            let students = Object.values(groupedStudents);
-            
-            students = students.filter(s => {
-                const matchText = s.id.toLowerCase().includes(term) || s.name.toLowerCase().includes(term);
-                if (!matchText) return false;
-
-                const hasStudentDept = !fStudentDept || s.courses.some(c => (c['student_dept'] || c['系所']) === fStudentDept);
-                if(!hasStudentDept) return false;
-
-                const hasCourseDept = !fCourseDept || s.courses.some(c => (c['course_dept'] || c['開課系所']) === fCourseDept);
-                if(!hasCourseDept) return false;
-
-                if (fStatus === 'completed' && s.applications.length === 0) return false;
-                if (fStatus === 'pending' && s.applications.length > 0) return false;
-
-                return true;
-            });
-            
-            students.sort((a, b) => {
-                let valA = String(a[sortConfig.key] || '');
-                let valB = String(b[sortConfig.key] || '');
-                
-                const collator = new Intl.Collator(undefined, { numeric: true, sensitivity: 'base' });
-                const comp = collator.compare(valA, valB);
-                
-                return sortConfig.direction === 'asc' ? comp : -comp;
+            Object.values(groupedStudents).forEach(s => {
+                if (s.student_dept) studentDepts.add(s.student_dept);
+                if (s.courses) {
+                    s.courses.forEach(c => {
+                        if (c.course_dept) courseDepts.add(c.course_dept);
+                    });
+                }
             });
 
-            document.getElementById('student-count').innerText = students.length;
+            const courseSel = document.getElementById('filter-course-dept');
+            const studentSel = document.getElementById('filter-student-dept');
 
-            if (students.length === 0) {
-                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">無符合資料</div>';
-                return;
+            if (courseSel) {
+                const currCourse = courseSel.value || '';
+                courseSel.innerHTML = '<option value="">全部開課系</option>' + 
+                    Array.from(courseDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+                courseSel.value = currCourse; 
+                courseSel.onchange = renderStudentList; // ★ 確保綁定篩選觸發事件
             }
 
-            students.forEach(s => {
-                const el = document.createElement('div');
-                el.className = `student-item p-3 pl-4 border-b border-slate-100 ${currentStudentId === s.id ? 'active' : ''}`;
-                el.onclick = () => selectStudent(s.id);
+            if (studentSel) {
+                const currStudent = studentSel.value || '';
+                studentSel.innerHTML = '<option value="">全部學生系</option>' + 
+                    Array.from(studentDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
+                studentSel.value = currStudent; 
+                studentSel.onchange = renderStudentList; // ★ 確保綁定篩選觸發事件
+            }
+            
+            const searchInput = document.getElementById('search-student');
+            if (searchInput) {
+                 searchInput.oninput = renderStudentList; // ★ 確保搜尋框也能即時篩選
+            }
+        }
+
+        // --- 修正: 渲染左側名單與精細化狀態標籤 ---
+        function renderStudentList() {
+            const listEl = document.getElementById('student-list');
+            if (!listEl) return;
+            
+            const filterCourseDept = document.getElementById('filter-course-dept')?.value || '';
+            const filterStudentDept = document.getElementById('filter-student-dept')?.value || '';
+            const searchKw = document.getElementById('search-student')?.value.toLowerCase() || '';
+
+            listEl.innerHTML = '';
+            
+            let count = 0;
+            Object.values(groupedStudents).forEach(s => {
+                // 1. 執行篩選邏輯 (加入 !== '' 判斷以修復空值失效問題)
+                if (filterCourseDept && filterCourseDept !== '' && !s.courses.some(c => c.course_dept === filterCourseDept)) return;
+                if (filterStudentDept && filterStudentDept !== '' && s.student_dept !== filterStudentDept) return;
+                if (searchKw && !(s.id.toLowerCase().includes(searchKw) || (s.name && s.name.toLowerCase().includes(searchKw)))) return;
+
+                // 2. 狀態精細化計算
+                const apps = s.applications || [];
                 
-                const appCount = s.applications.length;
-                const statusHtml = appCount > 0 
-                    ? `<span class="bg-green-100 text-success text-[10px] px-1.5 py-0.5 rounded font-bold">${appCount} 筆填報</span>` 
-                    : `<span class="bg-slate-100 text-slate-400 text-[10px] px-1.5 py-0.5 rounded">未開始</span>`;
+                // 安全計算「未歸戶」數量：原始課表中沒有存在於任何 app.courseIds 內的數量
+                const assignedIds = new Set();
+                apps.forEach(app => {
+                    (app.courseIds || []).forEach(id => assignedIds.add(id));
+                });
+                const unassignedCount = (s.courses || []).filter(c => !assignedIds.has(c._internal_id)).length;
+                
+                let completeCount = 0;
+                let inProgressCount = 0;
+                
+                // 檢查每一筆歸戶的表單完成度
+                apps.forEach(app => {
+                    if (getAppFillStatus(app)) {
+                        completeCount++;
+                    } else {
+                        inProgressCount++;
+                    }
+                });
 
-                // ★★★ 處理顯示字串：系級 ★★★
-                const gradeDisplay = s.grade ? `${s.grade}年級` : '';
-                const deptGradeText = [s.dept, gradeDisplay].filter(Boolean).join(' | ');
+                // 3. 產生狀態文字與顏色邏輯
+                let statusText = '';
+                let statusColor = '';
 
-                // ★★★ 修正 HTML：學號移到姓名右邊 (使用 bg-slate-100 樣式) ★★★
-                el.innerHTML = `
-                    <div class="flex justify-between items-start">
-                        <div class="flex-grow min-w-0 pr-2">
-                            <div class="flex items-center gap-2 mb-1">
-                                <span class="font-bold text-slate-700 text-sm student-name truncate">${s.name}</span>
-                                <span class="text-xs text-slate-500 font-mono bg-slate-100 px-1 rounded">${s.id}</span>
-                            </div>
-                            <div class="text-xs text-slate-400 truncate" title="${deptGradeText}">
-                                ${deptGradeText}
-                            </div>
+                if (apps.length === 0) {
+                    statusText = '未開始';
+                    statusColor = 'bg-slate-100 text-slate-500'; // 灰色
+                } else if (completeCount === apps.length && unassignedCount === 0) {
+                    statusText = `${completeCount}筆已填報`;
+                    statusColor = 'bg-emerald-100 text-emerald-700 border border-emerald-200'; // 綠色
+                } else {
+                    let parts = [];
+                    if (completeCount > 0) parts.push(`${completeCount}筆已填報`);
+                    if (inProgressCount > 0) parts.push(`${inProgressCount}筆填報中`);
+                    if (unassignedCount > 0) parts.push(`${unassignedCount}筆未歸戶`);
+                    statusText = parts.join('，');
+                    
+                    // 只要有任何填報中或未歸戶，就是橘黃色警告狀態，提醒使用者還有事沒做完
+                    statusColor = 'bg-amber-100 text-amber-700 border border-amber-200'; 
+                }
+
+                // 4. 渲染 UI
+                const isActive = s.id === currentStudentId ? 'active' : '';
+                
+                const html = `
+                    <div class="list-item group ${isActive}" onclick="selectStudent('${s.id}')">
+                        <div class="flex justify-between items-start mb-1.5">
+                            <span class="font-bold text-slate-800 text-sm group-hover:text-primary transition">${s.name || '未知姓名'}</span>
+                            <span class="text-[10px] font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200">${s.id}</span>
                         </div>
-                        <div class="text-right flex-shrink-0">
-                            ${statusHtml}
+                        <div class="flex items-center justify-between">
+                            <span class="text-[11px] text-slate-500 truncate mr-2" title="${s.student_dept || ''}">${s.student_dept || '未知學系'}</span>
+                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor} whitespace-nowrap shadow-sm">${statusText}</span>
                         </div>
                     </div>
                 `;
-                container.appendChild(el);
+                listEl.insertAdjacentHTML('beforeend', html);
+                count++;
             });
+
+            if (count === 0) {
+                listEl.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">沒有符合的學生名單</div>';
+            }
         }
 
         function filterStudentList() { renderStudentList(); }
