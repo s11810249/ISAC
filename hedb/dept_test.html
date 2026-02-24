@@ -2547,66 +2547,91 @@
             
             let count = 0;
             Object.values(groupedStudents).forEach(s => {
-                // 1. 執行篩選邏輯 (加入 !== '' 判斷以修復空值失效問題)
+                // 1. 篩選邏輯
                 if (filterCourseDept && filterCourseDept !== '' && !s.courses.some(c => c.course_dept === filterCourseDept)) return;
                 if (filterStudentDept && filterStudentDept !== '' && s.student_dept !== filterStudentDept) return;
                 if (searchKw && !(s.id.toLowerCase().includes(searchKw) || (s.name && s.name.toLowerCase().includes(searchKw)))) return;
 
                 // 2. 狀態精細化計算
                 const apps = s.applications || [];
-                
-                // 安全計算「未歸戶」數量：原始課表中沒有存在於任何 app.courseIds 內的數量
                 const assignedIds = new Set();
-                apps.forEach(app => {
-                    (app.courseIds || []).forEach(id => assignedIds.add(id));
-                });
+                apps.forEach(app => { (app.courseIds || []).forEach(id => assignedIds.add(id)); });
                 const unassignedCount = (s.courses || []).filter(c => !assignedIds.has(c._internal_id)).length;
                 
                 let completeCount = 0;
                 let inProgressCount = 0;
                 
-                // 檢查每一筆歸戶的表單完成度
                 apps.forEach(app => {
-                    if (getAppFillStatus(app)) {
-                        completeCount++;
-                    } else {
-                        inProgressCount++;
-                    }
+                    if (getAppFillStatus(app)) completeCount++;
+                    else inProgressCount++;
                 });
 
-                // 3. 產生狀態文字與顏色邏輯
                 let statusText = '';
                 let statusColor = '';
 
                 if (apps.length === 0) {
                     statusText = '未開始';
-                    statusColor = 'bg-slate-100 text-slate-500'; // 灰色
+                    statusColor = 'bg-slate-100 text-slate-500';
                 } else if (completeCount === apps.length && unassignedCount === 0) {
                     statusText = `${completeCount}筆已填報`;
-                    statusColor = 'bg-emerald-100 text-emerald-700 border border-emerald-200'; // 綠色
+                    statusColor = 'bg-emerald-100 text-emerald-700'; // 綠底綠字 (拿掉邊框，更清爽)
                 } else {
                     let parts = [];
-                    if (completeCount > 0) parts.push(`${completeCount}筆已填報`);
-                    if (inProgressCount > 0) parts.push(`${inProgressCount}筆填報中`);
-                    if (unassignedCount > 0) parts.push(`${unassignedCount}筆未歸戶`);
+                    if (completeCount > 0) parts.push(`${completeCount}已填報`);
+                    if (inProgressCount > 0) parts.push(`${inProgressCount}填報中`);
+                    if (unassignedCount > 0) parts.push(`${unassignedCount}未歸戶`);
                     statusText = parts.join('，');
-                    
-                    // 只要有任何填報中或未歸戶，就是橘黃色警告狀態，提醒使用者還有事沒做完
-                    statusColor = 'bg-amber-100 text-amber-700 border border-amber-200'; 
+                    statusColor = 'bg-amber-100 text-amber-700'; 
                 }
 
-                // 4. 渲染 UI
+                // 3. ★ 處理系所簡稱轉換 ★
+                let displayDept = s.student_dept || '未知學系';
+                // 去後台 departmentData 結構中尋找全名，若符合則取出 shortName
+                if (typeof departmentData !== 'undefined' && Array.isArray(departmentData)) {
+                    let foundShortName = null;
+                    for (let college of departmentData) {
+                        if (college.departments && Array.isArray(college.departments)) {
+                            for (let dept of college.departments) {
+                                if (dept.name === displayDept || dept.fullName === displayDept) {
+                                    foundShortName = dept.shortName || dept.name; // 若無簡稱則用原名
+                                    break;
+                                }
+                            }
+                        }
+                        if (foundShortName) break;
+                    }
+                    if (foundShortName) displayDept = foundShortName;
+                }
+
+                // 4. ★ 處理年級字串 ★
+                let rawGrade = s.grade || s.student_grade;
+                // 若物件本身沒有年級，從他的修課紀錄中隨便抓一堂課的年級來用
+                if (!rawGrade && s.courses && s.courses.length > 0) {
+                    rawGrade = s.courses[0].grade || s.courses[0].student_grade || s.courses[0]['學生年級'] || s.courses[0]['年級'];
+                }
+                
+                let gradeLine = displayDept;
+                if (rawGrade) {
+                    // 把數字或已有的「年級」字樣標準化，例如 3 -> 3年級
+                    let cleanGrade = String(rawGrade).replace(/年級/g, '').trim();
+                    gradeLine += ` ｜ ${cleanGrade}年級`;
+                }
+
+                // 5. 渲染 UI (經典乾淨排版)
                 const isActive = s.id === currentStudentId ? 'active' : '';
                 
                 const html = `
-                    <div class="list-item group ${isActive}" onclick="selectStudent('${s.id}')">
-                        <div class="flex justify-between items-start mb-1.5">
-                            <span class="font-bold text-slate-800 text-sm group-hover:text-primary transition">${s.name || '未知姓名'}</span>
-                            <span class="text-[10px] font-mono text-slate-400 bg-white px-1.5 py-0.5 rounded border border-slate-200">${s.id}</span>
+                    <div class="list-item ${isActive}" onclick="selectStudent('${s.id}')">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="font-bold text-slate-800 text-sm truncate pr-2">
+                                ${s.name || '未知姓名'} <span class="font-normal text-xs text-slate-500">(${s.id})</span>
+                            </div>
+                            <div class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${statusColor}">
+                                ${statusText}
+                            </div>
                         </div>
-                        <div class="flex items-center justify-between">
-                            <span class="text-[11px] text-slate-500 truncate mr-2" title="${s.student_dept || ''}">${s.student_dept || '未知學系'}</span>
-                            <span class="text-[10px] font-bold px-2 py-0.5 rounded-full ${statusColor} whitespace-nowrap shadow-sm">${statusText}</span>
+                        <div class="text-xs text-slate-500 truncate" title="原系名: ${s.student_dept || ''}">
+                            ${gradeLine}
                         </div>
                     </div>
                 `;
