@@ -2569,21 +2569,56 @@
         // --- 修正: 渲染左側名單 (修復系所顯示、卡片式排版、選取高亮) ---
         function renderStudentList() {
             const listEl = document.getElementById('student-list');
+            const countEl = document.getElementById('student-count'); // ★ 取得人數顯示元素
             if (!listEl) return;
             
             const filterCourseDept = document.getElementById('filter-course-dept')?.value || '';
             const filterStudentDept = document.getElementById('filter-student-dept')?.value || '';
+            const filterStatus = document.getElementById('filter-status')?.value || ''; // ★ 取得狀態篩選
             const searchKw = document.getElementById('search-input')?.value.toLowerCase() || '';
+
             listEl.innerHTML = '';
             
-            let count = 0;
-            Object.values(groupedStudents).forEach(s => {
-                // 1. 篩選邏輯 (修復對應屬性 s.dept)
-                if (filterCourseDept && filterCourseDept !== '' && !s.courses.some(c => c.course_dept === filterCourseDept)) return;
-                if (filterStudentDept && filterStudentDept !== '' && s.dept !== filterStudentDept) return;
-                if (searchKw && !(s.id.toLowerCase().includes(searchKw) || (s.name && s.name.toLowerCase().includes(searchKw)))) return;
+            // 1. 將物件轉為陣列並執行「篩選」
+            const studentsArr = Object.values(groupedStudents);
+            const filtered = studentsArr.filter(s => {
+                // 開課系篩選
+                if (filterCourseDept !== '' && !s.courses.some(c => c.course_dept === filterCourseDept)) return false;
+                // 學生系篩選 (注意：資料屬性是 s.dept)
+                if (filterStudentDept !== '' && s.dept !== filterStudentDept) return false;
+                // 關鍵字搜尋
+                if (searchKw !== '' && !(s.id.toLowerCase().includes(searchKw) || (s.name && s.name.toLowerCase().includes(searchKw)))) return false;
+                
+                // 填報進度篩選
+                if (filterStatus !== '') {
+                    const apps = s.applications || [];
+                    const assignedIds = new Set();
+                    apps.forEach(app => { (app.courseIds || []).forEach(id => assignedIds.add(id)); });
+                    const unassignedCount = (s.courses || []).filter(c => !assignedIds.has(c._internal_id)).length;
+                    let completeCount = 0;
+                    apps.forEach(app => { if (getAppFillStatus(app)) completeCount++; });
 
-                // 2. 狀態精細化計算
+                    const isCompleted = (apps.length > 0 && completeCount === apps.length && unassignedCount === 0);
+                    if (filterStatus === 'completed' && !isCompleted) return false;
+                    if (filterStatus === 'pending' && isCompleted) return false;
+                }
+                return true;
+            });
+
+            // 2. 執行「排序」邏輯
+            filtered.sort((a, b) => {
+                const valA = String(a[sortConfig.key] || '');
+                const valB = String(b[sortConfig.key] || '');
+                // 使用 numeric: true 讓學號排序（如 100 號在 10 號後面）更正確
+                const res = valA.localeCompare(valB, 'zh-Hant', { numeric: true });
+                return sortConfig.direction === 'asc' ? res : -res;
+            });
+
+            // 3. 更新總計人數
+            if (countEl) countEl.innerText = filtered.length;
+
+            // 4. 渲染排序與篩選後的結果
+            filtered.forEach(s => {
                 const apps = s.applications || [];
                 const assignedIds = new Set();
                 apps.forEach(app => { (app.courseIds || []).forEach(id => assignedIds.add(id)); });
@@ -2591,7 +2626,6 @@
                 
                 let completeCount = 0;
                 let inProgressCount = 0;
-                
                 apps.forEach(app => {
                     if (getAppFillStatus(app)) completeCount++;
                     else inProgressCount++;
@@ -2599,13 +2633,12 @@
 
                 let statusText = '';
                 let statusColor = '';
-
                 if (apps.length === 0) {
                     statusText = '未開始';
                     statusColor = 'bg-slate-100 text-slate-500';
                 } else if (completeCount === apps.length && unassignedCount === 0) {
                     statusText = `${completeCount}筆已填報`;
-                    statusColor = 'bg-emerald-100 text-emerald-700'; 
+                    statusColor = 'bg-emerald-100 text-emerald-700';
                 } else {
                     let parts = [];
                     if (completeCount > 0) parts.push(`${completeCount}已填報`);
@@ -2615,7 +2648,6 @@
                     statusColor = 'bg-amber-100 text-amber-700'; 
                 }
 
-                // 3. ★ 處理系所簡稱轉換 (修復：改抓 s.dept) ★
                 let displayDept = s.dept || '未知學系';
                 if (typeof departmentData !== 'undefined' && Array.isArray(departmentData)) {
                     let foundShortName = null;
@@ -2623,7 +2655,7 @@
                         if (college.departments && Array.isArray(college.departments)) {
                             for (let dept of college.departments) {
                                 if (dept.name === displayDept || dept.fullName === displayDept) {
-                                    foundShortName = dept.shortName || dept.name; 
+                                    foundShortName = dept.shortName || dept.name;
                                     break;
                                 }
                             }
@@ -2633,7 +2665,6 @@
                     if (foundShortName) displayDept = foundShortName;
                 }
 
-                // 4. 處理年級字串
                 let rawGrade = s.grade || s.student_grade;
                 if (!rawGrade && s.courses && s.courses.length > 0) {
                     rawGrade = s.courses[0].grade || s.courses[0].student_grade || s.courses[0]['學生年級'] || s.courses[0]['年級'];
@@ -2645,24 +2676,13 @@
                     gradeLine += ` ｜ ${cleanGrade}年級`;
                 }
 
-                // 5. 渲染 UI (完全扁平化：修正分隔線、限定左側藍條、移除下方藍色)
-                const isActive = s.id === currentStudentId;
+                // ★ 修改：使用 student-item 類別以套用您原本的 CSS 高亮樣式
+                const isActive = s.id === currentStudentId ? 'active' : '';
                 
-                // 選取狀態：淺藍底 + 左側東海藍邊條 (4px)
-                // 未選取狀態：透明底 + 左側透明邊條
-                // 注意：這裡我們拿掉 border-b，改用 box-shadow 來畫底線，確保背景色與底線完美貼合
-                const activeBg = isActive 
-                    ? 'bg-blue-50 border-l-[4px] border-l-primary' 
-                    : 'bg-transparent border-l-[4px] border-l-transparent hover:bg-slate-50';
-                
-                const nameColor = isActive ? 'text-primary' : 'text-slate-800';
-
                 const html = `
-                    <div class="cursor-pointer transition-colors p-3 ${activeBg}" 
-                         style="box-shadow: inset 0 -1px 0 0 #e2e8f0;" 
-                         onclick="selectStudent('${s.id}')">
+                    <div class="student-item p-3 border-b border-slate-100 ${isActive}" onclick="selectStudent('${s.id}')">
                         <div class="flex justify-between items-center mb-1">
-                            <div class="font-bold ${nameColor} text-sm truncate pr-2">
+                            <div class="student-name font-bold text-slate-800 text-sm truncate pr-2">
                                 ${s.name || '未知姓名'} (${s.id})
                             </div>
                             <div class="shrink-0 text-[10px] font-bold px-2 py-0.5 rounded ${statusColor}">
@@ -2675,10 +2695,9 @@
                     </div>
                 `;
                 listEl.insertAdjacentHTML('beforeend', html);
-                count++;
             });
 
-            if (count === 0) {
+            if (filtered.length === 0) {
                 listEl.innerHTML = '<div class="p-8 text-center text-slate-400 text-xs">沒有符合的學生名單</div>';
             }
         }
