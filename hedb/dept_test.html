@@ -3650,16 +3650,18 @@
             const workbook = new ExcelJS.Workbook();
             const ws = workbook.addWorksheet('填報資料');
 
-            const headers = [];
+            // ★ 修正：統一取得並「確保排序」的欄位定義，避免欄寬套用到錯誤欄位
+            let outputFields = [];
             if (currentYearConfig.fields) {
-                currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => headers.push({key: f.id, header: f.label}));
+                outputFields = [...currentYearConfig.fields].sort((a,b) => (a.order||0) - (b.order||0));
+            } else {
+                outputFields = CORE_FIELDS.map(id => ({ id: id, label: id }));
             }
+
+            const headers = outputFields.map(f => ({ key: f.id, header: f.label.replace(/\s*\(必填\)/g, '') }));
             ws.columns = headers;
 
-            const headerRow = ws.getRow(1);
-            headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' } };
-            headerRow.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF002E5D' } };
-
+            // --- 寫入資料邏輯 (保持不變) ---
             Object.values(groupedStudents).forEach(s => {
                 s.applications.forEach(app => {
                     const courses = s.courses.filter(c => app.courseIds.includes(c._internal_id));
@@ -3669,7 +3671,7 @@
                         const row = {};
                         headers.forEach(h => {
                             let val = app.formData[h.key];
-                            const fieldDef = currentYearConfig.fields?.find(f => f.id === h.key);
+                            const fieldDef = outputFields.find(f => f.id === h.key);
                             
                             if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
                                 const totalVal = parseFloat(val);
@@ -3703,103 +3705,109 @@
                 });
             });
 
-            if (currentYearConfig.fields) {
-                currentYearConfig.fields.forEach((f, i) => {
-                    const col = ws.getColumn(i + 1);
-                    if (f.excelWidth) col.width = f.excelWidth;
+            // ★★★ 新增：樣式美化與寬度設定 (比照後台 admin.html) ★★★
+            const fontStyle = { name: 'Microsoft JhengHei', size: 11 };
+            const headerFont = { name: 'Microsoft JhengHei', size: 11, bold: true, color: { argb: 'FFFFFFFF' } };
+            const thinBorder = { style: 'thin', color: { argb: 'FFB2B2B2' } };
+            const borderStyle = { top: thinBorder, left: thinBorder, bottom: thinBorder, right: thinBorder };
+
+            // 取得分類顏色的輔助函式 (與後台相同)
+            const getCategoryColor = (cat) => {
+                const colors = {
+                    'sys_student_info': '64748B',          // Slate
+                    'sys_course_info': '475569',           // Slate Dark
+                    'internship_institution_info': '0284C7',// Light Blue
+                    'internship_job_info': '059669',       // Green
+                    'internship_insurance_info': 'EA580C', // Orange
+                    'internship_allowance_info': 'DC2626'  // Red
+                };
+                return colors[cat] || '002E5D'; // 預設深藍色
+            };
+
+            const rowCount = ws.rowCount;
+            
+            // 1. 套用所有儲存格的框線、字體與背景色
+            for (let r = 1; r <= rowCount; r++) {
+                const row = ws.getRow(r);
+                outputFields.forEach((field, idx) => {
+                    const cell = row.getCell(idx + 1);
                     
-                    if (f.type === 'single_select' && f.options && f.options.length > 0) {
-                         const char = col.letter;
-                         const listStr = f.options.join(',');
-                         if(listStr.length < 255) {
-                             ws.dataValidations.add(`${char}2:${char}9999`, {
-                                 type: 'list',
-                                 allowBlank: true,
-                                 formulae: [`"${listStr}"`]
-                             });
-                         }
+                    // 設定框線與對齊 (自動換行)
+                    cell.border = borderStyle;
+                    cell.alignment = { vertical: 'middle', wrapText: true };
+                    
+                    if (r === 1) {
+                        // 表頭樣式：套用分類專屬顏色
+                        cell.font = headerFont;
+                        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF' + getCategoryColor(field.category) } };
+                        cell.alignment = { vertical: 'middle', horizontal: 'center', wrapText: true };
+                    } else {
+                        // 內容樣式
+                        cell.font = fontStyle;
                     }
                 });
             }
 
-            // --- 新增邏輯：備份課程核心欄位 ---
-            const courseDataSheet = workbook.addWorksheet('_Course_Data', {state: 'hidden'});
-            
-            // 找出所有屬於 'sys_course_info' 的欄位
-            const sysCourseFields = (currentYearConfig.fields || [])
-                .filter(f => f.category === 'sys_course_info')
-                .map(f => ({ id: f.id, label: f.label }));
+            // 2. 獨立套用欄寬與下拉選單驗證
+            outputFields.forEach((f, i) => {
+                const col = ws.getColumn(i + 1);
                 
-            // 定義固定欄位
-            const courseDataHeaders = [
-                { header: 'Course_Internal_ID', key: '_internal_id' },
-                { header: 'Student_ID', key: 'student_id' },
-                ...sysCourseFields.map(f => ({ header: f.id, key: f.id }))
-            ];
-            courseDataSheet.columns = courseDataHeaders;
-
-            // 填入資料
-            Object.values(groupedStudents).forEach(s => {
-                s.courses.forEach(c => {
-                    const rowData = {
-                        _internal_id: c._internal_id,
-                        student_id: s.id
-                    };
-                    sysCourseFields.forEach(f => {
-                        rowData[f.id] = c[f.id] || '';
-                    });
-                    courseDataSheet.addRow(rowData);
-                });
+                // 設定寬度：優先使用設定的 excelWidth，否則根據標題字數給予合理預設值
+                let len = 0;
+                for (let k = 0; k < f.label.length; k++) {
+                    len += (f.label.charCodeAt(k) > 255) ? 2 : 1;
+                }
+                const minWidth = Math.max(len + 2, 12);
+                col.width = f.excelWidth ? parseInt(f.excelWidth) : Math.min(minWidth, 50);
+                
+                // 下拉選單驗證
+                if (f.type === 'single_select' && f.options && f.options.length > 0) {
+                     const char = col.letter;
+                     const listStr = f.options.join(',');
+                     if(listStr.length < 255) {
+                         ws.dataValidations.add(`${char}2:${char}9999`, {
+                             type: 'list',
+                             allowBlank: true,
+                             showErrorMessage: true,
+                             errorTitle: '輸入限制',
+                             error: '請從下拉選單中選擇有效項目',
+                             formulae: [`"${listStr}"`]
+                         });
+                     }
+                }
             });
-            // --- 結束新增邏輯 ---
+
+            // --- 隱藏工作表備份邏輯 (保持不變) ---
+            const courseDataSheet = workbook.addWorksheet('_Course_Data', {state: 'hidden'});
+            const sysCourseFields = (currentYearConfig.fields || []).filter(f => f.category === 'sys_course_info').map(f => ({ id: f.id, label: f.label }));
+            const courseDataHeaders = [{ header: 'Course_Internal_ID', key: '_internal_id' }, { header: 'Student_ID', key: 'student_id' }, ...sysCourseFields.map(f => ({ header: f.id, key: f.id }))];
+            courseDataSheet.columns = courseDataHeaders;
+            Object.values(groupedStudents).forEach(s => { s.courses.forEach(c => { const rowData = { _internal_id: c._internal_id, student_id: s.id }; sysCourseFields.forEach(f => { rowData[f.id] = c[f.id] || ''; }); courseDataSheet.addRow(rowData); }); });
 
             const conSheet = workbook.addWorksheet('_Consolidation_Data', {state: 'hidden'});
             conSheet.columns = [{header: 'App_ID', key: 'id'}, {header: 'Student_ID', key: 'sid'}, {header: 'Course_IDs', key: 'cids'}, {header: 'Form_Data', key: 'data'}];
-            Object.values(groupedStudents).forEach(s => {
-                s.applications.forEach(app => {
-                    conSheet.addRow({ id: app.id, sid: s.id, cids: app.courseIds.join(','), data: JSON.stringify(app.formData) });
-                });
-            });
+            Object.values(groupedStudents).forEach(s => { s.applications.forEach(app => { conSheet.addRow({ id: app.id, sid: s.id, cids: app.courseIds.join(','), data: JSON.stringify(app.formData) }); }); });
 
-           const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
-            logSheet.columns = [
-                {header: 'Time', key: 'time'}, {header: 'Field', key: 'field'}, 
-                {header: 'Old_Value', key: 'old'}, {header: 'New_Value', key: 'new'}, 
-                {header: 'Student', key: 'student'}, {header: 'App_ID', key: 'app'}
-            ];
+            const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
+            logSheet.columns = [{header: 'Time', key: 'time'}, {header: 'Field', key: 'field'}, {header: 'Old_Value', key: 'old'}, {header: 'New_Value', key: 'new'}, {header: 'Student', key: 'student'}, {header: 'App_ID', key: 'app'}];
             changeLogs.forEach(l => logSheet.addRow(l));
 
-            // ★★★ 請將您的程式碼貼在這裡 (第 1759 行) ★★★
-            // 5. Export Institution Library (新增：匯出機構庫)
             const libSheet = workbook.addWorksheet('_Institution_Library', {state: 'hidden'});
-            libSheet.columns = [
-                { header: 'Institution_Name', key: 'name' },
-                { header: 'Data_JSON', key: 'json' }
-            ];
+            libSheet.columns = [{ header: 'Institution_Name', key: 'name' }, { header: 'Data_JSON', key: 'json' }];
             Object.keys(institutionLibrary).forEach(name => {
                 const entries = institutionLibrary[name];
-                // 確保 entries 是陣列 (防呆)
-                if (Array.isArray(entries)) {
-                    entries.forEach(entry => {
-                        libSheet.addRow({
-                            name: name,
-                            json: JSON.stringify(entry)
-                        });
-                    });
-                }
+                if (Array.isArray(entries)) { entries.forEach(entry => { libSheet.addRow({ name: name, json: JSON.stringify(entry) }); }); }
             });
-            // ★★★ 結束貼上 ★★★
 
             const metaSheet = workbook.addWorksheet('_System_Metadata', {state: 'hidden'});
             metaSheet.columns = [{header:'Field_ID', key:'id'}, {header:'Field_Label', key:'label'}];
-            if (currentYearConfig.fields) {
-                currentYearConfig.fields.forEach(f => metaSheet.addRow({id: f.id, label: f.label}));
-            }
+            if (currentYearConfig.fields) { currentYearConfig.fields.forEach(f => metaSheet.addRow({id: f.id, label: f.label})); }
 
+            // 產生並下載
             const buffer = await workbook.xlsx.writeBuffer();
             const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
             saveAs(blob, `實習填報_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`);
-            showToast('success', '匯出成功 (包含隱藏設定)');
+            showToast('success', '匯出成功');
             
             hasUnsavedChanges = false;
         }
