@@ -2649,17 +2649,17 @@
                 // 5. 渲染 UI (極簡扁平清單，帶分隔線，無立體或多餘邊框)
                 const isActive = s.id === currentStudentId;
                 
-                // 選取狀態：淺藍底 + 左側東海藍粗條；未選取：透明底 + 左側透明條(維持對齊)
-                // 移除 mb-2 避免出現不舒服的空隙
+                // 選取狀態：淺藍底 + 左側東海藍粗邊條 (4px)
+                // 未選取狀態：透明底 + 左側透明邊條 (確保文字對齊一致)
                 const activeBg = isActive 
-                    ? 'bg-blue-50 border-l-4 border-primary' 
-                    : 'bg-transparent border-l-4 border-transparent hover:bg-slate-50';
+                    ? 'bg-blue-50 border-l-[4px] border-primary' 
+                    : 'bg-transparent border-l-[4px] border-transparent hover:bg-slate-50';
                 
                 const nameColor = isActive ? 'text-primary' : 'text-slate-800';
 
                 const html = `
                     <div class="cursor-pointer transition-all p-3 border-b border-slate-200 ${activeBg}" 
-                         style="margin-bottom: 0 !important;"
+                         style="margin-bottom: -1px;" 
                          onclick="selectStudent('${s.id}')">
                         <div class="flex justify-between items-center mb-1">
                             <div class="font-bold ${nameColor} text-sm truncate pr-2">
