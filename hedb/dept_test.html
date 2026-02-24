@@ -916,8 +916,9 @@
                     </select>
                     <select id="filter-status" onchange="filterStudentList()" class="filter-select col-span-2">
                         <option value="">全部填報進度</option>
-                        <option value="pending">未開始</option>
-                        <option value="completed">已填報</option>
+                        <option value="not_started">未開始 (皆未歸戶)</option>
+                        <option value="in_progress">填報中 (含未歸戶)</option>
+                        <option value="completed">已填報 (完全完成)</option>
                     </select>
                 </div>
 
@@ -2533,7 +2534,8 @@
             const studentDepts = new Set();
             
             Object.values(groupedStudents).forEach(s => {
-                if (s.dept) studentDepts.add(s.dept); // ★ 修復：正確抓取學生的 s.dept 屬性
+                // ★ 修正：改用 s.dept 才能正確顯示學生系所下拉選單
+                if (s.dept) studentDepts.add(s.dept); 
                 if (s.courses) {
                     s.courses.forEach(c => {
                         if (c.course_dept) courseDepts.add(c.course_dept);
@@ -2569,12 +2571,12 @@
         // --- 修正: 渲染左側名單 (修復系所顯示、卡片式排版、選取高亮) ---
         function renderStudentList() {
             const listEl = document.getElementById('student-list');
-            const countEl = document.getElementById('student-count'); // ★ 取得人數顯示元素
+            const countEl = document.getElementById('student-count');
             if (!listEl) return;
             
             const filterCourseDept = document.getElementById('filter-course-dept')?.value || '';
             const filterStudentDept = document.getElementById('filter-student-dept')?.value || '';
-            const filterStatus = document.getElementById('filter-status')?.value || ''; // ★ 取得狀態篩選
+            const filterStatus = document.getElementById('filter-status')?.value || '';
             const searchKw = document.getElementById('search-input')?.value.toLowerCase() || '';
 
             listEl.innerHTML = '';
@@ -2582,34 +2584,36 @@
             // 1. 將物件轉為陣列並執行「篩選」
             const studentsArr = Object.values(groupedStudents);
             const filtered = studentsArr.filter(s => {
-                // 開課系篩選
+                // A. 開課系篩選
                 if (filterCourseDept !== '' && !s.courses.some(c => c.course_dept === filterCourseDept)) return false;
-                // 學生系篩選 (注意：資料屬性是 s.dept)
+                // B. 學生系篩選 (正確對應 s.dept)
                 if (filterStudentDept !== '' && s.dept !== filterStudentDept) return false;
-                // 關鍵字搜尋
+                // C. 關鍵字搜尋
                 if (searchKw !== '' && !(s.id.toLowerCase().includes(searchKw) || (s.name && s.name.toLowerCase().includes(searchKw)))) return false;
                 
-                // 填報進度篩選
-                if (filterStatus !== '') {
-                    const apps = s.applications || [];
-                    const assignedIds = new Set();
-                    apps.forEach(app => { (app.courseIds || []).forEach(id => assignedIds.add(id)); });
-                    const unassignedCount = (s.courses || []).filter(c => !assignedIds.has(c._internal_id)).length;
-                    let completeCount = 0;
-                    apps.forEach(app => { if (getAppFillStatus(app)) completeCount++; });
+                // D. 填報進度細分篩選
+                const apps = s.applications || [];
+                const assignedIds = new Set();
+                apps.forEach(app => { (app.courseIds || []).forEach(id => assignedIds.add(id)); });
+                const unassignedCount = (s.courses || []).filter(c => !assignedIds.has(c._internal_id)).length;
+                let completeCount = 0;
+                apps.forEach(app => { if (getAppFillStatus(app)) completeCount++; });
 
-                    const isCompleted = (apps.length > 0 && completeCount === apps.length && unassignedCount === 0);
-                    if (filterStatus === 'completed' && !isCompleted) return false;
-                    if (filterStatus === 'pending' && isCompleted) return false;
-                }
+                const isFullyCompleted = (apps.length > 0 && completeCount === apps.length && unassignedCount === 0);
+                const isNotStarted = (apps.length === 0);
+
+                if (filterStatus === 'completed' && !isFullyCompleted) return false;
+                if (filterStatus === 'not_started' && !isNotStarted) return false;
+                if (filterStatus === 'in_progress' && (isFullyCompleted || isNotStarted)) return false;
+                
                 return true;
             });
 
-            // 2. 執行「排序」邏輯
+            // 2. 執行「排序」
             filtered.sort((a, b) => {
                 const valA = String(a[sortConfig.key] || '');
                 const valB = String(b[sortConfig.key] || '');
-                // 使用 numeric: true 讓學號排序（如 100 號在 10 號後面）更正確
+                // 使用 numeric: true 讓學號排序更直覺 (例如 100 會排在 20 後面)
                 const res = valA.localeCompare(valB, 'zh-Hant', { numeric: true });
                 return sortConfig.direction === 'asc' ? res : -res;
             });
@@ -2617,7 +2621,7 @@
             // 3. 更新總計人數
             if (countEl) countEl.innerText = filtered.length;
 
-            // 4. 渲染排序與篩選後的結果
+            // 4. 渲染結果
             filtered.forEach(s => {
                 const apps = s.applications || [];
                 const assignedIds = new Set();
@@ -2676,11 +2680,11 @@
                     gradeLine += ` ｜ ${cleanGrade}年級`;
                 }
 
-                // ★ 修改：使用 student-item 類別以套用您原本的 CSS 高亮樣式
                 const isActive = s.id === currentStudentId ? 'active' : '';
-                
                 const html = `
-                    <div class="student-item p-3 border-b border-slate-100 ${isActive}" onclick="selectStudent('${s.id}')">
+                    <div class="student-item p-3 border-b border-slate-100 ${isActive}" 
+                         style="box-shadow: inset 0 -1px 0 0 #e2e8f0;"
+                         onclick="selectStudent('${s.id}')">
                         <div class="flex justify-between items-center mb-1">
                             <div class="student-name font-bold text-slate-800 text-sm truncate pr-2">
                                 ${s.name || '未知姓名'} (${s.id})
@@ -2689,7 +2693,7 @@
                                 ${statusText}
                             </div>
                         </div>
-                        <div class="text-xs text-slate-500 truncate" title="原系名: ${s.dept || ''}">
+                        <div class="text-xs text-slate-500 truncate">
                             ${gradeLine}
                         </div>
                     </div>
