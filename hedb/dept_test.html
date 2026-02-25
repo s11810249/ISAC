@@ -1332,13 +1332,26 @@
             const btn = document.getElementById('btn-local-storage');
             if(!btn) return;
             
+            // 計算 localStorage 目前使用的位元組 (1字元 = 2 bytes)
+            let usedBytes = 0;
+            for (let i = 0; i < localStorage.length; i++) {
+                let key = localStorage.key(i);
+                usedBytes += (localStorage.getItem(key).length + key.length) * 2;
+            }
+            const usedMB = (usedBytes / (1024 * 1024)).toFixed(2);
+            
+            // 若容量超過 4MB (瀏覽器限制通常為 5MB)，變紅字警告
+            const mbColor = usedMB > 4.0 ? 'text-red-600 font-bold' : 'opacity-70';
+            const usageHtml = `<span class="text-[11px] font-normal ${mbColor} ml-1 tracking-wider" title="瀏覽器暫存限制約為 5MB">(${usedMB}MB)</span>`;
+            
             if(isEnabled) {
-                btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> 清除暫存資料';
-                btn.className = "text-red-500 hover:text-red-700 font-bold text-sm px-3 py-2 rounded-lg hover:bg-red-50 transition whitespace-nowrap flex items-center gap-2 mr-2 border border-red-200";
+                btn.innerHTML = `<i class="fas fa-trash-alt"></i> 清除暫存 ${usageHtml}`;
+                // 順便優化一下按鈕的視覺
+                btn.className = "text-red-500 hover:text-red-700 font-bold text-sm px-3 py-2 rounded-lg hover:bg-red-50 transition whitespace-nowrap flex items-center border border-red-200 shadow-sm mr-2";
                 btn.title = "資料保護中 (點擊以清除)";
             } else {
-                btn.innerHTML = '<i class="fas fa-cloud-upload-alt"></i> 啟用暫存保護';
-                btn.className = "text-slate-500 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition whitespace-nowrap flex items-center gap-2 mr-2";
+                btn.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> 啟用暫存 ${usageHtml}`;
+                btn.className = "text-slate-500 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition whitespace-nowrap flex items-center border border-slate-200 shadow-sm mr-2";
                 btn.title = "開啟後可避免意外關閉導致資料遺失";
             }
         }
@@ -1382,6 +1395,9 @@
                 localStorage.setItem(STORAGE_KEY, compressedState);
                 localStorage.setItem(LIB_STORAGE_KEY, compressedLib);
                 localStorage.setItem(REL_STORAGE_KEY, compressedRels);
+                
+                // ★ 新增：每次背景存檔完成後，立刻刷新右上角的按鈕容量顯示！
+                updateStorageBtn(true);
                 
             } catch (e) {
                 console.error("Storage full or error", e);
@@ -4994,7 +5010,7 @@
                     </div>
                     <h3 class="text-xl font-bold text-slate-600 mb-2">尚無實習紀錄</h3>
                     <p class="text-sm text-slate-500 mb-6">請先進行歸戶設定以開始填報</p>
-                    <button onclick="openStudentSettingsModal('${sid}')" class="px-6 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-sky-700 transition transform hover:scale-105 flex items-center gap-2">
+                    <button onclick="openStudentSettingsModal(currentStudentId)" class="px-6 py-2 bg-primary text-white rounded-lg font-bold shadow-md hover:bg-sky-700 transition transform hover:scale-105 flex items-center gap-2">
                         <i class="fas fa-cog"></i> 開啟歸戶設定
                     </button>
                 `;
