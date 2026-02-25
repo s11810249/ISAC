@@ -1765,73 +1765,111 @@
         }
 
         // --- Helper: List 欄位自動編號邏輯 ---
+        這是一個非常棒的 UX（使用者體驗）優化！我們將導入**「智慧編號防護」**邏輯：
+
+保護編號：只要該行有文字（例如 1. 內容），使用者就無法用 Backspace 或 Delete 誤刪前面的 1. 。
+
+智慧刪除：如果該行只有編號沒有內容（例如空白的 2.  或 1. ），按下 Backspace 會自動刪除整行編號，讓欄位完美清空。
+
+高度無縫縮放：高度不僅會自動長大，文字刪減時也會平滑地「自動縮小」。
+
+請開啟 /hedb/dept_test.html，我們分三個步驟來實作：
+
+第一步：全面升級鍵盤攔截邏輯 (智慧保護與刪除)
+請尋找 function handleListKeydown(e) （大約在第 1020 行附近），將整段函式替換為以下最新版本：
+
+JavaScript
+        // --- Helper: List 欄位自動編號邏輯 (增強防刪與智慧空行處理) ---
         function handleListKeydown(e) {
             const el = e.target;
             const start = el.selectionStart;
             const end = el.selectionEnd;
             const val = el.value;
 
-            // 1. 防止 Backspace 刪除編號
+            // 1. 智慧 Backspace 處理
             if (e.key === 'Backspace' && start === end) {
                 const textBefore = val.substring(0, start);
+                const textAfter = val.substring(end);
                 const lastNewlineIdx = textBefore.lastIndexOf('\n');
                 const lineStartIdx = lastNewlineIdx === -1 ? 0 : lastNewlineIdx + 1;
-                const lineTextBeforeCursor = val.substring(lineStartIdx, start);
+                
+                const currentLineText = val.substring(lineStartIdx).split('\n')[0];
+                const prefixMatch = currentLineText.match(/^(\d+\.\s)/);
 
-                // 如果游標正好在 "數字. " 的後方，禁止 Backspace
-                if (/^\d+\.\s$/.test(lineTextBeforeCursor)) {
-                    e.preventDefault();
-                    return;
+                if (prefixMatch) {
+                    const prefix = prefixMatch[1];
+                    const content = currentLineText.substring(prefix.length);
+                    const cursorPositionInLine = start - lineStartIdx;
+
+                    if (content.length > 0) {
+                        // 有內容：保護編號不被刪除
+                        if (cursorPositionInLine <= prefix.length) {
+                            e.preventDefault();
+                            return;
+                        }
+                    } else {
+                        // 無內容 (空編號)：智慧刪除整個編號
+                        if (cursorPositionInLine === prefix.length) {
+                            e.preventDefault();
+                            let newTextBefore = val.substring(0, lineStartIdx);
+                            // 若不是第一行，連同前面的換行符號一起刪除，退回上一行
+                            if (lineStartIdx > 0) {
+                                newTextBefore = val.substring(0, lastNewlineIdx); 
+                            }
+                            el.value = newTextBefore + textAfter;
+                            el.selectionStart = el.selectionEnd = newTextBefore.length;
+                            el.dispatchEvent(new Event('input')); // 觸發高度縮減
+                            return;
+                        }
+                    }
                 }
             }
 
-            // 2. 防止 Delete 刪除編號
+            // 2. 防止 Delete 誤刪編號
             if (e.key === 'Delete' && start === end) {
                 const lastNewlineIdx = val.lastIndexOf('\n', start - 1);
                 const lineStartIdx = lastNewlineIdx === -1 ? 0 : lastNewlineIdx + 1;
-                const match = val.substring(lineStartIdx).match(/^(\d+\.\s)/);
-                if (match) {
-                    const prefixLength = match[1].length;
-                    // 如果游標在編號區塊之內，禁止 Delete
-                    if (start - lineStartIdx < prefixLength) {
+                const currentLineText = val.substring(lineStartIdx).split('\n')[0];
+                const prefixMatch = currentLineText.match(/^(\d+\.\s)/);
+
+                if (prefixMatch) {
+                    const prefix = prefixMatch[1];
+                    const content = currentLineText.substring(prefix.length);
+                    const cursorPositionInLine = start - lineStartIdx;
+
+                    // 只要有內容，就不准往後刪除到編號區塊
+                    if (content.length > 0 && cursorPositionInLine < prefix.length) {
                         e.preventDefault();
                         return;
                     }
                 }
             }
 
+            // 3. Enter 鍵處理 (自動編號與結束清單)
             if (e.key === 'Enter') {
-                if (e.shiftKey) {
-                    // Shift+Enter: 原生預設換行 (不自動編號)
-                    return;
-                }
+                if (e.shiftKey) return; // Shift+Enter: 一般換行
 
-                // Enter (無 Shift): 自動換行並計算編號
                 e.preventDefault();
-                
                 const textBefore = val.substring(0, start);
                 const textAfter = val.substring(end);
                 const lines = textBefore.split('\n');
                 const currentLine = lines[lines.length - 1];
 
-                // 找尋目前的編號 (例如 "1. ", "2. ")
                 const match = currentLine.match(/^(\d+)\.\s*/);
-                
                 let insertText = '';
                 let newTextBefore = textBefore;
 
                 if (match) {
                     if (currentLine.trim() === match[0].trim()) {
-                        // 如果目前這行只有編號沒有文字，且按下 Enter，代表想結束清單
+                        // 該行只有編號，按下 Enter 代表結束清單 (清除編號)
                         newTextBefore = textBefore.substring(0, textBefore.length - currentLine.length);
-                        insertText = '\n';
+                        insertText = '\n'; 
                     } else {
-                        // 繼續編號
+                        // 繼續下一個編號
                         const nextNum = parseInt(match[1], 10) + 1;
                         insertText = `\n${nextNum}. `;
                     }
                 } else {
-                    // 如果目前這行沒有編號
                     if (lines.length === 1 && currentLine.trim() !== '') {
                         newTextBefore = `1. ${currentLine}`;
                         insertText = `\n2. `;
@@ -1839,20 +1877,14 @@
                         let lastNum = 0;
                         for (let i = lines.length - 1; i >= 0; i--) {
                             const m = lines[i].match(/^(\d+)\.\s*/);
-                            if (m) {
-                                lastNum = parseInt(m[1], 10);
-                                break;
-                            }
+                            if (m) { lastNum = parseInt(m[1], 10); break; }
                         }
                         insertText = lastNum > 0 ? `\n${lastNum + 1}. ` : `\n1. `;
                     }
                 }
                 
-                // 更新內容與游標位置
                 el.value = newTextBefore + insertText + textAfter;
                 el.selectionStart = el.selectionEnd = newTextBefore.length + insertText.length;
-                
-                // 觸發 input 事件以觸發自動調整高度等邏輯
                 el.dispatchEvent(new Event('input'));
                 hasUnsavedChanges = true;
             }
@@ -3617,32 +3649,25 @@
                             input.value = val || '';
                             
                             const autoResize = (el) => {
+                                // ★ 關鍵：先設定為 auto 釋放高度，讓欄位可以「縮小」
                                 el.style.setProperty('height', 'auto', 'important');
                                 el.style.setProperty('height', el.scrollHeight + 'px', 'important');
                             };
                             
                             input.addEventListener('input', function() {
-                                // 強制確保第一行有編號，避免全選刪除後格式跑掉
-                                if (!/^\d+\.\s/.test(this.value)) {
-                                    if (this.value.trim() === '') {
-                                        this.value = '1. ';
-                                    } else {
-                                        this.value = '1. ' + this.value.replace(/^\d*\.?\s*/, '');
-                                    }
+                                // 允許使用者完全清空欄位
+                                if (this.value === '') {
+                                    // 保持空白不強制補 1.
+                                } else if (!/^\d+\.\s/.test(this.value)) {
+                                    // 若打字但沒有編號開頭，自動補 1.
+                                    this.value = '1. ' + this.value.replace(/^\d*\.?\s*/, '');
                                 }
                                 autoResize(this);
                             });
                             
                             input.addEventListener('keydown', handleListKeydown); 
                             
-                            input.addEventListener('focus', function() {
-                                if (this.value.trim() === '') {
-                                    this.value = '1. ';
-                                    this.dispatchEvent(new Event('input')); // 觸發高度重算
-                                }
-                            });
-                            
-                            // 延遲初始化，確保 DOM 已經渲染完成能抓到正確高度
+                            // 延遲初始化高度
                             setTimeout(() => autoResize(input), 0);
                             
                         } else if (f.type === 'date') {
