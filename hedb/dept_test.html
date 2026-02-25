@@ -4565,22 +4565,37 @@
                    const el = document.createElement('div');
                    el.className = 'bg-white border border-slate-200 rounded-lg p-4 shadow-sm flex flex-col gap-3 mb-2';
                    
-                   let label = `${student.id}_實習紀錄_${idx+1}`;
-                   if(app.formData['internship_institution_name']) label = app.formData['internship_institution_name'];
+                   // 1. 處理標題：等待機構名稱輸入後才加上「：機構名稱」
+                   let label = `實習紀錄${idx+1}`;
+                   const instName = app.formData['internship_institution_name'];
+                   if (instName && String(instName).trim() !== '') {
+                       label += `：${instName}`;
+                   }
                    
-                   // 顯示包含的課程代碼
-                   const coursesHtml = app.courseIds.map(cid => {
+                   // 2. 處理課程資訊字串 (例：114-1 | 0002 | 企業實習1、114-1 | 0003 | 企業實習2)
+                   const courseInfos = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
-                        return c ? `<span class="text-xs bg-slate-100 text-slate-600 px-2 py-0.5 rounded">${c['course_code']||''}</span>` : '';
-                   }).join(' ');
+                        if (!c) return '';
+                        const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']) || '未知課程';
+                        const year = getCourseValue(c, ['school_year', '學年', 'academic_year']) || '';
+                        const sem = getCourseValue(c, ['semester', '學期']) || '';
+                        const code = getCourseValue(c, ['course_code', '選課代號']) || '無代號';
+                        
+                        const yearSem = (year && sem) ? `${year}-${sem}` : (year || sem || '');
+                        return [yearSem, code, name].filter(Boolean).join(' | ');
+                   }).filter(Boolean);
+                   
+                   const coursesHtml = `<div class="text-xs text-slate-500 mt-1 leading-relaxed">${courseInfos.join('、')}</div>`;
 
                    el.innerHTML = `
                        <div class="flex justify-between items-start">
-                           <div>
+                           <div class="flex-grow pr-4">
                                <h4 class="font-bold text-primary text-sm">${label}</h4>
-                               <div class="mt-1 flex flex-wrap gap-1">${coursesHtml}</div>
+                               ${coursesHtml}
                            </div>
-                           <button onclick="deleteApplicationFromModal('${app.id}', '${student.id}')" class="text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded transition"><i class="fas fa-trash-alt"></i> 解除</button>
+                           <button onclick="deleteApplicationFromModal('${app.id}', '${student.id}')" class="flex-shrink-0 text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded transition">
+                               <i class="fas fa-trash-alt"></i> 解除
+                           </button>
                        </div>
                    `;
                    appsContainer.appendChild(el);
