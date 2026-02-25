@@ -5242,30 +5242,21 @@ JavaScript
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
                             
-                            // ★ 修改：加入強制編號檢查與觸發整列同步縮放
+                            // ★ 修改：加入允許空白的防呆檢查
                             input.addEventListener('input', function() { 
                                 if (f.type === 'list') {
-                                    if (!/^\d+\.\s/.test(this.value)) {
-                                        if (this.value.trim() === '') {
-                                            this.value = '1. ';
-                                        } else {
-                                            this.value = '1. ' + this.value.replace(/^\d*\.?\s*/, '');
-                                        }
+                                    if (this.value === '') {
+                                        // 保持空白
+                                    } else if (!/^\d+\.\s/.test(this.value)) {
+                                        this.value = '1. ' + this.value.replace(/^\d*\.?\s*/, '');
                                     }
                                 }
-                                autoResizeGridRow(tr); 
+                                autoResizeGridRow(tr); // 觸發整列縮放
                             });
                             
                             // 綁定智慧編號事件
                             if (f.type === 'list') {
                                 input.addEventListener('keydown', handleListKeydown);
-                                
-                                input.addEventListener('focus', function() {
-                                    if (this.value.trim() === '') {
-                                        this.value = '1. ';
-                                        this.dispatchEvent(new Event('input')); // 觸發同步調整
-                                    }
-                                });
                             }
 
                         } else if (f.type === 'single_select') {
