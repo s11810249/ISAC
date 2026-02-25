@@ -1886,17 +1886,14 @@
                 ta.style.setProperty('height', '1px', 'important');
             });
 
-            // 2. 找出該列中需要的最巨量高度 (以此列內容最多的那格為準)
-            let maxH = 40; // 預設最小高度
+            // 2. ★ 關鍵修正：不強制統一高度，而是讓每個 textarea 只長到「剛好包覆自己內容」的高度。
+            // 由於外層的 <td> 預設是 vertical-align: middle，
+            // 這樣高度較短的 textarea 就會被表格自動推到「完美垂直置中」的位置！
             textareas.forEach(ta => {
-                if (ta.scrollHeight > maxH) {
-                    maxH = ta.scrollHeight;
-                }
-            });
-
-            // 3. 將最大高度統一套用到該列的所有 textarea，確保可編輯範圍跟著撐高
-            textareas.forEach(ta => {
-                ta.style.setProperty('height', maxH + 'px', 'important');
+                ta.style.setProperty('height', ta.scrollHeight + 'px', 'important');
+                
+                // 確保文字是靠左對齊
+                ta.style.textAlign = 'left';
             });
         }
         
