@@ -1764,21 +1764,6 @@
             return headers;
         }
 
-        // --- Helper: List 欄位自動編號邏輯 ---
-        這是一個非常棒的 UX（使用者體驗）優化！我們將導入**「智慧編號防護」**邏輯：
-
-保護編號：只要該行有文字（例如 1. 內容），使用者就無法用 Backspace 或 Delete 誤刪前面的 1. 。
-
-智慧刪除：如果該行只有編號沒有內容（例如空白的 2.  或 1. ），按下 Backspace 會自動刪除整行編號，讓欄位完美清空。
-
-高度無縫縮放：高度不僅會自動長大，文字刪減時也會平滑地「自動縮小」。
-
-請開啟 /hedb/dept_test.html，我們分三個步驟來實作：
-
-第一步：全面升級鍵盤攔截邏輯 (智慧保護與刪除)
-請尋找 function handleListKeydown(e) （大約在第 1020 行附近），將整段函式替換為以下最新版本：
-
-JavaScript
         // --- Helper: List 欄位自動編號邏輯 (增強防刪與智慧空行處理) ---
         function handleListKeydown(e) {
             const el = e.target;
