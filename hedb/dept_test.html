@@ -2352,7 +2352,10 @@
                 const cdept = getValue(row, ['course_dept', '開課系所']);
                 
                 if (rawDept) studentDepts.add(rawDept);
-                if (cdept) courseDepts.add(cdept);
+                if (cdept) {
+                    courseDepts.add(cdept);
+                    row.course_dept = cdept; 
+                }
 
                 if (!sid) return;
 
@@ -2459,19 +2462,7 @@
                 }
             }
             
-            const renderOpts = (elId, set) => {
-                const el = document.getElementById(elId);
-                if(!el) return;
-                const current = el.value;
-                el.innerHTML = el.options[0].outerHTML; 
-                Array.from(set).sort().forEach(v => {
-                    el.innerHTML += `<option value="${v}">${v}</option>`;
-                });
-                el.value = current;
-            };
-            renderOpts('filter-course-dept', courseDepts);
-            renderOpts('filter-student-dept', studentDepts);
-
+            updateSidebarFilters();
             renderStudentList();
             hasUnsavedChanges = false;
             
@@ -2534,10 +2525,12 @@
             const studentDepts = new Set();
             
             Object.values(groupedStudents).forEach(s => {
-                // ★ 修正：改用 s.dept 才能正確顯示學生系所下拉選單
-                if (s.dept) studentDepts.add(s.dept); 
+                // 學生系所改抓處理後的 s.dept (簡稱)，確保篩選值與顯示值一致
+                if (s.dept && s.dept !== '未分系') studentDepts.add(s.dept); 
+                
                 if (s.courses) {
                     s.courses.forEach(c => {
+                        // 課程物件現在已有標準化的 course_dept
                         if (c.course_dept) courseDepts.add(c.course_dept);
                     });
                 }
@@ -2547,27 +2540,25 @@
             const studentSel = document.getElementById('filter-student-dept');
 
             if (courseSel) {
-                const currCourse = courseSel.value || '';
+                const curr = courseSel.value;
                 courseSel.innerHTML = '<option value="">全部開課系</option>' + 
                     Array.from(courseDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
-                courseSel.value = currCourse; 
-                courseSel.onchange = renderStudentList; 
+                courseSel.value = courseDepts.has(curr) ? curr : "";
+                courseSel.onchange = renderStudentList;
             }
 
             if (studentSel) {
-                const currStudent = studentSel.value || '';
+                const curr = studentSel.value;
                 studentSel.innerHTML = '<option value="">全部學生系</option>' + 
                     Array.from(studentDepts).sort().map(d => `<option value="${d}">${d}</option>`).join('');
-                studentSel.value = currStudent; 
-                studentSel.onchange = renderStudentList; 
+                studentSel.value = studentDepts.has(curr) ? curr : "";
+                studentSel.onchange = renderStudentList;
             }
             
             const searchInput = document.getElementById('search-input');
-            if (searchInput) {
-                 searchInput.oninput = renderStudentList; 
-            }
+            if (searchInput) searchInput.oninput = renderStudentList;
         }
-
+        
         // --- 修正: 渲染左側名單 (修復系所顯示、卡片式排版、選取高亮) ---
         function renderStudentList() {
             const listEl = document.getElementById('student-list');
