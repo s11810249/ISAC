@@ -184,13 +184,14 @@
         .tooltip-icon { color: #94a3b8; cursor: help; transition: color 0.2s; }
         .tooltip-icon:hover { color: #002E5D; }
         .tooltip-text { 
-            visibility: hidden; width: 200px; background-color: #334155; color: #fff; text-align: left; 
-            border-radius: 6px; padding: 8px; position: absolute; z-index: 50; bottom: 125%; left: 50%; 
-            margin-left: -100px; opacity: 0; transition: opacity 0.3s; font-size: 0.85em; font-weight: normal; line-height: 1.4;
+            visibility: hidden; width: max-content; max-width: 280px; background-color: #334155; color: #fff; text-align: left; 
+            border-radius: 6px; padding: 8px 12px; position: absolute; z-index: 50; bottom: 125%; left: 50%; 
+            transform: translateX(-50%); opacity: 0; transition: opacity 0.3s; font-size: 0.85em; font-weight: normal; line-height: 1.5;
             pointer-events: none; box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            white-space: pre-wrap; /* ★ 支援換行與自動折行 */
         }
         .tooltip-text::after {
-            content: ""; position: absolute; top: 100%; left: 50%; margin-left: -5px;
+            content: ""; position: absolute; top: 100%; left: 50%; transform: translateX(-50%);
             border-width: 5px; border-style: solid; border-color: #334155 transparent transparent transparent;
         }
         .tooltip-container:hover .tooltip-text { visibility: visible; opacity: 1; }
@@ -3458,7 +3459,9 @@
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
                     
                     if(f.description) {
-                        label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${f.description}</span></div>`;
+                        // ★ 將設定檔中可能出現的 \n 替換為網頁的 <br> 換行標籤
+                        const formattedDesc = f.description.replace(/\\n|\n/g, '<br>');
+                        label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${formattedDesc}</span></div>`;
                     }
                     wrapper.appendChild(label);
 
