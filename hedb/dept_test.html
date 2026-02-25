@@ -1087,7 +1087,7 @@
                 <div class="bg-indigo-50 px-6 py-4 border-b border-indigo-100 flex justify-between items-center rounded-t-lg mb-4">
                     <div>
                         <h3 class="font-bold text-indigo-800 text-lg">實習歸戶設定</h3>
-                        <p class="text-xs text-indigo-600 mt-1">請勾選同一實習機構的課程，合併建立為一份填報單。</p>
+                        <p class="text-xs text-indigo-600 mt-1">請勾選同一實習紀錄的課程，合併建立為一份填報單。</p>
                     </div>
                     <button onclick="createApplicationFromModal()" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-lg text-sm font-bold shadow transition flex items-center gap-2">
                         <i class="fas fa-plus"></i> 建立歸戶
@@ -4499,13 +4499,49 @@
                 unassigned.forEach(c => {
                     const el = document.createElement('div');
                     el.className = 'course-card flex justify-between items-center p-3 border border-slate-200 rounded mb-2 hover:bg-slate-50 cursor-pointer';
+                    
+                    // 1. 抓取各項課程數值
+                    const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']) || '未知課程';
+                    const year = getCourseValue(c, ['school_year', '學年', 'academic_year']) || '';
+                    const sem = getCourseValue(c, ['semester', '學期']) || '';
+                    const code = getCourseValue(c, ['course_code', '選課代號']) || '無代號';
+                    const rawDept = c.course_dept || getCourseValue(c, ['開課學系', 'offering_department', '開課系所', '開課系', 'course_department']) || '';
+
+                    // 2. 轉換系所簡稱
+                    let shortDept = rawDept;
+                    if (rawDept && typeof departmentData !== 'undefined' && Array.isArray(departmentData)) {
+                        let foundShort = null;
+                        for (let college of departmentData) {
+                            if (college.departments && Array.isArray(college.departments)) {
+                                for (let d of college.departments) {
+                                    if (d.name === rawDept || d.fullName === rawDept) {
+                                        foundShort = d.shortName || d.name;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (foundShort) break;
+                        }
+                        if (foundShort) shortDept = foundShort;
+                    }
+                    // 備用簡化：如果沒抓到內建簡稱，但結尾有「學系」，自動縮短為「系」
+                    if (shortDept && shortDept.endsWith('學系')) {
+                        shortDept = shortDept.replace('學系', '系');
+                    }
+
+                    // 3. 組合顯示字串 (例如：114-1 | 0002 | 中文系開)
+                    const yearSem = (year && sem) ? `${year}-${sem}` : (year || sem || '');
+                    const deptStr = shortDept ? `${shortDept}開` : '';
+                    const subInfo = [yearSem, code, deptStr].filter(Boolean).join(' | ');
+
                     el.innerHTML = `
                         <div>
-                            <div class="font-bold text-sm text-slate-700">${c['course_name'] || c['課程名稱']}</div>
-                            <div class="text-xs text-slate-500">${c['semester'] ? `第${c['semester']}學期` : ''} | ${c['course_code'] || '無代號'}</div>
+                            <div class="font-bold text-sm text-slate-700">${name}</div>
+                            <div class="text-xs text-slate-500 mt-0.5">${subInfo}</div>
                         </div>
                         <input type="checkbox" class="modal-course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
                     `;
+                    
                     el.onclick = (e) => { 
                         if(e.target.type !== 'checkbox') { 
                             const cb = el.querySelector('input'); 
