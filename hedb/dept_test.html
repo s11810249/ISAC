@@ -1881,22 +1881,15 @@
             const textareas = tr.querySelectorAll('textarea.grid-input');
             if (textareas.length === 0) return;
 
-            // 1. 先全部強制釋放為 auto，讓 TR 能縮減高度
+            // 1. 先全部強制釋放為 1px，讓 TR 能縮減高度
             textareas.forEach(ta => {
-                ta.style.setProperty('height', 'auto', 'important');
+                ta.style.setProperty('height', '1px', 'important');
             });
 
-            // 2. 找出該列中需要的最巨量高度 (以內容最多的那格為準)
-            let maxH = 34; // 預設最小高度
+            // 2. ★ 修正：讓每個 textarea 維持「剛好包住內容」的高度。
+            // 因為外層的 td 是 vertical-align: middle，這樣高度較短的 textarea 就會自動在儲存格內「垂直置中」！
             textareas.forEach(ta => {
-                if (ta.scrollHeight > maxH) {
-                    maxH = ta.scrollHeight;
-                }
-            });
-
-            // 3. 將最大高度統一套用到該列的所有 textarea，讓大家對齊
-            textareas.forEach(ta => {
-                ta.style.setProperty('height', maxH + 'px', 'important');
+                ta.style.setProperty('height', ta.scrollHeight + 'px', 'important');
             });
         }
         
@@ -2008,7 +2001,16 @@
                         allRelatedInputs.forEach(el => {
                             if (el !== inputEl) {
                                 if (el.type === 'checkbox') el.checked = newVal;
-                                else { el.value = newVal; el.title = newVal; }
+                                else { 
+                                    el.value = newVal; 
+                                    el.title = newVal; 
+                                    
+                                    // ★ 修正：同步資料時，若為多行文字則觸發高度重算
+                                    if (el.tagName === 'TEXTAREA') {
+                                        const tr = el.closest('tr');
+                                        if (tr) autoResizeGridRow(tr);
+                                    }
+                                }
                             }
                         });
 
@@ -2056,8 +2058,6 @@
         
         // ★ 輔助：同步數值到所有視圖的函式
         function syncValueToViews(cid, sid, fieldId, value, sourceInput) {
-            // 尋找所有對應這門課、這個欄位的輸入框
-            // 注意：我們沒有給每個 input 獨特 ID，所以透過 TR 的 data 屬性往下找
             const rows = document.querySelectorAll(`tr[data-cid="${cid}"][data-sid="${sid}"]`);
             rows.forEach(row => {
                 const targetInput = row.querySelector(`[data-field="${fieldId}"]`);
@@ -2068,6 +2068,11 @@
                     targetInput.style.transition = 'background-color 0.3s';
                     targetInput.style.backgroundColor = '#fff7ed'; // 淡橘色
                     setTimeout(() => targetInput.style.backgroundColor = '', 400);
+                    
+                    // ★ 修正：同步資料時觸發高度重算
+                    if (targetInput.tagName === 'TEXTAREA') {
+                        autoResizeGridRow(row);
+                    }
                 }
             });
         }
@@ -5069,37 +5074,47 @@
                 let baseHeaderWidth = getTextWidth(f.label, "bold 14px 'Noto Sans TC'") + 24 + iconWidth;
                 
                 let maxContentWidth = 0;
-                if ((f.type === 'single_select' || f.type === 'list') && f.options) {
-                    f.options.forEach(opt => {
-                        const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 50;
-                        if (w > maxContentWidth) maxContentWidth = w;
+                
+                // ★ 修正：若是 list 類型，不進行內容寬度計算，避免被超長內容撐爆
+                if (f.type !== 'list') {
+                    if (f.type === 'single_select' && f.options) {
+                        f.options.forEach(opt => {
+                            const w = getTextWidth(opt, "14px 'Noto Sans TC'") + 50;
+                            if (w > maxContentWidth) maxContentWidth = w;
+                        });
+                    }
+
+                    rowsData.forEach(row => {
+                        let val = "";
+                        if (f.calcMode === 'average' || f.calcMode === 'weighted') {
+                            val = row.course[f.id]; 
+                        } else if (row.appId && row.appData[f.id] !== undefined) {
+                            val = row.appData[f.id]; 
+                        } else {
+                            val = row.course[f.id];
+                            if ((val === undefined || val === "") && f.id === 'student_id') val = row.student.id;
+                            if ((val === undefined || val === "") && f.id === 'student_name') val = row.student.name;
+                            if ((val === undefined || val === "") && f.id === 'student_dept') val = row.student.dept;
+                        }
+
+                        if (val) {
+                            let padding = 24; 
+                            if (f.type === 'single_select') padding = 50; 
+                            const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + padding;
+                            if (w > maxContentWidth) maxContentWidth = w;
+                        }
                     });
                 }
-
-                rowsData.forEach(row => {
-                    let val = "";
-                    if (f.calcMode === 'average' || f.calcMode === 'weighted') {
-                        val = row.course[f.id]; 
-                    } else if (row.appId && row.appData[f.id] !== undefined) {
-                        val = row.appData[f.id]; 
-                    } else {
-                        val = row.course[f.id];
-                        if ((val === undefined || val === "") && f.id === 'student_id') val = row.student.id;
-                        if ((val === undefined || val === "") && f.id === 'student_name') val = row.student.name;
-                        if ((val === undefined || val === "") && f.id === 'student_dept') val = row.student.dept;
-                    }
-
-                    if (val) {
-                        let padding = 24; 
-                        if (f.type === 'single_select' || f.type === 'list') padding = 50; 
-                        const w = getTextWidth(String(val), "14px 'Noto Sans TC'") + padding;
-                        if (w > maxContentWidth) maxContentWidth = w;
-                    }
-                });
                 
                 let finalWidth = Math.max(baseHeaderWidth, maxContentWidth);
-                finalWidth = Math.max(finalWidth, 80); 
-                if(f.type === 'text' || f.type === 'address') finalWidth = Math.min(finalWidth, 300);
+                
+                // ★ 修正：給予 list 一個固定適中的預設寬度 (250px)
+                if (f.type === 'list') {
+                    finalWidth = Math.max(baseHeaderWidth, 250); 
+                } else {
+                    finalWidth = Math.max(finalWidth, 80); 
+                    if(f.type === 'text' || f.type === 'address') finalWidth = Math.min(finalWidth, 300);
+                }
 
                 columnWidths[f.id] = finalWidth;
                 totalTableWidth += finalWidth;
@@ -5330,6 +5345,14 @@
                             td.appendChild(input);
                         }
                     }
+                    // ★ 貼在這裡：點擊 TD 空白處自動 Focus 輸入框 (讓 UX 更順暢)
+                    td.onclick = (e) => {
+                        if (e.target === td) {
+                            const innerInput = td.querySelector('.grid-input');
+                            if (innerInput && !innerInput.disabled && !innerInput.readOnly) innerInput.focus();
+                        }
+                    };
+
                     tr.appendChild(td);
                 });
                 tbody.appendChild(tr);
