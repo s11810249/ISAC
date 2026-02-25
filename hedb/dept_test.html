@@ -1766,6 +1766,40 @@
 
         // --- Helper: List 欄位自動編號邏輯 ---
         function handleListKeydown(e) {
+            const el = e.target;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const val = el.value;
+
+            // 1. 防止 Backspace 刪除編號
+            if (e.key === 'Backspace' && start === end) {
+                const textBefore = val.substring(0, start);
+                const lastNewlineIdx = textBefore.lastIndexOf('\n');
+                const lineStartIdx = lastNewlineIdx === -1 ? 0 : lastNewlineIdx + 1;
+                const lineTextBeforeCursor = val.substring(lineStartIdx, start);
+
+                // 如果游標正好在 "數字. " 的後方，禁止 Backspace
+                if (/^\d+\.\s$/.test(lineTextBeforeCursor)) {
+                    e.preventDefault();
+                    return;
+                }
+            }
+
+            // 2. 防止 Delete 刪除編號
+            if (e.key === 'Delete' && start === end) {
+                const lastNewlineIdx = val.lastIndexOf('\n', start - 1);
+                const lineStartIdx = lastNewlineIdx === -1 ? 0 : lastNewlineIdx + 1;
+                const match = val.substring(lineStartIdx).match(/^(\d+\.\s)/);
+                if (match) {
+                    const prefixLength = match[1].length;
+                    // 如果游標在編號區塊之內，禁止 Delete
+                    if (start - lineStartIdx < prefixLength) {
+                        e.preventDefault();
+                        return;
+                    }
+                }
+            }
+
             if (e.key === 'Enter') {
                 if (e.shiftKey) {
                     // Shift+Enter: 原生預設換行 (不自動編號)
@@ -1774,14 +1808,9 @@
 
                 // Enter (無 Shift): 自動換行並計算編號
                 e.preventDefault();
-                const el = e.target;
-                const start = el.selectionStart;
-                const end = el.selectionEnd;
-                const val = el.value;
-
+                
                 const textBefore = val.substring(0, start);
                 const textAfter = val.substring(end);
-
                 const lines = textBefore.split('\n');
                 const currentLine = lines[lines.length - 1];
 
@@ -1792,8 +1821,8 @@
                 let newTextBefore = textBefore;
 
                 if (match) {
-                    // 如果目前這行只有編號沒有文字，且按下 Enter，代表想結束清單
                     if (currentLine.trim() === match[0].trim()) {
+                        // 如果目前這行只有編號沒有文字，且按下 Enter，代表想結束清單
                         newTextBefore = textBefore.substring(0, textBefore.length - currentLine.length);
                         insertText = '\n';
                     } else {
@@ -1804,11 +1833,9 @@
                 } else {
                     // 如果目前這行沒有編號
                     if (lines.length === 1 && currentLine.trim() !== '') {
-                        // 如果是第一行且有打字，自動把第一行前面補上 1.，並換行加上 2.
                         newTextBefore = `1. ${currentLine}`;
                         insertText = `\n2. `;
                     } else {
-                        // 往前找最後一個出現的編號，來決定下一個號碼
                         let lastNum = 0;
                         for (let i = lines.length - 1; i >= 0; i--) {
                             const m = lines[i].match(/^(\d+)\.\s*/);
@@ -1817,7 +1844,6 @@
                                 break;
                             }
                         }
-                        // 若都找不到，就從 1. 開始
                         insertText = lastNum > 0 ? `\n${lastNum + 1}. ` : `\n1. `;
                     }
                 }
@@ -1838,9 +1864,9 @@
             const textareas = tr.querySelectorAll('textarea.grid-input');
             if (textareas.length === 0) return;
 
-            // 1. 先全部強制縮為 1px，讓 TR 能釋放高度 (允許縮小)
+            // 1. 先全部強制釋放為 auto，讓 TR 能縮減高度
             textareas.forEach(ta => {
-                ta.style.setProperty('height', '1px', 'important');
+                ta.style.setProperty('height', 'auto', 'important');
             });
 
             // 2. 找出該列中需要的最巨量高度 (以內容最多的那格為準)
@@ -3591,12 +3617,22 @@
                             input.value = val || '';
                             
                             const autoResize = (el) => {
-                                // ★ 關鍵破解：使用 setProperty 加上 'important'，強行突破 CSS 的 42px !important 鎖定
-                                el.style.setProperty('height', '1px', 'important');
-                                el.style.setProperty('height', (el.scrollHeight + 2) + 'px', 'important');
+                                el.style.setProperty('height', 'auto', 'important');
+                                el.style.setProperty('height', el.scrollHeight + 'px', 'important');
                             };
                             
-                            input.addEventListener('input', function() { autoResize(this); });
+                            input.addEventListener('input', function() {
+                                // 強制確保第一行有編號，避免全選刪除後格式跑掉
+                                if (!/^\d+\.\s/.test(this.value)) {
+                                    if (this.value.trim() === '') {
+                                        this.value = '1. ';
+                                    } else {
+                                        this.value = '1. ' + this.value.replace(/^\d*\.?\s*/, '');
+                                    }
+                                }
+                                autoResize(this);
+                            });
+                            
                             input.addEventListener('keydown', handleListKeydown); 
                             
                             input.addEventListener('focus', function() {
@@ -5172,7 +5208,7 @@
                         if (f.type === 'text' || f.type === 'address' || f.type === 'list') { 
                             input = document.createElement('textarea');
                             input.rows = 1; 
-                            input.className = "grid-input";
+                            input.className = "grid-input custom-scroll";
                             input.style.resize = "none";
                             input.style.textAlign = 'left';
                             input.style.whiteSpace = 'pre-wrap'; 
@@ -5181,8 +5217,17 @@
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
                             
-                            // ★ 修改：移除原本個別的 autoResize，改呼叫整列同步函式
+                            // ★ 修改：加入強制編號檢查與觸發整列同步縮放
                             input.addEventListener('input', function() { 
+                                if (f.type === 'list') {
+                                    if (!/^\d+\.\s/.test(this.value)) {
+                                        if (this.value.trim() === '') {
+                                            this.value = '1. ';
+                                        } else {
+                                            this.value = '1. ' + this.value.replace(/^\d*\.?\s*/, '');
+                                        }
+                                    }
+                                }
                                 autoResizeGridRow(tr); 
                             });
                             
