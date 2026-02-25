@@ -1886,10 +1886,17 @@
                 ta.style.setProperty('height', '1px', 'important');
             });
 
-            // 2. ★ 修正：讓每個 textarea 維持「剛好包住內容」的高度。
-            // 因為外層的 td 是 vertical-align: middle，這樣高度較短的 textarea 就會自動在儲存格內「垂直置中」！
+            // 2. 找出該列中需要的最巨量高度 (以此列內容最多的那格為準)
+            let maxH = 40; // 預設最小高度
             textareas.forEach(ta => {
-                ta.style.setProperty('height', ta.scrollHeight + 'px', 'important');
+                if (ta.scrollHeight > maxH) {
+                    maxH = ta.scrollHeight;
+                }
+            });
+
+            // 3. 將最大高度統一套用到該列的所有 textarea，確保可編輯範圍跟著撐高
+            textareas.forEach(ta => {
+                ta.style.setProperty('height', maxH + 'px', 'important');
             });
         }
         
@@ -3137,7 +3144,15 @@
             // 切換顯示
             document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
             content.style.display = 'block';
-        updateAppProgress(tabId); 
+            updateAppProgress(tabId); 
+
+            // ★ 新增：切換頁籤後，確保 Textarea 高度正確展開 (解決同步資料後 scrollHeight 為 0 的問題)
+            setTimeout(() => {
+                content.querySelectorAll('textarea.input-stylish').forEach(ta => {
+                    ta.style.setProperty('height', '1px', 'important');
+                    ta.style.setProperty('height', (ta.scrollHeight + 2) + 'px', 'important');
+                });
+            }, 50);
         }
 
         function createApplication() {
@@ -4931,7 +4946,6 @@
                 if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
                 if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
                 
-                // 【修正】: 優先使用 currentActiveAppId 強制刷新進度條
                 if (currentActiveAppId) {
                      updateAppProgress(currentActiveAppId);
                 } else {
@@ -4942,6 +4956,17 @@
                         if(stickyHeader) stickyHeader.classList.add('hidden');
                     }
                 }
+
+                // ★ 新增：切換回表單模式時，因為 display:none 會導致高度歸零，需強制重新計算
+                setTimeout(() => {
+                    const activeContent = document.querySelector('.dynamic-tab-content[style*="display: block"]');
+                    if (activeContent) {
+                        activeContent.querySelectorAll('textarea.input-stylish').forEach(ta => {
+                            ta.style.setProperty('height', '1px', 'important');
+                            ta.style.setProperty('height', (ta.scrollHeight + 2) + 'px', 'important');
+                        });
+                    }
+                }, 50);
             }
         }
         // 2. 渲染單人列表表格
