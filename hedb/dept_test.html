@@ -2025,6 +2025,55 @@
                 }, 150);
             }
         });
+
+        // --- 新增: 顯示課程資訊的專屬彈跳視窗 ---
+        window.showCourseInfo = function(studentId, appId) {
+            const student = groupedStudents[studentId];
+            if (!student) return;
+            const app = student.applications.find(a => a.id === appId);
+            if (!app || !app.courseIds || app.courseIds.length === 0) return;
+            
+            // 抓取該紀錄的課程資料
+            const appCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
+            
+            // 渲染精美的表格 HTML
+            const tableHtml = `
+                <div class="overflow-x-auto rounded-lg border border-slate-200 mt-2">
+                    <table class="w-full text-left text-sm whitespace-nowrap">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="py-3 px-4 text-center font-semibold border-b border-slate-200">學期</th>
+                                <th class="py-3 px-4 text-center font-semibold border-b border-slate-200">選課代號</th>
+                                <th class="py-3 px-4 font-semibold border-b border-slate-200">課程名稱</th>
+                                <th class="py-3 px-4 text-center font-semibold border-b border-slate-200">課程屬性</th>
+                                <th class="py-3 px-4 text-center font-semibold border-b border-slate-200">學分</th>
+                            </tr>
+                        </thead>
+                        <tbody class="text-slate-700 divide-y divide-slate-100">
+                            ${appCourses.map(c => `
+                                <tr class="hover:bg-slate-50 transition-colors">
+                                    <td class="py-3 px-4 text-center">${getCourseValue(c, ['semester', '學期'])}</td>
+                                    <td class="py-3 px-4 text-center font-mono">${getCourseValue(c, ['course_code', '選課代號'])}</td>
+                                    <td class="py-3 px-4 font-bold text-slate-800">${getCourseValue(c, ['course_name', '課程名稱', '科目名稱'])}</td>
+                                    <td class="py-3 px-4 text-center">${getCourseValue(c, ['course_type', '修別', '選必修', '必選修'])}</td>
+                                    <td class="py-3 px-4 text-center">${getCourseValue(c, ['credits', '學分', '學分數'])}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+            `;
+
+            // 呼叫 SweetAlert 彈出視窗
+            Swal.fire({
+                title: '<div class="text-primary font-bold flex items-center gap-3"><i class="fas fa-book-open text-xl"></i> 歸戶課程清單</div>',
+                html: tableHtml,
+                width: '700px', // 加寬以容納表格
+                showCloseButton: true,
+                showConfirmButton: false, // 隱藏 OK 按鈕保持乾淨
+                customClass: { popup: 'rounded-xl shadow-2xl border border-slate-100' }
+            });
+        };
         
         // --- Initialization ---
         window.onload = async function() {
@@ -2834,7 +2883,6 @@
                 btn.onclick = () => switchTab(app.id);
                 
                 let label = `實習紀錄${idx+1}`;
-                // if(app.formData['internship_institution_name']) label = app.formData['internship_institution_name'];
                 
                 // 2. 計算填報率
                 const stats = calculateAppStats(app);
@@ -2844,7 +2892,6 @@
                 const isNotRequired = (app.formData['ineligible_reporting_check'] === true || app.formData['ineligible_reporting_check'] === 'true');
         
                 if (isNotRequired) {
-                    // ★★★ 修改處：將顏色改為紅色 (bg-red-500, text-red-600) ★★★
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-xs text-red-600">無須填報</span>';
                 } else if (stats.percent === 100) {
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-xs text-emerald-600">完成填報</span>';
@@ -2854,10 +2901,17 @@
                     statusHtml = '<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="text-xs text-blue-600">填報中</span>';
                 }
                 
+                const courseCount = app.courseIds ? app.courseIds.length : 0;
+                const courseBtnHtml = (isActive && courseCount > 0) 
+                    ? `<span onclick="event.stopPropagation(); showCourseInfo('${student.id}', '${app.id}')" class="ml-2 px-2 py-0.5 rounded bg-indigo-50 text-indigo-600 hover:bg-indigo-100 hover:text-indigo-800 text-xs font-bold transition flex items-center gap-1 border border-indigo-200 shadow-sm" title="點擊查看歸戶課程資訊">
+                           <i class="fas fa-book-open"></i> ${courseCount} 門
+                       </span>` 
+                    : (courseCount > 0 ? `<span class="ml-2 text-[10px] text-slate-400 font-normal">(${courseCount}門)</span>` : '');
+
                 btn.innerHTML = `
                     <div class="flex items-center gap-3">
                         <div class="flex items-center gap-2 text-sm">
-                            <i class="fas fa-file-alt text-slate-400"></i> ${label}
+                            <i class="fas fa-file-alt text-slate-400"></i> ${label} ${courseBtnHtml}
                         </div>
                         <div class="flex items-center gap-1.5 opacity-90">
                             ${statusHtml}
@@ -3101,73 +3155,6 @@
             div.id = `content-${appId}`;
             div.className = 'dynamic-tab-content w-[95%] mx-auto space-y-6';
             
-            const details = document.createElement('details');
-            details.className = 'group bg-white rounded-xl border border-slate-200 shadow-sm overflow-hidden';
-            details.open = true; 
-            
-            const summary = document.createElement('summary');
-            summary.className = 'flex items-center justify-between px-6 py-4 cursor-pointer bg-slate-50 hover:bg-slate-100 transition select-none list-none';
-            summary.style.listStyle = 'none'; 
-            summary.innerHTML = `
-                <h3 class="font-bold text-sm text-slate-700 flex items-center gap-2">
-                    <i class="fas fa-info-circle text-primary"></i> 此紀錄包含之課程資訊
-                </h3>
-                <span class="transition-transform duration-300 group-open:rotate-180 text-slate-400">
-                    <i class="fas fa-chevron-down"></i>
-                </span>
-            `;
-            
-            const style = document.createElement('style');
-            style.innerHTML = 'summary::-webkit-details-marker { display: none; }';
-            details.appendChild(style);
-            details.appendChild(summary);
-
-            const tableContainer = document.createElement('div');
-            tableContainer.className = 'p-0 border-t border-slate-200';
-
-            const courseRows = app.courseIds.map(cid => {
-                const c = student.courses.find(x => x._internal_id === cid);
-                if (!c) return '';
-                
-                const sem = getCourseValue(c, ['semester', '學期']);
-                const code = getCourseValue(c, ['course_code', '選課代號']);
-                const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']);
-                const type = getCourseValue(c, ['course_type', '修別', '選必修', '必選修']);
-                const credits = getCourseValue(c, ['credits', '學分', '學分數']);
-
-                // 【修正】: 將選課代號 (第2欄) 加入 text-center
-                return `
-                    <tr class="border-t border-slate-100 hover:bg-slate-50">
-                        <td class="px-4 py-2 text-center text-slate-600">${sem}</td>
-                        <td class="px-4 py-2 font-mono text-slate-600 text-center">${code}</td> 
-                        <td class="px-4 py-2 font-bold text-slate-800">${name}</td>
-                        <td class="px-4 py-2 text-center text-slate-600">${type}</td>
-                        <td class="px-4 py-2 text-center text-slate-600">${credits}</td>
-                    </tr>
-                `;
-            }).join('');
-
-            tableContainer.innerHTML = `
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm text-left">
-                        <thead class="bg-slate-50 text-slate-500 font-bold">
-                            <tr>
-                                <th class="px-4 py-2 text-center w-20">學期</th>
-                                <th class="px-4 py-2 text-center w-28">選課代號</th>
-                                <th class="px-4 py-2">課程名稱</th>
-                                <th class="px-4 py-2 text-center w-24">課程屬性</th>
-                                <th class="px-4 py-2 text-center w-20">學分</th>
-                            </tr>
-                        </thead>
-                        <tbody class="bg-white">
-                            ${courseRows}
-                        </tbody>
-                    </table>
-                </div>
-            `;
-            details.appendChild(tableContainer);
-            div.appendChild(details);
-
             const formContainer = document.createElement('div');
             formContainer.className = 'form-body pt-2'; 
             
