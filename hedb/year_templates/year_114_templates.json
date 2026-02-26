@@ -115,7 +115,7 @@
       "required": true,
       "isSystem": true,
       "order": 8,
-      "excelLocked": false
+      "excelLocked": true
     },
     {
       "id": "student_college",
@@ -126,7 +126,7 @@
       "isSystem": true,
       "order": 9,
       "description": "請填寫學生所屬學院",
-      "excelLocked": false
+      "excelLocked": true
     },
     {
       "id": "student_department",
@@ -137,7 +137,7 @@
       "required": true,
       "isSystem": true,
       "order": 10,
-      "excelLocked": false
+      "excelLocked": true
     },
     {
       "id": "student_id",
@@ -149,7 +149,7 @@
       "isSystem": true,
       "maxLen": 10,
       "order": 11,
-      "excelLocked": false
+      "excelLocked": true
     },
     {
       "id": "student_name",
@@ -160,7 +160,7 @@
       "required": true,
       "isSystem": true,
       "order": 12,
-      "excelLocked": false
+      "excelLocked": true
     },
     {
       "id": "student_grade",
@@ -175,10 +175,11 @@
         "2",
         "3",
         "4",
-        "5"
+        "5",
+        "四"
       ],
       "order": 13,
-      "excelLocked": false
+      "excelLocked": true
     },
     {
       "id": "gender",
@@ -193,7 +194,7 @@
         "女"
       ],
       "order": 14,
-      "excelLocked": false
+      "excelLocked": true
     },
     {
       "id": "special_exam_internship",
@@ -316,28 +317,6 @@
       "excelLocked": false
     },
     {
-      "id": "internship_location",
-      "label": "實習場所",
-      "type": "single_select",
-      "category": "internship_institution_info",
-      "description": "",
-      "required": true,
-      "isSystem": false,
-      "options": [
-        "政府機構",
-        "企業機構",
-        "其他機構",
-        "就讀學校附屬機構實習"
-      ],
-      "order": 22,
-      "visibilityRule": {
-        "dep": "ineligible_reporting_check",
-        "val": true,
-        "action": "hide"
-      },
-      "excelLocked": false
-    },
-    {
       "id": "document_type",
       "label": "證明文件類型",
       "type": "single_select",
@@ -371,6 +350,28 @@
       "keepZero": false,
       "order": 21,
       "weightField": "internship_credits",
+      "visibilityRule": {
+        "dep": "ineligible_reporting_check",
+        "val": true,
+        "action": "hide"
+      },
+      "excelLocked": false
+    },
+    {
+      "id": "internship_location",
+      "label": "實習場所",
+      "type": "single_select",
+      "category": "internship_institution_info",
+      "description": "",
+      "required": true,
+      "isSystem": false,
+      "options": [
+        "政府機構",
+        "企業機構",
+        "其他機構",
+        "就讀學校附屬機構實習"
+      ],
+      "order": 22,
       "visibilityRule": {
         "dep": "ineligible_reporting_check",
         "val": true,
@@ -495,6 +496,22 @@
       "excelLocked": false
     },
     {
+      "id": "payment_amount",
+      "label": "給付金額",
+      "type": "number",
+      "category": "internship_rights_info",
+      "description": "如工資非月薪，或津貼/獎學金非月給時，應換算為每月給付之金額",
+      "required": true,
+      "isSystem": false,
+      "order": 27,
+      "visibilityRule": {
+        "dep": "internship_salary",
+        "val": "無",
+        "action": "hide"
+      },
+      "excelLocked": false
+    },
+    {
       "id": "payment_type_other",
       "label": "給付類型其他之說明",
       "type": "text",
@@ -509,22 +526,6 @@
       },
       "maxLen": 20,
       "order": 28,
-      "excelLocked": false
-    },
-    {
-      "id": "payment_amount",
-      "label": "給付金額",
-      "type": "number",
-      "category": "internship_rights_info",
-      "description": "如工資非月薪，或津貼/獎學金非月給時，應換算為每月給付之金額",
-      "required": true,
-      "isSystem": false,
-      "order": 27,
-      "visibilityRule": {
-        "dep": "internship_salary",
-        "val": "無",
-        "action": "hide"
-      },
       "excelLocked": false
     },
     {
@@ -685,21 +686,6 @@
       "excelLocked": false
     },
     {
-      "id": "student_nationality",
-      "label": "實習生國籍",
-      "type": "single_select",
-      "category": "sys_student_info",
-      "description": "",
-      "required": true,
-      "isSystem": true,
-      "options": [
-        "本國籍",
-        "外國籍"
-      ],
-      "order": 36,
-      "excelLocked": false
-    },
-    {
       "id": "internship_source",
       "label": "實習機會來源",
       "type": "single_select",
@@ -720,6 +706,22 @@
         "action": "hide"
       },
       "excelLocked": false
+    },
+    {
+      "id": "student_nationality",
+      "label": "實習生國籍",
+      "type": "single_select",
+      "category": "sys_student_info",
+      "description": "",
+      "required": true,
+      "isSystem": true,
+      "options": [
+        "本國籍",
+        "外國籍",
+        "外籍生"
+      ],
+      "order": 36,
+      "excelLocked": true
     },
     {
       "id": "emba_alumni_provider",
@@ -831,7 +833,7 @@
     "internship_basic_info": "#e76f51",
     "internship_institution_info": "#3434ee",
     "internship_rights_info": "#22be24",
-    "internship_other_info": "#6fffa4",
+    "internship_other_info": "#924e16",
     "check_ineligible_reporting": "#64748b"
   }
 }
