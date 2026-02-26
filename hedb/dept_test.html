@@ -5273,7 +5273,7 @@
                         let input;
                         let wrapperDiv = null; // ★ 新增：用於置中的容器
 
-                        if (f.type === 'text' || f.type === 'address' || f.type === 'list') { 
+                        if (f.type === 'list') {
                             input = document.createElement('textarea');
                             input.rows = 1; 
                             input.className = "grid-input custom-scroll";
@@ -5328,11 +5328,11 @@
                             // 將 input 放入容器
                             wrapperDiv.appendChild(input);
                         } 
-                        else {
+                       else {
                             input = document.createElement('input');
                             input.type = "text";
                             input.className = "grid-input";
-                            input.style.textAlign = 'center';
+                            input.style.textAlign = (f.type === 'text' || f.type === 'address') ? 'left' : 'center';
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
                             }
