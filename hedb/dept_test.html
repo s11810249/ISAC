@@ -5658,31 +5658,28 @@
             });
         }
 
-        // 1. 自動收集機構資訊 (支援同名多版本比對)
+        // ★ 新增：用來記錄已經詢問過的資料指紋，避免使用者每打一個字就跳出詢問
+        let promptedInstFingerprints = new Set();
+
+        // 1. 自動收集機構資訊 (升級版：比對後主動詢問)
         function collectInstitutionData(formData) {
             const INST_CATEGORY = 'internship_institution_info';
             const allConfigFields = currentYearConfig.fields || [];
             
-            // 1. 取得該分類下的所有欄位定義
             let instFields = [];
             if (allConfigFields.length > 0) {
                 instFields = allConfigFields.filter(f => f.category === INST_CATEGORY);
             }
-
             if (instFields.length === 0) return;
 
-            // 2. 尋找機構名稱欄位 Key
             let nameFieldId = 'internship_institution_name';
             const foundNameField = instFields.find(f => f.id === 'internship_institution_name' || f.id.includes('name'));
             if (foundNameField) nameFieldId = foundNameField.id;
 
-            // 3. 核心檢查：確認所有「可見且必填」的欄位都已填寫
+            // 檢查必填欄位是否皆已填寫
             let isComplete = true;
-            
             for (const f of instFields) {
                 if (!f.required) continue;
-
-                // 檢查 Visibility
                 let isVisible = true;
                 if (f.visibilityRule) {
                     const { dep, action, val: ruleValue } = f.visibilityRule;
@@ -5690,11 +5687,9 @@
                     const depValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
                     const ruleValStr = (ruleValue !== undefined && ruleValue !== null) ? String(ruleValue).trim() : "";
                     const ruleMet = (depValStr === ruleValStr); 
-
                     if (action === 'show') isVisible = ruleMet;
                     else if (action === 'hide') isVisible = !ruleMet;
                 }
-                
                 if (isVisible) {
                     const val = formData[f.id];
                     if (val === undefined || val === null || String(val).trim() === "") {
@@ -5706,12 +5701,10 @@
 
             if (!isComplete) return; 
 
-            // 4. 取得機構名稱
             const name = formData[nameFieldId];
             if (!name || typeof name !== 'string' || name.trim() === '') return;
             const safeName = name.trim();
 
-            // 5. 準備要儲存的資料
             const newEntry = {};
             instFields.forEach(f => {
                 let val = formData[f.id];
@@ -5720,10 +5713,7 @@
                 if (val !== "") newEntry[f.id] = val;
             });
 
-            // 6. 檢查與儲存
-            if (!institutionLibrary[safeName]) {
-                institutionLibrary[safeName] = [];
-            }
+            if (!institutionLibrary[safeName]) institutionLibrary[safeName] = [];
             const existingEntries = institutionLibrary[safeName];
 
             const generateFingerprint = (entry) => {
@@ -5736,30 +5726,43 @@
             const newFingerprint = generateFingerprint(newEntry);
             const isDuplicate = existingEntries.some(entry => generateFingerprint(entry) === newFingerprint);
 
-            if (!isDuplicate) {
-                newEntry._last_updated = Date.now();
-                existingEntries.push(newEntry);
+            // ★ 核心邏輯：如果不重複，且這筆資料還沒被詢問過，就跳出提示
+            if (!isDuplicate && !promptedInstFingerprints.has(newFingerprint)) {
+                promptedInstFingerprints.add(newFingerprint);
                 
                 const verCount = existingEntries.length;
-                if (verCount > 1) {
-                    showToast('success', `機構「${safeName}」資料變更，已建立為版本 ${verCount}`);
-                } else {
-                    showToast('success', `已新增機構「${safeName}」至資料庫`);
-                }
+                const title = verCount > 0 ? '更新機構資料？' : '新增機構資料？';
+                const msg = verCount > 0 
+                    ? `偵測到「${safeName}」的資料有修改，是否將新內容儲存為 <b>版本 ${verCount + 1}</b>？`
+                    : `偵測到尚未建立的機構「${safeName}」，是否儲存至機構庫中供未來快速套用？`;
 
-                // 刷新介面
-                if (typeof renderInstitutionListItems === 'function' && document.getElementById('inst-list-container')) {
-                    filterInstList();
-                }
-                
-                const detailHeader = document.getElementById('inst-detail-title'); 
-                if (detailHeader && detailHeader.innerText.trim().startsWith(safeName)) {
-                    showInstitutionDetail(safeName); 
-                }
-                
-                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                    saveToLocal();
-                }
+                // 使用 SweetAlert 進行非阻擋式的優雅詢問
+                Swal.fire({
+                    title: title,
+                    html: msg,
+                    icon: 'question',
+                    showCancelButton: true,
+                    confirmButtonColor: '#002E5D',
+                    cancelButtonColor: '#94a3b8',
+                    confirmButtonText: '是的，我要儲存',
+                    cancelButtonText: '不用了'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        newEntry._last_updated = Date.now();
+                        existingEntries.push(newEntry);
+                        
+                        showToast('success', verCount > 0 ? `已儲存為版本 ${verCount + 1}` : `已新增機構「${safeName}」`);
+
+                        if (typeof renderInstitutionListItems === 'function' && document.getElementById('inst-list-container')) {
+                            filterInstList();
+                        }
+                        const detailHeader = document.getElementById('inst-detail-title'); 
+                        if (detailHeader && detailHeader.innerText.trim().startsWith(safeName)) {
+                            showInstitutionDetail(safeName); 
+                        }
+                        if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') saveToLocal();
+                    }
+                });
             }
         }
         
@@ -5837,107 +5840,49 @@
             container.innerHTML = '';
             
             if (names.length === 0) {
-                container.innerHTML = '<div class="p-4 text-center text-slate-400 text-sm">無符合資料</div>';
+                container.innerHTML = '<div class="p-8 text-center text-slate-400 text-sm">找不到符合的機構</div>';
                 return;
             }
 
-            const tree = {}; 
-            const roots = []; 
-
-            names.forEach(name => {
+            names.sort().forEach(name => {
                 const parent = institutionRelations[name];
-                if (parent && names.includes(parent)) {
-                    if (!tree[parent]) tree[parent] = [];
-                    tree[parent].push(name);
-                } else {
-                    roots.push(name);
-                }
-            });
+                const entries = institutionLibrary[name] || [];
+                const isEmpty = entries.length === 0;
 
-            const renderNode = (name, level = 0) => {
-                const children = tree[name] || [];
-                const hasChildren = children.length > 0;
-                const paddingLeft = level * 1.5 + 0.5;
-                
                 const wrapper = document.createElement('div');
-                wrapper.className = 'mb-0.5 select-none relative'; 
+                wrapper.className = 'mb-1';
 
-                const bgClass = level === 0 ? 'hover:bg-slate-50' : 'bg-slate-50 hover:bg-indigo-50/50';
-                
                 const el = document.createElement('div');
-                el.className = `inst-list-item flex items-center justify-between p-2 rounded-lg cursor-pointer border border-transparent hover:border-slate-200 transition duration-150 ${bgClass}`;
-                el.style.paddingLeft = `${paddingLeft}rem`;
+                el.className = 'inst-list-item flex flex-col p-3 rounded-lg cursor-pointer border border-transparent hover:border-slate-200 bg-white hover:bg-indigo-50/50 transition duration-150 shadow-sm';
                 
-                const isEmpty = (institutionLibrary[name] || []).length === 0;
-                const emptyTag = isEmpty ? `<span class="ml-2 text-[10px] text-slate-400 border border-slate-200 px-1 rounded flex-shrink-0">純架構</span>` : '';
-                
-                const childCountBadge = hasChildren 
-                    ? `<span class="ml-auto bg-slate-100 text-slate-500 text-[10px] px-1.5 py-0.5 rounded-full font-bold group-hover:bg-indigo-100 group-hover:text-indigo-600 transition">${children.length}</span>` 
-                    : '';
-
-                let iconHtml = '';
-                if (hasChildren) {
-                    iconHtml = `<div class="w-5 h-5 flex items-center justify-center mr-1 transition-transform duration-200 caret-icon"><i class="fas fa-caret-right text-slate-400"></i></div>`;
-                } else {
-                    iconHtml = level > 0 
-                        ? `<div class="w-5 h-5 flex items-center justify-center mr-1"><i class="fas fa-level-up-alt rotate-90 text-slate-200 text-xs"></i></div>`
-                        : `<div class="w-5 h-5 flex items-center justify-center mr-1"><i class="fas fa-circle text-[4px] text-slate-300"></i></div>`;
-                }
+                let tagsHtml = '';
+                if (isEmpty) tagsHtml += `<span class="text-[10px] text-slate-400 border border-slate-200 px-1.5 py-0.5 rounded mr-1">純架構</span>`;
+                if (parent) tagsHtml += `<span class="text-[10px] text-indigo-500 bg-indigo-100 px-1.5 py-0.5 rounded" title="隸屬於: ${parent}">分支機構</span>`;
 
                 el.innerHTML = `
-                    <div class="flex items-center min-w-0 flex-grow">
-                        ${iconHtml}
-                        <span class="inst-list-item-title font-bold text-slate-700 text-sm truncate mr-2">${name}</span>
-                        ${emptyTag}
+                    <div class="flex items-start justify-between">
+                        <span class="inst-list-item-title font-bold text-slate-700 text-sm leading-tight">${name}</span>
                     </div>
-                    ${childCountBadge}
+                    <div class="flex items-center mt-2 gap-1">
+                        ${tagsHtml}
+                        <span class="text-[10px] text-slate-400 ml-auto bg-slate-50 px-2 py-0.5 rounded-full">${entries.length} 個版本</span>
+                    </div>
                 `;
-                
-                wrapper.appendChild(el);
 
-                let childContainer = null;
-                if (hasChildren) {
-                    childContainer = document.createElement('div');
-                    // ★ 修正：移除 overflow-hidden，確保外框不被切掉
-                    childContainer.className = 'hidden transition-all duration-300 ease-in-out border-l border-slate-200 ml-4 pl-1 inst-child-container'; 
-                    children.forEach(child => {
-                        childContainer.appendChild(renderNode(child, level + 1));
-                    });
-                    wrapper.appendChild(childContainer);
-                }
-
-                el.onclick = (e) => {
-                    e.stopPropagation();
+                el.onclick = () => {
                     showInstitutionDetail(name);
                     
-                    // 重置選取狀態
                     document.querySelectorAll('.inst-list-item').forEach(i => {
-                        i.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'text-indigo-700', 'z-20', 'relative');
-                        const title = i.querySelector('.inst-list-item-title');
-                        if(title) title.classList.remove('text-indigo-800');
+                        i.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
+                        i.querySelector('.inst-list-item-title').classList.remove('text-indigo-800');
                     });
                     
-                    // 設定選取狀態 (加入 z-20 確保浮在上方)
                     el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
                     el.querySelector('.inst-list-item-title').classList.add('text-indigo-800');
-
-                    if (childContainer) {
-                        const isHidden = childContainer.classList.contains('hidden');
-                        const icon = el.querySelector('.caret-icon');
-                        if (isHidden) {
-                            childContainer.classList.remove('hidden');
-                            if(icon) icon.style.transform = 'rotate(90deg)'; 
-                        } else {
-                            childContainer.classList.add('hidden');
-                            if(icon) icon.style.transform = 'rotate(0deg)'; 
-                        }
-                    }
                 };
-                return wrapper;
-            };
-
-            roots.sort().forEach(rootName => {
-                container.appendChild(renderNode(rootName));
+                
+                wrapper.appendChild(el);
+                container.appendChild(wrapper);
             });
         }
 
@@ -5971,64 +5916,109 @@
             const modalId = 'add-inst-modal';
             if(document.getElementById(modalId)) document.getElementById(modalId).remove();
 
+            // 抓取設定檔中的機構欄位
+            const instFields = (currentYearConfig.fields || []).filter(f => f.category === 'internship_institution_info');
+
             const modal = document.createElement('div');
             modal.id = modalId;
             modal.className = 'fixed inset-0 z-[180] flex items-center justify-center modal-overlay p-4';
             
+            // 產生表單 HTML
+            let formHtml = '';
+            instFields.forEach(f => {
+                let inputHtml = '';
+                if (f.type === 'single_select') {
+                    inputHtml = `<select id="modal-inst-${f.id}" class="input-stylish bg-white"><option value="">請選擇...</option>${(f.options||[]).map(o=>`<option value="${o}">${o}</option>`).join('')}</select>`;
+                } else if (f.type === 'address') {
+                    inputHtml = `<textarea id="modal-inst-${f.id}" class="input-stylish custom-scroll" rows="2" style="resize:none; height:auto;"></textarea>`;
+                } else {
+                    inputHtml = `<input type="text" id="modal-inst-${f.id}" class="input-stylish bg-white" placeholder="${f.placeholder||''}">`;
+                }
+                
+                // 讓名稱和地址佔滿整行，其餘並排
+                const colSpanClass = (f.id === 'internship_institution_name' || f.type === 'address') ? 'col-span-2' : '';
+                
+                formHtml += `
+                    <div class="${colSpanClass}">
+                        <label class="block text-xs font-bold text-slate-700 mb-1">${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}</label>
+                        ${inputHtml}
+                    </div>
+                `;
+            });
+
             modal.innerHTML = `
-                <div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 animate-fade-in">
-                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 animate-fade-in flex flex-col max-h-[90vh]">
+                    <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center flex-shrink-0">
                         <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                            <i class="fas fa-plus-circle text-primary"></i> 新增機構
+                            <i class="fas fa-plus-circle text-primary"></i> 建立新機構資料
                         </h3>
                         <button onclick="document.getElementById('${modalId}').remove()" class="text-slate-400 hover:text-slate-600"><i class="fas fa-times"></i></button>
                     </div>
                     
-                    <div class="p-6 space-y-4">
-                        <div class="bg-indigo-50 text-indigo-800 text-sm p-3 rounded-lg border border-indigo-100">
-                            <i class="fas fa-info-circle mr-1"></i> 此功能用於手動建立機構 (例如：建立一個沒有實習生的總公司，以便將分公司歸戶)。
+                    <div class="p-6 overflow-y-auto custom-scroll bg-slate-50/50">
+                        <div class="bg-blue-50 text-blue-800 text-sm p-4 rounded-xl border border-blue-100 mb-6 shadow-sm">
+                            <i class="fas fa-info-circle mr-1"></i> 您可以在此預先建立機構的詳細資料。儲存後，未來學生填報時即可直接套用此版本。
                         </div>
-                        <div>
-                            <label class="block text-sm font-bold text-slate-700 mb-1">機構名稱</label>
-                            <input type="text" id="new-inst-name" class="input-stylish" placeholder="請輸入完整機構名稱...">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-x-4 gap-y-5 bg-white p-6 rounded-xl border border-slate-200 shadow-sm">
+                            ${formHtml || '<div class="col-span-2 text-center text-slate-400">尚未載入機構欄位設定</div>'}
                         </div>
                     </div>
 
-                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
-                        <button onclick="document.getElementById('${modalId}').remove()" class="px-4 py-2 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-200 transition">取消</button>
-                        <button id="btn-confirm-add-inst" class="px-6 py-2 rounded-lg font-bold text-sm text-white bg-primary hover:bg-sky-900 shadow-md transition">確認新增</button>
+                    <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
+                        <button onclick="document.getElementById('${modalId}').remove()" class="px-5 py-2 rounded-lg font-bold text-sm text-slate-500 hover:bg-slate-200 transition">取消</button>
+                        <button id="btn-confirm-add-inst" class="px-8 py-2 rounded-lg font-bold text-sm text-white bg-primary hover:bg-sky-900 shadow-md transition flex items-center gap-2">
+                            <i class="fas fa-save"></i> 確認並儲存
+                        </button>
                     </div>
                 </div>
             `;
             
             document.body.appendChild(modal);
-            const input = document.getElementById('new-inst-name');
-            setTimeout(() => input.focus(), 100);
+            
+            // 自動 Focus 到名稱欄位
+            const nameInput = document.getElementById('modal-inst-internship_institution_name');
+            if(nameInput) setTimeout(() => nameInput.focus(), 100);
 
+            // 儲存邏輯
             document.getElementById('btn-confirm-add-inst').onclick = () => {
-                const name = input.value.trim();
-                if (!name) {
-                    showToast('warning', '請輸入機構名稱');
-                    return;
+                const nameEl = document.getElementById('modal-inst-internship_institution_name');
+                if(!nameEl) return showToast('error', '找不到機構名稱欄位');
+                
+                const name = nameEl.value.trim();
+                if (!name) return showToast('warning', '請務必輸入「機構名稱」');
+                
+                const newEntry = {};
+                let hasValue = false;
+                
+                instFields.forEach(f => {
+                    const el = document.getElementById(`modal-inst-${f.id}`);
+                    if (el && el.value.trim() !== '') {
+                        newEntry[f.id] = el.value.trim();
+                        hasValue = true;
+                    }
+                });
+
+                if (!institutionLibrary[name]) {
+                    institutionLibrary[name] = [];
                 }
                 
-                if (institutionLibrary[name]) {
-                    showToast('warning', '該機構已存在');
-                    return;
-                }
+                newEntry._last_updated = Date.now();
+                institutionLibrary[name].push(newEntry);
                 
-                // 建立空機構
-                institutionLibrary[name] = [];
+                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') saveToLocal();
                 
-                if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                    saveToLocal();
-                }
-                
-                showToast('success', `已建立機構：${name}`);
+                showToast('success', `已成功建立機構：${name}`);
                 document.getElementById(modalId).remove();
                 
-                // 刷新列表並選中
+                // 刷新列表並切換到該機構
                 filterInstList();
+                
+                // 清空搜尋框以確保能看到新增的項目
+                const searchInput = document.getElementById('inst-list-search');
+                if(searchInput) {
+                    searchInput.value = name;
+                    filterInstList();
+                }
                 showInstitutionDetail(name);
             };
         }
@@ -6317,7 +6307,7 @@
             const panel = document.getElementById('inst-detail-panel');
             const entries = institutionLibrary[name] || [];
             
-            // Highlight 同步邏輯 (保持不變)
+            // 同步左側 Highlight
             document.querySelectorAll('.inst-list-item').forEach(el => {
                 const title = el.querySelector('.inst-list-item-title');
                 const text = title ? title.innerText : el.innerText;
@@ -6325,32 +6315,46 @@
                     el.classList.remove('border-transparent', 'hover:border-slate-200');
                     el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
                     if(title) title.classList.add('text-indigo-800');
-                } else {
-                    el.classList.add('border-transparent', 'hover:border-slate-200');
-                    el.classList.remove('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
-                    if(title) title.classList.remove('text-indigo-800');
                 }
             });
 
+            // 取得關聯資料
             const parentName = institutionRelations[name] || null;
-            const parentHtml = parentName 
-                ? `<div class="mb-2 text-xs text-indigo-600 bg-indigo-50 inline-block px-2 py-1 rounded cursor-pointer hover:bg-indigo-100" onclick="showInstitutionDetail('${parentName}')"><i class="fas fa-level-up-alt rotate-90 mr-1"></i>隸屬於: <strong>${parentName}</strong></div>`
-                : `<div class="mb-2 text-xs text-slate-400"><i class="fas fa-building mr-1"></i>獨立機構 / 總公司</div>`;
+            const children = Object.keys(institutionRelations).filter(k => institutionRelations[k] === name);
 
             panel.innerHTML = `
-                <div class="flex flex-col h-full">
-                    <div class="px-8 py-6 pb-2">
-                        ${parentHtml}
-                        <div class="flex justify-between items-start mb-4">
+                <div class="flex flex-col h-full bg-white">
+                    <div class="px-8 py-6 pb-4 border-b border-slate-100 flex-shrink-0">
+                        <div class="flex justify-between items-start mb-5">
                             <h2 id="inst-detail-title" class="text-2xl font-bold text-slate-800 flex items-center gap-3">
                                 ${name}
                                 <span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full">共 ${entries.length} 個版本</span>
                             </h2>
-                            <button id="set-parent-btn" class="text-xs bg-white border border-slate-300 text-slate-600 px-3 py-1.5 rounded hover:bg-slate-50 hover:text-primary transition" title="設定此機構的總公司">
-                                <i class="fas fa-sitemap mr-1"></i> 設定總公司
-                            </button>
                         </div>
                         
+                        <div class="flex gap-4 p-4 bg-slate-50 rounded-xl mb-5 border border-slate-200">
+                            <div class="flex-1">
+                                <div class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-sitemap mr-1"></i> 上層機構 / 總公司</div>
+                                <div class="flex items-center gap-3">
+                                    ${parentName 
+                                        ? `<span class="font-bold text-indigo-700 bg-indigo-100 px-3 py-1 rounded cursor-pointer hover:bg-indigo-200 transition" onclick="showInstitutionDetail('${parentName}')">${parentName}</span>` 
+                                        : `<span class="text-slate-400 text-sm">無 (本身即為最高層)</span>`}
+                                    <button onclick="openSetParentModal('${name}', '${parentName || ''}')" class="text-xs font-bold bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded shadow-sm hover:bg-slate-100 hover:text-primary transition">
+                                        <i class="fas fa-edit"></i> 設定
+                                    </button>
+                                </div>
+                            </div>
+                            <div class="w-px bg-slate-200"></div>
+                            <div class="flex-1">
+                                <div class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-code-branch mr-1"></i> 旗下分支機構</div>
+                                <div class="flex flex-wrap gap-1.5">
+                                    ${children.length > 0 
+                                        ? children.map(c => `<span class="text-xs font-bold bg-white border border-slate-200 text-slate-600 shadow-sm px-2 py-1 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition" onclick="showInstitutionDetail('${c}')">${c}</span>`).join('') 
+                                        : '<span class="text-slate-400 text-sm">無分支機構</span>'}
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="flex items-stretch gap-3 h-[42px]">
                             <div class="version-select-wrapper flex-grow relative h-full">
                                 <select id="inst-version-select" class="version-select w-full h-full border border-slate-300 rounded-lg px-4 pl-4 pr-10 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-f1f5f9 appearance-none leading-[40px] py-0">
@@ -6364,25 +6368,19 @@
                                 </select>
                                 <i class="fas fa-chevron-down version-select-icon absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                             </div>
-                            
-                            <button id="del-inst-version-btn" class="flex-shrink-0 w-12 h-full flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm" title="刪除此版本">
-                                <i class="fas fa-trash-alt"></i>
-                            </button>
-
-                            <button id="apply-inst-version-btn" 
-                                class="flex-shrink-0 h-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 rounded-lg transition shadow-md text-sm whitespace-nowrap flex items-center">
-                                <i class="fas fa-download mr-2"></i> 套用此版本
-                            </button>
+                            <button id="del-inst-version-btn" class="flex-shrink-0 w-12 h-full flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm" title="刪除此版本"><i class="fas fa-trash-alt"></i></button>
+                            <button id="apply-inst-version-btn" class="flex-shrink-0 h-full bg-primary hover:bg-sky-800 text-white font-bold px-6 rounded-lg transition shadow-md text-sm whitespace-nowrap flex items-center"><i class="fas fa-download mr-2"></i> 套用到目前表單</button>
                         </div>
-                        </div>
-                    <div class="flex-grow overflow-y-auto custom-scroll px-8 pb-8 space-y-6">
-                        <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3"></div>
+                    </div>
+                    
+                    <div class="flex-grow overflow-y-auto custom-scroll bg-slate-50/50 px-8 py-6 space-y-6">
+                        <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-3"></div>
                         <div>
                             <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                <i class="fas fa-users text-indigo-500"></i> 使用此版本的學生
+                                <i class="fas fa-users text-indigo-500"></i> 使用此版本的學生紀錄
                                 <span id="inst-student-count" class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full">0</span>
                             </h4>
-                            <div id="inst-student-list" class="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100"></div>
+                            <div id="inst-student-list" class="bg-white border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100"></div>
                         </div>
                     </div>
                 </div>
