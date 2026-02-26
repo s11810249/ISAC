@@ -2626,44 +2626,19 @@
             saveToLocal();
         }
 
+        // ★ 修正：統一判定邏輯，與進度條同步
         function getAppFillStatus(app) {
             if (!currentYearConfig || !currentYearConfig.fields) return false;
-            let isComplete = true;
+
+            // 1. 如果勾選了「無須填報」，直接視為該單已完成
+            const isNotRequired = (app.formData['ineligible_reporting_check'] === true || app.formData['ineligible_reporting_check'] === 'true');
+            if (isNotRequired) return true;
+
+            // 2. 呼叫與進度條相同的計算函式
+            const stats = calculateAppStats(app);
             
-            for (let f of currentYearConfig.fields) {
-                // 只檢查後台被勾選為「必填」的欄位
-                if (!f.required) continue;
-                
-                // 檢查該欄位目前是否因為「顯示條件(Visibility)」邏輯而被隱藏
-                // 如果被隱藏了，就算沒填也算是完整
-                let isVisible = true;
-                if (f.visibilityRule && f.visibilityRule.dep) {
-                    let depVal = app.formData[f.visibilityRule.dep];
-                    if (depVal === undefined) depVal = '';
-                    
-                    let targetVal = f.visibilityRule.val;
-                    if (typeof targetVal === 'boolean') {
-                        depVal = (depVal === 'true' || depVal === true);
-                    }
-                    
-                    let conditionMet = (String(depVal) === String(targetVal));
-                    if (f.visibilityRule.action === 'hide') {
-                        isVisible = !conditionMet;
-                    } else {
-                        isVisible = conditionMet;
-                    }
-                }
-                
-                // 如果欄位可見且必填，但完全沒有值，則視為未完成 (填報中)
-                if (isVisible) {
-                    let val = app.formData[f.id];
-                    if (val === undefined || val === null || String(val).trim() === '') {
-                        isComplete = false;
-                        break;
-                    }
-                }
-            }
-            return isComplete;
+            // 3. 只有當必填欄位 100% 填完才回傳 true
+            return stats.percent === 100;
         }
         
         function updateSidebarFilters() {
@@ -3811,7 +3786,8 @@
                 container.classList.add('hidden');
             }
             
-            renderTabs(student);
+            renderTabs(student);      // 更新上方頁籤狀態
+            renderStudentList();      // ★ 新增：同步更新左側學生名單狀態 (變色、計數)
         }
         
         function evaluateLogic(app) {
