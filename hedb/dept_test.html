@@ -5785,7 +5785,57 @@
             }
         }
         
-        // 4. 開啟「機構清單與關聯查詢」視窗 (含手動新增功能)
+        // --- ★ 新增：匯出機構庫 ---
+        window.exportInstitutionData = function() {
+            if (Object.keys(institutionLibrary).length === 0) {
+                return showToast('warning', '目前沒有任何機構資料可匯出');
+            }
+            const data = {
+                library: institutionLibrary,
+                relations: institutionRelations
+            };
+            const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+            saveAs(blob, `機構資料庫備份_${new Date().toISOString().slice(0,10)}.json`);
+            showToast('success', '已成功匯出機構資料庫');
+        };
+
+        // --- ★ 新增：匯入機構庫 ---
+        window.importInstitutionData = function(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const data = JSON.parse(e.target.result);
+                    if (data.library && typeof data.library === 'object') {
+                        const confirm = await showConfirm('確認匯入？', '即將匯入機構資料。\n遇到相同名稱的機構時，舊資料將會被覆蓋，確定要繼續嗎？');
+                        if (!confirm) {
+                            event.target.value = '';
+                            return;
+                        }
+                        // 合併資料
+                        Object.assign(institutionLibrary, data.library);
+                        if (data.relations) Object.assign(institutionRelations, data.relations);
+                        
+                        if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') saveToLocal();
+                        
+                        showToast('success', '機構資料庫匯入成功！');
+                        filterInstList(); // 重新整理列表
+                    } else {
+                        throw new Error('檔案格式不符');
+                    }
+                } catch (err) {
+                    console.error(err);
+                    showToast('error', '匯入失敗：檔案格式錯誤或損毀');
+                } finally {
+                    event.target.value = '';
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // 4. 開啟「機構清單與關聯查詢」視窗 (加入匯入/匯出按鈕)
         function openInstitutionList(preSelectName = null) {
             const modalId = 'inst-list-modal';
             if(document.getElementById(modalId)) document.getElementById(modalId).remove();
@@ -5800,7 +5850,19 @@
                         <h3 class="text-lg font-bold flex items-center gap-2">
                             <i class="fas fa-building"></i> 機構清單與關聯查詢
                         </h3>
-                        <button onclick="document.getElementById('${modalId}').remove()" class="text-white hover:text-slate-200 w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                        <div class="flex items-center gap-2">
+                            <div class="flex bg-indigo-800/50 rounded-lg p-1 mr-2 shadow-inner">
+                                <label class="cursor-pointer hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1.5" title="匯入機構資料 (.json)">
+                                    <i class="fas fa-file-import"></i> 匯入
+                                    <input type="file" class="hidden" accept=".json" onchange="importInstitutionData(event)">
+                                </label>
+                                <div class="w-px bg-indigo-700/50 my-1 mx-0.5"></div>
+                                <button onclick="exportInstitutionData()" class="hover:bg-white/20 text-white px-3 py-1.5 rounded text-xs font-bold transition flex items-center gap-1.5" title="匯出機構資料 (.json)">
+                                    <i class="fas fa-file-export"></i> 匯出
+                                </button>
+                            </div>
+                            <button onclick="document.getElementById('${modalId}').remove()" class="text-white hover:text-slate-200 w-8 h-8 rounded-full hover:bg-white/20 flex items-center justify-center transition"><i class="fas fa-times"></i></button>
+                        </div>
                     </div>
                     
                     <div class="flex flex-grow overflow-hidden">
@@ -6161,6 +6223,20 @@
                 evaluateModalInstLogic();
                 const nameInput = document.getElementById('modal-inst-internship_institution_name');
                 if(nameInput) nameInput.focus();
+                
+                // ★ 新增：綁定地址欄位的正規化邏輯 (blur 失去焦點時觸發)
+                instFields.forEach(f => {
+                    if (f.type === 'address') {
+                        const el = document.getElementById(`modal-inst-${f.id}`);
+                        if (el) {
+                            el.addEventListener('blur', (e) => {
+                                // 呼叫與表單模式相同的正規化函式
+                                processAddress(e.target, f);
+                                evaluateModalInstLogic(); // 格式化後重新驗證邏輯
+                            });
+                        }
+                    }
+                });
             }, 50);
 
             // 儲存邏輯
@@ -6528,7 +6604,7 @@
                             </div>
                             
                             <button onclick="openSetParentModal('${name}', '${parentName || ''}')" class="text-xs bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded hover:bg-slate-50 hover:text-primary hover:border-primary transition shadow-sm flex items-center gap-1">
-                                <i class="fas fa-sitemap"></i> 設定架構
+                                <i class="fas fa-sitemap"></i> 設定總公司/上層機構
                             </button>
                         </div>
                         
