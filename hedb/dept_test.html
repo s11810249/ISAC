@@ -1361,11 +1361,9 @@
         // 3. 執行存檔 (將被各個修改函式呼叫)
         // 1. 儲存至 LocalStorage (完整確保打包與壓縮)
         function saveToLocal() {
-            // 檢查是否啟用
             if (localStorage.getItem(STORAGE_KEY + '_enabled') !== 'true') return;
             if (!allRawData || allRawData.length === 0) return;
 
-            // 提取所有歸戶資料
             const allApps = [];
             Object.values(groupedStudents).forEach(s => {
                 if(s.applications) {
@@ -1380,7 +1378,6 @@
                 }
             });
 
-            // ★ 核心狀態打包 (必須保留！)
             const state = {
                 rawData: allRawData,
                 apps: allApps,
@@ -1391,71 +1388,51 @@
             };
             
             try {
-                // 進行高強度壓縮
                 const compressedState = LZString.compressToUTF16(JSON.stringify(state));
                 const compressedLib = LZString.compressToUTF16(JSON.stringify(institutionLibrary));
                 const compressedRels = LZString.compressToUTF16(JSON.stringify(institutionRelations));
         
-                // 寫入瀏覽器暫存
                 localStorage.setItem(STORAGE_KEY, compressedState);
                 localStorage.setItem(LIB_STORAGE_KEY, compressedLib);
                 localStorage.setItem(REL_STORAGE_KEY, compressedRels);
                 
-                // 更新按鈕容量顯示
                 updateStorageBtn(true);
-                
             } catch (e) {
-                console.error("Storage full or error", e);
-                // 防呆：若空間依然不足，自動關閉暫存並跳出紅色警告
-                showToast('error', '暫存失敗：儲存空間不足，已暫時關閉暫存保護。');
+                console.error("Storage full", e);
+                showToast('error', '儲存空間不足，已自動關閉暫存保護');
                 localStorage.setItem(STORAGE_KEY + '_enabled', 'false');
                 updateStorageBtn(false);
             }
         }
-
+        
         // 4. 檢查並還原 (OnInit 呼叫)
         async function checkAndRestore() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true'; // 檢查暫存狀態
+            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
             
-            // ★ 安全解析函式：極致防呆，自動判斷新版壓縮、舊版壓縮或純文字
             const safeParse = (str) => {
                 if (!str) return null;
                 try {
                     const decompressed = LZString.decompressFromUTF16(str);
-                    if (decompressed) return JSON.parse(decompressed);
+                    if (decompressed && (decompressed.startsWith('{') || decompressed.startsWith('['))) {
+                        return JSON.parse(decompressed);
+                    }
                 } catch (e) { }
-                try {
-                    const decompressed = LZString.decompress(str);
-                    if (decompressed) return JSON.parse(decompressed);
-                } catch (e) { }
-                try {
-                    return JSON.parse(str); 
-                } catch (e) {
-                    return null;
-                }
+                try { return JSON.parse(str); } catch (e) { return null; }
             };
 
             if (isEnabled) {
                 try {
                     const savedLib = localStorage.getItem(LIB_STORAGE_KEY);
                     if(savedLib) institutionLibrary = safeParse(savedLib) || {};
-        
                     const savedRels = localStorage.getItem(REL_STORAGE_KEY);
                     if(savedRels) institutionRelations = safeParse(savedRels) || {};
-                } catch(e) { 
-                    console.error("Library load error", e); 
-                    institutionLibrary = {}; 
-                }
+                } catch(e) { institutionLibrary = {}; }
             }
 
             if (saved) {
-                let shouldRestore = false;
-                
-                // ★ 體驗優化：如果已經啟用暫存，無縫自動還原；沒啟用才跳出詢問
-                if (isEnabled) {
-                    shouldRestore = true;
-                } else {
+                let shouldRestore = isEnabled;
+                if (!isEnabled) {
                     shouldRestore = await showConfirm('發現未完成的暫存', '系統發現您上次有未儲存的填報進度，是否還原？');
                 }
 
@@ -1464,32 +1441,27 @@
                         const state = safeParse(saved);
                         if (!state || !state.rawData) throw new Error("資料解析為空");
                         
-                        // ★ 先還原學年度 (很重要！否則後續渲染會找不到設定檔)
+                        // ★ 關鍵 A：必須先載入正確的學年度設定檔，後面的渲染才不會空白
                         if (state.year) {
                             await changeYear(state.year);
                         }
 
-                        // 1. 還原核心資料 
+                        // ★ 關鍵 B：還原核心數據
                         await processUploadedData(state.rawData, state.apps);
                         
-                        // 2. 還原視圖狀態與選取的學生
                         if(state.mode) currentViewMode = state.mode;
                         
-                        // ★ 延遲還原學生選取，避免被 processUploadedData 內的初始化覆蓋
+                        // ★ 關鍵 C：等數據都穩定後，再切換回最後選取的學生
                         if(state.studentId) {
-                            setTimeout(() => {
-                                selectStudent(state.studentId);
-                            }, 100); 
+                            setTimeout(() => selectStudent(state.studentId), 200); 
                         }
                         
-                        // 3. 確保狀態為啟用
                         localStorage.setItem(STORAGE_KEY + '_enabled', 'true');
                         updateStorageBtn(true);
-                        
-                        if (!isEnabled) showToast('success', '已成功還原暫存資料');
+                        if (!isEnabled) showToast('success', '已還原暫存資料');
                     } catch (e) {
                         console.error(e);
-                        showToast('error', '還原失敗：暫存資料可能已損毀');
+                        showToast('error', '還原失敗：暫存資料損毀');
                     }
                 } else {
                     updateStorageBtn(true); 
@@ -3592,7 +3564,6 @@
                     // ★★★ 定義更新資料的函式 (包含機構收集與 Checkbox 支援) ★★★
                     const updateData = (e) => {
                         let newVal;
-                        // 修正：依據類型取值
                         if (e.target.type === 'checkbox') {
                             newVal = e.target.checked;
                         } else {
@@ -3616,6 +3587,8 @@
                             evaluateLogic(app);
                             hasUnsavedChanges = true;
                             logChange(f.id, app.id, oldVal, newVal, groupedStudents[currentStudentId].id); 
+                            
+                            saveToLocal();
                         }
                     };
 
