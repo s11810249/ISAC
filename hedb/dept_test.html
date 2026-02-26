@@ -1899,9 +1899,11 @@
             const textareas = tr.querySelectorAll('textarea.grid-input');
             if (textareas.length === 0) return;
 
-            // 1. 先全部強制釋放為 1px，讓 TR 能縮減高度
+            // 1. 先全部強制釋放為 1px，並重置 padding，讓系統能測量最真實的「內容高度」
             textareas.forEach(ta => {
                 ta.style.setProperty('height', '1px', 'important');
+                ta.style.paddingTop = '6px'; 
+                ta.style.paddingBottom = '6px';
             });
 
             // 2. 找出該列中需要的最巨量高度 (以此列內容最多的那格為準)
@@ -1912,9 +1914,16 @@
                 }
             });
 
-            // 3. 將最大高度統一套用到該列的所有 textarea，確保可編輯範圍跟著撐高
+            // 3. 將最大高度統一套用到該列的所有 textarea
+            //    ★ 魔法邏輯：如果這個格子內容比較少，我們就用 JavaScript 動態計算需要補充的 paddingTop，把它剛好推到正中間！
             textareas.forEach(ta => {
+                const scrollH = ta.scrollHeight;
                 ta.style.setProperty('height', maxH + 'px', 'important');
+                
+                if (maxH > scrollH) {
+                    const extraSpace = maxH - scrollH;
+                    ta.style.paddingTop = (6 + extraSpace / 2) + 'px';
+                }
             });
         }
         
@@ -5273,11 +5282,12 @@
                         let input;
                         let wrapperDiv = null; // ★ 新增：用於置中的容器
 
-                        if (f.type === 'list') {
+                        if (f.type === 'text' || f.type === 'address' || f.type === 'list') { 
                             input = document.createElement('textarea');
                             input.rows = 1; 
                             input.className = "grid-input custom-scroll";
                             input.style.resize = "none";
+                            // ★ 統一靠左對齊
                             input.style.textAlign = 'left';
                             input.style.whiteSpace = 'pre-wrap'; 
                             input.style.overflow = 'hidden';     
@@ -5285,7 +5295,6 @@
                             input.style.lineHeight = '1.5';
                             input.style.padding = '6px 8px';     
                             
-                            // ★ 修改：加入允許空白的防呆檢查
                             input.addEventListener('input', function() { 
                                 if (f.type === 'list') {
                                     if (this.value === '') {
@@ -5297,9 +5306,16 @@
                                 autoResizeGridRow(tr); // 觸發整列縮放
                             });
                             
-                            // 綁定智慧編號事件
+                            // 綁定智慧編號事件 (僅 list 需要)
                             if (f.type === 'list') {
                                 input.addEventListener('keydown', handleListKeydown);
+                                
+                                input.addEventListener('focus', function() {
+                                    if (this.value.trim() === '') {
+                                        this.value = '1. ';
+                                        this.dispatchEvent(new Event('input')); // 觸發同步調整
+                                    }
+                                });
                             }
 
                         } else if (f.type === 'single_select') {
@@ -5332,7 +5348,8 @@
                             input = document.createElement('input');
                             input.type = "text";
                             input.className = "grid-input";
-                            input.style.textAlign = (f.type === 'text' || f.type === 'address') ? 'left' : 'center';
+                            // ★ 其他輸入框 (如日期、數字) 維持置中
+                            input.style.textAlign = 'center';
                             if (f.type === 'date') {
                                 input.placeholder = f.inputFormat === 'ROC' ? "yyy/mm/dd" : "yyyy/mm/dd";
                             }
