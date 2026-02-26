@@ -5863,41 +5863,107 @@
                 return;
             }
 
-            names.sort().forEach(name => {
+            // 建構樹狀結構
+            const tree = {}; 
+            const roots = []; 
+
+            // 先找出所有根節點與子節點
+            names.forEach(name => {
                 const parent = institutionRelations[name];
-                const entries = institutionLibrary[name] || [];
-                const isEmpty = entries.length === 0;
+                // 只有當「有設定父層」且「父層也在目前的搜尋結果中」時，才視為子節點
+                // 這樣搜尋時若只搜到分公司，它會顯示為根節點，不會消失
+                if (parent && names.includes(parent)) {
+                    if (!tree[parent]) tree[parent] = [];
+                    tree[parent].push(name);
+                } else {
+                    roots.push(name);
+                }
+            });
+
+            // 遞迴渲染函式
+            const renderNode = (name, level = 0) => {
+                const children = tree[name] || [];
+                const hasChildren = children.length > 0;
+                
+                // 計算縮排 (每層 1.2rem)
+                const paddingLeft = level * 1.2 + 0.5;
+                
+                const wrapper = document.createElement('div');
+                wrapper.className = 'mb-0.5 select-none relative transition-all';
 
                 const el = document.createElement('div');
-                // 使用簡潔的底線分隔，變得更像檔案總管清單
-                el.className = 'inst-list-item flex items-center justify-between p-3 border-b border-slate-100 cursor-pointer hover:bg-slate-50 transition duration-150';
+                el.className = `inst-list-item flex items-center p-2 rounded-lg cursor-pointer border border-transparent hover:border-slate-200 hover:bg-slate-50 transition duration-150`;
+                el.style.paddingLeft = `${paddingLeft}rem`;
                 
-                let tagsHtml = '';
-                if (isEmpty) tagsHtml += `<span class="text-[10px] text-slate-400 border border-slate-200 px-1.5 py-0.5 rounded ml-2 flex-shrink-0">純架構</span>`;
-                if (parent) tagsHtml += `<span class="text-[10px] text-indigo-500 bg-indigo-100 px-1.5 py-0.5 rounded ml-2 flex-shrink-0" title="隸屬於: ${parent}">分支</span>`;
+                const isEmpty = (institutionLibrary[name] || []).length === 0;
+                const entriesCount = (institutionLibrary[name] || []).length;
+
+                // 展開/收合圖示
+                let iconHtml = '';
+                if (hasChildren) {
+                    iconHtml = `<div class="w-5 h-5 flex items-center justify-center mr-1 transition-transform duration-200 caret-icon transform rotate-90"><i class="fas fa-caret-right text-slate-400"></i></div>`;
+                } else {
+                    // 末端節點顯示小圓點或分支線
+                    iconHtml = `<div class="w-5 h-5 flex items-center justify-center mr-1 opacity-50"><i class="fas fa-circle text-[4px] text-slate-400"></i></div>`;
+                }
+
+                // 標籤
+                let metaHtml = '';
+                if (isEmpty) metaHtml += `<span class="text-[10px] text-slate-400 border border-slate-200 px-1 rounded ml-2">純架構</span>`;
+                // 若為純架構且無子節點，不顯示版本數，否則顯示
+                if (!isEmpty) metaHtml += `<span class="text-[10px] text-slate-400 ml-auto bg-slate-50 px-1.5 py-0.5 rounded text-xs">${entriesCount}版</span>`;
 
                 el.innerHTML = `
-                    <div class="flex items-center min-w-0 w-full gap-2">
-                        <span class="inst-list-item-title font-bold text-slate-700 text-sm truncate flex-grow">${name}</span>
-                        ${tagsHtml}
-                    </div>
+                    ${iconHtml}
+                    <span class="inst-list-item-title font-bold text-slate-700 text-sm truncate leading-tight">${name}</span>
+                    ${metaHtml}
                 `;
+                
+                wrapper.appendChild(el);
 
-                el.onclick = () => {
+                let childContainer = null;
+                if (hasChildren) {
+                    childContainer = document.createElement('div');
+                    childContainer.className = 'transition-all duration-300 ease-in-out overflow-hidden'; // 子容器
+                    children.sort().forEach(child => {
+                        childContainer.appendChild(renderNode(child, level + 1));
+                    });
+                    wrapper.appendChild(childContainer);
+                }
+
+                // 點擊事件
+                el.onclick = (e) => {
+                    e.stopPropagation();
                     showInstitutionDetail(name);
                     
+                    // 清除舊 Highlight
                     document.querySelectorAll('.inst-list-item').forEach(i => {
-                        i.classList.remove('bg-indigo-50', 'border-l-4', 'border-indigo-500', 'pl-2');
-                        i.classList.add('p-3', 'border-b', 'border-slate-100');
+                        i.classList.remove('bg-indigo-50', 'text-indigo-700', 'ring-1', 'ring-indigo-200');
                         i.querySelector('.inst-list-item-title').classList.remove('text-indigo-800');
                     });
                     
-                    el.classList.remove('p-3', 'border-b', 'border-slate-100');
-                    el.classList.add('bg-indigo-50', 'border-l-4', 'border-indigo-500', 'pl-2');
+                    // 設定新 Highlight
+                    el.classList.add('bg-indigo-50', 'text-indigo-700', 'ring-1', 'ring-indigo-200');
                     el.querySelector('.inst-list-item-title').classList.add('text-indigo-800');
+
+                    // 展開/收合邏輯
+                    if (childContainer) {
+                        const isHidden = childContainer.classList.contains('hidden');
+                        const icon = el.querySelector('.caret-icon');
+                        if (childContainer.style.display === 'none') {
+                            childContainer.style.display = 'block';
+                            if(icon) icon.style.transform = 'rotate(90deg)';
+                        } else {
+                            childContainer.style.display = 'none';
+                            if(icon) icon.style.transform = 'rotate(0deg)';
+                        }
+                    }
                 };
-                
-                container.appendChild(el);
+                return wrapper;
+            };
+
+            roots.sort().forEach(rootName => {
+                container.appendChild(renderNode(rootName));
             });
         }
 
@@ -5930,50 +5996,67 @@
         window.evaluateModalInstLogic = function() {
             const instFields = (currentYearConfig.fields || []).filter(f => f.category === 'internship_institution_info');
             
+            // 1. 先收集目前表單的所有值
             const formData = {};
             instFields.forEach(f => {
                 const el = document.getElementById(`modal-inst-${f.id}`);
                 if (el) formData[f.id] = el.type === 'checkbox' ? el.checked : el.value;
             });
 
+            // 2. 逐一判斷欄位狀態
             instFields.forEach(f => {
                 const wrapper = document.getElementById(`modal-inst-wrapper-${f.id}`);
                 const inputEl = document.getElementById(`modal-inst-${f.id}`);
-                if (!wrapper || !inputEl) return;
+                if (!inputEl) return;
 
-                let isLocked = false;
+                let isLocked = false; // 預設為解鎖
 
+                // 只有當欄位有設定 visibilityRule 時才進行檢查
                 if (f.visibilityRule && f.visibilityRule.dep) {
                     const depId = f.visibilityRule.dep;
-                    const depVal = formData[depId];
-                    const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
+                    const depVal = formData[depId]; // 取得依賴欄位當下的值
                     
                     const depFieldDef = instFields.find(field => field.id === depId);
                     const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
+                    const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
 
+                    // 規則 A: 非 Checkbox 且為空值 -> 鎖定
                     if (!isDepCheckbox && currentValStr === "") {
                         isLocked = true;
                     } else {
+                        // 規則 B: 比對值
                         const ruleValStr = String(f.visibilityRule.val).trim();
                         let shouldShow = true;
-                        if (f.visibilityRule.action === 'show') {
-                            shouldShow = (currentValStr === ruleValStr);
+                        
+                        // 處理布林值比對 (針對 Checkbox)
+                        if (typeof f.visibilityRule.val === 'boolean') {
+                            const boolDep = (depVal === true || depVal === 'true');
+                            shouldShow = (f.visibilityRule.action === 'show') ? (boolDep === f.visibilityRule.val) : (boolDep !== f.visibilityRule.val);
                         } else {
-                            shouldShow = (currentValStr !== ruleValStr);
+                            // 字串比對
+                            if (f.visibilityRule.action === 'show') {
+                                shouldShow = (currentValStr === ruleValStr);
+                            } else {
+                                shouldShow = (currentValStr !== ruleValStr);
+                            }
                         }
                         if (!shouldShow) isLocked = true;
                     }
                 }
 
-                // 更新 UI 狀態
-                if (isLocked) {
-                    wrapper.classList.add('field-locked'); // 套用現有的變灰樣式
-                    inputEl.disabled = true;
-                    if (inputEl.type === 'checkbox') inputEl.checked = false;
-                    else inputEl.value = "";
-                } else {
-                    wrapper.classList.remove('field-locked');
-                    inputEl.disabled = false;
+                // 更新 UI
+                inputEl.disabled = isLocked;
+                
+                if (wrapper) {
+                    if (isLocked) {
+                        wrapper.classList.add('field-locked', 'opacity-50'); // 加上透明度讓鎖定更有感
+                        // 如果被鎖定，清空值 (選擇性，避免誤存)
+                        if (inputEl.tagName === 'SELECT') inputEl.value = "";
+                        else if (inputEl.type === 'checkbox') inputEl.checked = false;
+                        // text/address 暫不清空，方便使用者切換回來時不用重打
+                    } else {
+                        wrapper.classList.remove('field-locked', 'opacity-50');
+                    }
                 }
             });
         };
@@ -6373,54 +6456,50 @@
             const panel = document.getElementById('inst-detail-panel');
             const entries = institutionLibrary[name] || [];
             
-            // 同步左側 Highlight
+            // 同步左側 Highlight (保持原本邏輯)
             document.querySelectorAll('.inst-list-item').forEach(el => {
                 const title = el.querySelector('.inst-list-item-title');
                 const text = title ? title.innerText : el.innerText;
                 if(text.trim() === name) {
-                    el.classList.remove('border-transparent', 'hover:border-slate-200');
-                    el.classList.add('ring-2', 'ring-indigo-500', 'bg-indigo-50', 'z-20', 'relative');
+                    el.classList.add('bg-indigo-50', 'text-indigo-700', 'ring-1', 'ring-indigo-200');
                     if(title) title.classList.add('text-indigo-800');
+                } else {
+                    el.classList.remove('bg-indigo-50', 'text-indigo-700', 'ring-1', 'ring-indigo-200');
+                    if(title) title.classList.remove('text-indigo-800');
                 }
             });
 
-            // 取得關聯資料
             const parentName = institutionRelations[name] || null;
-            const children = Object.keys(institutionRelations).filter(k => institutionRelations[k] === name);
+
+            // ★ 修改重點 1: 總公司改為精緻的 Breadcrumb 標籤，點擊可跳轉
+            const parentHtml = parentName 
+                ? `<div class="mb-2 flex items-center text-xs text-slate-500">
+                     <span class="mr-1">隸屬於</span>
+                     <button onclick="showInstitutionDetail('${parentName}')" class="font-bold text-indigo-600 hover:text-indigo-800 hover:underline flex items-center gap-1 bg-indigo-50 px-2 py-0.5 rounded transition">
+                        <i class="fas fa-building"></i> ${parentName}
+                     </button>
+                   </div>`
+                : `<div class="mb-2 text-xs text-slate-400 flex items-center gap-1"><i class="fas fa-crown text-amber-400"></i> 總公司 / 獨立機構</div>`;
 
             panel.innerHTML = `
                 <div class="flex flex-col h-full bg-white">
                     <div class="px-8 py-6 pb-4 border-b border-slate-100 flex-shrink-0">
+                        
+                        ${parentHtml}
+
                         <div class="flex justify-between items-start mb-5">
-                            <h2 id="inst-detail-title" class="text-2xl font-bold text-slate-800 flex items-center gap-3">
-                                ${name}
-                                <span class="bg-slate-100 text-slate-500 text-xs px-2 py-1 rounded-full">共 ${entries.length} 個版本</span>
-                            </h2>
+                            <div class="flex flex-col">
+                                <h2 id="inst-detail-title" class="text-2xl font-bold text-slate-800 mb-1">
+                                    ${name}
+                                </h2>
+                                <span class="text-xs text-slate-400">共 ${entries.length} 個歷史版本</span>
+                            </div>
+                            
+                            <button onclick="openSetParentModal('${name}', '${parentName || ''}')" class="text-xs bg-white border border-slate-200 text-slate-500 px-3 py-1.5 rounded hover:bg-slate-50 hover:text-primary hover:border-primary transition shadow-sm flex items-center gap-1">
+                                <i class="fas fa-sitemap"></i> 設定架構
+                            </button>
                         </div>
                         
-                        <div class="flex gap-4 p-4 bg-slate-50 rounded-xl mb-5 border border-slate-200">
-                            <div class="flex-1">
-                                <div class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-sitemap mr-1"></i> 上層機構 / 總公司</div>
-                                <div class="flex items-center gap-3">
-                                    ${parentName 
-                                        ? `<span class="font-bold text-indigo-700 bg-indigo-100 px-3 py-1 rounded cursor-pointer hover:bg-indigo-200 transition" onclick="showInstitutionDetail('${parentName}')">${parentName}</span>` 
-                                        : `<span class="text-slate-400 text-sm">無 (本身即為最高層)</span>`}
-                                    <button onclick="openSetParentModal('${name}', '${parentName || ''}')" class="text-xs font-bold bg-white border border-slate-300 text-slate-600 px-3 py-1 rounded shadow-sm hover:bg-slate-100 hover:text-primary transition">
-                                        <i class="fas fa-edit"></i> 設定
-                                    </button>
-                                </div>
-                            </div>
-                            <div class="w-px bg-slate-200"></div>
-                            <div class="flex-1">
-                                <div class="text-xs text-slate-400 font-bold mb-2 uppercase tracking-wider"><i class="fas fa-code-branch mr-1"></i> 旗下分支機構</div>
-                                <div class="flex flex-wrap gap-1.5">
-                                    ${children.length > 0 
-                                        ? children.map(c => `<span class="text-xs font-bold bg-white border border-slate-200 text-slate-600 shadow-sm px-2 py-1 rounded cursor-pointer hover:border-indigo-300 hover:text-indigo-600 transition" onclick="showInstitutionDetail('${c}')">${c}</span>`).join('') 
-                                        : '<span class="text-slate-400 text-sm">無分支機構</span>'}
-                                </div>
-                            </div>
-                        </div>
-
                         <div class="flex items-stretch gap-3 h-[42px]">
                             <div class="version-select-wrapper flex-grow relative h-full">
                                 <select id="inst-version-select" class="version-select w-full h-full border border-slate-300 rounded-lg px-4 pl-4 pr-10 text-sm font-bold focus:outline-none focus:ring-2 focus:ring-indigo-500 bg-f1f5f9 appearance-none leading-[40px] py-0">
@@ -6434,17 +6513,26 @@
                                 </select>
                                 <i class="fas fa-chevron-down version-select-icon absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none"></i>
                             </div>
-                            <button id="del-inst-version-btn" class="flex-shrink-0 w-12 h-full flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm" title="刪除此版本"><i class="fas fa-trash-alt"></i></button>
-                            <button id="apply-inst-version-btn" class="flex-shrink-0 h-full bg-primary hover:bg-sky-800 text-white font-bold px-6 rounded-lg transition shadow-md text-sm whitespace-nowrap flex items-center"><i class="fas fa-download mr-2"></i> 套用到目前表單</button>
+                            
+                            <button id="del-inst-version-btn" class="flex-shrink-0 w-12 h-full flex items-center justify-center bg-red-50 hover:bg-red-100 text-red-500 border border-red-200 rounded-lg transition shadow-sm" title="刪除此版本">
+                                <i class="fas fa-trash-alt"></i>
+                            </button>
+
+                            <button id="apply-inst-version-btn" 
+                                class="flex-shrink-0 h-full bg-indigo-600 hover:bg-indigo-700 text-white font-bold px-5 rounded-lg transition shadow-md text-sm whitespace-nowrap flex items-center">
+                                <i class="fas fa-download mr-2"></i> 套用此版本
+                            </button>
                         </div>
                     </div>
                     
                     <div class="flex-grow overflow-y-auto custom-scroll bg-slate-50/50 px-8 py-6 space-y-6">
                         <div id="inst-version-content" class="bg-white border border-slate-200 rounded-xl p-6 shadow-sm space-y-3"></div>
+                        
                         <div>
-                            <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2">
-                                <i class="fas fa-users text-indigo-500"></i> 使用此版本的學生紀錄
-                                <span id="inst-student-count" class="bg-indigo-100 text-indigo-700 text-xs px-2 py-0.5 rounded-full">0</span>
+                            <h4 class="font-bold text-slate-700 mb-3 flex items-center gap-2 border-b border-slate-200 pb-2">
+                                <span class="bg-indigo-100 text-indigo-700 w-6 h-6 rounded-full flex items-center justify-center text-xs"><i class="fas fa-user-graduate"></i></span>
+                                使用此版本的學生
+                                <span id="inst-student-count" class="bg-slate-100 text-slate-500 text-xs px-2 py-0.5 rounded-full ml-auto">0</span>
                             </h4>
                             <div id="inst-student-list" class="bg-white border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100"></div>
                         </div>
