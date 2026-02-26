@@ -1413,49 +1413,66 @@
         // 4. 檢查並還原 (OnInit 呼叫)
         async function checkAndRestore() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true'; // 檢查暫存狀態
+            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
             
+            // ★ 安全解析函式：同時支援「新版壓縮格式」與「舊版純文字」，防止解碼失敗導致畫面空白
+            const safeParse = (str) => {
+                if (!str) return null;
+                try {
+                    const decompressed = LZString.decompressFromUTF16(str);
+                    if (decompressed && (decompressed.startsWith('{') || decompressed.startsWith('['))) {
+                        return JSON.parse(decompressed);
+                    }
+                } catch (e) { }
+                try {
+                    return JSON.parse(str); 
+                } catch (e) {
+                    return null;
+                }
+            };
+
             if (isEnabled) {
                 try {
                     const savedLib = localStorage.getItem(LIB_STORAGE_KEY);
-                    if(savedLib) {
-                        // ★ 修正：優先嘗試新版 UTF16 解碼，失敗再用舊版解碼相容
-                        let decompressed = LZString.decompressFromUTF16(savedLib) || LZString.decompress(savedLib);
-                        institutionLibrary = JSON.parse(decompressed || savedLib);
-                    }
+                    if(savedLib) institutionLibrary = safeParse(savedLib) || {};
         
                     const savedRels = localStorage.getItem(REL_STORAGE_KEY);
-                    if(savedRels) {
-                        let decompressed = LZString.decompressFromUTF16(savedRels) || LZString.decompress(savedRels);
-                        institutionRelations = JSON.parse(decompressed || savedRels);
-                    }
+                    if(savedRels) institutionRelations = safeParse(savedRels) || {};
                 } catch(e) { 
                     console.error("Library load error", e); 
-                    institutionLibrary = {}; // 載入失敗就清空
+                    institutionLibrary = {}; 
                 }
             }
 
             if (saved) {
-                const yes = await showConfirm('發現未完成的暫存', '系統發現您上次有未儲存的填報進度，是否還原？');
-                if (yes) {
+                let shouldRestore = false;
+                
+                // ★ 體驗優化：如果已經啟用暫存，無縫自動還原；沒啟用才跳出詢問
+                if (isEnabled) {
+                    shouldRestore = true;
+                } else {
+                    shouldRestore = await showConfirm('發現未完成的暫存', '系統發現您上次有未儲存的填報進度，是否還原？');
+                }
+
+                if (shouldRestore) {
                     try {
-                        // ★ 修正：相容解碼
-                        let decompressedState = LZString.decompressFromUTF16(saved) || LZString.decompress(saved);
-                        const state = JSON.parse(decompressedState || saved); 
+                        const state = safeParse(saved);
+                        if (!state || !state.rawData) throw new Error("資料解析為空");
                         
-                        // 1. 還原資料 (使用既有的處理函式)
+                        // 1. 還原核心資料 
                         await processUploadedData(state.rawData, state.apps);
                         
-                        // 2. 還原視圖狀態
+                        // 2. 還原視圖狀態與選取的學生
                         if(state.mode) currentViewMode = state.mode;
                         if(state.studentId) {
-                            selectStudent(state.studentId);
+                            setTimeout(() => selectStudent(state.studentId), 100); 
                         }
                         
                         // 3. 確保狀態為啟用
                         localStorage.setItem(STORAGE_KEY + '_enabled', 'true');
                         updateStorageBtn(true);
-                        showToast('success', '已成功還原暫存資料');
+                        
+                        if (!isEnabled) showToast('success', '已成功還原暫存資料');
                     } catch (e) {
                         console.error(e);
                         showToast('error', '還原失敗：暫存資料可能已損毀');
