@@ -3538,14 +3538,10 @@
                     
                     // ★★★ 定義更新資料的函式 (包含機構收集與 Checkbox 支援) ★★★
                     const updateData = (e) => {
-                        let newVal;
-                        if (e.target.type === 'checkbox') {
-                            newVal = e.target.checked;
-                        } else {
-                            newVal = e.target.value;
-                        }
-
+                        let newVal = (e.target.type === 'checkbox') ? e.target.checked : e.target.value;
                         const oldVal = app.formData[f.id];
+
+                        // 1. 地址與文字正規化
                         if (f.type === 'address' && e.type === 'change') {
                             processAddress(e.target, f);
                             newVal = e.target.value;
@@ -3554,7 +3550,35 @@
                         if (oldVal !== newVal) {
                             app.formData[f.id] = newVal;
                             
-                            // 機構資訊收集
+                            // 2. ★ 核心修正：處理數值分配 (weighted / average)
+                            // 當在表單輸入「總數」時，自動分配給該歸戶下的所有課程
+                            if (f.calcMode === 'average' || f.calcMode === 'weighted') {
+                                const linkedCourses = groupedStudents[currentStudentId].courses.filter(c => app.courseIds.includes(c._internal_id));
+                                const totalVal = parseFloat(newVal) || 0;
+
+                                if (f.calcMode === 'weighted') {
+                                    // 依比例分配邏輯
+                                    let totalWeight = 0;
+                                    linkedCourses.forEach(c => {
+                                        totalWeight += parseFloat(getCourseValue(c, [f.weightField])) || 0;
+                                    });
+                                    if (totalWeight > 0) {
+                                        linkedCourses.forEach(c => {
+                                            const w = parseFloat(getCourseValue(c, [f.weightField])) || 0;
+                                            const distributed = totalVal * (w / totalWeight);
+                                            c[f.id] = f.decimal ? distributed.toFixed(f.decimal) : Math.round(distributed).toString();
+                                        });
+                                    }
+                                } else {
+                                    // 平均分攤邏輯 (存入課程供預覽)
+                                    const avg = totalVal / linkedCourses.length;
+                                    linkedCourses.forEach(c => {
+                                        c[f.id] = f.decimal ? avg.toFixed(f.decimal) : Math.round(avg).toString();
+                                    });
+                                }
+                            }
+
+                            // 3. 機構資訊收集
                             if (f.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
                                 collectInstitutionData(app.formData);
                             }
@@ -3563,7 +3587,7 @@
                             hasUnsavedChanges = true;
                             logChange(f.id, app.id, oldVal, newVal, groupedStudents[currentStudentId].id); 
                             
-                            saveToLocal();
+                            if (typeof saveToLocal === 'function') saveToLocal();
                         }
                     };
 
@@ -3926,24 +3950,37 @@
                     courses.forEach((c, idx) => {
                         const row = {};
                         headers.forEach(h => {
-                            let val = app.formData[h.key];
+                            headers.forEach(h => {
                             const fieldDef = outputFields.find(f => f.id === h.key);
-                            
-                            if (fieldDef && fieldDef.calcMode === 'average' && val && !isNaN(val)) {
-                                const totalVal = parseFloat(val);
-                                const baseVal = Math.floor(totalVal / courseCount);
-                                const remainder = totalVal % courseCount;
-                                if (idx === courses.length - 1) val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
-                                else val = baseVal.toFixed(fieldDef.decimal || 0);
+                            let val = app.formData[h.key];
+
+                            // ★ 修正 1：處理數值分配模式 (weighted 使用課程值 / average 現場計算)
+                            if (fieldDef) {
+                                if (fieldDef.calcMode === 'weighted') {
+                                    // 依比例分配：優先抓取課程內已分配好的數值
+                                    val = c[h.key];
+                                } else if (fieldDef.calcMode === 'average' && val && !isNaN(val)) {
+                                    // 平均分攤：現場依課程數切分
+                                    const totalVal = parseFloat(val);
+                                    const baseVal = Math.floor(totalVal / courseCount);
+                                    const remainder = totalVal % courseCount;
+                                    if (idx === courses.length - 1) val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
+                                    else val = baseVal.toFixed(fieldDef.decimal || 0);
+                                }
                             }
 
-                            if (val === undefined || val === "") val = c[h.key] || c[h.header] || "";
+                            // 退回機制：若上述無值，則取課程原始資料
+                            if (val === undefined || val === "" || val === null) {
+                                val = c[h.key] || c[h.header] || "";
+                            }
                             
-                            if (fieldDef && fieldDef.type === 'date' && fieldDef.outputFormat === 'ROC' && val && val.includes('-')) {
-                                 const parts = val.split('-');
+                            // ★ 修正 2：ROC 日期匯出格式 (加入斜線與 UI 保持一致)
+                            if (fieldDef && fieldDef.type === 'date' && fieldDef.outputFormat === 'ROC' && String(val).includes('-')) {
+                                 const parts = String(val).split('-');
                                  if (parts.length === 3) {
                                      const roc = parseInt(parts[0]) - 1911;
-                                     val = `${roc}${parts[1]}${parts[2]}`; 
+                                     // 改為 YYY/MM/DD 格式
+                                     val = `${roc}/${parts[1]}/${parts[2]}`; 
                                  }
                             }
 
