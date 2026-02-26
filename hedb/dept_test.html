@@ -1359,6 +1359,7 @@
         }
 
         // 3. 執行存檔 (將被各個修改函式呼叫)
+        // 1. 儲存至 LocalStorage (完整確保打包與壓縮)
         function saveToLocal() {
             // 檢查是否啟用
             if (localStorage.getItem(STORAGE_KEY + '_enabled') !== 'true') return;
@@ -1379,6 +1380,7 @@
                 }
             });
 
+            // ★ 核心狀態打包 (必須保留！)
             const state = {
                 rawData: allRawData,
                 apps: allApps,
@@ -1389,22 +1391,23 @@
             };
             
             try {
-                // ★ 關鍵修正：改用 compressToUTF16，完美貼合 localStorage 編碼，大幅減少體積
+                // 進行高強度壓縮
                 const compressedState = LZString.compressToUTF16(JSON.stringify(state));
                 const compressedLib = LZString.compressToUTF16(JSON.stringify(institutionLibrary));
                 const compressedRels = LZString.compressToUTF16(JSON.stringify(institutionRelations));
         
+                // 寫入瀏覽器暫存
                 localStorage.setItem(STORAGE_KEY, compressedState);
                 localStorage.setItem(LIB_STORAGE_KEY, compressedLib);
                 localStorage.setItem(REL_STORAGE_KEY, compressedRels);
                 
-                // ★ 新增：每次背景存檔完成後，立刻刷新右上角的按鈕容量顯示！
+                // 更新按鈕容量顯示
                 updateStorageBtn(true);
                 
             } catch (e) {
                 console.error("Storage full or error", e);
-                // ★ 新增防呆：若空間依然不足，自動關閉暫存並跳出紅色警告
-                showToast('error', '暫存失敗：資料量過大，瀏覽器可用空間不足。已暫時關閉暫存保護。');
+                // 防呆：若空間依然不足，自動關閉暫存並跳出紅色警告
+                showToast('error', '暫存失敗：儲存空間不足，已暫時關閉暫存保護。');
                 localStorage.setItem(STORAGE_KEY + '_enabled', 'false');
                 updateStorageBtn(false);
             }
@@ -1413,16 +1416,18 @@
         // 4. 檢查並還原 (OnInit 呼叫)
         async function checkAndRestore() {
             const saved = localStorage.getItem(STORAGE_KEY);
-            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
+            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true'; // 檢查暫存狀態
             
-            // ★ 安全解析函式：同時支援「新版壓縮格式」與「舊版純文字」，防止解碼失敗導致畫面空白
+            // ★ 安全解析函式：極致防呆，自動判斷新版壓縮、舊版壓縮或純文字
             const safeParse = (str) => {
                 if (!str) return null;
                 try {
                     const decompressed = LZString.decompressFromUTF16(str);
-                    if (decompressed && (decompressed.startsWith('{') || decompressed.startsWith('['))) {
-                        return JSON.parse(decompressed);
-                    }
+                    if (decompressed) return JSON.parse(decompressed);
+                } catch (e) { }
+                try {
+                    const decompressed = LZString.decompress(str);
+                    if (decompressed) return JSON.parse(decompressed);
                 } catch (e) { }
                 try {
                     return JSON.parse(str); 
@@ -1459,13 +1464,22 @@
                         const state = safeParse(saved);
                         if (!state || !state.rawData) throw new Error("資料解析為空");
                         
+                        // ★ 先還原學年度 (很重要！否則後續渲染會找不到設定檔)
+                        if (state.year) {
+                            await changeYear(state.year);
+                        }
+
                         // 1. 還原核心資料 
                         await processUploadedData(state.rawData, state.apps);
                         
                         // 2. 還原視圖狀態與選取的學生
                         if(state.mode) currentViewMode = state.mode;
+                        
+                        // ★ 延遲還原學生選取，避免被 processUploadedData 內的初始化覆蓋
                         if(state.studentId) {
-                            setTimeout(() => selectStudent(state.studentId), 100); 
+                            setTimeout(() => {
+                                selectStudent(state.studentId);
+                            }, 100); 
                         }
                         
                         // 3. 確保狀態為啟用
