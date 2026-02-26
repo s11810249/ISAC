@@ -6009,51 +6009,83 @@
                 const inputEl = document.getElementById(`modal-inst-${f.id}`);
                 if (!inputEl) return;
 
-                let isLocked = false; // 預設為解鎖
+                let isLocked = false; 
 
-                // 只有當欄位有設定 visibilityRule 時才進行檢查
+                // --- A. Visibility 檢查 ---
                 if (f.visibilityRule && f.visibilityRule.dep) {
                     const depId = f.visibilityRule.dep;
-                    const depVal = formData[depId]; // 取得依賴欄位當下的值
-                    
                     const depFieldDef = instFields.find(field => field.id === depId);
-                    const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
-                    const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
+                    
+                    // ★ 核心防呆：如果依賴的欄位「不在」機構資訊分類內，代表是外部條件，直接不鎖定！
+                    if (depFieldDef) {
+                        const depVal = formData[depId]; 
+                        const isDepCheckbox = (depFieldDef.type === 'checkbox');
+                        const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
 
-                    // 規則 A: 非 Checkbox 且為空值 -> 鎖定
-                    if (!isDepCheckbox && currentValStr === "") {
-                        isLocked = true;
-                    } else {
-                        // 規則 B: 比對值
-                        const ruleValStr = String(f.visibilityRule.val).trim();
-                        let shouldShow = true;
-                        
-                        // 處理布林值比對 (針對 Checkbox)
-                        if (typeof f.visibilityRule.val === 'boolean') {
-                            const boolDep = (depVal === true || depVal === 'true');
-                            shouldShow = (f.visibilityRule.action === 'show') ? (boolDep === f.visibilityRule.val) : (boolDep !== f.visibilityRule.val);
+                        // 規則 A: 非 Checkbox 且為空值 -> 鎖定
+                        if (!isDepCheckbox && currentValStr === "") {
+                            isLocked = true;
                         } else {
-                            // 字串比對
-                            if (f.visibilityRule.action === 'show') {
-                                shouldShow = (currentValStr === ruleValStr);
+                            // 規則 B: 比對值
+                            const ruleValStr = String(f.visibilityRule.val).trim();
+                            let shouldShow = true;
+                            
+                            if (typeof f.visibilityRule.val === 'boolean') {
+                                const boolDep = (depVal === true || depVal === 'true');
+                                shouldShow = (f.visibilityRule.action === 'show') ? (boolDep === f.visibilityRule.val) : (boolDep !== f.visibilityRule.val);
                             } else {
-                                shouldShow = (currentValStr !== ruleValStr);
+                                if (f.visibilityRule.action === 'show') {
+                                    shouldShow = (currentValStr === ruleValStr);
+                                } else {
+                                    shouldShow = (currentValStr !== ruleValStr);
+                                }
                             }
+                            if (!shouldShow) isLocked = true;
                         }
-                        if (!shouldShow) isLocked = true;
                     }
                 }
 
-                // 更新 UI
+                // --- B. Option Logic 檢查 (下拉選單連動) ---
+                if (!isLocked && f.filterRules && f.filterRules.length > 0 && inputEl.tagName === 'SELECT') {
+                    const parentId = f.filterRules[0].dep;
+                    const parentFieldDef = instFields.find(field => field.id === parentId);
+                    
+                    // ★ 同樣的防呆：只有當父欄位也在機構資訊內時，才執行連動鎖定
+                    if (parentFieldDef) {
+                        const parentVal = formData[parentId];
+                        if (!parentVal || parentVal === "") {
+                            isLocked = true;
+                        } else {
+                            const rule = f.filterRules.find(r => r.val === parentVal);
+                            if (!rule) {
+                                isLocked = true;
+                            } else {
+                                const currentVal = inputEl.value;
+                                let isValid = false;
+                                Array.from(inputEl.options).forEach(opt => {
+                                    if (opt.value === "") { isValid = true; return; }
+                                    const show = rule.limitTo && rule.limitTo.includes(opt.value);
+                                    opt.hidden = !show;
+                                    opt.disabled = !show;
+                                    if(opt.value === currentVal && show) isValid = true;
+                                });
+                                // 如果原本選的值被隱藏了，就清空它
+                                if (!isValid && currentVal !== "") {
+                                    inputEl.value = "";
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // --- C. 更新 UI 狀態 ---
                 inputEl.disabled = isLocked;
                 
                 if (wrapper) {
                     if (isLocked) {
-                        wrapper.classList.add('field-locked', 'opacity-50'); // 加上透明度讓鎖定更有感
-                        // 如果被鎖定，清空值 (選擇性，避免誤存)
+                        wrapper.classList.add('field-locked', 'opacity-50'); 
                         if (inputEl.tagName === 'SELECT') inputEl.value = "";
                         else if (inputEl.type === 'checkbox') inputEl.checked = false;
-                        // text/address 暫不清空，方便使用者切換回來時不用重打
                     } else {
                         wrapper.classList.remove('field-locked', 'opacity-50');
                     }
