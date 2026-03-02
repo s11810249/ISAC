@@ -4881,7 +4881,7 @@
             modal.id = modalId;
             modal.className = 'fixed inset-0 z-[200] flex items-center justify-center modal-overlay p-4';
             
-            // ★ 全新 UI 結構：套用與系統一致的確認框風格，並實裝所有文字優化
+            // ★ 全新 UI 結構：套用與系統一致的確認框風格，並將 ID 前綴加上 dyn-，避免與舊代碼衝突！
             modal.innerHTML = `
                 <div class="bg-white w-full max-w-md rounded-xl shadow-2xl overflow-hidden transform transition-all scale-100 animate-fade-in flex flex-col max-h-[90vh]">
                     <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center flex-shrink-0">
@@ -4900,7 +4900,7 @@
                             <div class="flex-grow">
                                 <label class="block text-xs font-bold text-slate-500 mb-1">請輸入總數</label>
                                 <div class="relative">
-                                    <input type="number" step="any" id="dist-total-input" class="input-stylish w-full text-lg font-bold text-indigo-700 pr-12 focus:ring-2 focus:ring-indigo-500" value="${currentTotal}" placeholder="0">
+                                    <input type="number" step="any" id="dyn-dist-total-input" class="input-stylish w-full text-lg font-bold text-indigo-700 pr-12 focus:ring-2 focus:ring-indigo-500" value="${currentTotal}" placeholder="0">
                                     <span class="absolute right-4 top-1/2 -translate-y-1/2 text-slate-400 font-bold">${valueUnit}</span>
                                 </div>
                             </div>
@@ -4914,14 +4914,14 @@
                                 <span>課程分配預覽</span>
                                 <span>換算結果</span>
                             </div>
-                            <div id="dist-preview-list" class="divide-y divide-slate-100 max-h-48 overflow-y-auto custom-scroll">
+                            <div id="dyn-dist-preview-list" class="divide-y divide-slate-100 max-h-48 overflow-y-auto custom-scroll">
                                 </div>
                         </div>
                     </div>
 
                     <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3 flex-shrink-0">
                         <button onclick="document.getElementById('${modalId}').remove()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-slate-500 bg-white border border-slate-200 hover:bg-slate-100 transition shadow-sm">取消</button>
-                        <button id="btn-confirm-dist" class="px-6 py-2.5 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition flex items-center gap-2">
+                        <button id="dyn-btn-confirm-dist" class="px-6 py-2.5 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition flex items-center gap-2">
                             <i class="fas fa-check"></i> 確認套用
                         </button>
                     </div>
@@ -4929,13 +4929,13 @@
             `;
             document.body.appendChild(modal);
 
-            const inputEl = document.getElementById('dist-total-input');
+            const inputEl = document.getElementById('dyn-dist-total-input');
             inputEl.oninput = updateDistPreview;
             updateDistPreview(); // 初始化預覽
             setTimeout(() => inputEl.focus(), 100);
 
             // 套用按鈕邏輯
-            document.getElementById('btn-confirm-dist').onclick = () => {
+            document.getElementById('dyn-btn-confirm-dist').onclick = () => {
                 const totalVal = parseFloat(inputEl.value);
                 if (isNaN(totalVal)) return showToast('warning', '請輸入有效的數字總數');
                 if (totalWeight <= 0) return showToast('error', `課程的${weightName}總和為 0，無法進行分配`);
@@ -4970,8 +4970,8 @@
         // 動態更新預覽清單
         function updateDistPreview() {
             if (!distContext) return;
-            const totalVal = parseFloat(document.getElementById('dist-total-input').value) || 0;
-            const listEl = document.getElementById('dist-preview-list');
+            const totalVal = parseFloat(document.getElementById('dyn-dist-total-input').value) || 0;
+            const listEl = document.getElementById('dyn-dist-preview-list');
             listEl.innerHTML = '';
 
             const { totalWeight, courseWeights, fieldDef, weightName, valueUnit } = distContext;
@@ -5005,7 +5005,7 @@
                 listEl.appendChild(div);
             });
         }
-
+        
         function confirmDistribution() {
             if (!distContext) return;
             const { student, app, fieldDef, linkedCourses, totalWeight, courseWeights } = distContext;
