@@ -2490,8 +2490,8 @@
                 return '';
             };
 
-            // C. 輔助函式：系所 Master Data 搜尋
-            const findDeptMaster = (query) => {
+            // C. 輔助函式：系所 Master Data 搜尋 (★ 修正：掛載到 window 讓全域共用)
+            window.findDeptMaster = function(query) {
                 if (!deptMasterData || !query) return null;
                 const q = query.toString().trim();
                 
@@ -2499,11 +2499,12 @@
 
                 for (const key in deptMasterData) {
                     const m = deptMasterData[key];
-                    if (m.code == q || m.name === q || m.short_name === q) return m;
+                    if (m.code == q || m.name === q || m.short_name === q || m.fullName === q) return m;
                     if (m.historical_names && Object.values(m.historical_names).includes(q)) return m;
                 }
                 return null;
             };
+            const findDeptMaster = window.findDeptMaster; // 保留區域參照給匯入功能使用
 
             const courseDepts = new Set();
             const studentDepts = new Set();
@@ -2795,22 +2796,17 @@
                 }
 
                 let displayDept = s.dept || '未知學系';
-                if (typeof departmentData !== 'undefined' && Array.isArray(departmentData)) {
-                    let foundShortName = null;
-                    for (let college of departmentData) {
-                        if (college.departments && Array.isArray(college.departments)) {
-                            for (let dept of college.departments) {
-                                if (dept.name === displayDept || dept.fullName === displayDept) {
-                                    foundShortName = dept.shortName || dept.name;
-                                    break;
-                                }
-                            }
-                        }
-                        if (foundShortName) break;
+                
+                // ★ 修正：使用全域 Master Data 取得最精準的簡稱
+                if (typeof window.findDeptMaster === 'function') {
+                    const master = window.findDeptMaster(displayDept);
+                    if (master && master.short_name) {
+                        displayDept = master.short_name;
+                    } else if (displayDept.endsWith('學系')) {
+                        displayDept = displayDept.replace('學系', '系');
                     }
-                    if (foundShortName) displayDept = foundShortName;
                 }
-
+                
                 let rawGrade = s.grade || s.student_grade;
                 if (!rawGrade && s.courses && s.courses.length > 0) {
                     rawGrade = s.courses[0].grade || s.courses[0].student_grade || s.courses[0]['學生年級'] || s.courses[0]['年級'];
@@ -4672,20 +4668,14 @@
 
                     // 2. 轉換系所簡稱
                     let shortDept = rawDept;
-                    if (rawDept && typeof departmentData !== 'undefined' && Array.isArray(departmentData)) {
-                        let foundShort = null;
-                        for (let college of departmentData) {
-                            if (college.departments && Array.isArray(college.departments)) {
-                                for (let d of college.departments) {
-                                    if (d.name === rawDept || d.fullName === rawDept) {
-                                        foundShort = d.shortName || d.name;
-                                        break;
-                                    }
-                                }
-                            }
-                            if (foundShort) break;
+                    if (rawDept && typeof window.findDeptMaster === 'function') {
+                        const master = window.findDeptMaster(rawDept);
+                        if (master && master.short_name) {
+                            shortDept = master.short_name;
+                        } else if (shortDept && shortDept.endsWith('學系')) {
+                            // 備用防呆：如果字典真的沒設定簡稱，至少把學系變系
+                            shortDept = shortDept.replace('學系', '系');
                         }
-                        if (foundShort) shortDept = foundShort;
                     }
                     // 備用簡化：如果沒抓到內建簡稱，但結尾有「學系」，自動縮短為「系」
                     if (shortDept && shortDept.endsWith('學系')) {
