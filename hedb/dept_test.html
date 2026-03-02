@@ -2008,7 +2008,11 @@
                                     const w = parseFloat(getCourseValue(c, [weightKey])) || 0;
                                     const ratio = w / totalWeight;
                                     const distributedVal = currentTotalValue * ratio;
-                                    const formattedVal = fieldDef.decimal ? distributedVal.toFixed(fieldDef.decimal) : Math.round(distributedVal).toString();
+                                    
+                                    // ★ 修正：隱藏無意義的尾數 0
+                                    const formattedVal = fieldDef.decimal 
+                                        ? parseFloat(distributedVal.toFixed(fieldDef.decimal)).toString() 
+                                        : Math.round(distributedVal).toString();
                                     
                                     c[fieldDef.id] = formattedVal;
                                     syncValueToViews(c._internal_id, student.id, fieldDef.id, formattedVal, inputEl);
@@ -2024,8 +2028,24 @@
                             finalValue = sum; 
                         }
 
-                        app.formData[fieldDef.id] = fieldDef.decimal ? finalValue.toFixed(fieldDef.decimal) : Math.round(finalValue).toString();
+                        // ★ 修正 1：格式化總和，隱藏無意義的尾數 0
+                        const formattedTotal = fieldDef.decimal 
+                            ? parseFloat(finalValue.toFixed(fieldDef.decimal)).toString() 
+                            : Math.round(finalValue).toString();
+                        
+                        app.formData[fieldDef.id] = formattedTotal;
                         logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
+                        
+                        // ★ 修正 2：立即同步總數回表單模式下的該欄位 UI
+                        const formInput = document.getElementById(`input-${appId}-${fieldDef.id}`);
+                        if (formInput && formInput !== inputEl) {
+                            formInput.value = formattedTotal;
+                            formInput.title = formattedTotal;
+                            // 加入視覺提示，讓使用者知道它自動加總了
+                            formInput.style.transition = 'background-color 0.3s';
+                            formInput.style.backgroundColor = '#dcfce7'; // 淡綠色提示
+                            setTimeout(() => formInput.style.backgroundColor = '', 500);
+                        }
 
                     } else {
                         // 一般共用欄位：更新 App Data
@@ -3566,14 +3586,16 @@
                                         linkedCourses.forEach(c => {
                                             const w = parseFloat(getCourseValue(c, [f.weightField])) || 0;
                                             const distributed = totalVal * (w / totalWeight);
-                                            c[f.id] = f.decimal ? distributed.toFixed(f.decimal) : Math.round(distributed).toString();
+                                            // ★ 修正：隱藏無意義的尾數 0
+                                            c[f.id] = f.decimal ? parseFloat(distributed.toFixed(f.decimal)).toString() : Math.round(distributed).toString();
                                         });
                                     }
                                 } else {
-                                    // 平均分攤邏輯 (存入課程供預覽)
+                                    // 平均分攤邏輯
                                     const avg = totalVal / linkedCourses.length;
                                     linkedCourses.forEach(c => {
-                                        c[f.id] = f.decimal ? avg.toFixed(f.decimal) : Math.round(avg).toString();
+                                        // ★ 修正：隱藏無意義的尾數 0
+                                        c[f.id] = f.decimal ? parseFloat(avg.toFixed(f.decimal)).toString() : Math.round(avg).toString();
                                     });
                                 }
                             }
@@ -3959,12 +3981,30 @@
                                     // 依比例分配：優先抓取課程內已分配好的數值
                                     val = c[h.key];
                                 } else if (fieldDef.calcMode === 'average' && val && !isNaN(val)) {
-                                    // 平均分攤：現場依課程數切分
+                                    // ★ 修正：平均分攤，解決小數點誤差與尾數 0 的問題
                                     const totalVal = parseFloat(val);
-                                    const baseVal = Math.floor(totalVal / courseCount);
-                                    const remainder = totalVal % courseCount;
-                                    if (idx === courses.length - 1) val = (baseVal + remainder).toFixed(fieldDef.decimal || 0);
-                                    else val = baseVal.toFixed(fieldDef.decimal || 0);
+                                    const courseCount = courses.length;
+                                    const avg = totalVal / courseCount;
+                                    
+                                    if (fieldDef.decimal) {
+                                        // 允許小數：精確切分，確保總和不變
+                                        const exactAvg = parseFloat(avg.toFixed(fieldDef.decimal));
+                                        if (idx === courseCount - 1) {
+                                            const sumOthers = exactAvg * (courseCount - 1);
+                                            val = parseFloat((totalVal - sumOthers).toFixed(fieldDef.decimal)).toString();
+                                        } else {
+                                            val = exactAvg.toString();
+                                        }
+                                    } else {
+                                        // 限填整數：處理商數與餘數
+                                        const baseVal = Math.floor(totalVal / courseCount);
+                                        if (idx === courseCount - 1) {
+                                            const sumOthers = baseVal * (courseCount - 1);
+                                            val = Math.round(totalVal - sumOthers).toString();
+                                        } else {
+                                            val = baseVal.toString();
+                                        }
+                                    }
                                 }
                             }
 
@@ -4329,7 +4369,7 @@
                     });
                     if (hasVal) {
                         // 依照小數點設定格式化
-                        initData[f.id] = f.decimal ? sum.toFixed(2) : String(sum);
+                        initData[f.id] = f.decimal ? parseFloat(sum.toFixed(f.decimal)).toString() : Math.round(sum).toString();
                     }
                 });
 
@@ -4871,7 +4911,7 @@
             courseWeights.forEach(item => {
                 const ratio = item.weight / totalWeight;
                 const distVal = totalVal * ratio;
-                const displayVal = fieldDef.decimal ? distVal.toFixed(fieldDef.decimal) : Math.round(distVal);
+                const displayVal = fieldDef.decimal ? parseFloat(distVal.toFixed(fieldDef.decimal)).toString() : Math.round(distVal).toString();
 
                 const div = document.createElement('div');
                 div.className = "px-3 py-2 flex justify-between items-center hover:bg-slate-50";
@@ -4900,7 +4940,7 @@
             courseWeights.forEach(item => {
                 const ratio = item.weight / totalWeight;
                 const distVal = totalVal * ratio;
-                const finalVal = fieldDef.decimal ? distVal.toFixed(fieldDef.decimal) : Math.round(distVal).toString();
+                const finalVal = fieldDef.decimal ? parseFloat(distVal.toFixed(fieldDef.decimal)).toString() : Math.round(distVal).toString();
                 
                 // 更新 Course Data
                 item.course[fieldDef.id] = finalVal;
@@ -4910,7 +4950,7 @@
             });
 
             // 3. 更新 App Data (總和)
-            const formattedTotal = fieldDef.decimal ? totalVal.toFixed(fieldDef.decimal) : totalVal.toString();
+            const formattedTotal = fieldDef.decimal ? parseFloat(totalVal.toFixed(fieldDef.decimal)).toString() : totalVal.toString();
             app.formData[fieldDef.id] = formattedTotal;
             
             logChange(fieldDef.id, app.id, 'Batch Distribute', formattedTotal, student.id);
