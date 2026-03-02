@@ -4940,11 +4940,14 @@
                 if (isNaN(totalVal)) return showToast('warning', '請輸入有效的數字總數');
                 if (totalWeight <= 0) return showToast('error', `課程的${weightName}總和為 0，無法進行分配`);
 
+                // ★ 修正 2：處理小數位數，如果尾數為 0 則自動省略 (例如 100.0 會自動變回 100)
+                const dec = parseInt(fieldDef.decimal, 10) || 0;
+
                 // 執行分配計算
                 courseWeights.forEach(item => {
                     const ratio = item.weight / totalWeight;
                     const distVal = totalVal * ratio;
-                    item.course[fieldId] = fieldDef.decimal ? distVal.toFixed(fieldDef.decimal) : Math.round(distVal).toString();
+                    item.course[fieldId] = dec > 0 ? parseFloat(distVal.toFixed(dec)).toString() : Math.round(distVal).toString();
                 });
 
                 const oldVal = app.formData[fieldId];
@@ -4956,16 +4959,28 @@
                 logChange(fieldId, app.id, oldVal, totalVal, student.id);
                 if (typeof saveToLocal === 'function') saveToLocal();
 
+                // ★ 修正 1：確保所有畫面都會自動推播更新
                 if (currentViewMode === 'form') {
                     renderFields(document.getElementById('form-fields-container'), app);
                     updateAppProgress(app.id);
+                } 
+                
+                // 確保列表模式(Grid)能即時更新數字
+                const gridWrapper = document.getElementById('student-grid-wrapper');
+                if (gridWrapper && !gridWrapper.classList.contains('hidden')) {
+                    if (typeof renderStudentLocalGrid === 'function') {
+                        renderStudentLocalGrid(studentId);
+                    }
                 }
                 
-                // 修正 2-3：優化後的成功提示訊息
+                // 同步更新左側名單與上方頁籤 (確保打勾狀態同步)
+                if (typeof renderStudentList === 'function') renderStudentList();
+                if (typeof renderTabs === 'function') renderTabs(student);
+                
+                // 成功提示訊息
                 showToast('success', `已將${fieldDef.label} ${totalVal} ${valueUnit}依${weightName}分配至 ${linkedCourses.length} 門課程`);
                 document.getElementById(modalId).remove();
             };
-        }
 
         // 動態更新預覽清單
         function updateDistPreview() {
