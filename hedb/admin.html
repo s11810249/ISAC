@@ -3975,6 +3975,30 @@
                                 ${weightFieldOpts}
                             </select>
                             <p class="text-[10px] text-slate-400 mt-1">例如：選擇「實習學分」，系統將依各課程學分比例自動分配總時數。</p>
+                            <div id="prop-weight-advanced-settings" class="mt-4 space-y-3 bg-slate-50 p-3 rounded-lg border border-slate-200">
+                                                <label class="block text-xs font-bold text-slate-600 mb-2 border-b border-slate-200 pb-1">
+                                                    <i class="fas fa-language text-indigo-500 mr-1"></i> 前台顯示文字自定義
+                                                </label>
+                                                <div class="grid grid-cols-2 gap-3">
+                                                    <div>
+                                                        <label class="block text-[10px] text-slate-500 mb-1">權重單位名稱 (例: 實習學分數)</label>
+                                                        <input type="text" id="prop-weight-name" value="${f.weightName || ''}" class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] text-slate-500 mb-1">權重單位 (例: 學分)</label>
+                                                        <input type="text" id="prop-weight-unit" value="${f.weightUnit || ''}" class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] text-slate-500 mb-1">數值單位名稱 (例: 實習時數)</label>
+                                                        <input type="text" id="prop-value-name" value="${f.valueName || ''}" class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500">
+                                                    </div>
+                                                    <div>
+                                                        <label class="block text-[10px] text-slate-500 mb-1">數值單位 (例: 小時)</label>
+                                                        <input type="text" id="prop-value-unit" value="${f.valueUnit || ''}" class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-indigo-500">
+                                                    </div>
+                                                </div>
+                                            </div>
+                            
                         </div>
 
                         <div><label class="flex items-center text-sm font-bold text-slate-700 cursor-pointer"><input type="checkbox" id="ed-keepZero" ${f.keepZero?'checked':''} class="custom-checkbox mr-2"> 保留前導零 (00123)</label></div>
@@ -4121,8 +4145,23 @@
                     f.calcMode = document.getElementById('ed-mode').value; 
                     f.decimal = parseInt(document.getElementById('ed-dec').value) || 0; 
                     f.keepZero = document.getElementById('ed-keepZero').checked; 
-                    if (f.calcMode === 'weighted') f.weightField = document.getElementById('ed-weight-field').value; else delete f.weightField;
-                } else { delete f.calcMode; delete f.decimal; delete f.keepZero; delete f.weightField; } 
+                    if (f.calcMode === 'weighted') {
+                                f.weightField = document.getElementById('ed-weight-field').value;
+                                f.weightName = document.getElementById('prop-weight-name').value.trim();
+                                f.weightUnit = document.getElementById('prop-weight-unit').value.trim();
+                                f.valueName = document.getElementById('prop-value-name').value.trim();
+                                f.valueUnit = document.getElementById('prop-value-unit').value.trim();
+                            } else { 
+                                delete f.weightField;
+                                delete f.weightName;
+                                delete f.weightUnit;
+                                delete f.valueName;
+                                delete f.valueUnit;
+                            }
+                } else { 
+                                delete f.calcMode; delete f.decimal; delete f.keepZero; delete f.weightField; 
+                                delete f.weightName; delete f.weightUnit; delete f.valueName; delete f.valueUnit; 
+                            }
             }
             if(f.type === 'date') { if(document.getElementById('adv-date-toggle').checked) { f.inputFormat = document.getElementById('ed-date-in').value; f.outputFormat = document.getElementById('ed-date-out').value; f.precision = document.getElementById('ed-date-prec').value; } else { delete f.inputFormat; delete f.outputFormat; delete f.precision; } delete f.dateFormat; }
             if(f.type === 'text') { 
