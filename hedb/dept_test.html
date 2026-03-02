@@ -4999,15 +4999,19 @@
                 return;
             }
 
+            // ★ 修正 2：讀取小數設定
+            const dec = parseInt(fieldDef.decimal, 10) || 0;
+
             courseWeights.forEach(item => {
                 const ratio = item.weight / totalWeight;
                 const distVal = totalVal * ratio;
-                const displayVal = fieldDef.decimal ? distVal.toFixed(fieldDef.decimal) : Math.round(distVal);
+                
+                // ★ 修正 2：預覽畫面也同樣聰明地省略無意義的尾數 0
+                const displayVal = dec > 0 ? parseFloat(distVal.toFixed(dec)).toString() : Math.round(distVal).toString();
 
                 const div = document.createElement('div');
                 div.className = "px-4 py-3 flex justify-between items-center hover:bg-indigo-50/30 transition";
                 
-                // 修正 2-5：拿掉括號權重，結果後方加上單位
                 div.innerHTML = `
                     <div class="flex flex-col w-2/3 pr-2">
                         <span class="font-bold text-slate-700 truncate" title="${item.name}">${item.name}</span>
