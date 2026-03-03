@@ -4801,70 +4801,8 @@
 
         // 3. 渲染視窗內的歸戶設定內容
         function renderModalSettingsTab(student) {
-            const listContainer = document.getElementById('modal-settings-course-list');
             const appsContainer = document.getElementById('modal-app-management-list');
-            listContainer.innerHTML = '';
             appsContainer.innerHTML = '';
-
-            // 左側：尚未歸戶課程
-            const unassigned = student.courses.filter(c => !c._app_id);
-            if (unassigned.length === 0) {
-                listContainer.innerHTML = '<div class="text-center text-slate-400 py-3 text-sm bg-white rounded border border-dashed">所有課程皆已歸戶</div>';
-            } else {
-                unassigned.forEach(c => {
-                    const el = document.createElement('div');
-                    el.className = 'course-card flex justify-between items-center p-3 border border-slate-200 rounded mb-2 hover:bg-slate-50 cursor-pointer';
-                    
-                    // 1. 抓取各項課程數值
-                    const name = getCourseValue(c, ['course_name', '課程名稱', '科目名稱']) || '未知課程';
-                    const year = getCourseValue(c, ['school_year', '學年', 'academic_year']) || '';
-                    const sem = getCourseValue(c, ['semester', '學期']) || '';
-                    const code = getCourseValue(c, ['course_code', '選課代號']) || '無代號';
-                    const rawDept = c.course_dept || getCourseValue(c, ['開課學系', 'offering_department', '開課系所', '開課系', 'course_department']) || '';
-
-                    // 2. 轉換系所簡稱
-                    let shortDept = rawDept;
-                    if (rawDept && typeof window.findDeptMaster === 'function') {
-                        const master = window.findDeptMaster(rawDept);
-                        if (master && master.short_name) {
-                            shortDept = master.short_name;
-                        } else if (shortDept && shortDept.endsWith('學系')) {
-                            // 備用防呆：如果字典真的沒設定簡稱，至少把學系變系
-                            shortDept = shortDept.replace('學系', '系');
-                        }
-                    }
-                    // 備用簡化：如果沒抓到內建簡稱，但結尾有「學系」，自動縮短為「系」
-                    if (shortDept && shortDept.endsWith('學系')) {
-                        shortDept = shortDept.replace('學系', '系');
-                    }
-
-                    // 3. 組合顯示字串 (例如：114-1 | 0002 | 中文系開)
-                    const yearSem = (year && sem) ? `${year}-${sem}` : (year || sem || '');
-                    const deptStr = shortDept ? `${shortDept}開` : '';
-                    const subInfo = [yearSem, code, deptStr].filter(Boolean).join(' | ');
-
-                    el.innerHTML = `
-                        <div>
-                            <div class="font-bold text-sm text-slate-700">${name}</div>
-                            <div class="text-xs text-slate-500 mt-0.5">${subInfo}</div>
-                        </div>
-                        <input type="checkbox" class="modal-course-select-check w-5 h-5 text-primary rounded focus:ring-primary cursor-pointer" value="${c._internal_id}">
-                    `;
-                    
-                    el.onclick = (e) => { 
-                        if(e.target.type !== 'checkbox') { 
-                            const cb = el.querySelector('input'); 
-                            cb.checked = !cb.checked; 
-                            el.classList.toggle('selected', cb.checked); 
-                        } 
-                    };
-                    el.querySelector('input').onclick = (e) => {
-                        e.target.parentElement.classList.toggle('selected', e.target.checked);
-                        e.stopPropagation();
-                    };
-                    listContainer.appendChild(el);
-                });
-            }
             
             // 右側：已建立的填報單
             if (student.applications.length === 0) {
@@ -4881,7 +4819,7 @@
                        label += `：${instName}`;
                    }
                    
-                   // 2. 處理課程資訊字串 (例：114-1 | 0002 | 企業實習1、114-1 | 0003 | 企業實習2)
+                   // 2. 處理課程資訊字串
                    const courseInfos = app.courseIds.map(cid => {
                         const c = student.courses.find(x => x._internal_id === cid);
                         if (!c) return '';
@@ -4895,16 +4833,13 @@
                    }).filter(Boolean);
                    
                    const coursesHtml = `<div class="text-xs text-slate-500 mt-1 leading-relaxed">${courseInfos.join('、')}</div>`;
-
+        
                    el.innerHTML = `
                        <div class="flex justify-between items-start">
                            <div class="flex-grow pr-4">
                                <h4 class="font-bold text-primary text-sm">${label}</h4>
                                ${coursesHtml}
                            </div>
-                           <button onclick="deleteApplicationFromModal('${app.id}', '${student.id}')" class="flex-shrink-0 text-xs font-bold text-red-500 hover:bg-red-50 px-2 py-1 rounded transition">
-                               <i class="fas fa-trash-alt"></i> 解除
-                           </button>
                        </div>
                    `;
                    appsContainer.appendChild(el);
