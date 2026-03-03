@@ -1280,42 +1280,43 @@
     </div>
 
     <div id="mapping-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center modal-overlay p-4">
-        <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all scale-100 animate-fade-in">
-            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
-                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fas fa-link text-indigo-500"></i> 匯入欄位配對精靈
+        <div class="bg-slate-50 w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all scale-100 animate-fade-in border border-slate-300">
+            <div class="px-6 py-4 flex justify-between items-center" style="background-color: rgb(0, 46, 93);">
+                <h3 class="text-lg font-bold text-white flex items-center gap-2">
+                    <i class="fas fa-exchange-alt"></i> 匯入欄位匹配設定
                 </h3>
-                <button onclick="cancelFieldMapping()" class="text-slate-400 hover:text-slate-600 transition">
+                <button onclick="cancelFieldMapping()" class="text-white/70 hover:text-white transition">
                     <i class="fas fa-times text-xl"></i>
                 </button>
             </div>
             
-            <div class="p-6 overflow-y-auto custom-scroll flex-grow bg-slate-50/50">
-                <div class="bg-indigo-50 text-indigo-800 text-sm p-4 rounded-xl border border-indigo-100 mb-6 flex gap-3 shadow-sm">
-                    <i class="fas fa-info-circle mt-0.5 text-indigo-500 text-lg"></i>
+            <div class="p-6 overflow-y-auto custom-scroll flex-grow">
+                <div class="bg-white text-slate-600 text-sm p-4 rounded-lg border border-slate-200 mb-6 flex gap-3 shadow-sm">
+                    <i class="fas fa-info-circle mt-0.5 text-blue-500 text-lg"></i>
                     <div>
-                        <strong class="block mb-1">手動配置欄位對應關係</strong>
-                        請將「系統所需的欄位」與「您 Excel 檔案中的表頭」進行配對。為了保護資料，一個 Excel 欄位只能配對給一個系統欄位。<br>
+                        <strong class="block text-slate-800 mb-1">手動配置欄位對應關係</strong>
+                        系統將依據目前學年度的模板動態抓取所需欄位。請將「系統欄位」與「您 Excel 檔案中的表頭」進行配對。一個 Excel 欄位只能配對給一個系統欄位。<br>
                         系統會自動記憶您的配對設定，下次匯入時可直接套用！
                     </div>
                 </div>
 
-                <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                    <div class="bg-slate-100 px-5 py-3 border-b border-slate-200 grid grid-cols-2 gap-4 text-xs font-bold text-slate-600">
-                        <div>系統欄位 (System Fields)</div>
-                        <div>對應的 Excel 表頭 (Your Data)</div>
+                <div class="bg-white border border-slate-300 rounded-lg shadow-sm overflow-hidden">
+                    <div class="bg-slate-100 px-6 py-3 border-b border-slate-300 grid grid-cols-12 gap-4 text-xs font-bold text-slate-600">
+                        <div class="col-span-5">系統欄位名稱 (System Fields)</div>
+                        <div class="col-span-2 text-center">對應狀態</div>
+                        <div class="col-span-5">Excel 表頭 (Your Data)</div>
                     </div>
                     <div id="mapping-list-container" class="divide-y divide-slate-100">
                     </div>
                 </div>
             </div>
 
-            <div class="px-6 py-4 border-t border-slate-100 bg-white flex justify-end gap-3">
-                <button onclick="cancelFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-slate-500 border border-slate-200 hover:bg-slate-50 transition shadow-sm">
-                    取消匯入
+            <div class="px-6 py-4 border-t border-slate-200 bg-white flex justify-end gap-3">
+                <button onclick="cancelFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-slate-600 border border-slate-300 hover:bg-slate-50 transition shadow-sm">
+                    取消
                 </button>
-                <button onclick="confirmFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition flex items-center gap-2">
-                    <i class="fas fa-check"></i> 儲存設定並匯入
+                <button onclick="confirmFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-white hover:opacity-90 shadow-md transition flex items-center gap-2" style="background-color: rgb(0, 46, 93);">
+                    <i class="fas fa-save"></i> 儲存設定並匯入
                 </button>
             </div>
         </div>
@@ -2316,10 +2317,10 @@
         }
 
         // 暫存配對狀態用的全域變數
+        // ★ 新增：暫存配對狀態用的全域變數
         let pendingUploadData = null;
 
         async function handleFileUpload(event, forceMapping = false) {
-            // 2. Alert on file overwrite
             if(allRawData.length > 0) {
                 const confirmOverwrite = await showConfirm('確認覆蓋？', '確定要匯入新檔案嗎？這將會清除目前的資料與歸戶設定。');
                 if(!confirmOverwrite) {
@@ -2351,11 +2352,9 @@
                         });
                     }
 
-                    // ★ 新增：讀取使用者過往手動儲存的配對記憶
                     const savedCustomMapStr = localStorage.getItem('thu_isac_custom_field_map') || '{}';
                     const customFieldMap = JSON.parse(savedCustomMapStr);
 
-                    // 2. Read Main Data
                     let mainSheet = null;
                     workbook.eachSheet((sheet) => {
                         if (!mainSheet && sheet.state === 'visible') mainSheet = sheet;
@@ -2363,7 +2362,6 @@
                     if (!mainSheet) mainSheet = workbook.getWorksheet(1); 
 
                     const excelHeaderNames = [];
-                    
                     const getSafeValue = (cell) => {
                         const val = cell.value;
                         if (val === null || val === undefined) return '';
@@ -2382,12 +2380,11 @@
                         return String(val).trim();
                     };
 
-                    // ★ 新增：只讀取最原始的 Excel 表頭名稱
                     mainSheet.getRow(1).eachCell((cell, colNumber) => {
                         excelHeaderNames[colNumber] = getSafeValue(cell);
                     });
 
-                    // ★ 新增：建立待配對的系統欄位清單 (包含所有後台定義的欄位)
+                    // ★★★ 核心修正：動態讀取模板欄位 ★★★
                     const sysFields = [
                         { id: 'student_id', label: '學生學號', required: true },
                         { id: 'student_name', label: '學生姓名', required: true },
@@ -2399,24 +2396,27 @@
                         { id: 'semester', label: '學期', required: false },
                         { id: 'student_grade', label: '年級', required: false }
                     ];
-                    if (currentYearConfig && currentYearConfig.fields) {
+
+                    // 檢查 currentYearConfig 並把模板中的欄位動態加進來
+                    if (typeof currentYearConfig !== 'undefined' && currentYearConfig.fields) {
                         currentYearConfig.fields.forEach(f => {
-                            if (!f.isSystem || f.category !== 'sys_course_info') {
-                                sysFields.push({ id: f.id, label: f.label, required: f.required });
+                            // 避免重複加入核心欄位
+                            if (!sysFields.find(sf => sf.id === f.id)) {
+                                // 排除不需要配對的系統欄位
+                                if (f.category !== 'sys_course_info') {
+                                    sysFields.push({ id: f.id, label: f.label, required: f.required });
+                                }
                             }
                         });
                     }
 
-                    // 檢查是否需要彈出配對視窗
                     let needsMapping = forceMapping;
-                    
-                    // 模擬套用目前的 Mapping 看看必填核心欄位是否都有抓到
                     const mappedSysIds = new Set();
+                    
                     excelHeaderNames.forEach(hName => {
                         if(!hName) return;
                         let sysId = metaFieldMap[hName] || customFieldMap[hName];
                         if (!sysId) {
-                            // 智慧猜測防呆
                             const hl = hName.toLowerCase();
                             if (hl === 'student_id' || hl === '學號') sysId = 'student_id';
                             else if (hl === 'student_name' || hl === '姓名') sysId = 'student_name';
@@ -2426,24 +2426,21 @@
                         if (sysId) mappedSysIds.add(sysId);
                     });
 
-                    // 檢查必填核心是否遺失
                     const missingCores = sysFields.filter(f => f.required && !mappedSysIds.has(f.id));
                     if (missingCores.length > 0) needsMapping = true;
 
-                    // 預先讀取好所有 Excel 原始資料
                     const rawDataRows = [];
                     mainSheet.eachRow((row, rowNumber) => {
                         if (rowNumber > 1) {
                             const rowData = {};
                             row.eachCell((cell, colNumber) => {
                                 const hName = excelHeaderNames[colNumber];
-                                if(hName) rowData[hName] = getSafeValue(cell); // 先用原始 Excel 表頭當 Key
+                                if(hName) rowData[hName] = getSafeValue(cell); 
                             });
                             if(Object.keys(rowData).length > 0) rawDataRows.push(rowData);
                         }
                     });
 
-                    // 3. Read Consolidation Data
                     let savedApps = [];
                     const conSheet = workbook.getWorksheet('_Consolidation_Data');
                     if (conSheet) {
@@ -2463,36 +2460,6 @@
                         });
                     }
 
-                    // 4. Read Institution Library
-                    const libSheet = workbook.getWorksheet('_Institution_Library');
-                    if (libSheet) {
-                        libSheet.eachRow((row, rowNumber) => {
-                            if (rowNumber > 1) {
-                                const name = row.getCell(1).value;
-                                const jsonStr = row.getCell(2).value; 
-                                if (name && jsonStr) {
-                                    try {
-                                        const entry = JSON.parse(jsonStr);
-                                        if (!institutionLibrary[name]) institutionLibrary[name] = [];
-                                        const generateFingerprint = (e) => {
-                                            const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
-                                            const clean = {};
-                                            keys.forEach(k => clean[k] = e[k]);
-                                            return JSON.stringify(clean);
-                                        };
-                                        const newFingerprint = generateFingerprint(entry);
-                                        const exists = institutionLibrary[name].some(e => generateFingerprint(e) === newFingerprint);
-                                        if (!exists) institutionLibrary[name].push(entry);
-                                    } catch (e) { console.error("Lib parse error", e); }
-                                }
-                            }
-                        });
-                        if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                            localStorage.setItem(LIB_STORAGE_KEY, LZString.compressToUTF16(JSON.stringify(institutionLibrary)));
-                        }
-                    }
-
-                    // ★ 打包狀態，準備執行後續流程
                     pendingUploadData = { 
                         rawDataRows, savedApps, 
                         excelHeaderNames: excelHeaderNames.filter(h=>h), 
@@ -2500,12 +2467,10 @@
                     };
 
                     if (needsMapping) {
-                        // 缺少欄位或強制配對：攔截並彈出配對精靈！
                         showFieldMappingModal();
-                        event.target.value = ''; // 讓下次還能選同一個檔案
-                        return; // 中斷，等待使用者配對完成
+                        event.target.value = ''; 
+                        return; 
                     } else {
-                        // 欄位齊全，直接套用 Mapping 並無縫匯入
                         await applyMappingAndProcess();
                         event.target.value = ''; 
                     }
@@ -2519,7 +2484,7 @@
             reader.readAsArrayBuffer(file);
         }
 
-        // --- ★ 欄位手動配對精靈邏輯 (1對1防呆機制) ---
+        // --- ★ 仿 admin.html 風格的配對精靈 ---
         function showFieldMappingModal() {
             if (!pendingUploadData) return;
             const container = document.getElementById('mapping-list-container');
@@ -2527,9 +2492,8 @@
 
             pendingUploadData.sysFields.forEach(sf => {
                 const row = document.createElement('div');
-                row.className = 'px-5 py-3 grid grid-cols-2 gap-4 items-center hover:bg-slate-50 transition border-b border-slate-50 last:border-0';
+                row.className = 'px-6 py-4 grid grid-cols-12 gap-4 items-center hover:bg-indigo-50/30 transition border-b border-slate-100 last:border-0';
                 
-                // 決定此下拉選單的預設選取值 (若有舊記憶則自動帶入)
                 let defaultExcelHeader = "";
                 pendingUploadData.excelHeaderNames.forEach(hName => {
                     let mappedId = pendingUploadData.metaFieldMap[hName] || pendingUploadData.customFieldMap[hName];
@@ -2543,16 +2507,22 @@
                     if (mappedId === sf.id) defaultExcelHeader = hName;
                 });
 
-                const optionsHTML = `<option value="">-- 不配對 / 無對應欄位 --</option>` + 
+                const optionsHTML = `<option value="">-- 請選擇對應的 Excel 欄位 --</option>` + 
                     pendingUploadData.excelHeaderNames.map(eh => `<option value="${eh}" ${eh === defaultExcelHeader ? 'selected' : ''}>${eh}</option>`).join('');
 
                 row.innerHTML = `
-                    <div class="font-bold text-slate-700 flex items-center gap-2">
-                        <i class="fas ${sf.required ? 'fa-asterisk text-red-400 text-[10px]' : 'fa-circle text-slate-300 text-[8px]'}"></i>
-                        ${sf.label} ${sf.required ? '<span class="text-xs font-normal text-red-500">(必填)</span>' : ''}
+                    <div class="col-span-5 flex flex-col justify-center">
+                        <div class="font-bold text-slate-800 flex items-center gap-2">
+                            ${sf.label} 
+                            ${sf.required ? '<span class="px-2 py-0.5 rounded text-[10px] bg-red-100 text-red-600 border border-red-200">必填</span>' : '<span class="px-2 py-0.5 rounded text-[10px] bg-slate-100 text-slate-500 border border-slate-200">選填</span>'}
+                        </div>
+                        <div class="text-[10px] text-slate-400 font-mono mt-0.5">${sf.id}</div>
                     </div>
-                    <div>
-                        <select id="map-select-${sf.id}" data-sysid="${sf.id}" data-required="${sf.required}" class="mapping-select w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer" onchange="updateMappingSelects()">
+                    <div class="col-span-2 flex justify-center items-center text-slate-300">
+                        <i class="fas fa-link"></i>
+                    </div>
+                    <div class="col-span-5">
+                        <select id="map-select-${sf.id}" data-sysid="${sf.id}" data-required="${sf.required}" class="mapping-select w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white shadow-sm cursor-pointer" onchange="updateMappingSelects()">
                             ${optionsHTML}
                         </select>
                     </div>
@@ -2560,25 +2530,33 @@
                 container.appendChild(row);
             });
 
-            updateMappingSelects(); // 初始化一次選項鎖定
+            updateMappingSelects();
             document.getElementById('mapping-modal').classList.remove('hidden');
         }
 
-        // 核心邏輯：確保一個 Excel 欄位只能配對給一個系統欄位
         function updateMappingSelects() {
             const selects = document.querySelectorAll('.mapping-select');
             const selectedValues = Array.from(selects).map(s => s.value).filter(v => v !== "");
             
             selects.forEach(select => {
                 const currentVal = select.value;
-                if(currentVal) select.classList.remove('border-red-500', 'bg-red-50'); 
+                const isReq = select.dataset.required === 'true';
+                
+                // 動態切換邊框顏色 (必填未填變紅，有填變藍)
+                if(currentVal) {
+                    select.classList.remove('border-red-500', 'bg-red-50', 'border-slate-300');
+                    select.classList.add('border-indigo-400', 'bg-indigo-50/30');
+                } else {
+                    select.classList.remove('border-indigo-400', 'bg-indigo-50/30');
+                    if (isReq) select.classList.add('border-red-500', 'bg-red-50');
+                    else select.classList.add('border-slate-300');
+                }
                 
                 Array.from(select.options).forEach(option => {
                     if (option.value === "") return;
-                    // 如果這個選項已經在其他下拉框被選了，就反灰鎖定！
                     if (selectedValues.includes(option.value) && option.value !== currentVal) {
                         option.disabled = true;
-                        option.text = `${option.value} (已配對)`;
+                        option.text = `${option.value} (已被使用)`;
                     } else {
                         option.disabled = false;
                         option.text = option.value;
@@ -2609,26 +2587,22 @@
                     hasError = true;
                     sel.classList.add('border-red-500', 'bg-red-50');
                 } else if (excelColName) {
-                    newCustomMap[excelColName] = sysId; // 儲存 Excel表頭 -> 系統ID 的對應
+                    newCustomMap[excelColName] = sysId; 
                 }
             });
 
             if (hasError) {
-                showToast('error', '請完成所有標示為 (必填) 的核心欄位配對！');
+                showToast('error', '請完成所有標示為「必填」的欄位配對！');
                 return;
             }
 
-            // 將這份完美的配對儲存到瀏覽器記憶體中，下次就不用再配對了！
             localStorage.setItem('thu_isac_custom_field_map', JSON.stringify(newCustomMap));
             pendingUploadData.customFieldMap = newCustomMap; 
 
             document.getElementById('mapping-modal').classList.add('hidden');
-            
-            // 執行轉換與匯入
             await applyMappingAndProcess();
         }
 
-        // 套用最終配對並轉交給主系統
         async function applyMappingAndProcess() {
             const { rawDataRows, savedApps, metaFieldMap, customFieldMap, excelHeaderNames } = pendingUploadData;
             const finalProcessedData = [];
@@ -2644,7 +2618,7 @@
                         else if (hl === 'student_name' || hl === '姓名') sysId = 'student_name';
                         else if (hl === 'course_name' || hl === '課名' || hl === '科目名稱') sysId = 'course_name';
                         else if (hl === 'course_id' || hl === '選課代號' || hl === '課程代碼') sysId = 'course_id';
-                        else sysId = hName; // 都配對不到就保留原名，給一般匯入容錯使用
+                        else sysId = hName; 
                     }
                     newRow[sysId] = row[hName];
                 });
@@ -2658,7 +2632,7 @@
                 return;
             }
 
-            showToast('success', '匯入處理中...');
+            showToast('success', '設定套用成功，開始匯入...');
             await processUploadedData(finalProcessedData, savedApps);
         }
 
