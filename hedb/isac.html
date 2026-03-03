@@ -63,17 +63,20 @@
         aside.collapsed + #sidebar-toggle-strip { left: 0; border-left: none; }
         aside.collapsed + #sidebar-toggle-strip i { transform: rotate(180deg); }
 
+        /* 還原回系所端相同的深藍色系 */
         .student-item { cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
         .student-item:hover { background-color: #f8fafc; }
-        .student-item.active { background-color: #f3e8ff; border-left-color: #9333ea; }
-        .student-item.active .student-name { color: #7e22ce; font-weight: bold; }
+        .student-item.active { background-color: #eff6ff; border-left-color: #002E5D; }
+        .student-item.active .student-name { color: #002E5D; font-weight: bold; }
 
-        .import-btn { border: 2px dashed #d8b4fe; color: #9333ea; background-color: #faf5ff; transition: all 0.2s; border-radius: 0.75rem; text-align: center; padding: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9em; width: 100%; }
-        .import-btn:hover { border-color: #9333ea; background-color: #f3e8ff; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+        /* 匯入按鈕還原為系所端的綠色 */
+        .import-btn { border: 2px dashed #bbf7d0; color: #219653; background-color: #f0fdf4; transition: all 0.2s; border-radius: 0.75rem; text-align: center; padding: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9em; width: 100%; }
+        .import-btn:hover { border-color: #219653; background-color: #dcfce7; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 
+        /* 頁籤還原回深藍色系 */
         .tab-btn { padding: 0.75rem 1.5rem; font-size: 1em; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; transition: all 0.2s; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
-        .tab-btn:hover { color: #7e22ce; background-color: #faf5ff; }
-        .tab-btn.active { color: #7e22ce; background-color: #faf5ff; border-bottom: 3px solid #9333ea !important; border-radius: 6px 6px 0 0; }
+        .tab-btn:hover { color: #002E5D; background-color: #f8fafc; }
+        .tab-btn.active { color: #002E5D; background-color: #eff6ff; border-bottom: 3px solid #002E5D !important; border-radius: 6px 6px 0 0; }
         .tab-content { display: none; }
         .tab-content.active { display: block; }
         
@@ -100,6 +103,7 @@
                 <div class="flex flex-col">
                     <h1 class="font-bold text-lg tracking-wide text-primary flex items-center gap-2 whitespace-nowrap">
                         東海大學學生校外實習校庫填報輔助系統
+                        <!-- 只有此標籤保留紫色系以作為身分識別 -->
                         <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-lg text-sm border border-purple-200 shadow-sm flex-shrink-0">
                             中心檢核
                         </span>
@@ -114,7 +118,7 @@
             </button>
             <div class="h-6 w-px bg-slate-200 mx-1"></div>
             
-            <button onclick="exportData()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-sky-900 transition shadow-sm flex items-center gap-2 whitespace-nowrap">
+            <button onclick="exportData()" class="bg-success text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-emerald-700 transition shadow-sm flex items-center gap-2 whitespace-nowrap">
                 <i class="fas fa-file-export"></i> 匯出檢核結果
             </button>
             <button onclick="document.getElementById('info-modal').classList.remove('hidden')" class="ml-3 text-slate-400 hover:text-primary transition" title="系統與隱私聲明">
@@ -150,7 +154,7 @@
                     <select id="filter-student-dept" onchange="filterStudentList()" class="filter-select">
                         <option value="">全部學生系</option>
                     </select>
-                    <select id="filter-status" onchange="filterStudentList()" class="filter-select col-span-2 text-purple-800 font-bold bg-purple-50 border-purple-200">
+                    <select id="filter-status" onchange="filterStudentList()" class="filter-select col-span-2">
                         <option value="">全部檢核狀態</option>
                         <option value="pending">⏳ 待檢核</option>
                         <option value="approved">✅ 已通過</option>
@@ -200,7 +204,8 @@
                 
                 <div class="bg-white px-6 py-4 border-b border-slate-200 shadow-sm flex-shrink-0 flex justify-between items-center z-20">
                     <div class="flex gap-4 items-start min-w-0 mr-4 flex-grow">
-                        <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xl font-bold flex-shrink-0 mt-1">
+                        <!-- 大頭貼還原為深藍色系 -->
+                        <div class="w-12 h-12 rounded-full bg-primary/10 text-primary flex items-center justify-center text-xl font-bold flex-shrink-0 mt-1">
                             <span id="header-avatar">?</span>
                         </div>
                         
@@ -243,12 +248,12 @@
         </div>
     </div>
     
-    <!-- Info Modal -->
+    <!-- Info Modal (配色還原為主要藍色) -->
     <div id="info-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center modal-overlay p-4">
         <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
-            <div class="px-6 py-4 bg-purple-700 text-white flex justify-between items-center">
+            <div class="px-6 py-4 bg-primary text-white flex justify-between items-center">
                 <h3 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-shield-alt"></i> 檢核系統聲明</h3>
-                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="hover:text-purple-200"><i class="fas fa-times"></i></button>
+                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="hover:text-slate-300"><i class="fas fa-times"></i></button>
             </div>
             <div class="p-6 text-sm text-slate-700">
                 <p class="mb-2">本系統為「中心審核端」，主要功能如下：</p>
@@ -257,12 +262,12 @@
                     <li>您可以透過「檢核作業」區塊，標記資料為「已通過」或「退回修改」。</li>
                     <li>所有變更將存於本機瀏覽器，請記得點擊右上方「匯出檢核結果」下載最終檔案。</li>
                 </ul>
-                <div class="p-3 bg-purple-50 text-purple-800 rounded-lg text-xs border border-purple-200">
+                <div class="p-3 bg-blue-50 text-blue-800 rounded-lg text-xs border border-blue-200">
                     <i class="fas fa-info-circle"></i> 建議開啟「暫存保護」以避免意外關閉視窗導致審核進度遺失。
                 </div>
             </div>
             <div class="px-6 py-4 bg-slate-50 border-t flex justify-end">
-                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="bg-purple-700 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-purple-800">了解</button>
+                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="bg-primary text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-sky-900">了解</button>
             </div>
         </div>
     </div>
@@ -274,11 +279,12 @@
         const STORAGE_KEY = 'thu_isac_hedb_isac_v1';
         let globalConfig = {};       
         let currentYearConfig = {};  
+        let deptMasterData = {};     // 補回系所代碼表
         let allRawData = [];         
         let groupedStudents = {};    
         let currentStudentId = null;
         let currentActiveAppId = null;
-        let activeYear = "114"; // 預設 114
+        let activeYear = "114"; 
 
         const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
         let sortConfig = { key: 'id', direction: 'asc' };
@@ -360,17 +366,72 @@
             } catch (e) { showToast('error', '儲存空間不足'); }
         }
 
+        // --- 補回強大抓值與代碼轉換函式 ---
+        const getValue = (row, possibleKeys) => {
+            const rowKeys = Object.keys(row);
+            for (const key of possibleKeys) {
+                const target = key.toLowerCase();
+                if (row[key] !== undefined && row[key] !== null && String(row[key]).trim() !== '') {
+                    return String(row[key]).trim();
+                }
+                const foundKey = rowKeys.find(k => k.trim().toLowerCase() === target);
+                if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') {
+                    return String(row[foundKey]).trim();
+                }
+            }
+            return '';
+        };
+
+        window.findDeptMaster = function(query) {
+            if (!deptMasterData || !query) return null;
+            const q = query.toString().trim();
+            
+            if (deptMasterData[q]) return deptMasterData[q];
+
+            for (const key in deptMasterData) {
+                const m = deptMasterData[key];
+                if (m.code == q || m.name === q || m.short_name === q || m.fullName === q) return m;
+                if (m.historical_names && Object.values(m.historical_names).includes(q)) return m;
+            }
+            return null;
+        };
+
+        // 加載設定檔
+        async function changeYear(year) {
+            activeYear = year;
+            try {
+                const res = await fetch(`year_templates/year_${year}_templates.json?t=${Date.now()}`);
+                if (res.ok) {
+                    currentYearConfig = await res.json();
+                } else {
+                    throw new Error("Template load failed");
+                }
+            } catch (e) { 
+                console.error(e);
+                // 預設配置防呆
+                if (!currentYearConfig.fields) {
+                    currentYearConfig = {
+                        fields: [
+                            { id: 'internship_institution_name', label: '實習機構名稱', type: 'text' },
+                            { id: 'internship_hours', label: '實習總時數', type: 'number' }
+                        ]
+                    };
+                }
+            }
+        }
+
         // --- Initialization ---
         window.onload = async function() {
             try {
-                // Mock config for prototype standalone capability
-                currentYearConfig = {
-                    fields: [
-                        { id: 'internship_institution_name', label: '實習機構名稱', category: 'info', type: 'text' },
-                        { id: 'internship_hours', label: '實習總時數', category: 'info', type: 'number' },
-                        { id: 'internship_salary', label: '是否有薪資', category: 'info', type: 'single_select', options: ['有', '無'] }
-                    ]
-                };
+                // 讀取設定檔與系所代碼表
+                const [cfgRes, masterRes] = await Promise.all([
+                    fetch('config.json').then(r => r.ok ? r.json() : {}),
+                    fetch('data_dept_master.json').then(r => r.ok ? r.json() : {})
+                ]);
+                globalConfig = cfgRes;
+                deptMasterData = masterRes;
+
+                await changeYear(activeYear);
 
                 const saved = localStorage.getItem(STORAGE_KEY);
                 const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
@@ -412,7 +473,11 @@
                     mainSheet.eachRow((row, rowNum) => {
                         if (rowNum > 1) {
                             const rowData = {};
-                            row.eachCell((cell, col) => rowData[headers[col] || `col${col}`] = cell.value);
+                            row.eachCell((cell, col) => {
+                                let val = cell.value;
+                                if (val && typeof val === 'object' && val.richText) val = val.richText.map(rt => rt.text).join(''); 
+                                rowData[headers[col] || `col${col}`] = val;
+                            });
                             rawDataRows.push(rowData);
                         }
                     });
@@ -451,16 +516,34 @@
             const studentDepts = new Set();
 
             data.forEach((row, idx) => {
-                const sid = row['student_id'] || row['學號'] || `unknown_${idx}`;
-                const sname = row['student_name'] || row['姓名'] || '未知';
-                const sdept = row['student_dept'] || row['系所'] || '未分系';
-                const cdept = row['course_dept'] || row['開課系所'] || '';
+                // 補回強大取值邏輯
+                const sid = getValue(row, ['student_id', '學號', 'id', 'std_no']) || `unknown_${idx}`;
+                const sname = getValue(row, ['student_name', '姓名', 'name']) || '未知';
+                const rawDept = getValue(row, ['student_department', 'student_dept', '系所', 'department', 'dept']);
+                const sgrade = getValue(row, ['student_grade', 'grade', '年級', 'level']);
+                const cdept = getValue(row, ['course_dept', '開課系所', '開課學系']);
                 
-                if (sdept) studentDepts.add(sdept);
+                let deptDisplay = rawDept;
+                const master = window.findDeptMaster(rawDept);
+                if (master) {
+                    deptDisplay = master.short_name || (master.historical_names && master.historical_names[activeYear]) || master.name || rawDept;
+                }
+                if (!deptDisplay || deptDisplay === 'undefined') deptDisplay = '未分系';
+
+                if (deptDisplay && deptDisplay !== '未分系') studentDepts.add(deptDisplay);
                 if (cdept) courseDepts.add(cdept);
 
                 if (!groupedStudents[sid]) {
-                    groupedStudents[sid] = { id: sid, name: sname, dept: sdept, courses: [], applications: [] };
+                    groupedStudents[sid] = { 
+                        id: sid, 
+                        name: sname, 
+                        dept: deptDisplay, 
+                        grade: sgrade,
+                        courses: [], 
+                        applications: [] 
+                    };
+                } else {
+                    if (!groupedStudents[sid].grade && sgrade) groupedStudents[sid].grade = sgrade;
                 }
                 
                 row._internal_id = row._internal_id || `c_${idx}`;
@@ -483,7 +566,7 @@
                     }
                 });
             } else {
-                // If no saved apps, mock grouping for demonstration
+                // If no saved apps, group by ID
                 Object.values(groupedStudents).forEach(s => {
                     if (s.courses.length > 0) {
                         const app = {
@@ -558,14 +641,25 @@
                     else statusHtml = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">✅ 已通過</span>';
                 }
 
+                // 補回年級顯示邏輯
+                let rawGrade = s.grade;
+                if (!rawGrade && s.courses && s.courses.length > 0) {
+                    rawGrade = s.courses[0].grade || s.courses[0].student_grade || s.courses[0]['學生年級'] || s.courses[0]['年級'];
+                }
+                let gradeLine = s.dept;
+                if (rawGrade) {
+                    let cleanGrade = String(rawGrade).replace(/年級/g, '').trim();
+                    gradeLine += ` ｜ ${cleanGrade}年級`;
+                }
+
                 const isActive = s.id === currentStudentId ? 'active' : '';
                 listEl.insertAdjacentHTML('beforeend', `
                     <div class="student-item p-3 border-b border-slate-100 ${isActive}" onclick="selectStudent('${s.id}')">
                         <div class="flex justify-between items-center mb-1">
-                            <div class="student-name font-bold text-slate-800 text-sm truncate">${s.name} (${s.id})</div>
-                            <div>${statusHtml}</div>
+                            <div class="student-name font-bold text-slate-800 text-sm truncate pr-2">${s.name} (${s.id})</div>
+                            <div class="shrink-0">${statusHtml}</div>
                         </div>
-                        <div class="text-xs text-slate-500 truncate">${s.dept}</div>
+                        <div class="text-xs text-slate-500 truncate">${gradeLine}</div>
                     </div>
                 `);
             });
@@ -584,7 +678,11 @@
             document.getElementById('header-name').innerText = student.name;
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-avatar').innerText = student.name[0];
-            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap"></i> ${student.dept}`;
+            
+            let gradeText = student.grade ? `${student.grade}年級` : '';
+            let deptHtml = `<i class="fas fa-graduation-cap"></i> ${student.dept}`;
+            if (gradeText) deptHtml += ` <span class="mx-2 text-slate-300">|</span> ${gradeText}`;
+            document.getElementById('header-dept').innerHTML = deptHtml;
             
             renderTabs(student);
             
@@ -624,7 +722,7 @@
             if(btn) btn.classList.add('active');
             
             const container = document.getElementById('dynamic-tabs-area');
-            container.innerHTML = ''; // Force re-render for clean state
+            container.innerHTML = ''; 
             
             const student = groupedStudents[currentStudentId];
             const app = student.applications.find(a => a.id === appId);
@@ -634,7 +732,7 @@
             
             // 2. Read-only Form
             const formDiv = document.createElement('div');
-            formDiv.className = 'mt-6 bg-white p-6 rounded-xl border border-slate-200 shadow-sm opacity-90';
+            formDiv.className = 'mt-6 bg-white p-6 rounded-xl border border-slate-200 shadow-sm opacity-90 transition-opacity';
             formDiv.innerHTML = '<h4 class="font-bold text-slate-700 border-b border-slate-200 pb-2 mb-4"><i class="fas fa-lock text-slate-400 mr-1"></i> 系所填報資料 (唯讀)</h4>';
             renderFields(formDiv, app);
             
@@ -648,6 +746,7 @@
         function createReviewPanel(app) {
             const status = app.formData.isac_status || 'pending';
             let badgeHtml = '';
+            // 配色也改回系所端風格的藍綠紅
             let bgClass = 'bg-slate-50 border-slate-200';
             let titleColor = 'text-slate-800';
 
@@ -661,8 +760,8 @@
                 titleColor = 'text-red-800';
             } else {
                 badgeHtml = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock"></i> 待中心檢核</span>';
-                bgClass = 'bg-purple-50 border-purple-200';
-                titleColor = 'text-purple-800';
+                bgClass = 'bg-indigo-50 border-indigo-100'; // 待檢核改用 Indigo 色系，匹配系所端的特定面板風格
+                titleColor = 'text-indigo-800';
             }
 
             const comment = app.formData.isac_comment || '';
