@@ -3,88 +3,799 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>網頁建置中 | 東海大學</title>
+    <title>東海大學學生校外實習校庫填報輔助系統 - 中心檢核</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+    <!-- SheetJS for Excel Import/Export -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <!-- ExcelJS -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.3.0/exceljs.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/lz-string/1.4.4/lz-string.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
     <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+TC:wght@300;400;500;700&display=swap" rel="stylesheet">
     <script>
-        // 參考 HEDB 風格定義主要顏色
         tailwind.config = {
             theme: {
                 extend: {
                     colors: {
-                        thuBlue: '#002E5D',      // 東海深藍 (用於文字和重點)
-                        bgLightPurple: '#F3E8FF',// 極淡紫色 (背景起始色)
-                        bgLightBlue: '#E0F2FE',  // 極淡藍色 (背景結束色/裝飾)
+                        primary: '#002E5D', secondary: '#C6A87C', success: '#219653', danger: '#DC2626', surface: '#ffffff', background: '#F8FAFC',
                     },
-                    fontFamily: {
-                        sans: ['"Noto Sans TC"', 'sans-serif'],
-                    }
+                    fontFamily: { sans: ['"Noto Sans TC"', 'sans-serif'] }
                 }
             }
         }
     </script>
     <style>
-        /* 1. 背景：使用新的淡藍紫漸層 (HEDB Index 參考色) */
-        .main-bg {
-            background: linear-gradient(135deg, #F3E8FF 0%, #E0F2FE 100%);
-            min-height: 100vh;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            position: relative;
-            overflow: hidden;
+        :root { --base-size: 16px; }
+        html { font-size: var(--base-size); }
+        body { font-size: 1rem; } 
+        
+        .custom-scroll::-webkit-scrollbar { width: 6px; height: 6px; } 
+        .custom-scroll::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+        .custom-scroll::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+        
+        .input-stylish { 
+            width: 100%; border: 1px solid #e2e8f0; border-radius: 0.375rem; 
+            padding: 0.4rem 0.75rem; font-size: 1em; transition: all 0.2s; 
+            background-color: #fff; line-height: 1.5; height: 42px !important; box-sizing: border-box; 
         }
-
-        /* 2. 毛玻璃卡片：根據您的要求更新樣式 */
-        .glass-card {
-            background: rgba(255, 255, 255, 0.6); /* 保持高透明度 */
-            backdrop-filter: blur(12px);
-            border: 1px solid rgba(255, 255, 255, 0.6);
-            box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        .input-stylish:focus { border-color: #002E5D; outline: none; box-shadow: 0 0 0 3px rgba(0, 46, 93, 0.1); }
+        
+        /* 針對中心檢核：唯讀狀態的樣式 */
+        .input-stylish:disabled, .input-stylish[readonly] { 
+            background-color: #f8fafc; color: #475569; cursor: not-allowed; border-color: #e2e8f0; 
         }
+        
+        textarea.input-stylish { height: auto; min-height: 2.5em; padding-top: 0.4rem; padding-bottom: 0.4rem; }
 
-        /* 移除動畫效果，因為沒有圓點裝飾了 */
-    </style>
+        aside { transition: width 0.3s ease; position: relative; }
+        aside.collapsed { width: 0 !important; overflow: hidden; }
+        
+        #sidebar-toggle-strip {
+            position: absolute; left: 20rem; top: 0; bottom: 0; width: 16px; 
+            background: #f1f5f9; border-right: 1px solid #e2e8f0; border-left: 1px solid #fff;
+            cursor: pointer; z-index: 40; display: flex; align-items: center; justify-content: center; transition: left 0.3s ease, background-color 0.2s;
+        }
+        #student-grid-wrapper { padding-left: 16px; }
+        #sidebar-toggle-strip:hover { background-color: #e2e8f0; }
+        #sidebar-toggle-strip i { font-size: 10px; color: #94a3b8; transition: transform 0.3s; }
+        aside.collapsed + #sidebar-toggle-strip { left: 0; border-left: none; }
+        aside.collapsed + #sidebar-toggle-strip i { transform: rotate(180deg); }
+
+        .student-item { cursor: pointer; border-left: 3px solid transparent; transition: all 0.2s; }
+        .student-item:hover { background-color: #f8fafc; }
+        .student-item.active { background-color: #f3e8ff; border-left-color: #9333ea; }
+        .student-item.active .student-name { color: #7e22ce; font-weight: bold; }
+
+        .import-btn { border: 2px dashed #d8b4fe; color: #9333ea; background-color: #faf5ff; transition: all 0.2s; border-radius: 0.75rem; text-align: center; padding: 0.75rem; font-weight: bold; cursor: pointer; display: flex; align-items: center; justify-content: center; gap: 0.5rem; font-size: 0.9em; width: 100%; }
+        .import-btn:hover { border-color: #9333ea; background-color: #f3e8ff; transform: translateY(-1px); box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
+
+        .tab-btn { padding: 0.75rem 1.5rem; font-size: 1em; font-weight: 600; color: #64748b; border-bottom: 3px solid transparent; transition: all 0.2s; cursor: pointer; display: flex; align-items: center; gap: 0.5rem; white-space: nowrap; }
+        .tab-btn:hover { color: #7e22ce; background-color: #faf5ff; }
+        .tab-btn.active { color: #7e22ce; background-color: #faf5ff; border-bottom: 3px solid #9333ea !important; border-radius: 6px 6px 0 0; }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+        
+        .form-section-title { font-size: 1.1em; font-weight: 700; color: #002E5D; margin-top: 1.5rem; margin-bottom: 1rem; padding-bottom: 0.5rem; border-bottom: 1px solid #e2e8f0; display: flex; align-items: center; gap: 0.5rem; }
+        .form-section-title:first-child { margin-top: 0; }
+        .form-section-title::before { content: ''; display: block; width: 4px; height: 1.2em; background-color: #C6A87C; border-radius: 2px; }
+
+        .modal-overlay { background-color: rgba(15, 23, 42, 0.6); backdrop-filter: blur(4px); }
+        .filter-select { font-size: 0.85em; padding: 0.25rem 0.5rem; border-radius: 0.25rem; border: 1px solid #e2e8f0; background-color: #fff; width: 100%; }
+        .toast-enter { transform: translateY(20px); opacity: 0; }
+        .toast-enter-active { transform: translateY(0); opacity: 1; transition: all 0.3s ease-out; }
+    </style> 
 </head>
-<body class="main-bg font-sans">
-    
-    <!-- 移除背景裝飾圓形 -->
+<body class="h-screen flex flex-col bg-background text-slate-700 overflow-hidden">
 
-    <!-- 核心內容卡片 (毛玻璃面板) -->
-    <div class="glass-card w-11/12 max-w-lg p-10 md:p-16 rounded-2xl text-center relative z-10 mx-auto shadow-xl">
-        
-        <!-- 標誌或圖示 -->
-        <!-- 圖示背景使用淺藍色，圖示顏色使用 thuBlue -->
-        <div class="w-16 h-16 bg-bgLightBlue text-thuBlue rounded-full flex items-center justify-center text-3xl mx-auto mb-6 shadow-md">
-             <i class="fas fa-tools"></i>
-        </div>
-
-        <!-- 標題 -->
-        <!-- 文字顏色改回深色以符合淺色卡片對比要求 -->
-        <h1 class="text-3xl md:text-4xl font-black text-thuBlue tracking-wider mb-4">
-            網頁建置中
-        </h1>
-
-        <!-- 副標題 -->
-        <p class="text-gray-700 text-base md:text-lg font-light mb-8 max-w-sm mx-auto leading-relaxed">
-            我們正在努力建置一個更棒的協作平台，
-            請您耐心等候，很快就能與您見面。
-        </p>
-        
-        <!-- 額外資訊或進度條 -->
-        <!-- 內層元素背景使用純白，確保文字清晰 -->
-        <div class="bg-white/90 p-4 rounded-xl border border-gray-100 shadow-inner">
-            <p class="text-sm font-bold text-gray-700 mb-2 flex items-center justify-center gap-2">
-                <i class="fas fa-spinner fa-spin text-thuBlue"></i> 預計將於近期完成上線
-            </p>
-            <div class="w-full bg-gray-200 rounded-full h-2.5">
-                <!-- 模擬進度條，顏色使用 thuBlue -->
-                <div class="bg-thuBlue h-2.5 rounded-full transition-all duration-1000" style="width: 85%"></div>
+    <!-- Header -->
+    <header class="h-16 bg-white border-b border-slate-200 flex items-center px-6 shadow-sm z-30 flex-shrink-0 justify-between">
+        <div class="flex items-center gap-4 min-w-0">
+            <div class="flex items-center gap-3 flex-shrink-0"> 
+                <div class="bg-primary p-1.5 rounded-lg shadow-sm flex-shrink-0">
+                    <img src="files/svg/THU-Logo.svg" class="h-8 w-auto" alt="Logo" onerror="this.src='data:image/svg+xml;utf8,<svg xmlns=\'http://www.w3.org/2000/svg\' viewBox=\'0 0 100 100\'><rect width=\'100\' height=\'100\' fill=\'%23002E5D\'/><text x=\'50\' y=\'60\' font-size=\'40\' fill=\'white\' text-anchor=\'middle\'>T</text></svg>'">
+                </div>
+                
+                <div class="flex flex-col">
+                    <h1 class="font-bold text-lg tracking-wide text-primary flex items-center gap-2 whitespace-nowrap">
+                        東海大學學生校外實習校庫填報輔助系統
+                        <span class="bg-purple-100 text-purple-800 px-3 py-1 rounded-lg text-sm border border-purple-200 shadow-sm flex-shrink-0">
+                            中心檢核
+                        </span>
+                    </h1>
+                </div>
             </div>
         </div>
         
+        <div class="flex items-center gap-3 flex-shrink-0">
+            <button id="btn-local-storage" onclick="toggleLocalStorage()" class="text-slate-500 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition whitespace-nowrap flex items-center gap-2 mr-2">
+                <i class="fas fa-cloud-upload-alt"></i> 啟用暫存保護
+            </button>
+            <div class="h-6 w-px bg-slate-200 mx-1"></div>
+            
+            <button onclick="exportData()" class="bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-sky-900 transition shadow-sm flex items-center gap-2 whitespace-nowrap">
+                <i class="fas fa-file-export"></i> 匯出檢核結果
+            </button>
+            <button onclick="document.getElementById('info-modal').classList.remove('hidden')" class="ml-3 text-slate-400 hover:text-primary transition" title="系統與隱私聲明">
+                <i class="fas fa-info-circle text-xl"></i>
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Layout -->
+    <div class="flex-grow flex overflow-hidden relative">
+        
+        <!-- Sidebar: Student List -->
+        <aside id="sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0 relative">
+            <!-- Import Button -->
+            <div class="p-4 pb-0 bg-slate-50 flex items-stretch gap-2">
+                <label class="flex-grow import-btn" style="margin-bottom:0;">
+                    <i class="fas fa-file-import text-lg"></i> 匯入檢核名單
+                    <input type="file" id="file-upload" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event, false)">
+                </label>
+            </div>
+
+            <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
+                <div class="relative">
+                    <i class="fas fa-search absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"></i>
+                    <input type="text" id="search-input" oninput="filterStudentList()" placeholder="搜尋姓名或學號..." class="w-full pl-9 pr-3 py-2 border border-slate-300 rounded-lg text-sm focus:ring-2 focus:ring-primary outline-none">
+                </div>
+                
+                <!-- Filters -->
+                <div class="grid grid-cols-2 gap-2">
+                    <select id="filter-course-dept" onchange="filterStudentList()" class="filter-select">
+                        <option value="">全部開課系</option>
+                    </select>
+                    <select id="filter-student-dept" onchange="filterStudentList()" class="filter-select">
+                        <option value="">全部學生系</option>
+                    </select>
+                    <select id="filter-status" onchange="filterStudentList()" class="filter-select col-span-2 text-purple-800 font-bold bg-purple-50 border-purple-200">
+                        <option value="">全部檢核狀態</option>
+                        <option value="pending">⏳ 待檢核</option>
+                        <option value="approved">✅ 已通過</option>
+                        <option value="returned">❌ 已退回</option>
+                    </select>
+                </div>
+
+                <div class="flex justify-between items-center text-xs text-slate-500">
+                    <div>總計: <span id="student-count" class="font-bold text-slate-700">0</span> 人</div>
+                    <div class="flex gap-1">
+                        <button onclick="toggleSort('id')" class="hover:text-primary p-1 rounded transition text-primary bg-slate-100" title="依學號排序" id="sort-id-btn">
+                            <i class="fas fa-sort-numeric-down"></i>
+                        </button>
+                        <button onclick="toggleSort('name')" class="hover:text-primary p-1 rounded transition opacity-50" title="依姓名排序" id="sort-name-btn">
+                            <i class="fas fa-sort-alpha-down"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+            
+            <div id="student-list" class="flex-grow overflow-y-auto custom-scroll p-2 space-y-0">
+                <div class="p-8 text-center text-slate-400 text-sm">
+                    <i class="fas fa-arrow-up mb-2 text-xl block"></i>
+                    請先從上方匯入系所提交之 Excel 名單
+                </div>
+            </div>
+        </aside>
+
+        <!-- Sidebar Toggle Strip -->
+        <div id="sidebar-toggle-strip" onclick="toggleSidebar()" title="收合/展開側邊欄">
+            <i class="fas fa-chevron-left text-slate-400"></i>
+        </div>
+
+        <!-- Right Side: Workspace -->
+        <main class="flex-grow bg-slate-50 overflow-hidden relative flex flex-col" id="main-content">
+            
+            <!-- Empty State -->
+            <div id="form-empty-state" class="absolute inset-0 z-10 flex flex-col items-center justify-center bg-slate-50 text-slate-400">
+                <div class="w-20 h-20 bg-white rounded-full flex items-center justify-center mb-4 text-3xl shadow-sm border border-slate-100">
+                    <i class="fas fa-clipboard-check text-slate-300"></i>
+                </div>
+                <p>請從左側選擇一位學生進行資料檢核</p>
+            </div>
+
+            <!-- Content Area (Visible when student selected) -->
+            <div id="form-container" class="hidden flex flex-col h-full w-full">
+                
+                <div class="bg-white px-6 py-4 border-b border-slate-200 shadow-sm flex-shrink-0 flex justify-between items-center z-20">
+                    <div class="flex gap-4 items-start min-w-0 mr-4 flex-grow">
+                        <div class="w-12 h-12 rounded-full bg-purple-100 text-purple-700 flex items-center justify-center text-xl font-bold flex-shrink-0 mt-1">
+                            <span id="header-avatar">?</span>
+                        </div>
+                        
+                        <div class="flex flex-col gap-1.5 w-full min-w-0">
+                            <div class="flex items-center gap-3 flex-wrap">
+                                <h2 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                                    <span id="header-name" class="truncate">學生姓名</span>
+                                    <span id="header-id" class="text-sm font-mono text-slate-500 bg-slate-100 px-2 py-0.5 rounded flex-shrink-0">ID</span>
+                                </h2>
+                                <span id="header-dept" class="text-sm text-slate-500 flex items-center gap-1 truncate border-l border-slate-300 pl-3">
+                                    <i class="fas fa-graduation-cap"></i> 系所
+                                </span>
+                            </div>
+                            <div class="text-xs text-slate-500" id="header-status-text">讀取中...</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
+                </div>
+                
+                <div class="flex-grow relative overflow-y-auto custom-scroll bg-slate-50">
+                    <div id="form-content-area" class="absolute inset-0 p-6 pb-24">
+                        <div id="dynamic-tabs-area"></div>
+                    </div>
+                </div>
+            </div>
+        </main>
     </div>
+
+    <!-- Confirm Modal -->
+    <div id="confirm-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white p-6 border-radius-1rem w-90 max-w-400px text-center rounded-xl shadow-2xl">
+            <h3 class="text-lg font-bold text-slate-800 mb-2" id="confirm-title">系統訊息</h3>
+            <p class="text-sm text-slate-600 mb-6" id="confirm-message">...</p>
+            <div class="flex justify-center gap-3">
+                <button id="confirm-cancel-btn" class="px-5 py-2 rounded-lg font-bold text-sm text-slate-500 bg-slate-100 hover:bg-slate-200 transition">取消</button>
+                <button id="confirm-ok-btn" class="px-5 py-2 rounded-lg font-bold text-sm text-white bg-primary hover:bg-sky-900 shadow transition">確認</button>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Info Modal -->
+    <div id="info-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-lg rounded-xl shadow-2xl overflow-hidden flex flex-col">
+            <div class="px-6 py-4 bg-purple-700 text-white flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-shield-alt"></i> 檢核系統聲明</h3>
+                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="hover:text-purple-200"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 text-sm text-slate-700">
+                <p class="mb-2">本系統為「中心審核端」，主要功能如下：</p>
+                <ul class="list-disc pl-5 space-y-1 mb-4 text-slate-600">
+                    <li>所有匯入之系所資料，預設皆為<span class="text-red-500 font-bold">唯讀狀態</span>以防止誤改。</li>
+                    <li>您可以透過「檢核作業」區塊，標記資料為「已通過」或「退回修改」。</li>
+                    <li>所有變更將存於本機瀏覽器，請記得點擊右上方「匯出檢核結果」下載最終檔案。</li>
+                </ul>
+                <div class="p-3 bg-purple-50 text-purple-800 rounded-lg text-xs border border-purple-200">
+                    <i class="fas fa-info-circle"></i> 建議開啟「暫存保護」以避免意外關閉視窗導致審核進度遺失。
+                </div>
+            </div>
+            <div class="px-6 py-4 bg-slate-50 border-t flex justify-end">
+                <button onclick="document.getElementById('info-modal').classList.add('hidden')" class="bg-purple-700 text-white px-6 py-2 rounded-lg font-bold shadow hover:bg-purple-800">了解</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast-container" class="fixed bottom-5 right-5 z-[200] flex flex-col gap-3 pointer-events-none"></div>
+
+    <script>
+        // --- System Data ---
+        const STORAGE_KEY = 'thu_isac_hedb_isac_v1';
+        let globalConfig = {};       
+        let currentYearConfig = {};  
+        let allRawData = [];         
+        let groupedStudents = {};    
+        let currentStudentId = null;
+        let currentActiveAppId = null;
+        let activeYear = "114"; // 預設 114
+
+        const CORE_FIELDS = ['school_year', 'semester', 'student_id', 'student_name', 'student_dept', 'course_name', 'course_id'];
+        let sortConfig = { key: 'id', direction: 'asc' };
+
+        // --- Utils ---
+        function showConfirm(title, message) {
+            return new Promise((resolve) => {
+                const modal = document.getElementById('confirm-modal');
+                document.getElementById('confirm-title').innerText = title;
+                document.getElementById('confirm-message').innerText = message;
+                modal.classList.remove('hidden');
+
+                const close = (res) => {
+                    modal.classList.add('hidden');
+                    resolve(res);
+                };
+                document.getElementById('confirm-cancel-btn').onclick = () => close(false);
+                document.getElementById('confirm-ok-btn').onclick = () => close(true);
+            });
+        }
+
+        function showToast(type, msg) {
+            const container = document.getElementById('toast-container');
+            if (!container) return;
+            const el = document.createElement('div');
+            let colorClass = 'bg-slate-800', iconClass = 'fa-info-circle';
+            if (type === 'success') { colorClass = 'bg-emerald-600'; iconClass = 'fa-check-circle'; }
+            else if (type === 'error') { colorClass = 'bg-red-600'; iconClass = 'fa-exclamation-circle'; }
+            else if (type === 'warning') { colorClass = 'bg-orange-500'; iconClass = 'fa-exclamation-triangle'; }
+            
+            el.className = `${colorClass} text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3 transform transition-all translate-y-10 opacity-0`;
+            el.innerHTML = `<i class="fas ${iconClass}"></i> <span class="font-bold text-sm">${msg}</span>`;
+            container.appendChild(el);
+            requestAnimationFrame(() => el.classList.remove('translate-y-10', 'opacity-0'));
+            setTimeout(() => {
+                el.classList.add('opacity-0');
+                setTimeout(() => el.remove(), 300);
+            }, 3000);
+        }
+
+        function toggleLocalStorage() {
+            const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
+            if (isEnabled) {
+                showConfirm('清除暫存？', '確定要關閉暫存並清除備份資料嗎？').then(yes => {
+                    if(yes) {
+                        localStorage.removeItem(STORAGE_KEY);
+                        localStorage.removeItem(STORAGE_KEY + '_enabled');
+                        updateStorageBtn(false);
+                        showToast('info', '已清除本機暫存');
+                    }
+                });
+            } else {
+                localStorage.setItem(STORAGE_KEY + '_enabled', 'true');
+                saveToLocal();
+                updateStorageBtn(true);
+                showToast('success', '已啟用暫存保護');
+            }
+        }
+
+        function updateStorageBtn(isEnabled) {
+            const btn = document.getElementById('btn-local-storage');
+            if(isEnabled) {
+                btn.innerHTML = `<i class="fas fa-trash-alt"></i> 清除暫存`;
+                btn.className = "text-red-500 hover:text-red-700 font-bold text-sm px-3 py-2 rounded-lg hover:bg-red-50 transition flex items-center mr-2 border border-red-200";
+            } else {
+                btn.innerHTML = `<i class="fas fa-cloud-upload-alt"></i> 啟用暫存保護`;
+                btn.className = "text-slate-500 hover:text-primary font-bold text-sm px-3 py-2 rounded-lg hover:bg-slate-100 transition flex items-center mr-2 border border-slate-200";
+            }
+        }
+
+        function saveToLocal() {
+            if (localStorage.getItem(STORAGE_KEY + '_enabled') !== 'true') return;
+            const state = { rawData: allRawData, apps: [] };
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => state.apps.push({ id: app.id, studentId: s.id, courseIds: app.courseIds, formData: app.formData }));
+            });
+            try {
+                localStorage.setItem(STORAGE_KEY, LZString.compressToUTF16(JSON.stringify(state)));
+            } catch (e) { showToast('error', '儲存空間不足'); }
+        }
+
+        // --- Initialization ---
+        window.onload = async function() {
+            try {
+                // Mock config for prototype standalone capability
+                currentYearConfig = {
+                    fields: [
+                        { id: 'internship_institution_name', label: '實習機構名稱', category: 'info', type: 'text' },
+                        { id: 'internship_hours', label: '實習總時數', category: 'info', type: 'number' },
+                        { id: 'internship_salary', label: '是否有薪資', category: 'info', type: 'single_select', options: ['有', '無'] }
+                    ]
+                };
+
+                const saved = localStorage.getItem(STORAGE_KEY);
+                const isEnabled = localStorage.getItem(STORAGE_KEY + '_enabled') === 'true';
+                updateStorageBtn(isEnabled);
+
+                if (saved && isEnabled) {
+                    const state = JSON.parse(LZString.decompressFromUTF16(saved));
+                    if (state && state.rawData) {
+                        await processUploadedData(state.rawData, state.apps);
+                        showToast('success', '已還原檢核暫存資料');
+                    }
+                }
+                
+                if(!localStorage.getItem('thu_isac_hide_isac_intro')) {
+                    document.getElementById('info-modal').classList.remove('hidden');
+                    localStorage.setItem('thu_isac_hide_isac_intro', 'true');
+                }
+            } catch (e) { console.error(e); }
+        };
+
+        function toggleSidebar() { document.getElementById('sidebar').classList.toggle('collapsed'); }
+
+        // --- File Upload ---
+        async function handleFileUpload(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = async function(e) {
+                try {
+                    const workbook = new ExcelJS.Workbook();
+                    await workbook.xlsx.load(e.target.result);
+                    
+                    let mainSheet = workbook.getWorksheet('填報資料') || workbook.getWorksheet(1);
+                    const rawDataRows = [];
+                    const headers = [];
+                    
+                    mainSheet.getRow(1).eachCell((cell, col) => headers[col] = cell.value);
+                    mainSheet.eachRow((row, rowNum) => {
+                        if (rowNum > 1) {
+                            const rowData = {};
+                            row.eachCell((cell, col) => rowData[headers[col] || `col${col}`] = cell.value);
+                            rawDataRows.push(rowData);
+                        }
+                    });
+
+                    // ISAC reads consolidation logic if available, else builds from rows
+                    let savedApps = [];
+                    const conSheet = workbook.getWorksheet('_Consolidation_Data');
+                    if (conSheet) {
+                        const conHeaders = [];
+                        conSheet.getRow(1).eachCell((cell, colNumber) => conHeaders[colNumber] = cell.value);
+                        conSheet.eachRow((row, rowNumber) => {
+                            if (rowNumber > 1) {
+                                const rowData = {};
+                                row.eachCell((cell, colNumber) => rowData[conHeaders[colNumber]] = cell.value);
+                                savedApps.push({
+                                    id: rowData['App_ID'], studentId: rowData['Student_ID'],
+                                    courseIds: rowData['Course_IDs'] ? rowData['Course_IDs'].toString().split(',') : [],
+                                    formData: rowData['Form_Data'] ? JSON.parse(rowData['Form_Data']) : {}
+                                });
+                            }
+                        });
+                    }
+
+                    showToast('success', '匯入處理中...');
+                    await processUploadedData(rawDataRows, savedApps);
+                    event.target.value = '';
+                } catch (err) { showToast('error', `匯入失敗: ${err.message}`); }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        async function processUploadedData(data, savedApps = []) {
+            allRawData = data;
+            groupedStudents = {};
+            const courseDepts = new Set();
+            const studentDepts = new Set();
+
+            data.forEach((row, idx) => {
+                const sid = row['student_id'] || row['學號'] || `unknown_${idx}`;
+                const sname = row['student_name'] || row['姓名'] || '未知';
+                const sdept = row['student_dept'] || row['系所'] || '未分系';
+                const cdept = row['course_dept'] || row['開課系所'] || '';
+                
+                if (sdept) studentDepts.add(sdept);
+                if (cdept) courseDepts.add(cdept);
+
+                if (!groupedStudents[sid]) {
+                    groupedStudents[sid] = { id: sid, name: sname, dept: sdept, courses: [], applications: [] };
+                }
+                
+                row._internal_id = row._internal_id || `c_${idx}`;
+                row._app_id = null;
+                groupedStudents[sid].courses.push(row);
+            });
+
+            if (savedApps.length > 0) {
+                savedApps.forEach(app => {
+                    const student = groupedStudents[app.studentId];
+                    if (student) {
+                        app.courseIds.forEach(cid => {
+                            const c = student.courses.find(x => x._internal_id === cid);
+                            if(c) c._app_id = app.id;
+                        });
+                        // Ensure ISAC status fields exist
+                        if (!app.formData.isac_status) app.formData.isac_status = 'pending';
+                        if (!app.formData.isac_comment) app.formData.isac_comment = '';
+                        student.applications.push({ id: app.id, courseIds: app.courseIds, formData: app.formData });
+                    }
+                });
+            } else {
+                // If no saved apps, mock grouping for demonstration
+                Object.values(groupedStudents).forEach(s => {
+                    if (s.courses.length > 0) {
+                        const app = {
+                            id: 'app_' + Math.random().toString(36).substring(7),
+                            courseIds: s.courses.map(c => c._internal_id),
+                            formData: { ...s.courses[0], isac_status: 'pending', isac_comment: '' }
+                        };
+                        s.courses.forEach(c => c._app_id = app.id);
+                        s.applications.push(app);
+                    }
+                });
+            }
+
+            updateSidebarFilters(courseDepts, studentDepts);
+            renderStudentList();
+            
+            document.getElementById('form-container').classList.add('hidden');
+            document.getElementById('form-empty-state').classList.remove('hidden');
+            saveToLocal();
+        }
+
+        // --- Sidebar & Filters ---
+        function updateSidebarFilters(cDepts, sDepts) {
+            const cSel = document.getElementById('filter-course-dept');
+            const sSel = document.getElementById('filter-student-dept');
+            if(cSel) cSel.innerHTML = '<option value="">全部開課系</option>' + Array.from(cDepts).map(d => `<option value="${d}">${d}</option>`).join('');
+            if(sSel) sSel.innerHTML = '<option value="">全部學生系</option>' + Array.from(sDepts).map(d => `<option value="${d}">${d}</option>`).join('');
+        }
+
+        function filterStudentList() { renderStudentList(); }
+        function toggleSort(key) {
+            sortConfig.key = key;
+            sortConfig.direction = sortConfig.direction === 'asc' ? 'desc' : 'asc';
+            renderStudentList();
+        }
+
+        function renderStudentList() {
+            const listEl = document.getElementById('student-list');
+            const kw = document.getElementById('search-input').value.toLowerCase();
+            const statusFilter = document.getElementById('filter-status').value;
+            
+            listEl.innerHTML = '';
+            
+            let filtered = Object.values(groupedStudents).filter(s => {
+                if (kw && !s.id.toLowerCase().includes(kw) && !s.name.toLowerCase().includes(kw)) return false;
+                
+                // ISAC Status Filter
+                if (statusFilter) {
+                    if (s.applications.length === 0 && statusFilter === 'not_submitted') return true;
+                    if (s.applications.length === 0) return false;
+                    
+                    const hasMatch = s.applications.some(app => app.formData.isac_status === statusFilter);
+                    if (!hasMatch) return false;
+                }
+                return true;
+            });
+
+            filtered.sort((a,b) => a.id.localeCompare(b.id));
+            document.getElementById('student-count').innerText = filtered.length;
+
+            filtered.forEach(s => {
+                let statusHtml = '';
+                if (s.applications.length === 0) {
+                    statusHtml = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-slate-100 text-slate-500">未送出</span>';
+                } else {
+                    // Check statuses
+                    const hasReturned = s.applications.some(a => a.formData.isac_status === 'returned');
+                    const hasPending = s.applications.some(a => a.formData.isac_status === 'pending');
+                    
+                    if (hasReturned) statusHtml = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-red-100 text-red-700">❌ 含退回</span>';
+                    else if (hasPending) statusHtml = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-100 text-amber-700">⏳ 待檢核</span>';
+                    else statusHtml = '<span class="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-100 text-emerald-700">✅ 已通過</span>';
+                }
+
+                const isActive = s.id === currentStudentId ? 'active' : '';
+                listEl.insertAdjacentHTML('beforeend', `
+                    <div class="student-item p-3 border-b border-slate-100 ${isActive}" onclick="selectStudent('${s.id}')">
+                        <div class="flex justify-between items-center mb-1">
+                            <div class="student-name font-bold text-slate-800 text-sm truncate">${s.name} (${s.id})</div>
+                            <div>${statusHtml}</div>
+                        </div>
+                        <div class="text-xs text-slate-500 truncate">${s.dept}</div>
+                    </div>
+                `);
+            });
+        }
+
+        // --- View Student ---
+        function selectStudent(sid) {
+            currentStudentId = sid;
+            currentActiveAppId = null;
+            renderStudentList();
+            
+            const student = groupedStudents[sid];
+            document.getElementById('form-empty-state').classList.add('hidden');
+            document.getElementById('form-container').classList.remove('hidden');
+            
+            document.getElementById('header-name').innerText = student.name;
+            document.getElementById('header-id').innerText = student.id;
+            document.getElementById('header-avatar').innerText = student.name[0];
+            document.getElementById('header-dept').innerHTML = `<i class="fas fa-graduation-cap"></i> ${student.dept}`;
+            
+            renderTabs(student);
+            
+            const area = document.getElementById('dynamic-tabs-area');
+            if (student.applications.length > 0) {
+                area.innerHTML = '';
+                switchTab(student.applications[0].id);
+            } else {
+                area.innerHTML = '<div class="p-10 text-center text-slate-400">系所尚未建立此學生的實習紀錄。</div>';
+            }
+        }
+
+        function renderTabs(student) {
+            const container = document.getElementById('tabs-container');
+            container.innerHTML = '';
+            
+            student.applications.forEach((app, idx) => {
+                const btn = document.createElement('button');
+                const isActive = (app.id === currentActiveAppId);
+                btn.className = isActive ? 'tab-btn active' : 'tab-btn';
+                btn.onclick = () => switchTab(app.id);
+                
+                const status = app.formData.isac_status || 'pending';
+                let dot = '<span class="w-2 h-2 rounded-full bg-amber-400"></span>';
+                if (status === 'approved') dot = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span>';
+                if (status === 'returned') dot = '<span class="w-2 h-2 rounded-full bg-red-500"></span>';
+
+                btn.innerHTML = `<div class="flex items-center gap-2 text-sm"><i class="fas fa-file-alt text-slate-400"></i> 實習紀錄 ${idx+1} ${dot}</div>`;
+                container.appendChild(btn);
+            });
+        }
+
+        function switchTab(appId) {
+            currentActiveAppId = appId;
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            const btn = Array.from(document.querySelectorAll('.tab-btn')).find(b => b.onclick.toString().includes(appId));
+            if(btn) btn.classList.add('active');
+            
+            const container = document.getElementById('dynamic-tabs-area');
+            container.innerHTML = ''; // Force re-render for clean state
+            
+            const student = groupedStudents[currentStudentId];
+            const app = student.applications.find(a => a.id === appId);
+            
+            // 1. ISAC Review Panel
+            container.appendChild(createReviewPanel(app));
+            
+            // 2. Read-only Form
+            const formDiv = document.createElement('div');
+            formDiv.className = 'mt-6 bg-white p-6 rounded-xl border border-slate-200 shadow-sm opacity-90';
+            formDiv.innerHTML = '<h4 class="font-bold text-slate-700 border-b border-slate-200 pb-2 mb-4"><i class="fas fa-lock text-slate-400 mr-1"></i> 系所填報資料 (唯讀)</h4>';
+            renderFields(formDiv, app);
+            
+            // Highlight if approved
+            if(app.formData.isac_status === 'approved') formDiv.classList.add('opacity-60', 'bg-slate-50');
+            
+            container.appendChild(formDiv);
+        }
+
+        // --- ISAC Specific: Review Panel ---
+        function createReviewPanel(app) {
+            const status = app.formData.isac_status || 'pending';
+            let badgeHtml = '';
+            let bgClass = 'bg-slate-50 border-slate-200';
+            let titleColor = 'text-slate-800';
+
+            if (status === 'approved') {
+                badgeHtml = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-200"><i class="fas fa-check"></i> 審核已通過</span>';
+                bgClass = 'bg-emerald-50 border-emerald-100';
+                titleColor = 'text-emerald-800';
+            } else if (status === 'returned') {
+                badgeHtml = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-red-100 text-red-700 border border-red-200"><i class="fas fa-times"></i> 已退回系所</span>';
+                bgClass = 'bg-red-50 border-red-100';
+                titleColor = 'text-red-800';
+            } else {
+                badgeHtml = '<span class="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-700 border border-amber-200"><i class="fas fa-clock"></i> 待中心檢核</span>';
+                bgClass = 'bg-purple-50 border-purple-200';
+                titleColor = 'text-purple-800';
+            }
+
+            const comment = app.formData.isac_comment || '';
+
+            const div = document.createElement('div');
+            div.className = `${bgClass} rounded-xl p-5 shadow-sm transition-colors`;
+            div.innerHTML = `
+                <div class="flex justify-between items-center mb-4">
+                    <h4 class="font-bold ${titleColor} flex items-center gap-2 text-lg">
+                        <i class="fas fa-clipboard-check"></i> 中心檢核作業
+                    </h4>
+                    ${badgeHtml}
+                </div>
+                <div class="flex flex-col gap-3">
+                    <label class="text-xs font-bold text-slate-600">檢核意見 / 退回原因：</label>
+                    <textarea id="review-comment-${app.id}" class="input-stylish w-full text-sm bg-white shadow-inner" rows="3" placeholder="若資料有誤需退回，請在此填寫明確的退回原因...">${comment}</textarea>
+                    
+                    <div class="flex justify-end gap-3 mt-2">
+                        <button onclick="markAppStatus('${app.id}', 'returned')" class="px-6 py-2.5 bg-white border border-red-300 text-red-600 hover:bg-red-50 hover:border-red-500 rounded-lg text-sm font-bold transition shadow-sm flex items-center gap-2">
+                            <i class="fas fa-undo"></i> 標記為退回
+                        </button>
+                        <button onclick="markAppStatus('${app.id}', 'approved')" class="px-6 py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-lg text-sm font-bold transition shadow-md flex items-center gap-2">
+                            <i class="fas fa-check-circle"></i> 審核通過並鎖定
+                        </button>
+                    </div>
+                </div>
+            `;
+            return div;
+        }
+
+        window.markAppStatus = function(appId, status) {
+            const student = groupedStudents[currentStudentId];
+            const app = student.applications.find(a => a.id === appId);
+            const comment = document.getElementById(`review-comment-${appId}`).value;
+
+            if (status === 'returned' && comment.trim() === '') {
+                showToast('warning', '退回必須填寫檢核意見！');
+                document.getElementById(`review-comment-${appId}`).focus();
+                return;
+            }
+
+            app.formData.isac_status = status;
+            app.formData.isac_comment = comment;
+
+            saveToLocal();
+            showToast('success', status === 'approved' ? '已標記為審核通過' : '已將此紀錄標記為退回');
+
+            renderTabs(student);
+            switchTab(appId); 
+            renderStudentList();
+        };
+
+        // --- Read-only Fields ---
+        function renderFields(container, app) {
+            const fields = currentYearConfig.fields || [];
+            
+            const grid = document.createElement('div');
+            grid.className = 'grid grid-cols-1 md:grid-cols-3 gap-5';
+
+            fields.forEach(f => {
+                const wrapper = document.createElement('div');
+                wrapper.className = `field-group`;
+                
+                const label = document.createElement('label');
+                label.className = "block text-xs font-bold text-slate-500 mb-1";
+                label.innerText = f.label;
+                wrapper.appendChild(label);
+
+                const val = app.formData[f.id] || app.formData[f.label] || '';
+                
+                let input;
+                if (f.type === 'list' || f.type === 'address') {
+                    input = document.createElement('textarea');
+                    input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed resize-none";
+                    input.rows = 2;
+                    input.value = val;
+                } else {
+                    input = document.createElement('input');
+                    input.type = 'text';
+                    input.className = "input-stylish bg-slate-50 text-slate-600 font-medium cursor-not-allowed";
+                    input.value = val;
+                }
+                
+                // 強制鎖定唯讀
+                input.readOnly = true;
+                input.disabled = true;
+
+                wrapper.appendChild(input);
+                grid.appendChild(wrapper);
+            });
+            container.appendChild(grid);
+        }
+
+        // --- Export ---
+        async function exportData() {
+            if(Object.keys(groupedStudents).length === 0) return showToast('error', '無資料可匯出');
+
+            const workbook = new ExcelJS.Workbook();
+            const ws = workbook.addWorksheet('檢核結果');
+
+            const headers = [
+                { header: '學生學號', key: 'student_id', width: 15 },
+                { header: '學生姓名', key: 'student_name', width: 15 },
+                { header: '檢核狀態', key: 'isac_status', width: 15 },
+                { header: '檢核意見', key: 'isac_comment', width: 40 },
+                ...currentYearConfig.fields.map(f => ({ header: f.label, key: f.id, width: 20 }))
+            ];
+            ws.columns = headers;
+
+            Object.values(groupedStudents).forEach(s => {
+                s.applications.forEach(app => {
+                    const row = {
+                        student_id: s.id,
+                        student_name: s.name,
+                        isac_status: app.formData.isac_status === 'approved' ? '已通過' : (app.formData.isac_status === 'returned' ? '已退回' : '待檢核'),
+                        isac_comment: app.formData.isac_comment || ''
+                    };
+                    currentYearConfig.fields.forEach(f => {
+                        row[f.id] = app.formData[f.id] || app.formData[f.label] || '';
+                    });
+                    ws.addRow(row);
+                });
+            });
+
+            // Styling
+            ws.getRow(1).font = { bold: true, color: { argb: 'FFFFFFFF' } };
+            ws.getRow(1).fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF6B21A8' } }; // Purple header
+
+            const buffer = await workbook.xlsx.writeBuffer();
+            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+            saveAs(blob, `中心檢核結果_${activeYear}_${new Date().toISOString().slice(0,10)}.xlsx`);
+            showToast('success', '匯出成功');
+        }
+    </script>
 </body>
 </html>
