@@ -1273,6 +1273,48 @@
             </div>
         </div>
     </div>
+
+    <div id="mapping-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all scale-100 animate-fade-in">
+            <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
+                <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
+                    <i class="fas fa-link text-indigo-500"></i> 匯入欄位配對精靈
+                </h3>
+                <button onclick="cancelFieldMapping()" class="text-slate-400 hover:text-slate-600 transition">
+                    <i class="fas fa-times text-xl"></i>
+                </button>
+            </div>
+            
+            <div class="p-6 overflow-y-auto custom-scroll">
+                <div class="bg-amber-50 text-amber-800 text-sm p-4 rounded-xl border border-amber-100 mb-6 flex gap-3 shadow-sm">
+                    <i class="fas fa-exclamation-triangle mt-0.5 text-amber-500 text-lg"></i>
+                    <div>
+                        <strong class="block mb-1">系統無法自動辨識部分核心欄位！</strong>
+                        這可能是因為您匯入的檔案非系統標準格式，或表頭名稱被修改過。<br>
+                        請在下方手動將「系統需要的欄位」與「您 Excel 中的欄位」進行配對。
+                    </div>
+                </div>
+
+                <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm">
+                    <div class="bg-slate-50 px-5 py-3 border-b border-slate-200 grid grid-cols-2 gap-4 text-xs font-bold text-slate-500">
+                        <div>系統需要的欄位 (Required)</div>
+                        <div>對應的 Excel 欄位 (Your Data)</div>
+                    </div>
+                    <div id="mapping-list-container" class="divide-y divide-slate-100">
+                    </div>
+                </div>
+            </div>
+
+            <div class="px-6 py-4 border-t border-slate-100 bg-slate-50 flex justify-end gap-3">
+                <button onclick="cancelFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-slate-500 bg-white border border-slate-200 hover:bg-slate-100 transition shadow-sm">
+                    取消匯入
+                </button>
+                <button onclick="confirmFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition flex items-center gap-2">
+                    <i class="fas fa-check"></i> 確認配對並匯入
+                </button>
+            </div>
+        </div>
+    </div>
     
     <script>
         // --- Local Storage Manager (暫存管理系統) ---
@@ -2268,7 +2310,9 @@
             }
         }
 
-        // --- Logic: File Import (Using ExcelJS for hidden sheet support) ---
+        // 暫存配對狀態用的全域變數
+        let pendingUploadData = null;
+
         async function handleFileUpload(event) {
             // 2. Alert on file overwrite
             if(allRawData.length > 0) {
@@ -2309,65 +2353,78 @@
                     });
                     if (!mainSheet) mainSheet = workbook.getWorksheet(1); 
 
-                    const jsonData = [];
                     const headers = [];
+                    const excelHeaderNames = [];
                     
-                    // ★★★ 核心修正：純文字安全過濾器 ★★★
-                    // 防止 Excel 的 RichText (粗體/顏色樣式) 或公式物件被轉成巨大 JSON 塞爆暫存
                     const getSafeValue = (cell) => {
                         const val = cell.value;
                         if (val === null || val === undefined) return '';
-                        
                         if (typeof val === 'object') {
-                            if (val.richText) return val.richText.map(rt => rt.text).join(''); // 剝除格式，只留文字
-                            if (val.result !== undefined) return val.result; // 如果是公式，只取計算結果
-                            if (val.text !== undefined) return val.text;     // 如果是超連結，只取顯示文字
+                            if (val.richText) return val.richText.map(rt => rt.text).join(''); 
+                            if (val.result !== undefined) return val.result; 
+                            if (val.text !== undefined) return val.text;     
                             if (val instanceof Date) {
-                                // 安全處理日期格式，避免時區偏移
                                 const y = val.getFullYear();
                                 const m = String(val.getMonth() + 1).padStart(2, '0');
                                 const d = String(val.getDate()).padStart(2, '0');
                                 return `${y}-${m}-${d}`;
                             }
-                            return String(val); // 其他未知物件強制轉字串
+                            return String(val); 
                         }
                         return String(val).trim();
                     };
 
-                    // 讀取表頭 (同樣套用安全過濾)
+                    // 讀取表頭
                     mainSheet.getRow(1).eachCell((cell, colNumber) => {
-                        headers[colNumber] = getSafeValue(cell);
+                        const hName = getSafeValue(cell);
+                        excelHeaderNames.push(hName); // 記錄最原始的表頭名稱
+                        
+                        // ★ 智慧自動模糊匹配：如果 meta 沒設定，系統會去猜測
+                        let sysId = fieldMap[hName];
+                        if (!sysId) {
+                            const hl = hName.toLowerCase();
+                            if (hl === 'student_id' || hl.includes('學號')) sysId = 'student_id';
+                            else if (hl === 'student_name' || hl.includes('姓名')) sysId = 'student_name';
+                            else if (hl === 'course_name' || hl.includes('課名') || hl.includes('科目名稱')) sysId = 'course_name';
+                            else if (hl === 'course_id' || hl.includes('選課代號') || hl.includes('課程代碼')) sysId = 'course_id';
+                            else if (hl === 'student_dept' || hl.includes('學生系所') || hl.includes('系級')) sysId = 'student_dept';
+                            else sysId = hName; // 猜不到就保留原名
+                        }
+                        headers[colNumber] = sysId;
                     });
 
-                    // 讀取資料內容
+                    // ★ 檢查是否缺少核心欄位 (必備: 學號, 姓名, 課名)
+                    const requiredFields = [
+                        { id: 'student_id', label: '學生學號 (必填)' },
+                        { id: 'student_name', label: '學生姓名 (必填)' },
+                        { id: 'course_name', label: '課程名稱 (必填)' },
+                        { id: 'course_id', label: '選課代號/課程代碼 (必填)' },
+                        { id: 'student_dept', label: '學生系所 (選填，強烈建議)' }
+                    ];
+
+                    const missingFields = requiredFields.filter(rf => !headers.includes(rf.id));
+
+                    // 預先讀取好其他資訊準備後續使用
+                    const rawDataRows = [];
                     mainSheet.eachRow((row, rowNumber) => {
                         if (rowNumber > 1) {
                             const rowData = {};
                             row.eachCell((cell, colNumber) => {
-                                let header = headers[colNumber];
-                                if (fieldMap[header]) header = fieldMap[header];
-                                
-                                // ★ 套用安全讀取，將乾淨的字串存入
-                                rowData[header] = getSafeValue(cell); 
+                                rowData[headers[colNumber]] = getSafeValue(cell); 
                             });
-                            if(Object.keys(rowData).length > 0) jsonData.push(rowData);
+                            if(Object.keys(rowData).length > 0) rawDataRows.push(rowData);
                         }
                     });
 
-                    // 3. Read Consolidation Data
                     let savedApps = [];
                     const conSheet = workbook.getWorksheet('_Consolidation_Data');
                     if (conSheet) {
                         const conHeaders = [];
-                        conSheet.getRow(1).eachCell((cell, colNumber) => {
-                            conHeaders[colNumber] = cell.value;
-                        });
+                        conSheet.getRow(1).eachCell((cell, colNumber) => conHeaders[colNumber] = cell.value);
                         conSheet.eachRow((row, rowNumber) => {
                             if (rowNumber > 1) {
                                 const rowData = {};
-                                row.eachCell((cell, colNumber) => {
-                                    rowData[conHeaders[colNumber]] = cell.value;
-                                });
+                                row.eachCell((cell, colNumber) => rowData[conHeaders[colNumber]] = cell.value);
                                 savedApps.push({
                                     id: rowData['App_ID'],
                                     studentId: rowData['Student_ID'],
@@ -2377,74 +2434,114 @@
                             }
                         });
                     }
-                    
-                    // 4. Read Audit Log
-                    const logSheet = workbook.getWorksheet('_Audit_Log');
-                    if (logSheet) {
-                        const logHeaders = [];
-                        logSheet.getRow(1).eachCell((c, i) => logHeaders[i] = c.value);
-                        logSheet.eachRow((r, i) => {
-                            if(i > 1) {
-                                const l = {};
-                                r.eachCell((c, idx) => l[logHeaders[idx]] = c.value);
-                                changeLogs.push(l);
-                            }
-                        });
+
+                    // 暫存資料準備執行流程
+                    pendingUploadData = { rawDataRows, savedApps, missingFields, excelHeaderNames };
+
+                    if (missingFields.length > 0) {
+                        // 缺少欄位：攔截並彈出配對精靈！
+                        showFieldMappingModal();
+                        event.target.value = ''; // 讓下次還能選同一個檔案
+                        return; // 中斷，等待使用者配對完成
+                    } else {
+                        // 欄位齊全，直接放行
+                        if (rawDataRows.length === 0) throw new Error("檔案無內容");
+                        await processUploadedData(rawDataRows, savedApps);
+                        event.target.value = ''; 
                     }
 
-                    // 5. ★★★ Read Institution Library (還原機構庫) ★★★
-                    const libSheet = workbook.getWorksheet('_Institution_Library');
-                    if (libSheet) {
-                        libSheet.eachRow((row, rowNumber) => {
-                            if (rowNumber > 1) {
-                                const name = row.getCell(1).value;
-                                const jsonStr = row.getCell(2).value; // 注意欄位索引要對應 export
-                                
-                                if (name && jsonStr) {
-                                    try {
-                                        const entry = JSON.parse(jsonStr);
-                                        
-                                        if (!institutionLibrary[name]) {
-                                            institutionLibrary[name] = [];
-                                        }
-                                        
-                                        // 指紋檢查 (避免重複)
-                                        const generateFingerprint = (e) => {
-                                            const keys = Object.keys(e).filter(k => !k.startsWith('_')).sort();
-                                            const clean = {};
-                                            keys.forEach(k => clean[k] = e[k]);
-                                            return JSON.stringify(clean);
-                                        };
-                                        const newFingerprint = generateFingerprint(entry);
-                                        
-                                        const exists = institutionLibrary[name].some(e => generateFingerprint(e) === newFingerprint);
-                                        
-                                        if (!exists) {
-                                            institutionLibrary[name].push(entry);
-                                        }
-                                    } catch (e) { console.error("Lib entry parse error", e); }
-                                }
-                            }
-                        });
-                        
-                        // 若啟用暫存則同步寫入
-                        if (localStorage.getItem(STORAGE_KEY + '_enabled') === 'true') {
-                            // ★ 修正：加入 compressToUTF16 壓縮
-                            localStorage.setItem(LIB_STORAGE_KEY, LZString.compressToUTF16(JSON.stringify(institutionLibrary)));
-                        }
-                    }
-
-                    if (jsonData.length === 0) throw new Error("檔案無內容");
-                    
-                    await processUploadedData(jsonData, savedApps);
-                    
-                    event.target.value = ''; 
                 } catch (err) {
                     console.error(err);
                     showToast('error', `讀取失敗: ${err.message}`);
+                    event.target.value = '';
                 }
             };
             reader.readAsArrayBuffer(file);
+        }
+
+        // --- 欄位手動配對精靈邏輯 ---
+        function showFieldMappingModal() {
+            if (!pendingUploadData) return;
+            const container = document.getElementById('mapping-list-container');
+            container.innerHTML = '';
+
+            pendingUploadData.missingFields.forEach(mf => {
+                const row = document.createElement('div');
+                row.className = 'px-5 py-4 grid grid-cols-2 gap-4 items-center hover:bg-slate-50 transition';
+                
+                // 產生下拉選單 (包含 Excel 中所有可選的原始表頭)
+                const optionsHTML = `<option value="">-- 請選擇對應的 Excel 欄位 --</option>` + 
+                    pendingUploadData.excelHeaderNames.map(eh => `<option value="${eh}">${eh}</option>`).join('');
+
+                row.innerHTML = `
+                    <div class="font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fas ${mf.id.includes('name') ? 'fa-font' : (mf.id.includes('id') ? 'fa-hashtag' : 'fa-tag')} text-slate-400"></i>
+                        ${mf.label}
+                    </div>
+                    <div>
+                        <select id="map-select-${mf.id}" data-sysid="${mf.id}" class="w-full border border-slate-300 rounded-lg p-2.5 text-sm focus:ring-2 focus:ring-indigo-500 bg-white">
+                            ${optionsHTML}
+                        </select>
+                    </div>
+                `;
+                container.appendChild(row);
+            });
+
+            document.getElementById('mapping-modal').classList.remove('hidden');
+        }
+
+        function cancelFieldMapping() {
+            document.getElementById('mapping-modal').classList.add('hidden');
+            pendingUploadData = null; // 放棄上傳
+            showToast('info', '已取消匯入');
+        }
+
+        async function confirmFieldMapping() {
+            if (!pendingUploadData) return;
+            
+            // 收集使用者的配對結果
+            const manualMap = {};
+            let hasError = false;
+
+            pendingUploadData.missingFields.forEach(mf => {
+                const sel = document.getElementById(`map-select-${mf.id}`);
+                const excelColName = sel.value;
+                if (mf.label.includes('必填') && !excelColName) {
+                    hasError = true;
+                    sel.classList.add('border-red-500', 'bg-red-50');
+                } else {
+                    sel.classList.remove('border-red-500', 'bg-red-50');
+                    if (excelColName) manualMap[excelColName] = mf.id;
+                }
+            });
+
+            if (hasError) {
+                showToast('error', '請完成所有標示為 (必填) 的欄位配對！');
+                return;
+            }
+
+            // 套用手動配對：修改 rawDataRows 中的 Key
+            pendingUploadData.rawDataRows.forEach(row => {
+                Object.keys(manualMap).forEach(excelColName => {
+                    const targetSysId = manualMap[excelColName];
+                    if (row[excelColName] !== undefined) {
+                        row[targetSysId] = row[excelColName]; // 複製到系統預期的新 Key
+                    }
+                });
+            });
+
+            // 關閉視窗，接續正常處理流程
+            document.getElementById('mapping-modal').classList.add('hidden');
+            const dataToProcess = pendingUploadData;
+            pendingUploadData = null;
+
+            if (dataToProcess.rawDataRows.length === 0) {
+                showToast('error', "檔案無內容");
+                return;
+            }
+
+            showToast('success', '欄位配對成功，開始匯入...');
+            await processUploadedData(dataToProcess.rawDataRows, dataToProcess.savedApps);
         }
 
         async function processUploadedData(data, savedApps = []) {
