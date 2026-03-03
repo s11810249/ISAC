@@ -535,6 +535,28 @@
         }
         .selected-item-chip .remove-btn:hover { color: #ef4444; }
         
+        /* Custom style for tighter mapping UI (對應 admin.html 的風格) */
+        .mapping-container {
+             display: grid;
+             grid-template-columns: repeat(2, 1fr);
+             gap: 0.75rem;
+        }
+        .mapping-group {
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+            background-color: #fff;
+            transition: all 0.2s;
+        }
+        .mapping-group:hover {
+            border-color: #002E5D;
+            background-color: #f8fafc;
+        }
+        .mapping-group select {
+            padding: 0.5rem;
+            font-size: 0.875rem;
+        }
+        
         /* Toggle Checkbox Label & Chip Style */
         .col-toggle-label, .toggle-chip { 
             display: inline-flex; align-items: center; gap: 4px; 
@@ -907,13 +929,13 @@
         <!-- Sidebar: Student List -->
         <aside id="sidebar" class="w-80 bg-white border-r border-slate-200 flex flex-col z-20 shadow-sm flex-shrink-0 relative">
             <!-- Import Button -->
-            <div class="p-4 pb-0 bg-slate-50 flex gap-2">
-                <label class="flex-grow import-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success" style="margin-bottom:0;">
+            <div class="p-4 pb-0 bg-slate-50 flex items-stretch gap-2">
+                <label class="flex-grow import-btn shadow-sm text-success border-green-200 bg-green-50 hover:bg-green-100 hover:border-success hover:text-success m-0 h-auto" style="margin-bottom:0;">
                     <i class="fas fa-file-import text-lg"></i> 匯入學生名單
                     <input type="file" id="file-upload" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event, false)">
                 </label>
                 
-                <label class="flex-shrink-0 flex items-center justify-center w-11 h-11 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-600 transition cursor-pointer shadow-sm" title="強制手動配對欄位">
+                <label class="flex-shrink-0 flex items-center justify-center w-12 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-600 transition cursor-pointer shadow-sm m-0 h-auto" title="強制手動配對欄位">
                     <i class="fas fa-cogs text-lg"></i>
                     <input type="file" id="file-upload-manual" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event, true)">
                 </label>
@@ -1280,10 +1302,10 @@
     </div>
 
     <div id="mapping-modal" class="fixed inset-0 z-[200] hidden flex items-center justify-center modal-overlay p-4">
-        <div class="bg-white w-full max-w-3xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all scale-100 animate-fade-in">
+        <div class="bg-white w-full max-w-4xl rounded-xl shadow-2xl flex flex-col max-h-[90vh] overflow-hidden transform transition-all scale-100 animate-fade-in">
             <div class="px-6 py-4 border-b border-slate-100 bg-slate-50 flex justify-between items-center">
                 <h3 class="text-lg font-bold text-slate-800 flex items-center gap-2">
-                    <i class="fas fa-link text-indigo-500"></i> 匯入欄位配對精靈
+                    <i class="fas fa-link text-primary"></i> 匯入欄位配對精靈
                 </h3>
                 <button onclick="cancelFieldMapping()" class="text-slate-400 hover:text-slate-600 transition">
                     <i class="fas fa-times text-xl"></i>
@@ -1291,22 +1313,21 @@
             </div>
             
             <div class="p-6 overflow-y-auto custom-scroll flex-grow bg-slate-50/50">
-                <div class="bg-indigo-50 text-indigo-800 text-sm p-4 rounded-xl border border-indigo-100 mb-6 flex gap-3 shadow-sm">
-                    <i class="fas fa-info-circle mt-0.5 text-indigo-500 text-lg"></i>
+                <div class="bg-blue-50 text-blue-800 text-sm p-4 rounded-xl border border-blue-100 mb-6 flex gap-3 shadow-sm">
+                    <i class="fas fa-info-circle mt-0.5 text-primary text-lg"></i>
                     <div>
-                        <strong class="block mb-1">手動配置欄位對應關係</strong>
+                        <strong class="block mb-1 text-primary">手動配置欄位對應關係</strong>
                         請將「系統所需的欄位」與「您 Excel 檔案中的表頭」進行配對。為了保護資料，一個 Excel 欄位只能配對給一個系統欄位。<br>
                         系統會自動記憶您的配對設定，下次匯入時可直接套用！
                     </div>
                 </div>
 
-                <div class="border border-slate-200 rounded-xl overflow-hidden shadow-sm bg-white">
-                    <div class="bg-slate-100 px-5 py-3 border-b border-slate-200 grid grid-cols-2 gap-4 text-xs font-bold text-slate-600">
-                        <div>系統欄位 (System Fields)</div>
-                        <div>對應的 Excel 表頭 (Your Data)</div>
+                <div id="excel-mapping-panel" class="w-full p-4 bg-white border border-slate-200 rounded-xl shadow-lg flex flex-col overflow-hidden">
+                    <div class="flex-shrink-0 mb-3 border-b border-slate-200 pb-2 flex items-center justify-between">
+                        <span class="text-sm font-bold text-primary flex items-center gap-2"><i class="fas fa-map-marked-alt text-primary"></i> 欄位匹配設定區</span>
                     </div>
-                    <div id="mapping-list-container" class="divide-y divide-slate-100">
-                    </div>
+                    <div id="mapping-list-container" class="mapping-container overflow-y-auto custom-scroll p-1 flex-grow">
+                        </div>
                 </div>
             </div>
 
@@ -1314,7 +1335,7 @@
                 <button onclick="cancelFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-slate-500 border border-slate-200 hover:bg-slate-50 transition shadow-sm">
                     取消匯入
                 </button>
-                <button onclick="confirmFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-white bg-indigo-600 hover:bg-indigo-700 shadow-md transition flex items-center gap-2">
+                <button onclick="confirmFieldMapping()" class="px-6 py-2.5 rounded-lg font-bold text-sm text-white bg-primary hover:bg-[#001e3d] shadow-md transition flex items-center gap-2">
                     <i class="fas fa-check"></i> 儲存設定並匯入
                 </button>
             </div>
@@ -2387,24 +2408,24 @@
                         excelHeaderNames[colNumber] = getSafeValue(cell);
                     });
 
-                    // ★ 新增：建立待配對的系統欄位清單 (包含所有後台定義的欄位)
-                    const sysFields = [
-                        { id: 'student_id', label: '學生學號', required: true },
-                        { id: 'student_name', label: '學生姓名', required: true },
-                        { id: 'course_id', label: '選課代號/課程代碼', required: true },
-                        { id: 'course_name', label: '課程名稱/科目名稱', required: true },
-                        { id: 'student_dept', label: '學生系所', required: false },
-                        { id: 'course_dept', label: '開課系所', required: false },
-                        { id: 'school_year', label: '學年度', required: false },
-                        { id: 'semester', label: '學期', required: false },
-                        { id: 'student_grade', label: '年級', required: false }
-                    ];
+                    if (!currentYearConfig || !currentYearConfig.fields) {
+                        await changeYear('114'); 
+                    }
+                    
+                    const sysFields = [];
                     if (currentYearConfig && currentYearConfig.fields) {
-                        currentYearConfig.fields.forEach(f => {
-                            if (!f.isSystem || f.category !== 'sys_course_info') {
-                                sysFields.push({ id: f.id, label: f.label, required: f.required });
-                            }
+                        // 依照後台順序排序載入
+                        currentYearConfig.fields.sort((a,b)=>(a.order||0)-(b.order||0)).forEach(f => {
+                            sysFields.push({ id: f.id, label: f.label, required: f.required });
                         });
+                    } else {
+                        // Fallback (極端情況保底)
+                        sysFields.push(
+                            { id: 'student_id', label: '學生學號', required: true },
+                            { id: 'student_name', label: '學生姓名', required: true },
+                            { id: 'course_code', label: '選課代號', required: true },
+                            { id: 'course_name', label: '課程名稱', required: true }
+                        );
                     }
 
                     // 檢查是否需要彈出配對視窗
@@ -2527,8 +2548,8 @@
 
             pendingUploadData.sysFields.forEach(sf => {
                 const row = document.createElement('div');
-                row.className = 'px-5 py-3 grid grid-cols-2 gap-4 items-center hover:bg-slate-50 transition border-b border-slate-50 last:border-0';
-                
+                row.className = 'mapping-group'; // ★ 使用全新的 Grid 獨立群組類別
+
                 // 決定此下拉選單的預設選取值 (若有舊記憶則自動帶入)
                 let defaultExcelHeader = "";
                 pendingUploadData.excelHeaderNames.forEach(hName => {
@@ -2538,29 +2559,31 @@
                         if (hl === 'student_id' || hl === '學號') mappedId = 'student_id';
                         else if (hl === 'student_name' || hl === '姓名') mappedId = 'student_name';
                         else if (hl === 'course_name' || hl === '課名' || hl === '科目名稱') mappedId = 'course_name';
-                        else if (hl === 'course_id' || hl === '選課代號' || hl === '課程代碼') mappedId = 'course_id';
+                        else if (hl === 'course_id' || hl === '選課代號' || hl === '課程代碼' || hl === 'course_code') mappedId = 'course_code';
                     }
                     if (mappedId === sf.id) defaultExcelHeader = hName;
                 });
 
                 const optionsHTML = `<option value="">-- 不配對 / 無對應欄位 --</option>` + 
-                    pendingUploadData.excelHeaderNames.map(eh => `<option value="${eh}" ${eh === defaultExcelHeader ? 'selected' : ''}>${eh}</option>`).join('');
+                    pendingUploadData.excelHeaderNames.map(hName => 
+                        `<option value="${hName}" ${hName === defaultExcelHeader ? 'selected' : ''}>${hName}</option>`
+                    ).join('');
 
                 row.innerHTML = `
-                    <div class="font-bold text-slate-700 flex items-center gap-2">
-                        <i class="fas ${sf.required ? 'fa-asterisk text-red-400 text-[10px]' : 'fa-circle text-slate-300 text-[8px]'}"></i>
-                        ${sf.label} ${sf.required ? '<span class="text-xs font-normal text-red-500">(必填)</span>' : ''}
+                    <div class="flex flex-col mb-1.5">
+                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
+                            ${sf.label} 
+                            ${sf.required ? '<span class="text-red-500 text-xs bg-red-50 px-1 rounded">(必填)</span>' : '<span class="text-slate-400 text-xs">(選填)</span>'}
+                        </span>
+                        <span class="text-[10px] text-slate-400 font-mono mt-0.5">${sf.id}</span>
                     </div>
-                    <div>
-                        <select id="map-select-${sf.id}" data-sysid="${sf.id}" data-required="${sf.required}" class="mapping-select w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer" onchange="updateMappingSelects()">
-                            ${optionsHTML}
-                        </select>
-                    </div>
+                    <select class="mapping-select w-full border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary focus:border-primary text-slate-700 font-medium" data-sysid="${sf.id}" data-required="${sf.required}">
+                        ${optionsHTML}
+                    </select>
                 `;
                 container.appendChild(row);
             });
 
-            updateMappingSelects(); // 初始化一次選項鎖定
             document.getElementById('mapping-modal').classList.remove('hidden');
         }
 
