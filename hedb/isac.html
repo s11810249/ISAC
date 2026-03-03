@@ -1028,14 +1028,6 @@
                     </div>
 
                     <div class="flex items-center gap-3 flex-shrink-0">
-                        <div class="flex bg-slate-100 p-1 rounded-lg mr-2 flex-shrink-0">
-                            <button onclick="setStudentViewMode('form')" id="btn-std-view-form" class="px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap">
-                                <i class="fas fa-file-alt"></i> 表單模式
-                            </button>
-                            <button onclick="setStudentViewMode('grid')" id="btn-std-view-grid" class="px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap">
-                                <i class="fas fa-th"></i> 列表模式
-                            </button>
-                        </div>
                     </div>
                 </div>
 
@@ -1044,24 +1036,6 @@
                 <div id="sticky-progress-header" class="hidden bg-white border-b border-slate-200 px-6 py-3 shadow-sm z-20 flex-shrink-0">
                     </div>
                 <div class="flex-grow relative overflow-hidden bg-slate-50">
-                    
-                    <div id="student-grid-wrapper" class="hidden absolute inset-x-0 top-0 bottom-10 flex flex-col bg-white z-20 border-b border-slate-200">
-                        
-                        <div id="local-grid-header" class="px-6 py-2 border-b border-slate-200 bg-slate-50 flex justify-between items-center flex-shrink-0">
-                            <h2 class="font-bold text-slate-700 text-sm flex items-center gap-2">
-                                <i class="fas fa-list-ul text-primary"></i> 列表檢視
-                            </h2>
-                            <div id="local-grid-column-picker">
-                                 </div>
-                        </div>
-
-                        <div class="flex-grow overflow-auto custom-scroll relative p-0">
-                            <table class="excel-table w-full relative">
-                                <thead class="sticky top-0 z-20 bg-slate-100 shadow-sm" id="local-grid-thead"></thead>
-                                <tbody id="local-grid-tbody"></tbody>
-                            </table>
-                        </div>
-                    </div>
 
                     <div id="form-content-area" class="absolute inset-0 overflow-y-auto custom-scroll p-6 pb-24">
 
@@ -5186,72 +5160,7 @@
 
         let currentViewMode = 'form';
 
-        // 1. 切換視圖模式 (修正版：加入模式記憶功能)
-        function setStudentViewMode(mode) {
-            currentViewMode = mode;
-        
-            const formContainer = document.getElementById('form-content-area');
-            const tabsContainer = document.getElementById('tabs-container');
-            const gridWrapper = document.getElementById('student-grid-wrapper');
-            const stickyHeader = document.getElementById('sticky-progress-header'); 
-            
-            const btnForm = document.getElementById('btn-std-view-form');
-            const btnGrid = document.getElementById('btn-std-view-grid');
-        
-            if(!formContainer || !gridWrapper) return;
-        
-            if (mode === 'grid') {
-                // 切換到【列表模式】
-                formContainer.classList.add('hidden');
-                tabsContainer.classList.add('hidden'); 
-                gridWrapper.classList.remove('hidden');
-        
-                // 強制隱藏表單專用的進度條
-                if(stickyHeader) stickyHeader.classList.add('hidden');
-        
-                if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
-                if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
-        
-                if(currentStudentId) {
-                    renderStudentLocalGrid(currentStudentId); 
-                    setTimeout(() => {
-                        if(typeof renderLocalGridPicker === 'function') renderLocalGridPicker(); 
-                    }, 0);
-                }
-        
-            } else {
-                // 切換回【表單模式】
-                formContainer.classList.remove('hidden');
-                tabsContainer.classList.remove('hidden');
-                gridWrapper.classList.add('hidden');
-        
-                if(btnForm) btnForm.className = "px-3 py-1.5 rounded-md text-xs font-bold transition shadow-sm bg-white text-primary flex items-center gap-1 whitespace-nowrap";
-                if(btnGrid) btnGrid.className = "px-3 py-1.5 rounded-md text-xs font-bold text-slate-500 hover:text-slate-700 transition flex items-center gap-1 whitespace-nowrap";
-                
-                if (currentActiveAppId) {
-                     updateAppProgress(currentActiveAppId);
-                } else {
-                    const activeTab = document.querySelector('.tab-btn.active');
-                    if(activeTab) {
-                        switchTab(activeTab.dataset.tab); 
-                    } else {
-                        if(stickyHeader) stickyHeader.classList.add('hidden');
-                    }
-                }
 
-                // ★ 新增：切換回表單模式時，因為 display:none 會導致高度歸零，需強制重新計算
-                setTimeout(() => {
-                    const activeContent = document.querySelector('.dynamic-tab-content[style*="display: block"]');
-                    if (activeContent) {
-                        activeContent.querySelectorAll('textarea.input-stylish').forEach(ta => {
-                            ta.style.setProperty('height', '1px', 'important');
-                            ta.style.setProperty('height', (ta.scrollHeight + 2) + 'px', 'important');
-                        });
-                    }
-                }, 50);
-            }
-        }
-        // 2. 渲染單人列表表格
         function renderStudentLocalGrid(sid) {
             const student = groupedStudents[sid];
             if (!student) return;
