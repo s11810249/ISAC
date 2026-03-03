@@ -272,6 +272,22 @@
         </div>
     </div>
 
+    <!-- View Consolidation Modal (唯讀查看歸戶) -->
+    <div id="view-consolidation-modal" class="fixed inset-0 z-[150] hidden flex items-center justify-center modal-overlay p-4">
+        <div class="bg-white w-full max-w-2xl rounded-xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+            <div class="px-6 py-4 bg-primary text-white flex justify-between items-center">
+                <h3 class="text-lg font-bold flex items-center gap-2"><i class="fas fa-layer-group"></i> 學生課程歸戶資料 (唯讀)</h3>
+                <button onclick="closeViewConsolidationModal()" class="hover:text-slate-300"><i class="fas fa-times"></i></button>
+            </div>
+            <div class="p-6 overflow-y-auto custom-scroll" id="view-consolidation-content">
+                <!-- 動態載入歸戶詳情 -->
+            </div>
+            <div class="px-6 py-4 bg-slate-50 border-t flex justify-end">
+                <button onclick="closeViewConsolidationModal()" class="bg-slate-200 text-slate-700 px-6 py-2 rounded-lg font-bold shadow-sm hover:bg-slate-300">關閉</button>
+            </div>
+        </div>
+    </div>
+
     <div id="toast-container" class="fixed bottom-5 right-5 z-[200] flex flex-col gap-3 pointer-events-none"></div>
 
     <script>
@@ -704,6 +720,16 @@
             if (gradeText) deptHtml += ` <span class="mx-2 text-slate-300">|</span> ${gradeText}`;
             document.getElementById('header-dept').innerHTML = deptHtml;
             
+            // 替換「讀取中...」為動態統計與「查看歸戶」按鈕
+            document.getElementById('header-status-text').innerHTML = `
+                <div class="mt-1 flex items-center gap-2">
+                    <span>共 <span class="font-bold text-slate-700">${student.courses.length}</span> 筆原始課程，歸戶為 <span class="font-bold text-slate-700">${student.applications.length}</span> 筆實習紀錄</span>
+                    <button onclick="openViewConsolidationModal()" class="text-primary hover:text-sky-700 font-bold transition hover:underline flex items-center gap-1 ml-2 bg-slate-100 px-2 py-0.5 rounded">
+                        <i class="fas fa-layer-group"></i> 查看歸戶
+                    </button>
+                </div>
+            `;
+            
             renderTabs(student);
             
             const area = document.getElementById('dynamic-tabs-area');
@@ -760,6 +786,92 @@
             if(app.formData.isac_status === 'approved') formDiv.classList.add('opacity-60', 'bg-slate-50');
             
             container.appendChild(formDiv);
+        }
+
+        // --- View Consolidation ---
+        function openViewConsolidationModal() {
+            const student = groupedStudents[currentStudentId];
+            if (!student) return;
+
+            const content = document.getElementById('view-consolidation-content');
+            let html = '<div class="space-y-4">';
+
+            if (student.applications.length === 0) {
+                html += '<div class="text-center text-slate-400 py-4">此學生尚無歸戶之實習紀錄。</div>';
+            }
+
+            student.applications.forEach((app, idx) => {
+                const status = app.formData.isac_status || 'pending';
+                let statusLabel = '<span class="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-1 rounded">待檢核</span>';
+                if (status === 'approved') statusLabel = '<span class="text-xs font-bold text-emerald-600 bg-emerald-100 px-2 py-1 rounded">已通過</span>';
+                if (status === 'returned') statusLabel = '<span class="text-xs font-bold text-red-600 bg-red-100 px-2 py-1 rounded">已退回</span>';
+
+                html += `
+                <div class="border border-slate-200 rounded-lg p-4 bg-white shadow-sm">
+                    <div class="flex justify-between items-center border-b border-slate-100 pb-2 mb-3">
+                        <h4 class="font-bold text-primary flex items-center gap-2">
+                            <i class="fas fa-file-alt text-slate-400"></i> 實習紀錄 ${idx + 1}
+                            <span class="text-xs font-normal text-slate-500">(包含 ${app.courseIds.length} 門課程)</span>
+                        </h4>
+                        ${statusLabel}
+                    </div>
+                    <ul class="space-y-2">
+                `;
+                app.courseIds.forEach(cid => {
+                    const course = student.courses.find(c => c._internal_id === cid);
+                    if (course) {
+                        const cName = getValue(course, ['course_name', '課程名稱', '科目名稱']) || '未知課程';
+                        const cId = getValue(course, ['course_id', '課程代碼', '科目代碼']) || '無代碼';
+                        const sem = getValue(course, ['semester', '學期']) || '';
+                        const year = getValue(course, ['school_year', '學年度']) || '';
+                        
+                        let timeStr = year ? `${year}學年度` : '';
+                        if (sem) timeStr += ` 第${sem}學期`;
+
+                        html += `
+                        <li class="flex items-start gap-2 text-sm text-slate-700 bg-slate-50 p-3 rounded border border-slate-100">
+                            <i class="fas fa-book mt-1 text-secondary"></i>
+                            <div>
+                                <div class="font-bold">${cName} <span class="text-xs text-slate-500 font-normal">(${cId})</span></div>
+                                ${timeStr ? `<div class="text-xs text-slate-500 mt-0.5">${timeStr}</div>` : ''}
+                            </div>
+                        </li>`;
+                    }
+                });
+                html += `</ul></div>`;
+            });
+
+            // 顯示未歸戶的課程 (防呆提醒)
+            const assignedIds = student.applications.flatMap(a => a.courseIds);
+            const unassigned = student.courses.filter(c => !assignedIds.includes(c._internal_id));
+            if (unassigned.length > 0) {
+                html += `
+                <div class="border border-orange-200 rounded-lg p-4 bg-orange-50 shadow-sm mt-4">
+                    <h4 class="font-bold text-orange-700 border-b border-orange-200 pb-2 mb-3 flex items-center gap-2">
+                        <i class="fas fa-exclamation-triangle"></i> 未歸戶課程 (系所未將其納入紀錄)
+                    </h4>
+                    <ul class="space-y-2">`;
+                unassigned.forEach(course => {
+                    const cName = getValue(course, ['course_name', '課程名稱', '科目名稱']) || '未知課程';
+                    const cId = getValue(course, ['course_id', '課程代碼', '科目代碼']) || '無代碼';
+                    html += `
+                        <li class="flex items-start gap-2 text-sm text-slate-700 bg-white border border-orange-100 p-3 rounded opacity-70">
+                            <i class="fas fa-book mt-1 text-orange-400"></i>
+                            <div>
+                                <div class="font-bold">${cName} <span class="text-xs text-slate-500 font-normal">(${cId})</span></div>
+                            </div>
+                        </li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            html += '</div>';
+            content.innerHTML = html;
+            document.getElementById('view-consolidation-modal').classList.remove('hidden');
+        }
+
+        function closeViewConsolidationModal() {
+            document.getElementById('view-consolidation-modal').classList.add('hidden');
         }
 
         // --- ISAC Specific: Review Panel ---
