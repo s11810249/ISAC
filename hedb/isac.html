@@ -378,6 +378,11 @@
                 if (foundKey && row[foundKey] !== undefined && row[foundKey] !== null && String(row[foundKey]).trim() !== '') {
                     return String(row[foundKey]).trim();
                 }
+                // 模糊比對 (防範 Excel 欄位有備註，如 "學生系所(必填)")
+                const fuzzyKey = rowKeys.find(k => k.trim().toLowerCase().includes(target));
+                if (fuzzyKey && row[fuzzyKey] !== undefined && row[fuzzyKey] !== null && String(row[fuzzyKey]).trim() !== '') {
+                    return String(row[fuzzyKey]).trim();
+                }
             }
             return '';
         };
@@ -386,6 +391,12 @@
             if (!deptMasterData || !query) return null;
             const q = query.toString().trim();
             
+            // 支援陣列格式的 JSON
+            if (Array.isArray(deptMasterData)) {
+                return deptMasterData.find(m => m.code == q || m.name === q || m.short_name === q || m.fullName === q || (m.historical_names && Object.values(m.historical_names).includes(q)));
+            }
+            
+            // 支援物件格式的 JSON
             if (deptMasterData[q]) return deptMasterData[q];
 
             for (const key in deptMasterData) {
@@ -516,12 +527,12 @@
             const studentDepts = new Set();
 
             data.forEach((row, idx) => {
-                // 補回強大取值邏輯
-                const sid = getValue(row, ['student_id', '學號', 'id', 'std_no']) || `unknown_${idx}`;
-                const sname = getValue(row, ['student_name', '姓名', 'name']) || '未知';
-                const rawDept = getValue(row, ['student_department', 'student_dept', '系所', 'department', 'dept']);
-                const sgrade = getValue(row, ['student_grade', 'grade', '年級', 'level']);
-                const cdept = getValue(row, ['course_dept', '開課系所', '開課學系']);
+                // 補回強大取值邏輯 (增加更多常見中文欄位)
+                const sid = getValue(row, ['student_id', '學號', '學生學號', 'id', 'std_no']) || `unknown_${idx}`;
+                const sname = getValue(row, ['student_name', '姓名', '學生姓名', 'name']) || '未知';
+                const rawDept = getValue(row, ['student_department', 'student_dept', '學生系所', '就讀系所', '系級', '系所', '學系', '科系', 'department', 'dept']);
+                const sgrade = getValue(row, ['student_grade', 'grade', '學生年級', '就讀年級', '年級', 'level']);
+                const cdept = getValue(row, ['course_dept', '開課系所', '開課學系', '開課單位']);
                 
                 let deptDisplay = rawDept;
                 const master = window.findDeptMaster(rawDept);
@@ -644,7 +655,7 @@
                 // 補回年級顯示邏輯
                 let rawGrade = s.grade;
                 if (!rawGrade && s.courses && s.courses.length > 0) {
-                    rawGrade = s.courses[0].grade || s.courses[0].student_grade || s.courses[0]['學生年級'] || s.courses[0]['年級'];
+                    rawGrade = getValue(s.courses[0], ['student_grade', 'grade', '學生年級', '就讀年級', '年級', 'level']);
                 }
                 let gradeLine = s.dept;
                 if (rawGrade) {
@@ -679,7 +690,16 @@
             document.getElementById('header-id').innerText = student.id;
             document.getElementById('header-avatar').innerText = student.name[0];
             
-            let gradeText = student.grade ? `${student.grade}年級` : '';
+            let rawGrade = student.grade;
+            if (!rawGrade && student.courses && student.courses.length > 0) {
+                rawGrade = getValue(student.courses[0], ['student_grade', 'grade', '學生年級', '就讀年級', '年級', 'level']);
+            }
+            let gradeText = '';
+            if (rawGrade) {
+                let cleanGrade = String(rawGrade).replace(/年級/g, '').trim();
+                gradeText = `${cleanGrade}年級`;
+            }
+            
             let deptHtml = `<i class="fas fa-graduation-cap"></i> ${student.dept}`;
             if (gradeText) deptHtml += ` <span class="mx-2 text-slate-300">|</span> ${gradeText}`;
             document.getElementById('header-dept').innerHTML = deptHtml;
