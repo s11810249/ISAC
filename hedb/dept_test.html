@@ -934,11 +934,6 @@
                     <i class="fas fa-file-import text-lg"></i> 匯入學生名單
                     <input type="file" id="file-upload" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event, false)">
                 </label>
-                
-                <label class="flex-shrink-0 flex items-center justify-center w-12 rounded-xl border border-indigo-200 bg-indigo-50 text-indigo-500 hover:bg-indigo-100 hover:text-indigo-600 transition cursor-pointer shadow-sm m-0 h-auto" title="強制手動配對欄位">
-                    <i class="fas fa-cogs text-lg"></i>
-                    <input type="file" id="file-upload-manual" class="hidden" accept=".xlsx, .csv" onchange="handleFileUpload(event, true)">
-                </label>
             </div>
 
             <div class="p-4 border-b border-slate-100 bg-slate-50 space-y-3">
@@ -2428,29 +2423,8 @@
                         );
                     }
 
-                    // 檢查是否需要彈出配對視窗
-                    let needsMapping = forceMapping;
+                    let needsMapping = !metaSheet;
                     
-                    // 模擬套用目前的 Mapping 看看必填核心欄位是否都有抓到
-                    const mappedSysIds = new Set();
-                    excelHeaderNames.forEach(hName => {
-                        if(!hName) return;
-                        let sysId = metaFieldMap[hName] || customFieldMap[hName];
-                        if (!sysId) {
-                            // 智慧猜測防呆
-                            const hl = hName.toLowerCase();
-                            if (hl === 'student_id' || hl === '學號') sysId = 'student_id';
-                            else if (hl === 'student_name' || hl === '姓名') sysId = 'student_name';
-                            else if (hl === 'course_name' || hl === '課名' || hl === '科目名稱') sysId = 'course_name';
-                            else if (hl === 'course_id' || hl === '選課代號' || hl === '課程代碼') sysId = 'course_id';
-                        }
-                        if (sysId) mappedSysIds.add(sysId);
-                    });
-
-                    // 檢查必填核心是否遺失
-                    const missingCores = sysFields.filter(f => f.required && !mappedSysIds.has(f.id));
-                    if (missingCores.length > 0) needsMapping = true;
-
                     // 預先讀取好所有 Excel 原始資料
                     const rawDataRows = [];
                     mainSheet.eachRow((row, rowNumber) => {
@@ -2559,7 +2533,9 @@
                         if (hl === 'student_id' || hl === '學號') mappedId = 'student_id';
                         else if (hl === 'student_name' || hl === '姓名') mappedId = 'student_name';
                         else if (hl === 'course_name' || hl === '課名' || hl === '科目名稱') mappedId = 'course_name';
-                        else if (hl === 'course_id' || hl === '選課代號' || hl === '課程代碼' || hl === 'course_code') mappedId = 'course_code';
+                        else if (hl === 'course_id' || hl === '選課代號' || hl === '課程代碼') mappedId = 'course_id';
+                        // ★ 新增：如果 Excel 標題與系統欄位的 ID 或名稱完全一致，自動配對！
+                        else if (hName === sf.id || hName === sf.label) mappedId = sf.id;
                     }
                     if (mappedId === sf.id) defaultExcelHeader = hName;
                 });
@@ -2570,16 +2546,15 @@
                     ).join('');
 
                 row.innerHTML = `
-                    <div class="flex flex-col mb-1.5">
-                        <span class="font-bold text-slate-800 text-sm flex items-center gap-2">
-                            ${sf.label} 
-                            ${sf.required ? '<span class="text-red-500 text-xs bg-red-50 px-1 rounded">(必填)</span>' : '<span class="text-slate-400 text-xs">(選填)</span>'}
-                        </span>
-                        <span class="text-[10px] text-slate-400 font-mono mt-0.5">${sf.id}</span>
+                    <div class="font-bold text-slate-700 flex items-center gap-2">
+                        <i class="fas fa-circle text-slate-300 text-[8px]"></i>
+                        ${sf.label}
                     </div>
-                    <select class="mapping-select w-full border border-slate-300 rounded-lg outline-none focus:ring-2 focus:ring-primary focus:border-primary text-slate-700 font-medium" data-sysid="${sf.id}" data-required="${sf.required}">
-                        ${optionsHTML}
-                    </select>
+                    <div>
+                        <select id="map-select-${sf.id}" data-sysid="${sf.id}" class="mapping-select w-full border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-500 bg-white cursor-pointer" onchange="updateMappingSelects()">
+                            ${optionsHTML}
+                        </select>
+                    </div>
                 `;
                 container.appendChild(row);
             });
@@ -2598,13 +2573,13 @@
                 
                 Array.from(select.options).forEach(option => {
                     if (option.value === "") return;
-                    // 如果這個選項已經在其他下拉框被選了，就反灰鎖定！
+                    // ★ 修改 1：如果這個選項已經在其他下拉框被選了，直接隱藏它！
                     if (selectedValues.includes(option.value) && option.value !== currentVal) {
+                        option.style.display = 'none';
                         option.disabled = true;
-                        option.text = `${option.value} (已配對)`;
                     } else {
+                        option.style.display = '';
                         option.disabled = false;
-                        option.text = option.value;
                     }
                 });
             });
@@ -2620,31 +2595,22 @@
             if (!pendingUploadData) return;
             
             const selects = document.querySelectorAll('.mapping-select');
-            let hasError = false;
             const newCustomMap = {};
-
+        
             selects.forEach(sel => {
                 const sysId = sel.dataset.sysid;
-                const isRequired = sel.dataset.required === 'true';
                 const excelColName = sel.value;
-
-                if (isRequired && !excelColName) {
-                    hasError = true;
-                    sel.classList.add('border-red-500', 'bg-red-50');
-                } else if (excelColName) {
-                    newCustomMap[excelColName] = sysId; // 儲存 Excel表頭 -> 系統ID 的對應
+        
+                // ★ 修改 2-B：不再檢查是否必填，只要有配對就存入
+                if (excelColName) {
+                    newCustomMap[excelColName] = sysId; 
                 }
             });
-
-            if (hasError) {
-                showToast('error', '請完成所有標示為 (必填) 的核心欄位配對！');
-                return;
-            }
-
+        
             // 將這份完美的配對儲存到瀏覽器記憶體中，下次就不用再配對了！
             localStorage.setItem('thu_isac_custom_field_map', JSON.stringify(newCustomMap));
             pendingUploadData.customFieldMap = newCustomMap; 
-
+        
             document.getElementById('mapping-modal').classList.add('hidden');
             
             // 執行轉換與匯入
@@ -2667,7 +2633,12 @@
                         else if (hl === 'student_name' || hl === '姓名') sysId = 'student_name';
                         else if (hl === 'course_name' || hl === '課名' || hl === '科目名稱') sysId = 'course_name';
                         else if (hl === 'course_id' || hl === '選課代號' || hl === '課程代碼') sysId = 'course_id';
-                        else sysId = hName; // 都配對不到就保留原名，給一般匯入容錯使用
+                        // ★ 新增：轉換時也要將中文表頭轉成正確的系統 ID 存入資料庫
+                        else {
+                             const matchedField = pendingUploadData.sysFields.find(f => f.id === hName || f.label === hName);
+                             if (matchedField) sysId = matchedField.id;
+                             else sysId = hName; // 都配對不到就保留原名，給一般匯入容錯使用
+                        }
                     }
                     newRow[sysId] = row[hName];
                 });
