@@ -1986,7 +1986,7 @@
                     const linkedCourses = student.courses.filter(c => app.courseIds.includes(c._internal_id));
 
                     if (fieldDef.calcMode === 'average' || fieldDef.calcMode === 'weighted') {
-                        // 數值運算模式 (平均/加權) - 保持原有邏輯
+                        // 【數值運算模式 (平均/加權)】
                         course[fieldDef.id] = newVal; 
 
                         let finalValue = 0;
@@ -2009,7 +2009,6 @@
                                     const ratio = w / totalWeight;
                                     const distributedVal = currentTotalValue * ratio;
                                     
-                                    // ★ 修正：隱藏無意義的尾數 0
                                     const formattedVal = fieldDef.decimal 
                                         ? parseFloat(distributedVal.toFixed(fieldDef.decimal)).toString() 
                                         : Math.round(distributedVal).toString();
@@ -2028,32 +2027,31 @@
                             finalValue = sum; 
                         }
 
-                        // ★ 修正 1：格式化總和，隱藏無意義的尾數 0
                         const formattedTotal = fieldDef.decimal 
                             ? parseFloat(finalValue.toFixed(fieldDef.decimal)).toString() 
                             : Math.round(finalValue).toString();
                         
+                        const oldAppVal = app.formData[fieldDef.id];
                         app.formData[fieldDef.id] = formattedTotal;
-                        logChange(fieldDef.id, appId, app.formData[fieldDef.id], finalValue, student.id);
+                        logChange(fieldDef.id, appId, oldAppVal, formattedTotal, student.id);
                         
-                        // ★ 修正 2：立即同步總數回表單模式下的該欄位 UI
+                        // 同步總數回表單模式下的該欄位 UI (若已渲染)
                         const formInput = document.getElementById(`input-${appId}-${fieldDef.id}`);
                         if (formInput && formInput !== inputEl) {
                             formInput.value = formattedTotal;
                             formInput.title = formattedTotal;
-                            // 加入視覺提示，讓使用者知道它自動加總了
                             formInput.style.transition = 'background-color 0.3s';
-                            formInput.style.backgroundColor = '#dcfce7'; // 淡綠色提示
+                            formInput.style.backgroundColor = '#dcfce7'; 
                             setTimeout(() => formInput.style.backgroundColor = '', 500);
                         }
 
                     } else {
-                        // 一般共用欄位：更新 App Data
+                        // 【一般共用欄位】
                         const oldVal = app.formData[fieldDef.id];
                         app.formData[fieldDef.id] = newVal;
                         logChange(fieldDef.id, appId, oldVal, newVal, student.id);
 
-                        // 1. 同步數值到所有視圖
+                        // 同步數值到列表模式中的所有相同 App 課程列
                         const allRelatedInputs = document.querySelectorAll(`.app-input-${appId}-${fieldDef.id}`);
                         allRelatedInputs.forEach(el => {
                             if (el !== inputEl) {
@@ -2061,51 +2059,48 @@
                                 else { 
                                     el.value = newVal; 
                                     el.title = newVal; 
-                                    
-                                    // ★ 修正：同步資料時，若為多行文字則觸發高度重算
-                                    if (el.tagName === 'TEXTAREA') {
+                                    if (el.tagName === 'TEXTAREA' && typeof autoResizeGridRow === 'function') {
                                         const tr = el.closest('tr');
                                         if (tr) autoResizeGridRow(tr);
                                     }
                                 }
                             }
                         });
+                    }
 
-                        // ★★★ 關鍵修正：同時觸發「表單邏輯」與「列表邏輯」 ★★★
-                        
-                        // A. 觸發表單模式的邏輯檢查 (確保切換回去時狀態正確)
-                        evaluateLogic(app);
+                    // ★★★ 共通同步核心：確保無論何種欄位變更，皆觸發全系統更新 ★★★
+                    
+                    // 1. 觸發表單邏輯檢查 (處理 Visibility 顯示隱藏與鎖定)
+                    evaluateLogic(app);
 
-                        // B. 觸發列表模式的邏輯檢查 (針對該歸戶下的所有課程列)
-                        // 找出所有屬於此 App 的課程列，並更新它們的鎖定/解鎖狀態
-                        const gridRows = document.querySelectorAll(`tr[data-sid="${student.id}"]`);
-                        gridRows.forEach(tr => {
-                             const cid = tr.dataset.cid;
-                             const rowCourse = student.courses.find(c => c._internal_id === cid);
-                             if (rowCourse && rowCourse._app_id === appId) {
-                                 // 使用最新的 app.formData 更新該列的邏輯
-                                 updateRowLogic(tr, app.formData, false);
-                             }
-                        });
+                    // 2. 觸發填報進度重算 (更新 100% 進度條)
+                    updateAppProgress(appId);
 
-                        // 機構資訊收集
-                        if (fieldDef.category === 'internship_institution_info') {
-                            if (typeof collectInstitutionData === 'function') {
-                                collectInstitutionData(app.formData);
-                            }
-                        }
+                    // 3. 刷新左側學生名單燈號與上方頁籤 (更新變色、打勾狀態)
+                    if (typeof renderStudentList === 'function') renderStudentList();
+                    if (typeof renderTabs === 'function') renderTabs(student);
+
+                    // 4. 更新列表模式的行內邏輯 (確保其他課程列的鎖定狀態同步)
+                    const gridRows = document.querySelectorAll(`tr[data-sid="${student.id}"]`);
+                    gridRows.forEach(tr => {
+                         const cid = tr.dataset.cid;
+                         const rowCourse = student.courses.find(c => c._internal_id === cid);
+                         if (rowCourse && rowCourse._app_id === appId) {
+                             updateRowLogic(tr, app.formData, false);
+                         }
+                    });
+
+                    // 5. 機構資訊收集
+                    if (fieldDef.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
+                        collectInstitutionData(app.formData);
                     }
                 }
             } else {
                 // === 情境 B: 未歸戶 (Course Context) ===
                 course[fieldDef.id] = newVal;
-                
-                // 更新該行邏輯
                 const relevantRows = document.querySelectorAll(`tr[data-cid="${course._internal_id}"][data-sid="${student.id}"]`);
                 relevantRows.forEach(tr => updateRowLogic(tr, course, true));
-                
                 syncValueToViews(course._internal_id, student.id, fieldDef.id, newVal, inputEl);
-
                 if (newVal && newVal !== "" && newVal !== false) {
                     tryAutoMerge(student, course);
                 }
