@@ -447,6 +447,15 @@
                                 <span class="text-[10px] text-slate-400 mt-0.5">建立一組需繳交的實習文件</span>
                             </div>
                         </div>
+                        <div class="p-4 bg-white border border-dashed border-slate-300 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-400 transition shadow-sm flex items-center gap-3 group" onclick="addVerificationBlock('data_match')">
+                            <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                                <i class="fas fa-not-equal"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-slate-700 text-sm">資料一致性比對</span>
+                                <span class="text-[10px] text-slate-400 mt-0.5">檢查多份文件的日期/數值是否相符</span>
+                            </div>
+                        </div>
                     </div>
                 </aside>
 
@@ -4432,116 +4441,164 @@
                     }
                 }
 
-                // 2. 渲染個別文件清單 (加入開合式設計)
-                let docsHtml = '';
-                if (!block.docs) block.docs = [];
-                block.docs.forEach((doc, dIdx) => {
-                    let valControlHtml = `<select class="flex-grow border border-slate-300 rounded p-1.5 text-xs bg-slate-100 text-slate-400 min-w-[100px]" disabled><option>選擇欄位</option></select>`;
-                    if (doc.exemptField) {
-                        const depField = configData.globalFields.find(f => f.id === doc.exemptField);
-                        if (depField) {
-                            if (depField.type === 'checkbox') {
-                                valControlHtml = `<select class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[100px]" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'exemptValue', this.value)"><option value="">-- 狀態 --</option><option value="true" ${doc.exemptValue === 'true' ? 'selected' : ''}>已勾選</option><option value="false" ${doc.exemptValue === 'false' ? 'selected' : ''}>未勾選</option></select>`;
-                            } else if (depField.options && depField.options.length > 0) {
-                                let optHtml = '<option value="">-- 選項 --</option>';
-                                depField.options.forEach(opt => { optHtml += `<option value="${opt}" ${doc.exemptValue === opt ? 'selected' : ''}>${opt}</option>`; });
-                                valControlHtml = `<select class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[100px]" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'exemptValue', this.value)">${optHtml}</select>`;
-                            } else {
-                                valControlHtml = `<input type="text" class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[100px]" value="${doc.exemptValue || ''}" placeholder="觸發值" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'exemptValue', this.value)">`;
+                let contentHtml = '';
+
+                // ==========================================
+                // 模組 A：一般文件檢核 (doc_check)
+                // ==========================================
+                if (block.type === 'doc_check') {
+                    let docsHtml = '';
+                    if (!block.docs) block.docs = [];
+                    block.docs.forEach((doc, dIdx) => {
+                        let valControlHtml = `<select class="flex-grow border border-slate-300 rounded p-1.5 text-xs bg-slate-100 text-slate-400 min-w-[100px]" disabled><option>選擇欄位</option></select>`;
+                        if (doc.exemptField) {
+                            const depField = configData.globalFields.find(f => f.id === doc.exemptField);
+                            if (depField) {
+                                if (depField.type === 'checkbox') {
+                                    valControlHtml = `<select class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[100px]" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'exemptValue', this.value)"><option value="">-- 狀態 --</option><option value="true" ${doc.exemptValue === 'true' ? 'selected' : ''}>已勾選</option><option value="false" ${doc.exemptValue === 'false' ? 'selected' : ''}>未勾選</option></select>`;
+                                } else if (depField.options && depField.options.length > 0) {
+                                    let optHtml = '<option value="">-- 選項 --</option>';
+                                    depField.options.forEach(opt => { optHtml += `<option value="${opt}" ${doc.exemptValue === opt ? 'selected' : ''}>${opt}</option>`; });
+                                    valControlHtml = `<select class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[100px]" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'exemptValue', this.value)">${optHtml}</select>`;
+                                } else {
+                                    valControlHtml = `<input type="text" class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[100px]" value="${doc.exemptValue || ''}" placeholder="觸發值" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'exemptValue', this.value)">`;
+                                }
                             }
                         }
-                    }
 
-                    const hasExempt = !!doc.exemptField;
-                    docsHtml += `
-                    <div class="bg-white border ${hasExempt ? 'border-amber-300 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2.5 flex flex-col relative doc-item transition-all" data-didx="${dIdx}">
-                        <div class="flex justify-between items-center gap-2">
-                            <div class="flex items-center gap-2 doc-drag-handle cursor-grab text-slate-400 hover:text-primary flex-shrink-0"><i class="fas fa-grip-vertical"></i></div>
-                            <div class="flex-grow">
-                                <input type="text" class="w-full border-b border-dashed ${hasExempt ? 'border-amber-300' : 'border-slate-300'} bg-transparent py-1 px-1 text-sm font-bold text-slate-700 focus:border-primary focus:text-primary outline-none transition-colors" value="${doc.name || ''}" placeholder="輸入文件名稱 (如：實習合約書)" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value)">
+                        const hasExempt = !!doc.exemptField;
+                        docsHtml += `
+                        <div class="bg-white border ${hasExempt ? 'border-amber-300 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2.5 flex flex-col relative doc-item transition-all" data-didx="${dIdx}">
+                            <div class="flex justify-between items-center gap-2">
+                                <div class="flex items-center gap-2 doc-drag-handle cursor-grab text-slate-400 hover:text-primary flex-shrink-0"><i class="fas fa-grip-vertical"></i></div>
+                                <div class="flex-grow">
+                                    <input type="text" class="w-full border-b border-dashed ${hasExempt ? 'border-amber-300' : 'border-slate-300'} bg-transparent py-1 px-1 text-sm font-bold text-slate-700 focus:border-primary focus:text-primary outline-none transition-colors" value="${doc.name || ''}" placeholder="輸入文件名稱 (如：實習合約書)" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value)">
+                                </div>
+                                <div class="flex items-center gap-1.5 flex-shrink-0">
+                                    <button onclick="toggleDocExempt(${bIdx}, ${dIdx})" class="text-xs px-2.5 py-1.5 rounded-md ${hasExempt ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 font-bold' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} transition flex items-center gap-1" title="設定豁免條件"><i class="fas fa-filter"></i> <span class="hidden sm:inline">條件</span></button>
+                                    <button onclick="removeDocFromBlock(${bIdx}, ${dIdx})" class="text-slate-400 hover:text-danger p-1.5 rounded hover:bg-red-50 transition" title="刪除文件"><i class="fas fa-times"></i></button>
+                                </div>
                             </div>
-                            <div class="flex items-center gap-1.5 flex-shrink-0">
-                                <button onclick="toggleDocExempt(${bIdx}, ${dIdx})" class="text-xs px-2.5 py-1.5 rounded-md ${hasExempt ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 font-bold' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} transition flex items-center gap-1" title="設定豁免條件">
-                                    <i class="fas fa-filter"></i> <span class="hidden sm:inline">條件</span>
-                                </button>
-                                <button onclick="removeDocFromBlock(${bIdx}, ${dIdx})" class="text-slate-400 hover:text-danger p-1.5 rounded hover:bg-red-50 transition" title="刪除文件"><i class="fas fa-times"></i></button>
+                            <div id="doc-exempt-panel-${bIdx}-${dIdx}" class="${hasExempt ? 'block' : 'hidden'} mt-2 pt-2 border-t border-slate-100">
+                                <div class="bg-amber-50/50 p-2 rounded-lg border border-amber-100 flex flex-wrap gap-2 items-center">
+                                    <span class="text-[11px] text-amber-600 font-bold ml-1"><i class="fas fa-info-circle"></i> 當</span>
+                                    <select class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[120px]" onchange="updateDocFieldInBlock(${bIdx}, ${dIdx}, this.value)">
+                                        ${fieldOptionsHtml.replace(`value="${doc.exemptField || ''}"`, `value="${doc.exemptField || ''}" selected`)}
+                                    </select>
+                                    <span class="text-[11px] text-amber-600 font-bold">為</span>
+                                    ${valControlHtml}
+                                    <span class="text-[11px] text-amber-600 font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">時免交</span>
+                                </div>
+                            </div>
+                        </div>`;
+                    });
+
+                    const mockMissingText = `<span class="text-red-500 underline decoration-red-300 underline-offset-2">實習合約書、家長同意書</span>`;
+
+                    contentHtml = `
+                    <div class="lg:w-7/12 xl:w-2/3 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white rounded-bl-2xl">
+                        <div class="flex justify-between items-center mb-4">
+                            <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-list-check text-primary"></i> 需檢核的文件項目清單</h4>
+                            <button onclick="addDocToBlock(${bIdx})" class="bg-white border border-primary text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"><i class="fas fa-plus"></i> 新增文件項目</button>
+                        </div>
+                        <div id="block-docs-${bIdx}" class="space-y-3 min-h-[100px] p-4 bg-slate-50/80 rounded-xl border border-slate-200">
+                            ${docsHtml || '<div class="text-center text-xs text-slate-400 py-8 border-2 border-dashed border-slate-200 rounded-lg">此模組尚未新增任何文件</div>'}
+                        </div>
+                    </div>
+                    <div class="lg:w-5/12 xl:w-1/3 p-6 bg-slate-50/50 rounded-br-2xl flex flex-col gap-5">
+                        <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100 shadow-sm">
+                            <h4 class="text-sm font-bold text-amber-700 mb-2 flex items-center gap-2"><i class="fas fa-shield-alt text-amber-500"></i> 全局豁免條件</h4>
+                            <div class="flex flex-col gap-2 bg-white p-3 rounded-lg border border-amber-200/50 shadow-sm">
+                                <select class="w-full border border-slate-300 rounded p-1.5 text-xs outline-none bg-white" onchange="updateBlockExemptField(${bIdx}, this.value)">${fieldOptionsHtml.replace(`value="${block.exemptField || ''}"`, `value="${block.exemptField || ''}" selected`)}</select>
+                                ${blockValControlHtml}
+                            </div>
+                        </div>
+                        <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fas fa-bullhorn text-amber-500"></i> 動態缺交提示文字</h4>
+                            <textarea rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none bg-white font-bold text-slate-700 shadow-sm resize-none custom-scroll" oninput="document.getElementById('preview-warn-${bIdx}').innerHTML = this.value.replace(/{{missing_docs}}/g, '${mockMissingText.replace(/"/g, '&quot;')}')" onchange="updateBlockField(${bIdx}, 'warningTemplate', this.value)">${block.warningTemplate || ''}</textarea>
+                            <div class="mt-2 p-2 bg-slate-50 rounded border border-slate-100 text-[11px] text-slate-600 shadow-inner"><span id="preview-warn-${bIdx}" class="font-bold text-slate-800">${(block.warningTemplate || '').replace(/{{missing_docs}}/g, mockMissingText)}</span></div>
+                        </div>
+                    </div>`;
+                } 
+                // ==========================================
+                // 模組 B：資料一致性比對 (data_match)
+                // ==========================================
+                else if (block.type === 'data_match') {
+                    let docsHtml = '';
+                    if (!block.docs) block.docs = [];
+                    block.docs.forEach((doc, dIdx) => {
+                        docsHtml += `
+                        <div class="bg-white border ${doc.isBase ? 'border-indigo-300 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2 flex items-center gap-2 doc-item transition-all" data-didx="${dIdx}">
+                            <div class="doc-drag-handle cursor-grab text-slate-400 hover:text-indigo-500"><i class="fas fa-grip-vertical"></i></div>
+                            <input type="text" class="flex-grow border-b border-dashed ${doc.isBase ? 'border-indigo-300 text-indigo-800' : 'border-slate-300 text-slate-700'} bg-transparent py-1 px-1 text-sm font-bold focus:border-indigo-500 outline-none" value="${doc.name || ''}" placeholder="文件名稱 (如：合約書)" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value)">
+                            <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold ${doc.isBase ? 'text-indigo-700 bg-indigo-50 border-indigo-200' : 'text-slate-500 bg-slate-50 border-slate-200'} border px-2 py-1.5 rounded-md transition-colors whitespace-nowrap">
+                                <input type="checkbox" ${doc.isBase ? 'checked' : ''} onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'isBase', this.checked)"> 設為基準標準
+                            </label>
+                            <button onclick="removeDocFromBlock(${bIdx}, ${dIdx})" class="text-slate-400 hover:text-danger p-1.5 rounded hover:bg-red-50 transition"><i class="fas fa-times"></i></button>
+                        </div>`;
+                    });
+
+                    contentHtml = `
+                    <div class="lg:w-1/2 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white rounded-bl-2xl">
+                        <div class="bg-indigo-50/50 p-4 rounded-xl border border-indigo-100 shadow-sm mb-5">
+                            <h4 class="text-sm font-bold text-indigo-800 mb-2 flex items-center gap-2"><i class="fas fa-keyboard text-indigo-500"></i> 前台輸入的資料類型</h4>
+                            <select class="w-full border border-indigo-200 rounded-lg p-2 text-sm focus:ring-2 focus:ring-indigo-400 outline-none bg-white font-bold text-indigo-700" onchange="updateBlockField(${bIdx}, 'matchType', this.value)">
+                                <option value="daterange" ${block.matchType==='daterange'?'selected':''}>起訖日期 (包含開始與結束日)</option>
+                                <option value="date" ${block.matchType==='date'?'selected':''}>單一日期</option>
+                                <option value="number" ${block.matchType==='number'?'selected':''}>純數字 (如：時數、學分)</option>
+                                <option value="text" ${block.matchType==='text'?'selected':''}>純文字 (完全相符判定)</option>
+                            </select>
+                        </div>
+                        <div class="flex justify-between items-center mb-3">
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-file-contract text-indigo-500"></i> 參與比對的文件清單</h4>
+                                <p class="text-[10px] text-slate-400 mt-1">系統將由上至下尋找「基準標準」作為解答依據。</p>
+                            </div>
+                            <button onclick="addDocToBlock(${bIdx})" class="bg-white border border-indigo-500 text-indigo-600 hover:bg-indigo-50 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm"><i class="fas fa-plus"></i> 新增文件</button>
+                        </div>
+                        <div id="block-docs-${bIdx}" class="space-y-2.5 min-h-[100px] p-3 bg-slate-50/80 rounded-xl border border-slate-200">
+                            ${docsHtml || '<div class="text-center text-xs text-slate-400 py-6 border-2 border-dashed border-slate-200 rounded-lg">請新增要參與比對的文件</div>'}
+                        </div>
+                    </div>
+                    <div class="lg:w-1/2 p-6 bg-slate-50/50 rounded-br-2xl flex flex-col gap-4">
+                        <div class="bg-amber-50/60 p-3 rounded-xl border border-amber-100 shadow-sm">
+                            <div class="flex items-center justify-between mb-1">
+                                <h4 class="text-[11px] font-bold text-amber-700"><i class="fas fa-shield-alt text-amber-500"></i> 全局豁免 (直接跳過此項比對)</h4>
+                            </div>
+                            <div class="flex gap-2 bg-white p-1.5 rounded border border-amber-200/50">
+                                <select class="w-1/2 border-none text-xs outline-none bg-transparent" onchange="updateBlockExemptField(${bIdx}, this.value)">${fieldOptionsHtml.replace(`value="${block.exemptField || ''}"`, `value="${block.exemptField || ''}" selected`)}</select>
+                                ${blockValControlHtml.replace('w-full', 'w-1/2 border-l border-t-0 border-r-0 border-b-0 border-slate-200 bg-transparent rounded-none p-1')}
                             </div>
                         </div>
                         
-                        <div id="doc-exempt-panel-${bIdx}-${dIdx}" class="${hasExempt ? 'block' : 'hidden'} mt-2 pt-2 border-t border-slate-100">
-                            <div class="bg-amber-50/50 p-2 rounded-lg border border-amber-100 flex flex-wrap gap-2 items-center">
-                                <span class="text-[11px] text-amber-600 font-bold ml-1"><i class="fas fa-info-circle"></i> 當</span>
-                                <select class="flex-grow border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white min-w-[120px]" onchange="updateDocFieldInBlock(${bIdx}, ${dIdx}, this.value)">
-                                    ${fieldOptionsHtml.replace(`value="${doc.exemptField || ''}"`, `value="${doc.exemptField || ''}" selected`)}
-                                </select>
-                                <span class="text-[11px] text-amber-600 font-bold">為</span>
-                                ${valControlHtml}
-                                <span class="text-[11px] text-amber-600 font-bold bg-amber-100 px-1.5 py-0.5 rounded border border-amber-200">時免交</span>
+                        <div class="space-y-3 flex-grow">
+                            <div class="bg-white p-3 rounded-lg border border-red-200 shadow-sm">
+                                <h5 class="text-[11px] font-bold text-red-600 mb-1">1. 當所有基準文件都缺失時</h5>
+                                <textarea rows="2" class="w-full border border-slate-200 rounded p-1.5 text-[11px] outline-none bg-slate-50 resize-none custom-scroll" onchange="updateBlockField(${bIdx}, 'msgMissing', this.value)">${block.msgMissing || ''}</textarea>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-amber-300 shadow-sm">
+                                <h5 class="text-[11px] font-bold text-amber-600 mb-1">2. 發現資料不一致時 <span class="text-slate-400 font-normal">(可用: {{mismatch_docs}}, {{base_name}}, {{mismatch_details}})</span></h5>
+                                <textarea rows="3" class="w-full border border-slate-200 rounded p-1.5 text-[11px] outline-none bg-slate-50 resize-none custom-scroll" onchange="updateBlockField(${bIdx}, 'msgMismatch', this.value)">${block.msgMismatch || ''}</textarea>
+                            </div>
+                            <div class="bg-white p-3 rounded-lg border border-green-200 shadow-sm">
+                                <h5 class="text-[11px] font-bold text-green-600 mb-1">3. 比對完全相符時 <span class="text-slate-400 font-normal">(可用: {{base_name}}, {{base_val}})</span></h5>
+                                <textarea rows="1" class="w-full border border-slate-200 rounded p-1.5 text-[11px] outline-none bg-slate-50 resize-none custom-scroll" onchange="updateBlockField(${bIdx}, 'msgSuccess', this.value)">${block.msgSuccess || ''}</textarea>
                             </div>
                         </div>
                     </div>`;
-                });
+                }
 
-                const mockMissingText = `<span class="text-red-500 underline decoration-red-300 underline-offset-2">實習合約書、家長同意書</span>`;
-
-                // 3. 渲染雙欄排版的模組卡片
+                // 產生外層卡片並塞入剛剛生成的 contentHtml
                 canvasEl.innerHTML += `
-                <div class="bg-white border border-slate-300 rounded-2xl shadow-md flex flex-col block-item mb-6" data-bidx="${bIdx}">
-                    <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 rounded-t-2xl flex justify-between items-center block-drag-handle cursor-grab hover:bg-slate-100 transition">
+                <div class="bg-white border ${block.type==='data_match' ? 'border-indigo-300 shadow-lg' : 'border-slate-300 shadow-md'} rounded-2xl flex flex-col block-item mb-6" data-bidx="${bIdx}">
+                    <div class="${block.type==='data_match' ? 'bg-indigo-50/80 border-indigo-200 hover:bg-indigo-100' : 'bg-slate-50 border-slate-200 hover:bg-slate-100'} px-5 py-4 border-b rounded-t-2xl flex justify-between items-center block-drag-handle cursor-grab transition">
                         <div class="flex items-center gap-3 w-1/2">
-                            <div class="w-8 h-8 bg-slate-200 text-slate-600 rounded flex items-center justify-center flex-shrink-0"><i class="fas fa-file-signature"></i></div>
-                            <input type="text" value="${block.title || '實習證明文件檢核'}" onchange="updateBlockField(${bIdx}, 'title', this.value)" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-primary outline-none transition px-1">
+                            <div class="w-8 h-8 ${block.type==='data_match' ? 'bg-indigo-600 text-white' : 'bg-slate-200 text-slate-600'} rounded flex items-center justify-center flex-shrink-0"><i class="${block.type==='data_match' ? 'fas fa-not-equal' : 'fas fa-file-signature'}"></i></div>
+                            <input type="text" value="${block.title || ''}" onchange="updateBlockField(${bIdx}, 'title', this.value)" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-primary outline-none transition px-1">
                         </div>
                         <button onclick="removeVerificationBlock(${bIdx})" class="text-slate-400 hover:text-danger p-2 rounded-lg hover:bg-red-50 transition font-bold text-sm"><i class="fas fa-trash-alt mr-1"></i> 刪除模組</button>
                     </div>
-                    
-                    <div class="p-0 flex flex-col lg:flex-row">
-                        <div class="lg:w-7/12 xl:w-2/3 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white rounded-bl-2xl">
-                            <div class="flex justify-between items-center mb-4">
-                                <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-list-check text-primary"></i> 需檢核的文件項目清單</h4>
-                                <button onclick="addDocToBlock(${bIdx})" class="bg-white border border-primary text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"><i class="fas fa-plus"></i> 新增文件項目</button>
-                            </div>
-                            <div id="block-docs-${bIdx}" class="space-y-3 min-h-[100px] p-4 bg-slate-50/80 rounded-xl border border-slate-200">
-                                ${docsHtml || '<div class="text-center text-xs text-slate-400 py-8 border-2 border-dashed border-slate-200 rounded-lg">此模組尚未新增任何文件</div>'}
-                            </div>
-                        </div>
-
-                        <div class="lg:w-5/12 xl:w-1/3 p-6 bg-slate-50/50 rounded-br-2xl flex flex-col gap-6">
-                            
-                            <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100 shadow-sm">
-                                <h4 class="text-sm font-bold text-amber-700 mb-2 flex items-center gap-2"><i class="fas fa-shield-alt text-amber-500"></i> 模組全局豁免條件</h4>
-                                <p class="text-[11px] text-amber-600/80 mb-3 leading-relaxed">當符合此條件時，整個模組都將<b>直接跳過檢核</b>。</p>
-                                <div class="flex flex-col gap-2 bg-white p-3 rounded-lg border border-amber-200/50 shadow-sm">
-                                    <div>
-                                        <span class="text-[11px] text-slate-500 font-bold block mb-1">當欄位：</span>
-                                        <select class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockExemptField(${bIdx}, this.value)">
-                                            ${fieldOptionsHtml.replace(`value="${block.exemptField || ''}"`, `value="${block.exemptField || ''}" selected`)}
-                                        </select>
-                                    </div>
-                                    <div>
-                                        <span class="text-[11px] text-slate-500 font-bold block mb-1">內容為：</span>
-                                        ${blockValControlHtml}
-                                    </div>
-                                    <div class="text-right mt-1"><span class="text-[10px] font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">全模組免檢核</span></div>
-                                </div>
-                            </div>
-
-                            <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm">
-                                <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fas fa-bullhorn text-amber-500"></i> 動態缺交提示文字</h4>
-                                <p class="text-[10px] text-slate-500 mb-2 leading-relaxed">必含變數 <code class="bg-slate-100 border border-slate-200 px-1 py-0.5 rounded text-slate-600 font-bold mx-0.5">{{missing_docs}}</code></p>
-                                <textarea rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-1 focus:ring-primary outline-none bg-white font-bold text-slate-700 shadow-sm transition resize-none custom-scroll" 
-                                    placeholder="例如：缺交 {{missing_docs}}，請於週五前補齊。" 
-                                    oninput="document.getElementById('preview-warn-${bIdx}').innerHTML = this.value.replace(/{{missing_docs}}/g, '${mockMissingText.replace(/"/g, '&quot;')}')"
-                                    onchange="updateBlockField(${bIdx}, 'warningTemplate', this.value)">${block.warningTemplate || '未上傳：{{missing_docs}}，請盡速補交。'}</textarea>
-                                
-                                <div class="mt-2 p-2 bg-slate-50 rounded border border-slate-100 text-[11px] text-slate-600 shadow-inner">
-                                    <span class="text-slate-400 font-bold mb-1 block"><i class="fas fa-eye"></i> 即時預覽：</span>
-                                    <span id="preview-warn-${bIdx}" class="font-bold text-slate-800 leading-relaxed block">${(block.warningTemplate || '未上傳：{{missing_docs}}，請盡速補交。').replace(/{{missing_docs}}/g, mockMissingText)}</span>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
+                    <div class="p-0 flex flex-col lg:flex-row">${contentHtml}</div>
                 </div>`;
             });
 
@@ -4549,7 +4606,7 @@
             if (!sortableCanvas) {
                 sortableCanvas = Sortable.create(canvasEl, {
                     group: { name: 'verify', put: true }, handle: '.block-drag-handle', animation: 150, ghostClass: 'sortable-ghost',
-                    onAdd: (evt) => { evt.item.parentNode.removeChild(evt.item); addVerificationBlock('doc_check', evt.newIndex); },
+                    onAdd: (evt) => { evt.item.parentNode.removeChild(evt.item); addVerificationBlock(evt.item.dataset.type || 'doc_check', evt.newIndex); },
                     onEnd: (evt) => {
                         if (evt.from === evt.to && evt.oldIndex !== evt.newIndex) {
                             const item = configData.verificationBlocks.splice(evt.oldIndex, 1)[0];
@@ -4562,7 +4619,8 @@
             if (!sortableToolbox) {
                 sortableToolbox = Sortable.create(document.getElementById('verify-toolbox'), {
                     group: { name: 'verify', pull: 'clone', put: false }, sort: false,
-                    onStart: (evt) => evt.item.classList.add('opacity-50'), onEnd: (evt) => evt.item.classList.remove('opacity-50')
+                    onStart: (evt) => { evt.item.classList.add('opacity-50'); evt.item.dataset.type = evt.item.getAttribute('onclick').match(/'([^']+)'/)[1]; }, 
+                    onEnd: (evt) => evt.item.classList.remove('opacity-50')
                 });
             }
             configData.verificationBlocks.forEach((_, bIdx) => {
@@ -4587,26 +4645,36 @@
         
         function addVerificationBlock(type, index = null) {
             if (!configData.verificationBlocks) configData.verificationBlocks = [];
-            const newBlock = {
-                type: type,
-                title: '實習證明文件檢核',
-                exemptField: '',  // <-- 這裡新增
-                exemptValue: '',  // <-- 這裡新增
-                warningTemplate: '未上傳：{{missing_docs}}，請盡速補交。',
-                docs: [
-                    { name: '實習合約書', exemptField: '', exemptValue: '' }
-                ]
-            };
             
-            if (index !== null) {
-                configData.verificationBlocks.splice(index, 0, newBlock);
-            } else {
-                configData.verificationBlocks.push(newBlock);
+            let newBlock = {};
+            if (type === 'doc_check') {
+                newBlock = {
+                    type: type, title: '實習證明文件檢核', exemptField: '', exemptValue: '',
+                    warningTemplate: '未上傳：{{missing_docs}}，請盡速補交。',
+                    docs: [{ name: '實習合約書', exemptField: '', exemptValue: '' }]
+                };
+            } else if (type === 'data_match') {
+                newBlock = {
+                    type: type, title: '資料一致性檢核 (如：實習起訖日期)', exemptField: '', exemptValue: '',
+                    matchType: 'daterange', // 可選: daterange(起訖), date(單一), number(數字), text(文字)
+                    msgMissing: '{{missing_base_docs}} 皆未上傳或無資料，故無法判斷實際狀況，請盡速補齊。',
+                    msgMismatch: '{{mismatch_docs}}與「{{base_name}}」內容不同，請系所說明原因。\n{{mismatch_details}}',
+                    msgSuccess: '資料一致，依據「{{base_name}}」：{{base_val}}',
+                    docs: [
+                        { name: '時數證明', isBase: true },   // isBase: true 代表它是基準文件
+                        { name: '合約書', isBase: true },
+                        { name: '機構回饋表', isBase: false }
+                    ]
+                };
             }
+            
+            if (index !== null) { configData.verificationBlocks.splice(index, 0, newBlock); } 
+            else { configData.verificationBlocks.push(newBlock); }
+            
             setUnsaved(true);
             renderVerificationView();
         }
-
+        
         function removeVerificationBlock(bIdx) {
             showMsg('confirm', '刪除模組？', '確定要移除整個模組，以及其內部設定的所有文件清單嗎？', null, () => {
                 configData.verificationBlocks.splice(bIdx, 1);
@@ -4643,8 +4711,10 @@
         }
 
         function updateDocInBlock(bIdx, dIdx, field, val) {
-            configData.verificationBlocks[bIdx].docs[dIdx][field] = val.trim();
+            // 如果是字串則去頭尾空白，如果是 boolean 就直接存 (給 isBase 用的)
+            configData.verificationBlocks[bIdx].docs[dIdx][field] = (typeof val === 'string') ? val.trim() : val;
             setUnsaved(true);
+            if (field === 'isBase') renderVerificationView(); // 勾選基準時立即重繪更新顏色
         }
 
         // 當切換豁免欄位時，清空舊的豁免值並重新渲染下拉選單
