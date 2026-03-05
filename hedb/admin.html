@@ -4483,6 +4483,30 @@
                     </div>`;
                 });
 
+                // --- 新增：模組全局豁免條件的下拉選單 HTML ---
+                let blockValControlHtml = `<select class="w-1/3 border border-slate-300 rounded-lg p-2 text-sm bg-slate-100 text-slate-400" disabled><option>請先選擇左側欄位</option></select>`;
+                if (block.exemptField) {
+                    const depField = configData.globalFields.find(f => f.id === block.exemptField);
+                    if (depField) {
+                        if (depField.type === 'checkbox') {
+                            blockValControlHtml = `
+                            <select class="w-1/3 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'exemptValue', this.value)">
+                                <option value="">-- 選擇狀態 --</option>
+                                <option value="true" ${block.exemptValue === 'true' ? 'selected' : ''}>已勾選 (Yes)</option>
+                                <option value="false" ${block.exemptValue === 'false' ? 'selected' : ''}>未勾選 (No)</option>
+                            </select>`;
+                        } else if (depField.options && depField.options.length > 0) {
+                            let optHtml = '<option value="">-- 選擇選項 --</option>';
+                            depField.options.forEach(opt => {
+                                optHtml += `<option value="${opt}" ${block.exemptValue === opt ? 'selected' : ''}>${opt}</option>`;
+                            });
+                            blockValControlHtml = `<select class="w-1/3 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'exemptValue', this.value)">${optHtml}</select>`;
+                        } else {
+                            blockValControlHtml = `<input type="text" class="w-1/3 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none bg-white" value="${block.exemptValue || ''}" placeholder="請輸入觸發值" onchange="updateBlockField(${bIdx}, 'exemptValue', this.value)">`;
+                        }
+                    }
+                }
+
                 // 定義預覽用的假資料標籤
                 const mockMissingText = `<span class="text-red-500 underline decoration-red-300 underline-offset-2">實習合約書、家長同意書</span>`;
 
@@ -4498,6 +4522,19 @@
                     </div>
                     
                     <div class="p-6 space-y-6">
+                        <div class="bg-amber-50/30 p-5 rounded-xl border border-amber-100 shadow-sm">
+                            <h4 class="text-sm font-bold text-amber-700 mb-2 flex items-center gap-2"><i class="fas fa-shield-alt text-amber-500"></i> 模組全局豁免條件 (選填)</h4>
+                            <p class="text-[11px] text-amber-600/80 mb-3 leading-relaxed">當符合此條件時，整個模組的文件都將<b>直接跳過檢核</b>。例如：設定「不符校庫填報註記」為「已勾選(Yes)」。</p>
+                            <div class="flex gap-2 items-center bg-white p-3 rounded-lg border border-amber-200/50 shadow-sm">
+                                <span class="text-xs text-slate-500 whitespace-nowrap font-bold">當欄位</span>
+                                <select class="w-1/3 border border-slate-300 rounded-lg p-2 text-sm focus:ring-2 focus:ring-primary outline-none bg-white" onchange="updateBlockExemptField(${bIdx}, this.value)">
+                                    ${fieldOptionsHtml.replace(`value="${block.exemptField || ''}"`, `value="${block.exemptField || ''}" selected`)}
+                                </select>
+                                <span class="text-xs text-slate-500 whitespace-nowrap font-bold">內容為</span>
+                                ${blockValControlHtml}
+                                <span class="text-xs text-slate-500 whitespace-nowrap">時，<span class="font-bold text-amber-600 bg-amber-100 px-1.5 py-0.5 rounded">全模組免檢核</span></span>
+                            </div>
+                        </div>
                         <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm">
                             <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fas fa-bullhorn text-amber-500"></i> 動態缺交提示文字</h4>
                             <p class="text-[11px] text-slate-500 mb-3 leading-relaxed">設定當學生缺交文件時的提示句。請務必在句子中加入 <code class="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-bold mx-1">{{missing_docs}}</code> 標籤，系統會自動將它替換成缺交的檔名清單。</p>
@@ -4590,9 +4627,11 @@
             const newBlock = {
                 type: type,
                 title: '實習證明文件檢核',
+                exemptField: '',  // <-- 這裡新增
+                exemptValue: '',  // <-- 這裡新增
                 warningTemplate: '未上傳：{{missing_docs}}，請盡速補交。',
                 docs: [
-                    { name: '實習合約書', exemptField: '', exemptValue: '' } // 預設給一個範例文件
+                    { name: '實習合約書', exemptField: '', exemptValue: '' }
                 ]
             };
             
@@ -4617,6 +4656,13 @@
             configData.verificationBlocks[bIdx][field] = val;
             setUnsaved(true);
             // 移除強制重新渲染，改由前端 HTML 的 oninput 達成即時預覽，避免輸入框失去焦點
+        }
+        // 新增：當模組全局豁免的「欄位」切換時，清空舊的條件值並重新渲染
+        function updateBlockExemptField(bIdx, newFieldId) {
+            configData.verificationBlocks[bIdx].exemptField = newFieldId;
+            configData.verificationBlocks[bIdx].exemptValue = '';
+            setUnsaved(true);
+            renderVerificationView();
         }
 
         // ================= 模組內：文件項目操作邏輯 =================
