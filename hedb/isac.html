@@ -5158,6 +5158,39 @@
 
         let currentViewMode = 'form';
 
+        // --- 強制鎖定表單模式的檢視設定 ---
+        function setStudentViewMode(mode) {
+            currentViewMode = 'form'; // 強制鎖定在表單模式
+            
+            // 確保表單區塊絕對顯示
+            const formContentArea = document.getElementById('form-content-area');
+            if (formContentArea) formContentArea.style.display = 'block';
+        
+            const stickyHeader = document.getElementById('sticky-progress-header'); 
+            
+            if (currentActiveAppId) {
+                 updateAppProgress(currentActiveAppId);
+            } else {
+                const activeTab = document.querySelector('.tab-btn.active');
+                if(activeTab) {
+                    switchTab(activeTab.dataset.tab); 
+                } else {
+                    if(stickyHeader) stickyHeader.classList.add('hidden');
+                }
+            }
+        
+            // 確保表單高度正確展開
+            setTimeout(() => {
+                const activeContent = document.querySelector('.dynamic-tab-content[style*="display: block"]');
+                if (activeContent) {
+                    activeContent.querySelectorAll('textarea.input-stylish').forEach(ta => {
+                        ta.style.setProperty('height', '1px', 'important');
+                        ta.style.setProperty('height', (ta.scrollHeight + 2) + 'px', 'important');
+                    });
+                }
+            }, 50);
+        }
+
 
         function renderStudentLocalGrid(sid) {
             const student = groupedStudents[sid];
