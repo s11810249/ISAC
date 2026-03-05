@@ -438,8 +438,8 @@
                         <p class="text-xs text-slate-500 mt-1">點擊或拖曳模組至右側畫布</p>
                     </div>
                     <div id="verify-toolbox" class="flex-grow p-4 space-y-3 custom-scroll bg-slate-50/50">
-                        <div class="p-4 bg-white border border-dashed border-indigo-300 rounded-xl cursor-pointer hover:bg-indigo-50 hover:border-indigo-500 transition shadow-sm flex items-center gap-3 group" onclick="addVerificationBlock('doc_check')">
-                            <div class="w-10 h-10 bg-indigo-100 text-indigo-600 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                        <div class="p-4 bg-white border border-dashed border-slate-300 rounded-xl cursor-pointer hover:bg-slate-50 hover:border-slate-400 transition shadow-sm flex items-center gap-3 group" onclick="addVerificationBlock('doc_check')">
+                            <div class="w-10 h-10 bg-slate-100 text-slate-600 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
                                 <i class="fas fa-file-signature"></i>
                             </div>
                             <div class="flex flex-col">
@@ -4483,25 +4483,36 @@
                     </div>`;
                 });
 
+                // 定義預覽用的假資料標籤
+                const mockMissingText = `<span class="text-red-500 underline decoration-red-300 underline-offset-2">實習合約書、家長同意書</span>`;
+
                 // 產生整個模組的卡片
                 canvasEl.innerHTML += `
                 <div class="bg-white border border-slate-300 rounded-2xl shadow-md flex flex-col block-item" data-bidx="${bIdx}">
                     <div class="bg-slate-50 px-5 py-4 border-b border-slate-200 rounded-t-2xl flex justify-between items-center block-drag-handle cursor-grab hover:bg-slate-100 transition">
                         <div class="flex items-center gap-3 w-1/2">
-                            <div class="w-8 h-8 bg-indigo-100 text-indigo-600 rounded flex items-center justify-center flex-shrink-0"><i class="fas fa-file-signature"></i></div>
+                            <div class="w-8 h-8 bg-slate-200 text-slate-600 rounded flex items-center justify-center flex-shrink-0"><i class="fas fa-file-signature"></i></div>
                             <input type="text" value="${block.title || '實習證明文件檢核'}" onchange="updateBlockField(${bIdx}, 'title', this.value)" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-primary outline-none transition px-1">
                         </div>
                         <button onclick="removeVerificationBlock(${bIdx})" class="text-slate-400 hover:text-danger p-2 rounded-lg hover:bg-red-50 transition font-bold text-sm"><i class="fas fa-trash-alt mr-1"></i> 刪除模組</button>
                     </div>
                     
                     <div class="p-6 space-y-6">
-                        <div class="bg-indigo-50/50 p-5 rounded-xl border border-indigo-100">
-                            <h4 class="text-sm font-bold text-indigo-800 mb-2 flex items-center gap-2"><i class="fas fa-bullhorn text-indigo-500"></i> 動態缺交提示文字</h4>
-                            <p class="text-[11px] text-indigo-600 mb-3 leading-relaxed">設定當學生缺交文件時的提示句。請務必在句子中加入 <code class="bg-white border border-indigo-200 px-1.5 py-0.5 rounded text-indigo-800 font-bold mx-1">{{missing_docs}}</code> 標籤，系統會自動將它替換成缺交的檔名清單。</p>
-                            <input type="text" class="w-full border border-indigo-200 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary outline-none bg-white font-bold text-slate-700 shadow-sm" value="${block.warningTemplate || '未上傳：{{missing_docs}}，請盡速補交。'}" placeholder="例如：缺交 {{missing_docs}}，請於週五前補齊。" onchange="updateBlockField(${bIdx}, 'warningTemplate', this.value)">
-                            <div class="mt-3 p-3 bg-white rounded-lg border border-indigo-50 text-xs text-slate-600 flex gap-2">
-                                <i class="fas fa-eye mt-0.5 text-indigo-400"></i>
-                                <span>前台預覽效果：<br><span class="font-bold text-slate-800 mt-1 block">${(block.warningTemplate || '未上傳：{{missing_docs}}，請盡速補交。').replace('{{missing_docs}}', '<span class="text-red-500 underline decoration-red-300 underline-offset-2">實習合約書、家長同意書</span>')}</span></span>
+                        <div class="bg-slate-50 p-5 rounded-xl border border-slate-200 shadow-sm">
+                            <h4 class="text-sm font-bold text-slate-700 mb-2 flex items-center gap-2"><i class="fas fa-bullhorn text-amber-500"></i> 動態缺交提示文字</h4>
+                            <p class="text-[11px] text-slate-500 mb-3 leading-relaxed">設定當學生缺交文件時的提示句。請務必在句子中加入 <code class="bg-white border border-slate-200 px-1.5 py-0.5 rounded text-slate-600 font-bold mx-1">{{missing_docs}}</code> 標籤，系統會自動將它替換成缺交的檔名清單。</p>
+                            
+                            <input type="text" class="w-full border border-slate-300 rounded-lg p-3 text-sm focus:ring-2 focus:ring-primary outline-none bg-white font-bold text-slate-700 shadow-sm transition" 
+                                value="${block.warningTemplate || '未上傳：{{missing_docs}}，請盡速補交。'}" 
+                                placeholder="例如：缺交 {{missing_docs}}，請於週五前補齊。" 
+                                oninput="document.getElementById('preview-warn-${bIdx}').innerHTML = this.value.replace(/{{missing_docs}}/g, '${mockMissingText.replace(/"/g, '&quot;')}')"
+                                onchange="updateBlockField(${bIdx}, 'warningTemplate', this.value)">
+                            
+                            <div class="mt-3 p-3 bg-white rounded-lg border border-slate-200 text-xs text-slate-600 flex gap-2 shadow-sm">
+                                <i class="fas fa-eye mt-0.5 text-slate-400"></i>
+                                <span>前台預覽效果：<br>
+                                    <span id="preview-warn-${bIdx}" class="font-bold text-slate-800 mt-1 block leading-relaxed">${(block.warningTemplate || '未上傳：{{missing_docs}}，請盡速補交。').replace(/{{missing_docs}}/g, mockMissingText)}</span>
+                                </span>
                             </div>
                         </div>
 
@@ -4605,8 +4616,7 @@
         function updateBlockField(bIdx, field, val) {
             configData.verificationBlocks[bIdx][field] = val;
             setUnsaved(true);
-            // 若修改的是 Template，馬上重新渲染以更新預覽畫面
-            if(field === 'warningTemplate') renderVerificationView(); 
+            // 移除強制重新渲染，改由前端 HTML 的 oninput 達成即時預覽，避免輸入框失去焦點
         }
 
         // ================= 模組內：文件項目操作邏輯 =================
