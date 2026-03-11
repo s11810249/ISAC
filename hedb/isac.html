@@ -4281,20 +4281,21 @@
                 title.innerHTML = `<i class="fas fa-folder-open text-slate-400"></i> ${catDef.name}`;
                 container.appendChild(title);
 
-                // ★ 修復：補回 grid 排版，並因應左欄空間較小，調整為 1 欄或 2 欄
+                // ★ 修復：強制 2 欄網格排版，並加大上下間距 (gap-y-5)，底部留白 (mb-6) 避免擠在一起
                 const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 xl:grid-cols-2 gap-x-5 gap-y-4 mt-4';
+                grid.className = 'grid grid-cols-2 gap-x-4 gap-y-5 mt-4 mb-6';
 
                 catFields.forEach(f => {
                     const wrapper = document.createElement('div');
-                    // 在雙欄模式下，如果原本佔 4 欄的，現在強制佔滿 2 欄；其他順其自然
-                    const span = f.colSpan === 4 ? 'xl:col-span-2' : 'col-span-1'; 
+                    // ★ 若為地址、長文字或原設定跨 4 欄，則佔滿 2 欄；否則佔 1 欄
+                    const span = (f.colSpan === 4 || f.type === 'address' || f.type === 'list') ? 'col-span-2' : 'col-span-1'; 
                     wrapper.className = `field-group ${span}`;
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
                     const label = document.createElement('label');
-                    label.className = "block text-[11px] font-bold text-slate-500 mb-1 flex items-center tracking-wider uppercase";
-                    label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-400 ml-1">*</span>' : ''}`;
+                    // ★ 恢復原本較大且清晰的字體 text-sm
+                    label.className = "block text-sm font-bold text-slate-700 mb-1 flex items-center";
+                    label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500 ml-1">*</span>' : ''}`;
                     
                     if(f.description) {
                         const formattedDesc = f.description.replace(/\\n|\n/g, '<br>');
@@ -4312,7 +4313,7 @@
                         if(visInput) {
                             visInput.classList.add(`app-input-${app.id}-${f.id}`);
                             visInput.disabled = true; // ★ 強制唯讀
-                            visInput.classList.add('bg-slate-50', 'text-slate-600', 'cursor-not-allowed', 'border-slate-200');
+                            visInput.classList.add('bg-slate-50', 'text-slate-800', 'cursor-not-allowed', 'border-slate-200', 'font-bold');
                         }
                         const trigger = input.querySelector('.date-picker-trigger');
                         if(trigger) trigger.style.display = 'none'; // 隱藏日曆按鈕
@@ -4326,7 +4327,8 @@
 
                         input = document.createElement('input');
                         input.type = 'text';
-                        input.className = "input-stylish w-full rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold";
+                        // 加深字體顏色為 text-slate-800 提升對比度
+                        input.className = "input-stylish w-full rounded-lg bg-slate-50 text-slate-800 cursor-not-allowed border-slate-200 font-bold";
                         input.value = val || '';
                         input.disabled = true; // ★ 強制唯讀
                         input.id = `input-${app.id}-${f.id}`; 
@@ -4338,7 +4340,8 @@
                     // --- 處理 Checkbox 類型 ---
                     else if (f.type === 'checkbox') {
                         const boxWrapper = document.createElement('div');
-                        boxWrapper.className = "flex items-center h-[42px] mt-0 opacity-80 cursor-not-allowed"; 
+                        // 加上底色框讓它在唯讀模式下有邊界感
+                        boxWrapper.className = "flex items-center h-[42px] mt-0 opacity-90 cursor-not-allowed bg-slate-50 px-3 rounded-lg border border-slate-200"; 
 
                         input = document.createElement('input');
                         input.type = 'checkbox';
@@ -4347,7 +4350,7 @@
                         input.checked = (val === true || val === 'true');
                         
                         const textSpan = document.createElement('span');
-                        textSpan.className = "ml-2 text-sm text-slate-500 font-bold select-none";
+                        textSpan.className = "ml-2 text-sm text-slate-700 font-bold select-none";
                         textSpan.innerText = f.placeholder || "是"; 
 
                         input.id = `input-${app.id}-${f.id}`;
@@ -4361,13 +4364,13 @@
                     else {
                         if (f.type === 'single_select') { 
                             input = document.createElement('select');
-                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold appearance-none";
+                            input.className = "input-stylish bg-slate-50 text-slate-800 cursor-not-allowed border-slate-200 font-bold appearance-none";
                             // 隱藏下拉箭頭
                             input.style.backgroundImage = 'none';
                             input.innerHTML = `<option value="">${val ? val : '(未填寫)'}</option>`; // 直接鎖死當前值
                         } else if (f.type === 'list') { 
                             input = document.createElement('textarea');
-                            input.className = "input-stylish custom-scroll bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200";
+                            input.className = "input-stylish custom-scroll bg-slate-50 text-slate-800 cursor-not-allowed border-slate-200";
                             input.rows = 1;
                             input.style.minHeight = "42px"; 
                             input.style.resize = "none";
@@ -4381,17 +4384,17 @@
                         } else if (f.type === 'date') {
                             input = document.createElement('input');
                             input.type = 'date';
-                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold";
+                            input.className = "input-stylish bg-slate-50 text-slate-800 cursor-not-allowed border-slate-200 font-bold";
                             input.value = val || '';
                         } else if (f.type === 'number') {
                             input = document.createElement('input');
-                            input.type = 'text'; // 換成 text 避免箭頭
-                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold font-mono";
+                            input.type = 'text'; // 換成 text 避免顯示上下箭頭
+                            input.className = "input-stylish bg-slate-50 text-slate-800 cursor-not-allowed border-slate-200 font-bold font-mono";
                             input.value = val || '(未填寫)';
                         } else {
                             input = document.createElement('input');
                             input.type = 'text';
-                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold";
+                            input.className = "input-stylish bg-slate-50 text-slate-800 cursor-not-allowed border-slate-200 font-bold";
                             input.value = val || '(未填寫)';
                         }
 
