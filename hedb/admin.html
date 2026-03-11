@@ -4720,6 +4720,7 @@
                 // 模組 C：欄位資料檢核 (field_check)
                 // ==========================================
                 else if (block.type === 'field_check') {
+                    // 自動抓出屬於使用者所選「分類(targetCategory)」的欄位
                     let availableFields = [];
                     if (block.targetCategory && yearTemplateData.fields) {
                         availableFields = yearTemplateData.fields.filter(f => f.category === block.targetCategory);
@@ -4732,12 +4733,13 @@
                         availableFields.forEach(f => {
                             fieldOptHtml += `<option value="${f.id}" ${chk.fieldId === f.id ? 'selected' : ''}>${f.label}</option>`;
                         });
+                        // 防呆處理
                         if (chk.fieldId && !availableFields.find(f => f.id === chk.fieldId)) {
                             fieldOptHtml += `<option value="${chk.fieldId}" selected>${chk.fieldId} (⚠️ 找不到此欄位)</option>`;
                         }
 
                         checksHtml += `
-                        <div class="bg-white border border-slate-200 hover:border-emerald-300 rounded-lg p-3 flex flex-col gap-2 doc-item transition-all" data-cidx="${cIdx}">
+                        <div class="bg-white border border-slate-200 hover:border-emerald-300 rounded-lg p-3 flex flex-col gap-3 doc-item transition-all" data-cidx="${cIdx}">
                             <div class="flex justify-between items-center gap-2">
                                 <div class="doc-drag-handle cursor-grab text-slate-400 hover:text-emerald-500 flex-shrink-0"><i class="fas fa-grip-vertical"></i></div>
                                 <select class="w-1/3 border-b border-dashed border-emerald-400 text-emerald-700 bg-transparent py-1 px-1 text-sm font-bold focus:border-emerald-500 outline-none" onchange="updateCheckInBlock(${bIdx}, ${cIdx}, 'fieldId', this.value)">
@@ -4746,9 +4748,18 @@
                                 <input type="text" class="flex-grow border-b border-dashed border-slate-300 text-slate-700 bg-transparent py-1 px-1 text-sm font-bold focus:border-emerald-500 outline-none transition-colors" value="${chk.question || ''}" placeholder="檢核問題 (如：資料是否正確？)" onchange="updateCheckInBlock(${bIdx}, ${cIdx}, 'question', this.value)">
                                 <button onclick="removeCheckFromBlock(${bIdx}, ${cIdx})" class="text-slate-400 hover:text-danger p-1.5 rounded hover:bg-red-50 transition flex-shrink-0"><i class="fas fa-times"></i></button>
                             </div>
-                            <div class="pl-7 flex items-center gap-2 mt-1">
-                                <i class="fas fa-exclamation-triangle text-amber-500 text-[10px]"></i>
-                                <input type="text" class="flex-grow border border-slate-200 rounded p-1.5 text-[11px] text-slate-600 focus:ring-1 focus:ring-emerald-400 outline-none shadow-inner bg-slate-50" value="${chk.errorMsg || ''}" placeholder="錯誤提示 (可用變數: {{field_name}}, {{field_val}})" onchange="updateCheckInBlock(${bIdx}, ${cIdx}, 'errorMsg', this.value)">
+                            <div class="pl-7 flex flex-col gap-2">
+                                <div class="flex items-center gap-1">
+                                    <i class="fas fa-exclamation-triangle text-amber-500 text-[10px]"></i>
+                                    <span class="text-[11px] font-bold text-slate-500">檢核人員點選「錯誤」時的預設提示範本：</span>
+                                </div>
+                                <textarea rows="2" id="chk-err-${bIdx}-${cIdx}" class="w-full border border-slate-200 rounded-lg p-2 text-xs text-slate-700 focus:ring-1 focus:ring-emerald-400 outline-none shadow-inner bg-slate-50 resize-none custom-scroll" placeholder="例如：{{field_name}} 與「{{doc_select}}」不符，請修正為 {{correct_input}}" onchange="updateCheckInBlock(${bIdx}, ${cIdx}, 'errorMsg', this.value)">${chk.errorMsg || ''}</textarea>
+                                
+                                <div class="flex flex-wrap gap-2">
+                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}', '{{doc_select}}'); updateCheckInBlock(${bIdx}, ${cIdx}, 'errorMsg', document.getElementById('chk-err-${bIdx}-${cIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-1 rounded text-[10px] font-bold transition shadow-sm" title="前台將變成可選擇文件的下拉選單"><i class="fas fa-plus text-emerald-500 mr-1"></i>佐證資料選單</button>
+                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}', '{{correct_input}}'); updateCheckInBlock(${bIdx}, ${cIdx}, 'errorMsg', document.getElementById('chk-err-${bIdx}-${cIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-1 rounded text-[10px] font-bold transition shadow-sm" title="前台會自動判斷該欄位是下拉選單還是文字框，供檢核人員填寫"><i class="fas fa-plus text-emerald-500 mr-1"></i>正確答案輸入框</button>
+                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}', '{{field_name}}'); updateCheckInBlock(${bIdx}, ${cIdx}, 'errorMsg', document.getElementById('chk-err-${bIdx}-${cIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-1 rounded text-[10px] font-bold transition shadow-sm"><i class="fas fa-plus text-emerald-500 mr-1"></i>欄位名稱</button>
+                                </div>
                             </div>
                         </div>`;
                     });
@@ -4762,12 +4773,12 @@
                             </select>
                         </div>
 
-                        <div class="flex justify-between items-center mb-4">
+                        <div class="flex justify-between items-start mb-4">
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> 檢核問題清單</h4>
-                                <p class="text-[10px] text-slate-400 mt-1">前台將顯示為是非題。當檢核人員選擇「錯誤」時，系統會印出設定的提示文字。</p>
+                                <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">前台將顯示為是非題。您可利用下方變數按鈕，讓前台自動產生互動元素供檢核員操作。<br>例如：<code class="bg-slate-100 border border-slate-200 text-emerald-700 px-1 py-0.5 rounded">{{field_name}} 與「{{doc_select}}」不符，請修正為 {{correct_input}}</code></p>
                             </div>
-                            <button onclick="addCheckToBlock(${bIdx})" class="bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"><i class="fas fa-plus"></i> 新增題目</button>
+                            <button onclick="addCheckToBlock(${bIdx})" class="bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 flex-shrink-0"><i class="fas fa-plus"></i> 新增題目</button>
                         </div>
                         <div id="block-checks-${bIdx}" class="space-y-3 min-h-[100px] p-4 bg-slate-50/80 rounded-xl border border-slate-200">
                             ${checksHtml || '<div class="text-center text-xs text-slate-400 py-8 border-2 border-dashed border-slate-200 rounded-lg">請選擇分類並新增檢核問題</div>'}
@@ -4792,7 +4803,7 @@
                         </div>
                     </div>`;
                 }
-
+                
                 let isFieldCheck = block.type === 'field_check';
                 let isDataMatch = block.type === 'data_match';
 
@@ -4962,6 +4973,18 @@
         function updateCheckInBlock(bIdx, cIdx, field, val) {
             yearTemplateData.verificationBlocks[bIdx].checks[cIdx][field] = (typeof val === 'string') ? val.trim() : val;
             setUnsaved(true);
+        }
+
+        // 輔助功能：在指定的 textarea 游標位置插入文字
+        function insertTextAtCursor(elementId, text) {
+            const el = document.getElementById(elementId);
+            if (!el) return;
+            const start = el.selectionStart;
+            const end = el.selectionEnd;
+            const val = el.value;
+            el.value = val.substring(0, start) + text + val.substring(end);
+            el.selectionStart = el.selectionEnd = start + text.length;
+            el.focus();
         }
 
         window.onload = init;
