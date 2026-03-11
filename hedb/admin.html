@@ -4440,8 +4440,8 @@
 
             // 抓取可用的分類群組 (Category / Types) 供是非題模組使用
             let categoryOptionsHtml = '<option value="">-- 請選擇表單欄位分類 --</option>';
-            if (configData.types) {
-                configData.types.forEach(t => { categoryOptionsHtml += `<option value="${t.id}">${t.name}</option>`; });
+            if (configData.templateCategories) {
+                configData.templateCategories.forEach(t => { categoryOptionsHtml += `<option value="${t.id}">${t.name}</option>`; });
             }
 
             configData.verificationBlocks.forEach((block, bIdx) => {
@@ -4555,7 +4555,7 @@
                     block.docs.forEach((doc, dIdx) => {
                         let docSelectOptions = `<option value="">-- 請選擇參與比對的文件 --</option>`;
                         availableDocs.forEach(dName => { docSelectOptions += `<option value="${dName}" ${doc.name === dName ? 'selected' : ''}>${dName}</option>`; });
-                        if (doc.name && !availableDocs.includes(doc.name)) { docSelectOptions += `<option value="${doc.name}" selected>${doc.name} (⚠️ 找不到此文件)</option>`; }
+                        if (doc.name && !availableDocs.includes(doc.name)) { docSelectOptions += `<option value="${doc.name}" selected>${doc.name} (找不到此文件)</option>`; }
 
                         docsHtml += `
                         <div class="bg-white border ${doc.isBase ? 'border-primary/50 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2.5 flex items-center gap-2 doc-item transition-all" data-didx="${dIdx}">
@@ -4661,7 +4661,7 @@
                         });
                         // 防呆處理
                         if (chk.fieldId && !availableFields.find(f => f.id === chk.fieldId)) {
-                            fieldOptHtml += `<option value="${chk.fieldId}" selected>${chk.fieldId} (⚠️ 找不到或已換類別)</option>`;
+                            fieldOptHtml += `<option value="${chk.fieldId}" selected>${chk.fieldId} (找不到或已換類別)</option>`;
                         }
 
                         checksHtml += `
@@ -4860,7 +4860,7 @@
         // ================= 模組內：是非題項目操作邏輯 =================
         function addCheckToBlock(bIdx) {
             if (!configData.verificationBlocks[bIdx].checks) configData.verificationBlocks[bIdx].checks = [];
-            configData.verificationBlocks[bIdx].checks.push({ fieldId: '', question: '資料是否正確？', errorMsg: '⚠️ {{field_name}} 資料有誤，請修正。' });
+            configData.verificationBlocks[bIdx].checks.push({ fieldId: '', question: '資料是否正確？', errorMsg: '{{field_name}} 資料有誤，請修正。' });
             setUnsaved(true);
             renderVerificationView();
         }
