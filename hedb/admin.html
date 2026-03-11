@@ -4736,28 +4736,33 @@
                             fieldOptHtml += `<option value="${chk.fieldId}" selected>${chk.fieldId} (⚠️ 找不到此欄位)</option>`;
                         }
 
-                        // 相容舊資料：如果舊資料只有單一 errorMsg，自動轉成陣列
+                        // 相容舊資料防呆：如果舊資料只有字串，自動升級為物件格式
                         if (!chk.errorMsgs) {
-                            chk.errorMsgs = [chk.errorMsg || '⚠️ {{field_name}} 資料有誤，請修正。'];
-                            delete chk.errorMsg; // 清除舊屬性
+                            chk.errorMsgs = [{ name: '一般錯誤', template: chk.errorMsg || '⚠️ {{field_name}} 資料有誤，請修正。' }];
+                            delete chk.errorMsg;
+                        } else {
+                            chk.errorMsgs = chk.errorMsgs.map((msg, idx) => typeof msg === 'string' ? { name: `情境 ${idx+1}`, template: msg } : msg);
                         }
 
-                        // 產生該題目的所有錯誤選項輸入框
+                        // 產生該題目的所有錯誤選項 (加入選項名稱設定)
                         let errorMsgsHtml = '';
                         chk.errorMsgs.forEach((errMsg, eIdx) => {
                             errorMsgsHtml += `
                             <div class="flex flex-col gap-1.5 mb-2 bg-slate-50 p-2.5 rounded-lg border border-slate-200 shadow-sm relative group/err">
-                                <div class="flex items-center justify-between">
-                                    <span class="text-[10px] font-bold text-slate-500 bg-slate-200 px-1.5 py-0.5 rounded">錯誤情境選項 ${eIdx + 1}</span>
-                                    ${chk.errorMsgs.length > 1 ? `<button onclick="removeCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx})" class="text-slate-400 hover:text-red-500 text-xs transition"><i class="fas fa-times"></i></button>` : ''}
+                                <div class="flex items-center justify-between gap-2">
+                                    <div class="flex items-center gap-2 flex-grow">
+                                        <span class="text-[10px] font-bold text-slate-400 bg-slate-200 px-1.5 py-0.5 rounded border border-slate-300">選項名稱</span>
+                                        <input type="text" class="text-xs font-bold text-emerald-700 bg-white border border-slate-300 px-2 py-1 rounded w-1/2 focus:ring-1 focus:ring-emerald-500 outline-none shadow-inner" value="${errMsg.name || ''}" placeholder="例如：國家不符" onchange="updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, 'name', this.value)">
+                                    </div>
+                                    ${chk.errorMsgs.length > 1 ? `<button onclick="removeCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx})" class="text-slate-400 hover:text-red-500 text-xs transition px-1"><i class="fas fa-times"></i></button>` : ''}
                                 </div>
-                                <textarea rows="2" id="chk-err-${bIdx}-${cIdx}-${eIdx}" class="w-full border border-slate-300 rounded p-2 text-xs text-slate-700 focus:ring-1 focus:ring-emerald-500 outline-none shadow-inner bg-white resize-none custom-scroll" placeholder="例如：{{field_name}} 與「{{doc_select}}」不符，請修正為 {{correct_input}}" onchange="updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, this.value)">${errMsg}</textarea>
+                                <textarea rows="2" id="chk-err-${bIdx}-${cIdx}-${eIdx}" class="w-full border border-slate-300 rounded p-2 text-xs text-slate-700 focus:ring-1 focus:ring-emerald-500 outline-none shadow-inner bg-white resize-none custom-scroll mt-1" placeholder="例如：{{field_name}} 與「{{doc_select}}」不符，請修正為 {{correct_input}}" onchange="updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, 'template', this.value)">${errMsg.template}</textarea>
                                 
                                 <div class="flex flex-wrap gap-1.5 mt-0.5">
-                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{doc_select}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm" title="下拉選單：讓檢核員選擇佐證資料"><i class="fas fa-plus text-emerald-500 mr-1"></i>佐證資料</button>
-                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{correct_input}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm" title="動態欄位：自動對應正確的輸入框格式"><i class="fas fa-plus text-emerald-500 mr-1"></i>正確答案輸入框</button>
-                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{field_name}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fas fa-plus text-emerald-500 mr-1"></i>欄位標題</button>
-                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{field_val}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fas fa-plus text-emerald-500 mr-1"></i>學生原填內容</button>
+                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{doc_select}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, 'template', document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fas fa-plus text-emerald-500 mr-1"></i>佐證資料</button>
+                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{correct_input}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, 'template', document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fas fa-plus text-emerald-500 mr-1"></i>正確答案輸入框</button>
+                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{field_name}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, 'template', document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fas fa-plus text-emerald-500 mr-1"></i>欄位標題</button>
+                                    <button onclick="insertTextAtCursor('chk-err-${bIdx}-${cIdx}-${eIdx}', '{{field_val}}'); updateCheckErrorMsg(${bIdx}, ${cIdx}, ${eIdx}, 'template', document.getElementById('chk-err-${bIdx}-${cIdx}-${eIdx}').value)" class="bg-white border border-slate-300 text-slate-600 hover:border-emerald-500 hover:text-emerald-600 px-2 py-0.5 rounded text-[10px] font-bold transition shadow-sm"><i class="fas fa-plus text-emerald-500 mr-1"></i>學生原填內容</button>
                                 </div>
                             </div>`;
                         });
@@ -4780,7 +4785,7 @@
                                     </div>
                                     <button onclick="addCheckErrorMsg(${bIdx}, ${cIdx})" class="text-[11px] text-emerald-600 hover:text-white border border-emerald-500 hover:bg-emerald-500 font-bold px-2 py-0.5 rounded transition shadow-sm"><i class="fas fa-plus mr-1"></i>新增錯誤情境</button>
                                 </div>
-                                <div class="space-y-1">
+                                <div class="space-y-2">
                                     ${errorMsgsHtml}
                                 </div>
                             </div>
@@ -4799,7 +4804,7 @@
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> 檢核問題清單</h4>
-                                <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">前台將顯示為是非題。您可針對單一問題設定多個「錯誤情境」，供前台檢核員選擇。</p>
+                                <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">前台將顯示為是非題。您可針對單一問題設定多個「錯誤情境（需命名）」，供前台檢核員選擇。</p>
                             </div>
                             <button onclick="addCheckToBlock(${bIdx})" class="bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1 flex-shrink-0"><i class="fas fa-plus"></i> 新增題目</button>
                         </div>
@@ -4925,8 +4930,8 @@
                 newBlock = {
                     type: type, title: '欄位資料審查 (是非題)', exemptField: '', exemptValue: '',
                     targetCategory: '',
-                    // 修改：改為陣列格式 errorMsgs，支援多個選項
-                    checks: [{ fieldId: '', question: '資料是否正確？', errorMsgs: ['⚠️ {{field_name}} 資料有誤，請修正。'] }]
+                    // 修改：errorMsgs 升級為包含 name 與 template 的物件
+                    checks: [{ fieldId: '', question: '資料是否正確？', errorMsgs: [{ name: '一般錯誤', template: '⚠️ {{field_name}} 資料有誤，請修正。' }] }]
                 };
             }
             if (index !== null) { yearTemplateData.verificationBlocks.splice(index, 0, newBlock); } 
@@ -4985,7 +4990,7 @@
 
         function addCheckToBlock(bIdx) {
             if (!yearTemplateData.verificationBlocks[bIdx].checks) yearTemplateData.verificationBlocks[bIdx].checks = [];
-            yearTemplateData.verificationBlocks[bIdx].checks.push({ fieldId: '', question: '資料是否正確？', errorMsgs: ['⚠️ {{field_name}} 資料有誤，請修正。'] });
+            yearTemplateData.verificationBlocks[bIdx].checks.push({ fieldId: '', question: '資料是否正確？', errorMsgs: [{ name: '一般錯誤', template: '⚠️ {{field_name}} 資料有誤，請修正。' }] });
             setUnsaved(true); renderVerificationView();
         }
 
@@ -5004,7 +5009,7 @@
             if (!yearTemplateData.verificationBlocks[bIdx].checks[cIdx].errorMsgs) {
                 yearTemplateData.verificationBlocks[bIdx].checks[cIdx].errorMsgs = [];
             }
-            yearTemplateData.verificationBlocks[bIdx].checks[cIdx].errorMsgs.push('');
+            yearTemplateData.verificationBlocks[bIdx].checks[cIdx].errorMsgs.push({ name: '新情境', template: '' });
             setUnsaved(true); renderVerificationView();
         }
 
@@ -5013,8 +5018,9 @@
             setUnsaved(true); renderVerificationView();
         }
 
-        function updateCheckErrorMsg(bIdx, cIdx, eIdx, val) {
-            yearTemplateData.verificationBlocks[bIdx].checks[cIdx].errorMsgs[eIdx] = val.trim();
+        // 修改：加入 field 參數，用來判斷是更新 name 還是 template
+        function updateCheckErrorMsg(bIdx, cIdx, eIdx, field, val) {
+            yearTemplateData.verificationBlocks[bIdx].checks[cIdx].errorMsgs[eIdx][field] = val.trim();
             setUnsaved(true);
         }
 
