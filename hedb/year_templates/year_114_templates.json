@@ -1135,8 +1135,8 @@
     {
       "type": "field_check",
       "title": "實習待遇檢核",
-      "exemptField": "",
-      "exemptValue": "",
+      "exemptField": "ineligible_reporting_check",
+      "exemptValue": "true",
       "targetCategory": "internship_rights_info",
       "checks": [
         {
@@ -1146,14 +1146,78 @@
             "查該生實習待遇與{{doc_select}}所載不符，請系所修正或說明原因。",
             "查該生為學習型實習，實習待遇不得填報為工資，請系所修正或說明原因。",
             "查該生為勞資型實習，實習待遇請優先填報為工資。",
-            "查該生{{doc_select}}無實習待遇，請系所修正或說明原因。"
+            "查該生{{doc_select}}，應無實習待遇，請系所修正或說明原因。"
           ]
         },
         {
-          "fieldId": "",
+          "fieldId": "payment_type",
+          "question": "是否正確？",
+          "errorMsgs": [
+            "查該生{{doc_select}}，實習待遇給付類型應修正為{{correct_input}}",
+            "查該生無實習待遇，給付類型毋須填報，請將該欄位保持空白。"
+          ]
+        },
+        {
+          "fieldId": "payment_type_other",
+          "question": "是否正確？",
+          "errorMsgs": [
+            "查該生{{doc_select}}，實習待遇非月薪或時薪，請於{{field_name}}說明實際給付類型。",
+            "查該生{{doc_select}}，實習津貼或獎學金非月給或一次性給付，請於{{field_name}}說明實際給付類型。",
+            "查該生{{doc_select}}，實習待遇給付類型於【給付類型】欄位內已有選項，請於該欄選取後保持本欄位空白。",
+            "其他給付類型之說明超過教育部20字元上限。"
+          ]
+        },
+        {
+          "fieldId": "payment_amount",
+          "question": "試算是否與計算機結果相同？",
+          "errorMsgs": [
+            "實習待遇給付金額試算有疑義，請提供計算式。",
+            "查該生實習薪資有跨年度之情事，惟該生實習期間適用新基本工資之期間較長，爰請以該較長期間所適用之薪資標準填報。",
+            "查該生實習薪資有跨年度之情事，惟該生實習期間適用舊基本工資之期間較長，爰請以該較長期間所適用之薪資標準填報。"
+          ]
+        },
+        {
+          "fieldId": "payment_amount",
+          "question": "是否高於最低工資法所訂之基本工資？",
+          "errorMsgs": [
+            "查該生實習薪資低於最低工資法所訂之基本工資，請系所說明原因。"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "field_check",
+      "title": "其他欄位檢核",
+      "exemptField": "",
+      "exemptValue": "",
+      "targetCategory": "internship_other_info",
+      "checks": [
+        {
+          "fieldId": "funding_source",
           "question": "資料是否正確？",
           "errorMsgs": [
-            "⚠️ {{field_name}} 資料有誤，請修正。"
+            "{{field_name}} 資料有誤，請修正。"
+          ]
+        },
+        {
+          "fieldId": "internship_source",
+          "question": "資料是否正確？",
+          "errorMsgs": [
+            "{{field_name}} 資料有誤，請修正。"
+          ]
+        },
+        {
+          "fieldId": "emba_alumni_provider",
+          "question": "資料是否正確？",
+          "errorMsgs": [
+            "資料有誤，請修正。"
+          ]
+        },
+        {
+          "fieldId": "internship_position_type",
+          "question": "資料是否正確？",
+          "errorMsgs": [
+            "資料有誤，請修正。"
           ]
         }
       ]
