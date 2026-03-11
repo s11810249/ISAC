@@ -1101,15 +1101,59 @@
     {
       "type": "field_check",
       "title": "實習保險檢核",
-      "exemptField": "",
-      "exemptValue": "",
+      "exemptField": "ineligible_reporting_check",
+      "exemptValue": "true",
       "targetCategory": "internship_rights_info",
       "checks": [
         {
           "fieldId": "insurance_status",
           "question": "是否正確？",
           "errorMsgs": [
-            ""
+            "依{{doc_select}}，該生為學習型實習，依勞動部勞工保險局規定，該等學生與公司之間既無僱傭關係，又無支領薪資之約定，依規定應不得參加勞保及災保，請系所說明投保勞保原因。",
+            "依{{doc_select}}，該生為勞資型實習，請系所說明未投保勞保原因。",
+            "依{{doc_select}}，該生為{{field_val}}，請系所說明未投保相關保險原因。",
+            "查該生於海外實習，於海外從事勞資型實習者，亦須依實習國當地法律規定，投保相關強制性社會保險，請系所說明未投保勞保原因。"
+          ]
+        },
+        {
+          "fieldId": "insurance_status",
+          "question": "保險期間是否涵蓋實習起訖時間？",
+          "errorMsgs": [
+            "實習保險投保期間與學生實際實習起訖時間不符，請系所說明原因"
+          ]
+        },
+        {
+          "fieldId": "employment_relationship",
+          "question": "資料填寫是否正確？",
+          "errorMsgs": [
+            "依{{doc_select}}，該生為學習型實習，請修正為「否」",
+            "依{{doc_select}}，該生為勞資型實習，請修正為「是」"
+          ]
+        }
+      ]
+    },
+    {
+      "type": "field_check",
+      "title": "實習待遇檢核",
+      "exemptField": "",
+      "exemptValue": "",
+      "targetCategory": "internship_rights_info",
+      "checks": [
+        {
+          "fieldId": "internship_salary",
+          "question": "是否正確？",
+          "errorMsgs": [
+            "查該生實習待遇與{{doc_select}}所載不符，請系所修正或說明原因。",
+            "查該生為學習型實習，實習待遇不得填報為工資，請系所修正或說明原因。",
+            "查該生為勞資型實習，實習待遇請優先填報為工資。",
+            "查該生{{doc_select}}無實習待遇，請系所修正或說明原因。"
+          ]
+        },
+        {
+          "fieldId": "",
+          "question": "資料是否正確？",
+          "errorMsgs": [
+            "⚠️ {{field_name}} 資料有誤，請修正。"
           ]
         }
       ]
