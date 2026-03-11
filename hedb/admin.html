@@ -4416,6 +4416,19 @@
                 </div>`;
             }
 
+            // ==========================================
+            // [新增] 1. 收集所有在 doc_check 模組中建立的文件名稱
+            // ==========================================
+            let availableDocs = [];
+            configData.verificationBlocks.forEach(b => {
+                if (b.type === 'doc_check' && b.docs) {
+                    b.docs.forEach(d => {
+                        if (d.name && d.name.trim() !== '') availableDocs.push(d.name.trim());
+                    });
+                }
+            });
+            availableDocs = [...new Set(availableDocs)]; // 確保不重複
+
             let fieldOptionsHtml = '<option value="">-- 無條件 (必交) --</option>';
             if(configData.globalFields) {
                 configData.globalFields.forEach(f => { fieldOptionsHtml += `<option value="${f.id}">${f.label} (${f.id})</option>`; });
@@ -4465,20 +4478,20 @@
                         }
 
                         const hasExempt = !!doc.exemptField;
-                        const isReq = doc.isRequired !== false; // 預設為 true (必交)
+                        const isReq = doc.isRequired !== false; // 預設為 true
 
+                        // [修改] 這裡加入了 onchange 後重新繪製，因為更改名稱會影響 data_match 模組的選單
                         docsHtml += `
                         <div class="bg-white border ${hasExempt ? 'border-amber-300 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2.5 flex flex-col relative doc-item transition-all" data-didx="${dIdx}">
                             <div class="flex justify-between items-center gap-2">
                                 <div class="flex items-center gap-2 doc-drag-handle cursor-grab text-slate-400 hover:text-primary flex-shrink-0"><i class="fas fa-grip-vertical"></i></div>
                                 <div class="flex-grow">
-                                    <input type="text" class="w-full border-b border-dashed ${hasExempt ? 'border-amber-300' : 'border-slate-300'} bg-transparent py-1 px-1 text-sm font-bold text-slate-700 focus:border-primary focus:text-primary outline-none transition-colors" value="${doc.name || ''}" placeholder="輸入文件名稱 (如：實習合約書)" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value)">
+                                    <input type="text" class="w-full border-b border-dashed ${hasExempt ? 'border-amber-300' : 'border-slate-300'} bg-transparent py-1 px-1 text-sm font-bold text-slate-700 focus:border-primary focus:text-primary outline-none transition-colors" value="${doc.name || ''}" placeholder="輸入文件名稱 (如：實習合約書)" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value); renderVerificationView();">
                                 </div>
                                 <div class="flex items-center gap-1.5 flex-shrink-0">
                                     <label class="flex items-center gap-1 cursor-pointer text-[11px] font-bold ${isReq ? 'text-red-600 bg-red-50 border-red-200' : 'text-slate-400 bg-slate-50 border-slate-200'} border px-2 py-1.5 rounded-md transition-colors whitespace-nowrap" title="取消勾選表示該文件為「選交」，即使沒交也不會出現警告。">
                                         <input type="checkbox" ${isReq ? 'checked' : ''} onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'isRequired', this.checked)"> 必交
                                     </label>
-                                    
                                     <button onclick="toggleDocExempt(${bIdx}, ${dIdx})" class="text-xs px-2.5 py-1.5 rounded-md ${hasExempt ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 font-bold' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} transition flex items-center gap-1" title="設定豁免條件"><i class="fas fa-filter"></i> <span class="hidden sm:inline">條件</span></button>
                                     <button onclick="removeDocFromBlock(${bIdx}, ${dIdx})" class="text-slate-400 hover:text-danger p-1.5 rounded hover:bg-red-50 transition" title="刪除文件"><i class="fas fa-times"></i></button>
                                 </div>
@@ -4531,10 +4544,25 @@
                     let docsHtml = '';
                     if (!block.docs) block.docs = [];
                     block.docs.forEach((doc, dIdx) => {
+                        
+                        // [新增] 2. 產生對應到可用文件的下拉選單
+                        let docSelectOptions = `<option value="">-- 請選擇參與比對的文件 --</option>`;
+                        availableDocs.forEach(dName => {
+                            docSelectOptions += `<option value="${dName}" ${doc.name === dName ? 'selected' : ''}>${dName}</option>`;
+                        });
+                        // 防呆：如果以前存了名字，但現在文件模組那邊被刪掉了
+                        if (doc.name && !availableDocs.includes(doc.name)) {
+                            docSelectOptions += `<option value="${doc.name}" selected>${doc.name} (⚠️ 找不到此文件)</option>`;
+                        }
+
                         docsHtml += `
                         <div class="bg-white border ${doc.isBase ? 'border-primary/50 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2.5 flex items-center gap-2 doc-item transition-all" data-didx="${dIdx}">
                             <div class="doc-drag-handle cursor-grab text-slate-400 hover:text-primary flex-shrink-0"><i class="fas fa-grip-vertical"></i></div>
-                            <input type="text" class="flex-grow border-b border-dashed ${doc.isBase ? 'border-primary/50 text-primary' : 'border-slate-300 text-slate-700'} bg-transparent py-1 px-1 text-sm font-bold focus:border-primary outline-none transition-colors" value="${doc.name || ''}" placeholder="文件名稱 (如：合約書)" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value)">
+                            
+                            <select class="flex-grow border-b border-dashed ${doc.isBase ? 'border-primary/50 text-primary' : 'border-slate-300 text-slate-700'} bg-transparent py-1 px-1 text-sm font-bold focus:border-primary outline-none transition-colors" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value)">
+                                ${docSelectOptions}
+                            </select>
+
                             <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold ${doc.isBase ? 'text-primary bg-sky-50 border-primary/30' : 'text-slate-500 bg-slate-50 border-slate-200'} border px-2 py-1.5 rounded-md transition-colors whitespace-nowrap">
                                 <input type="checkbox" ${doc.isBase ? 'checked' : ''} onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'isBase', this.checked)"> 設為基準標準
                             </label>
@@ -4583,12 +4611,15 @@
                             </div>
                         </div>
 
-                        <div class="flex justify-between items-center mb-4">
+                        <div class="flex justify-between items-start mb-4">
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-not-equal text-primary"></i> 參與比對的文件清單</h4>
-                                <p class="text-[10px] text-slate-400 mt-1">系統將由上至下尋找「設為基準標準」的文件作為解答依據。</p>
+                                <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
+                                    選項會自動讀取「實習證明文件檢核」模組的內容。<br>
+                                    系統由上至下尋找「基準」，<span class="text-amber-600 font-bold">若某基準在文件模組中設定為「非必交」，且前台未上傳資料，系統將自動略過它，尋找下一順位基準。</span>
+                                </p>
                             </div>
-                            <button onclick="addDocToBlock(${bIdx})" class="bg-white border border-primary text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"><i class="fas fa-plus"></i> 新增文件</button>
+                            <button onclick="addDocToBlock(${bIdx})" class="bg-white border border-primary text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"><i class="fas fa-plus"></i> 新增比對文件</button>
                         </div>
                         <div id="block-docs-${bIdx}" class="space-y-3 min-h-[100px] p-4 bg-slate-50/80 rounded-xl border border-slate-200">
                             ${docsHtml || '<div class="text-center text-xs text-slate-400 py-8 border-2 border-dashed border-slate-200 rounded-lg">請新增要參與比對的文件</div>'}
@@ -4708,13 +4739,12 @@
                     matchType: 'daterange', 
                     targetField1: '', 
                     targetField2: '', 
-                    msgMissing: '⚠️ {{missing_base_docs}} 皆未上傳或無資料，故無法判斷實際狀況，請盡速補齊。',
-                    msgMismatch: '⚠️ {{mismatch_docs}}與「{{base_name}}」內容不同，請系所說明原因。\n{{mismatch_details}}',
-                    msgSuccess: '✅ 資料一致，依據「{{base_name}}」：{{base_val}}',
+                    msgMissing: '{{missing_base_docs}} 皆未上傳或無資料，故無法判斷實際狀況，請盡速補齊。',
+                    msgMismatch: '{{mismatch_docs}}與「{{base_name}}」內容不同，請系所說明原因。\n{{mismatch_details}}',
+                    msgSuccess: '資料一致，依據「{{base_name}}」：{{base_val}}',
+                    // 改為預設給一個空選項，強迫使用者從下拉選單選擇
                     docs: [
-                        { name: '時數證明', isBase: true },
-                        { name: '合約書', isBase: true },
-                        { name: '機構回饋表', isBase: false }
+                        { name: '', isBase: true }
                     ]
                 };
             }
