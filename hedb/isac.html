@@ -4255,7 +4255,7 @@
             );
 
             if (visibleFields.length === 0) {
-                container.innerHTML = '<div class="text-center text-slate-400">無須填報欄位</div>';
+                container.innerHTML = '<div class="text-center text-slate-400 py-10">無須填報欄位</div>';
                 return;
             }
 
@@ -4277,106 +4277,47 @@
                 if(!catFields || catFields.length === 0) return;
 
                 const title = document.createElement('h4');
-                title.className = 'form-section-title';
-                title.innerText = catDef.name;
+                title.className = 'form-section-title mt-6 text-primary border-b border-slate-200 pb-2 font-bold flex items-center gap-2';
+                title.innerHTML = `<i class="fas fa-folder-open text-slate-400"></i> ${catDef.name}`;
                 container.appendChild(title);
 
+                // ★ 修復：補回 grid 排版，並因應左欄空間較小，調整為 1 欄或 2 欄
                 const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 md:grid-cols-4 gap-4 mb-6';
+                grid.className = 'grid grid-cols-1 xl:grid-cols-2 gap-x-5 gap-y-4 mt-4';
 
                 catFields.forEach(f => {
                     const wrapper = document.createElement('div');
-                    const span = f.colSpan || 1; 
-                    wrapper.className = `field-group ${f.id}-wrapper md:col-span-${span}`;
+                    // 在雙欄模式下，如果原本佔 4 欄的，現在強制佔滿 2 欄；其他順其自然
+                    const span = f.colSpan === 4 ? 'xl:col-span-2' : 'col-span-1'; 
+                    wrapper.className = `field-group ${span}`;
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
                     
                     const label = document.createElement('label');
-                    label.className = "block text-sm font-bold text-slate-700 mb-1 flex items-center";
-                    label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-500">*</span>' : ''}`;
+                    label.className = "block text-[11px] font-bold text-slate-500 mb-1 flex items-center tracking-wider uppercase";
+                    label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-400 ml-1">*</span>' : ''}`;
                     
                     if(f.description) {
-                        // ★ 將設定檔中可能出現的 \n 替換為網頁的 <br> 換行標籤
                         const formattedDesc = f.description.replace(/\\n|\n/g, '<br>');
-                        label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon"></i><span class="tooltip-text">${formattedDesc}</span></div>`;
+                        label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon text-slate-400"></i><span class="tooltip-text">${formattedDesc}</span></div>`;
                     }
                     wrapper.appendChild(label);
 
                     const val = app.formData[f.id];
                     let input;
                     
-                    // ★★★ 定義更新資料的函式 (包含機構收集與 Checkbox 支援) ★★★
-                    const updateData = (e) => {
-                        let newVal = (e.target.type === 'checkbox') ? e.target.checked : e.target.value;
-                        const oldVal = app.formData[f.id];
-
-                        // 1. 地址與文字正規化
-                        if (f.type === 'address' && e.type === 'change') {
-                            processAddress(e.target, f);
-                            newVal = e.target.value;
-                        }
-                        
-                        if (oldVal !== newVal) {
-                            app.formData[f.id] = newVal;
-                            
-                            // 2. ★ 核心修正：處理數值分配 (weighted / average)
-                            // 當在表單輸入「總數」時，自動分配給該歸戶下的所有課程
-                            if (f.calcMode === 'average' || f.calcMode === 'weighted') {
-                                const linkedCourses = groupedStudents[currentStudentId].courses.filter(c => app.courseIds.includes(c._internal_id));
-                                const totalVal = parseFloat(newVal) || 0;
-
-                                if (f.calcMode === 'weighted') {
-                                    // 依比例分配邏輯
-                                    let totalWeight = 0;
-                                    linkedCourses.forEach(c => {
-                                        totalWeight += parseFloat(getCourseValue(c, [f.weightField])) || 0;
-                                    });
-                                    if (totalWeight > 0) {
-                                        linkedCourses.forEach(c => {
-                                            const w = parseFloat(getCourseValue(c, [f.weightField])) || 0;
-                                            const distributed = totalVal * (w / totalWeight);
-                                            // ★ 修正：隱藏無意義的尾數 0
-                                            c[f.id] = f.decimal ? parseFloat(distributed.toFixed(f.decimal)).toString() : Math.round(distributed).toString();
-                                        });
-                                    }
-                                } else {
-                                    // 平均分攤邏輯
-                                    const avg = totalVal / linkedCourses.length;
-                                    linkedCourses.forEach(c => {
-                                        // ★ 修正：隱藏無意義的尾數 0
-                                        c[f.id] = f.decimal ? parseFloat(avg.toFixed(f.decimal)).toString() : Math.round(avg).toString();
-                                    });
-                                }
-                            }
-
-                            // 3. 機構資訊收集
-                            if (f.category === 'internship_institution_info' && typeof collectInstitutionData === 'function') {
-                                collectInstitutionData(app.formData);
-                            }
-
-                            evaluateLogic(app);
-                            if (typeof updateVerificationLogic === 'function') updateVerificationLogic(app);
-                            hasUnsavedChanges = true;
-                            logChange(f.id, app.id, oldVal, newVal, groupedStudents[currentStudentId].id); 
-                            
-                            if (typeof saveToLocal === 'function') saveToLocal();
-                        }
-                    };
-
                     // --- 處理 ROC 日期 ---
                     if (f.type === 'date' && f.inputFormat === 'ROC') {
-                        input = createRocDatePicker(app.id, f.id, val || '', (newValue) => {
-                            const tempEvent = { target: { value: newValue, type: 'change' } };
-                            updateData(tempEvent);
-                        });
-                        
+                        input = createRocDatePicker(app.id, f.id, val || '', () => {});
                         const visInput = input.querySelector('input');
-                        if(visInput) visInput.classList.add(`app-input-${app.id}-${f.id}`);
-                        const hidden = document.createElement('input');
-                        hidden.type = 'hidden';
-                        hidden.id = `input-${app.id}-${f.id}`;
-                        wrapper.appendChild(hidden);
-                        wrapper.appendChild(input);
+                        if(visInput) {
+                            visInput.classList.add(`app-input-${app.id}-${f.id}`);
+                            visInput.disabled = true; // ★ 強制唯讀
+                            visInput.classList.add('bg-slate-50', 'text-slate-600', 'cursor-not-allowed', 'border-slate-200');
+                        }
+                        const trigger = input.querySelector('.date-picker-trigger');
+                        if(trigger) trigger.style.display = 'none'; // 隱藏日曆按鈕
                         
+                        wrapper.appendChild(input);
                     } 
                     // --- 處理機構名稱 ---
                     else if (f.id === 'internship_institution_name') {
@@ -4385,55 +4326,32 @@
 
                         input = document.createElement('input');
                         input.type = 'text';
-                        input.className = "input-stylish w-full rounded-r-none border-r-0";
+                        input.className = "input-stylish w-full rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold";
                         input.value = val || '';
+                        input.disabled = true; // ★ 強制唯讀
                         input.id = `input-${app.id}-${f.id}`; 
                         input.classList.add(`app-input-${app.id}-${f.id}`);
 
-                        const viewBtn = document.createElement('div');
-                        viewBtn.className = 'input-group-append-btn';
-                        viewBtn.title = '開啟機構管理視窗';
-                        viewBtn.innerHTML = '<i class="fas fa-building"></i>';
-                        
-                        viewBtn.onclick = (e) => {
-                            e.stopPropagation();
-                            if (typeof openInstitutionList === 'function') {
-                                openInstitutionList(); 
-                            } else {
-                                showToast('error', '系統錯誤：機構查詢功能尚未載入');
-                            }
-                        };
-
                         inputGroup.appendChild(input);
-                        inputGroup.appendChild(viewBtn);
                         wrapper.appendChild(inputGroup);
-                        
-                        input.addEventListener('change', updateData);
-                        input.addEventListener('input', (e) => {
-                            app.formData[f.id] = e.target.value;
-                            hasUnsavedChanges = true;
-                        });
                     } 
-                    // --- 【新增】處理 Checkbox 類型 ---
+                    // --- 處理 Checkbox 類型 ---
                     else if (f.type === 'checkbox') {
                         const boxWrapper = document.createElement('div');
-                        boxWrapper.className = "flex items-center h-[42px] mt-0"; 
+                        boxWrapper.className = "flex items-center h-[42px] mt-0 opacity-80 cursor-not-allowed"; 
 
                         input = document.createElement('input');
                         input.type = 'checkbox';
-                        input.className = "w-5 h-5 text-primary border-slate-300 rounded focus:ring-primary cursor-pointer transition";
-                        
-                        // 支援存成 boolean 或 'true' 字串
+                        input.className = "w-5 h-5 text-slate-400 border-slate-300 rounded pointer-events-none";
+                        input.disabled = true; // ★ 強制唯讀
                         input.checked = (val === true || val === 'true');
                         
                         const textSpan = document.createElement('span');
-                        textSpan.className = "ml-2 text-sm text-slate-600 cursor-pointer select-none";
+                        textSpan.className = "ml-2 text-sm text-slate-500 font-bold select-none";
                         textSpan.innerText = f.placeholder || "是"; 
-                        textSpan.onclick = () => input.click();
 
                         input.id = `input-${app.id}-${f.id}`;
                         input.classList.add(`app-input-${app.id}-${f.id}`);
-                        input.addEventListener('change', updateData);
 
                         boxWrapper.appendChild(input);
                         boxWrapper.appendChild(textSpan);
@@ -4441,81 +4359,45 @@
                     }
                     // --- 處理其他一般欄位 ---
                     else {
-                        if (f.type === 'single_select') { // ★ 移除了 list
+                        if (f.type === 'single_select') { 
                             input = document.createElement('select');
-                            input.className = "input-stylish cursor-pointer";
-                            input.innerHTML = `<option value="">請選擇...</option>` + (f.options||[]).map(o => `<option value="${o}" ${o===val?'selected':''}>${o}</option>`).join('');
+                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold appearance-none";
+                            // 隱藏下拉箭頭
+                            input.style.backgroundImage = 'none';
+                            input.innerHTML = `<option value="">${val ? val : '(未填寫)'}</option>`; // 直接鎖死當前值
                         } else if (f.type === 'list') { 
                             input = document.createElement('textarea');
-                            input.className = "input-stylish custom-scroll";
+                            input.className = "input-stylish custom-scroll bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200";
                             input.rows = 1;
                             input.style.minHeight = "42px"; 
                             input.style.resize = "none";
                             input.style.overflow = "hidden"; 
-                            input.value = val || '';
+                            input.value = val || '(未填寫)';
                             
-                            const autoResize = (el) => {
-                                // ★ 關鍵：先設定為 auto 釋放高度，讓欄位可以「縮小」
-                                el.style.setProperty('height', 'auto', 'important');
-                                el.style.setProperty('height', el.scrollHeight + 'px', 'important');
-                            };
-                            
-                            input.addEventListener('input', function() {
-                                // 允許使用者完全清空欄位
-                                if (this.value === '') {
-                                    // 保持空白不強制補 1.
-                                } else if (!/^\d+\.\s/.test(this.value)) {
-                                    // 若打字但沒有編號開頭，自動補 1.
-                                    this.value = '1. ' + this.value.replace(/^\d*\.?\s*/, '');
-                                }
-                                autoResize(this);
-                            });
-                            
-                            input.addEventListener('keydown', handleListKeydown); 
-                            
-                            // 延遲初始化高度
-                            setTimeout(() => autoResize(input), 0);
-                            
+                            setTimeout(() => {
+                                input.style.setProperty('height', 'auto', 'important');
+                                input.style.setProperty('height', input.scrollHeight + 'px', 'important');
+                            }, 0);
                         } else if (f.type === 'date') {
                             input = document.createElement('input');
                             input.type = 'date';
-                            input.className = "input-stylish";
+                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold";
                             input.value = val || '';
                         } else if (f.type === 'number') {
                             input = document.createElement('input');
-                            input.type = 'number';
-                            input.className = "input-stylish";
-                            input.step = f.decimal ? '0.01' : '1';
-                            input.value = val || '';
+                            input.type = 'text'; // 換成 text 避免箭頭
+                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold font-mono";
+                            input.value = val || '(未填寫)';
                         } else {
                             input = document.createElement('input');
                             input.type = 'text';
-                            input.className = "input-stylish";
-                            input.value = val || '';
+                            input.className = "input-stylish bg-slate-50 text-slate-600 cursor-not-allowed border-slate-200 font-bold";
+                            input.value = val || '(未填寫)';
                         }
 
+                        input.disabled = true; // ★ 強制唯讀
                         input.id = `input-${app.id}-${f.id}`;
                         input.classList.add(`app-input-${app.id}-${f.id}`);
-            
-                        if (f.type === 'address') {
-                            input.addEventListener('blur', (e) => {
-                                const oldVal = input.value;
-                                processAddress(e.target, f);
-                                const newVal = e.target.value;
-                                if(oldVal !== newVal) {
-                                    app.formData[f.id] = newVal;
-                                    updateData(e); 
-                                }
-                            });
-                        }
-
-                        input.addEventListener('change', updateData);
-                        
-                        if (f.type === 'text' || f.type === 'number' || f.type === 'address') {
-                            input.addEventListener('input', (e) => {
-                                hasUnsavedChanges = true;
-                            });
-                        }
                         
                         wrapper.appendChild(input);
                     }
@@ -4525,6 +4407,7 @@
                 container.appendChild(grid);
             });
 
+            // 觸發一次邏輯計算，把因為連動而該隱藏的欄位藏起來
             setTimeout(() => evaluateLogic(app), 0);
         }
 
@@ -4550,29 +4433,23 @@
             fields.forEach(f => {
                 const wrapper = document.getElementById(`wrapper-${app.id}-${f.id}`);
                 let inputEl = document.getElementById(`input-${app.id}-${f.id}`);
-                const rocContainer = document.getElementById(`roc-container-${app.id}-${f.id}`);
                 
                 if (!wrapper) return;
 
                 let isLocked = false;
 
-                // --- 1. Visibility 檢查 (修正：區分 Checkbox 與一般欄位的空值邏輯) ---
+                // --- 1. Visibility 檢查 ---
                 if (f.visibilityRule && f.visibilityRule.dep) {
                     const depId = f.visibilityRule.dep;
                     const depVal = app.formData[depId];
                     const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
                     
-                    // 判斷依賴欄位是否為 Checkbox (透過設定檔查找)
                     const depFieldDef = fields.find(field => field.id === depId);
                     const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
 
-                    // 規則 A: 如果依賴欄位「不是」Checkbox 且值為空 (例如 Select 被鎖定清空時)，強制鎖定子欄位
-                    // 這解決了「給付類型」被鎖定變成空值時，「給付金額」卻因為 "" !== "無" 而沒被鎖定的問題
                     if (!isDepCheckbox && currentValStr === "") {
                         isLocked = true;
-                    } 
-                    // 規則 B: 正常比對邏輯 (支援 Checkbox 的空值/False 視為 Show)
-                    else {
+                    } else {
                         const ruleValStr = String(f.visibilityRule.val).trim();
                         let shouldShow = true;
                         
@@ -4586,7 +4463,7 @@
                     }
                 }
 
-                // --- 2. Filter Rules 檢查 (選項連動) ---
+                // --- 2. Filter Rules 檢查 ---
                 if (!isLocked && f.filterRules && f.filterRules.length > 0) {
                     const parentId = f.filterRules[0].dep;
                     const parentVal = app.formData[parentId];
@@ -4595,63 +4472,27 @@
                         isLocked = true;
                     } else {
                         const rule = f.filterRules.find(r => r.val === parentVal);
-                        if (!rule) {
-                            isLocked = true;
-                        } else if (inputEl && inputEl.tagName === 'SELECT') {
-                            let isValid = false;
-                            Array.from(inputEl.options).forEach(opt => {
-                                if (opt.value === "") { isValid = true; return; }
-                                const show = rule.limitTo && rule.limitTo.includes(opt.value);
-                                opt.hidden = !show;
-                                opt.disabled = !show;
-                                if(inputEl.value === opt.value && show) isValid = true;
-                            });
-                            if (inputEl.value && !isValid) {
-                                inputEl.value = "";
-                                app.formData[f.id] = "";
-                            }
-                        }
+                        if (!rule) isLocked = true;
+                        // 注意：唯讀模式下，不需要去更改 inputEl 的 options
                     }
                 }
 
-                // --- 3. UI 更新 ---
+                // --- 3. UI 更新 (針對唯讀模式特化) ---
                 if (isLocked) {
-                    wrapper.classList.add('field-locked');
-                    if (inputEl && inputEl.type !== 'hidden') {
-                        inputEl.disabled = true;
-                        if(inputEl.value !== "") {
-                            inputEl.value = "";
-                            app.formData[f.id] = "";
-                        }
-                        if(inputEl.type === 'checkbox') inputEl.checked = false;
-                    }
-                    if (rocContainer) {
-                        const ri = rocContainer.querySelector('input');
-                        if(ri) { ri.value = ""; ri.disabled = true; }
-                        const btn = rocContainer.querySelector('.date-picker-trigger');
-                        if(btn) btn.style.pointerEvents = 'none';
-                    }
-                    const btn = wrapper.querySelector('.input-group-append-btn');
-                    if(btn) {
-                        btn.style.pointerEvents = 'none';
-                        btn.style.opacity = '0.5';
+                    // 如果該隱藏，讓它整塊變半透明且加上刪除線的視覺暗示
+                    wrapper.classList.add('opacity-40');
+                    wrapper.style.pointerEvents = 'none';
+                    if (inputEl) {
+                        inputEl.classList.add('line-through', 'text-slate-400');
                     }
                 } else {
-                    wrapper.classList.remove('field-locked');
-                    if (inputEl) inputEl.disabled = false;
-                    if (rocContainer) {
-                        rocContainer.querySelector('input').disabled = false;
-                        const btn = rocContainer.querySelector('.date-picker-trigger');
-                        if(btn) btn.style.pointerEvents = 'auto';
-                    }
-                    const btn = wrapper.querySelector('.input-group-append-btn');
-                    if(btn) {
-                        btn.style.pointerEvents = 'auto';
-                        btn.style.opacity = '1';
+                    wrapper.classList.remove('opacity-40');
+                    wrapper.style.pointerEvents = 'auto';
+                    if (inputEl) {
+                        inputEl.classList.remove('line-through', 'text-slate-400');
                     }
                 }
             });
-            updateAppProgress(app.id);
         }
         
         async function exportData() {
