@@ -4277,23 +4277,23 @@
                 if(!catFields || catFields.length === 0) return;
 
                 const title = document.createElement('h4');
-                title.className = 'form-section-title mt-8 text-primary border-b border-slate-200 pb-2 font-bold flex items-center gap-2';
+                title.className = 'form-section-title mt-6 text-primary border-b border-slate-200 pb-2 font-bold flex items-center gap-2';
                 title.innerHTML = `<i class="fas fa-folder-open text-slate-400"></i> ${catDef.name}`;
                 container.appendChild(title);
 
-                // ★ 改為彈性網格：大螢幕雙欄，小螢幕單欄，徹底避免擠壓
+                // ★ 關鍵修復：拔除 xl: 限制，強制固定為雙欄排版 (grid-cols-2)
                 const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 xl:grid-cols-2 gap-x-6 gap-y-5 mt-4 mb-6';
+                grid.className = 'grid grid-cols-2 gap-x-5 gap-y-4 mt-4 mb-6';
 
                 catFields.forEach(f => {
                     const wrapper = document.createElement('div');
-                    // 長文本、地址或跨4欄的，強制佔滿整行
-                    const span = (f.colSpan === 4 || f.type === 'address' || f.type === 'list') ? 'col-span-1 xl:col-span-2' : 'col-span-1';
+                    // ★ 跨欄邏輯也拔除 xl:。只要是長文本、地址或原本跨4欄的，就強制佔滿2欄
+                    const span = (f.colSpan === 4 || f.type === 'address' || f.type === 'list') ? 'col-span-2' : 'col-span-1';
                     wrapper.className = `field-group ${span} min-w-0`;
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
 
                     const label = document.createElement('label');
-                    label.className = "block text-[13px] font-bold text-slate-500 mb-1.5 flex items-center";
+                    label.className = "block text-[13px] font-bold text-slate-500 mb-1 flex items-center";
                     label.innerHTML = `${f.label} ${f.required ? '<span class="text-red-400 ml-1">*</span>' : ''}`;
 
                     if(f.description) {
@@ -4304,7 +4304,6 @@
 
                     let val = app.formData[f.id];
 
-                    // 處理日期的視覺格式
                     if (f.type === 'date' && val) {
                         let displayVal = String(val).replace(/-/g, '/');
                         if (f.inputFormat === 'ROC') {
@@ -4319,18 +4318,17 @@
                             val = displayVal;
                         }
                     } 
-                    // 處理 Checkbox 的視覺格式
                     else if (f.type === 'checkbox') {
                         val = (val === true || val === 'true') ? '✅ 是 (Yes)' : '❌ 否 (No)';
                     }
 
-                    // ★ 核心魔法：拔除輸入框，改用純文字 DIV 呈現唯讀卡片！
+                    // 唯讀卡片元件
                     const valBox = document.createElement('div');
                     valBox.id = `input-${app.id}-${f.id}`;
                     valBox.classList.add(`app-input-${app.id}-${f.id}`);
                     
-                    // 唯讀卡片樣式：自帶圓角、陰影、且會根據內容自動折行換行，絕不破版
-                    valBox.className = "w-full bg-slate-50/80 text-slate-800 font-bold border border-slate-200 rounded-lg px-4 py-3 text-[14px] min-h-[46px] break-words whitespace-pre-wrap flex items-center shadow-sm leading-relaxed";
+                    // 調整內距 (py-2) 讓高度縮減一些，看起來更緊湊不佔空間
+                    valBox.className = "w-full bg-slate-50/80 text-slate-800 font-bold border border-slate-200 rounded-lg px-3 py-2 text-[14px] min-h-[38px] break-words whitespace-pre-wrap flex items-center shadow-sm leading-snug";
 
                     if (val === undefined || val === null || String(val).trim() === '') {
                         valBox.innerHTML = '<span class="text-slate-400 font-normal italic text-[13px]">(未填寫)</span>';
@@ -4347,7 +4345,7 @@
 
             setTimeout(() => evaluateLogic(app), 0);
         }
-
+        
         function updateAppProgress(appId) {
             const student = groupedStudents[currentStudentId];
             if(!student) return;
