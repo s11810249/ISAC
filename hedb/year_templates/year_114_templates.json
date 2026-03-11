@@ -1032,68 +1032,110 @@
           "fieldId": "internship_institution_name",
           "question": "名稱是否正確？",
           "errorMsgs": [
-            "實習機構名稱有誤，請修正為{{correct_input}}。"
+            {
+              "name": "機構名稱錯誤",
+              "template": "實習機構名稱有誤，請修正為{{correct_input}}。"
+            }
           ]
         },
         {
           "fieldId": "internship_institution_name",
           "question": "是否已上傳機構評估表？",
           "errorMsgs": [
-            "未上傳該機構評估表，請盡速上傳。"
+            {
+              "name": "沒上傳評估表",
+              "template": "未上傳該機構評估表，請盡速上傳。"
+            }
           ]
         },
         {
           "fieldId": "internship_institution_name",
           "question": "機構評估日期是否於學生實際開始實習日期往前推一年內？",
           "errorMsgs": [
-            "學生實際實習開始日期未於該實習機構評估後一年內，請重新上傳評估表。"
+            {
+              "name": "評估表過期",
+              "template": "學生實際實習開始日期未於該實習機構評估後一年內，請重新上傳評估表。"
+            }
           ]
         },
         {
           "fieldId": "internship_country",
           "question": "是否正確？",
           "errorMsgs": [
-            "依據{{doc_select}}，學生實習場所國別非{{field_val}}，請修正為{{correct_input}}。"
+            {
+              "name": "實習國家選錯",
+              "template": "依據{{doc_select}}，學生實習場所國別非{{field_val}}，請修正為{{correct_input}}。"
+            }
           ]
         },
         {
           "fieldId": "internship_location",
           "question": "是否正確？",
           "errorMsgs": [
-            "查該機構依校庫定義，實習場所請修正為{{correct_input}}。",
-            "查該機構為海外機構，實習場所請一律填報為「其他機構」。"
+            {
+              "name": "實習場所選錯（請幫他選正確的）",
+              "template": "查該機構依校庫定義，實習場所請修正為{{correct_input}}。"
+            },
+            {
+              "name": "海外實習，選其他機構",
+              "template": "查該機構為海外機構，實習場所請一律填報為「其他機構」。"
+            }
           ]
         },
         {
           "fieldId": "industry_category",
           "question": "是否正確？",
           "errorMsgs": [
-            "查該機構依行政院主計總處行業統計分類，行業別請修正為{{correct_input}}。"
+            {
+              "name": "行業別選錯（請幫他選正確的）",
+              "template": "查該機構依行政院主計總處行業統計分類，行業別請修正為{{correct_input}}。"
+            }
           ]
         },
         {
           "fieldId": "company_tax_id",
           "question": "是否正確？",
           "errorMsgs": [
-            "查該機構統一編號有誤，請修正為{{correct_input}}。",
-            "查該機構為海外機構，統一編號毋須填報，請將該欄位保持空白。",
-            "查該機構有統一編號：{{correct_input}}，請優先以統一編號填報。"
+            {
+              "name": "統一編號填錯（請告訴他正確的）",
+              "template": "查該機構統一編號有誤，請修正為{{correct_input}}。"
+            },
+            {
+              "name": "海外實習，統編不用",
+              "template": "查該機構為海外機構，統一編號毋須填報，請將該欄位保持空白。"
+            },
+            {
+              "name": "特殊場所但有統編，叫他優先填統編",
+              "template": "查該機構有統一編號：{{correct_input}}，請優先以統一編號填報。"
+            }
           ]
         },
         {
           "fieldId": "internship_city",
           "question": "是否正確？",
           "errorMsgs": [
-            "查學生實際實習縣市為{{correct_input}}，請修正。",
-            "查該機構為海外機構，實習縣市毋須填報，請將該欄位保持空白。"
+            {
+              "name": "實習縣市選錯（請幫他選正確的）",
+              "template": "查學生實際實習縣市為{{correct_input}}，請修正。"
+            },
+            {
+              "name": "海外實習，縣市不用填",
+              "template": "查該機構為海外機構，實習縣市毋須填報，請將該欄位保持空白。"
+            }
           ]
         },
         {
           "fieldId": "internship_address",
           "question": "是否正確？",
           "errorMsgs": [
-            "查學生實際實習地址為{{correct_input}}，請修正。",
-            "查該機構為海外機構，依校庫規範只能輸入繁體中文或英文地址，請修正。"
+            {
+              "name": "實習地址打錯（請幫他打正確的）",
+              "template": "查學生實際實習地址為{{correct_input}}，請修正。"
+            },
+            {
+              "name": "海外機構，不能輸入繁體中文、英文以外的文字。",
+              "template": "查該機構為海外機構，依校庫規範只能輸入繁體中文或英文地址，請修正。"
+            }
           ]
         }
       ]
@@ -1109,25 +1151,46 @@
           "fieldId": "insurance_status",
           "question": "是否正確？",
           "errorMsgs": [
-            "依{{doc_select}}，該生為學習型實習，依勞動部勞工保險局規定，該等學生與公司之間既無僱傭關係，又無支領薪資之約定，依規定應不得參加勞保及災保，請系所說明投保勞保原因。",
-            "依{{doc_select}}，該生為勞資型實習，請系所說明未投保勞保原因。",
-            "依{{doc_select}}，該生為{{field_val}}，請系所說明未投保相關保險原因。",
-            "查該生於海外實習，於海外從事勞資型實習者，亦須依實習國當地法律規定，投保相關強制性社會保險，請系所說明未投保勞保原因。"
+            {
+              "name": "學習型保勞保",
+              "template": "依{{doc_select}}，該生為學習型實習，依勞動部勞工保險局規定，該等學生與公司之間既無僱傭關係，又無支領薪資之約定，依規定應不得參加勞保及災保，請系所說明投保勞保原因。"
+            },
+            {
+              "name": "勞資型無勞保",
+              "template": "依{{doc_select}}，該生為勞資型實習，請系所說明未投保勞保原因。"
+            },
+            {
+              "name": "學習型無學保",
+              "template": "依{{doc_select}}，該生為{{field_val}}，請系所說明未投保相關保險原因。"
+            },
+            {
+              "name": "情境 4",
+              "template": "查該生於海外實習，於海外從事勞資型實習者，亦須依實習國當地法律規定，投保相關強制性社會保險，請系所說明未投保勞保原因。"
+            }
           ]
         },
         {
           "fieldId": "insurance_status",
           "question": "保險期間是否涵蓋實習起訖時間？",
           "errorMsgs": [
-            "實習保險投保期間與學生實際實習起訖時間不符，請系所說明原因"
+            {
+              "name": "實習時間跟投保時間不同",
+              "template": "實習保險投保期間與學生實際實習起訖時間不符，請系所說明原因"
+            }
           ]
         },
         {
           "fieldId": "employment_relationship",
           "question": "資料填寫是否正確？",
           "errorMsgs": [
-            "依{{doc_select}}，該生為學習型實習，請修正為「否」",
-            "依{{doc_select}}，該生為勞資型實習，請修正為「是」"
+            {
+              "name": "學習型無勞雇關係",
+              "template": "依{{doc_select}}，該生為學習型實習，請修正為「否」"
+            },
+            {
+              "name": "勞資型有勞雇關係",
+              "template": "依{{doc_select}}，該生為勞資型實習，請修正為「是」"
+            }
           ]
         }
       ]
@@ -1143,44 +1206,82 @@
           "fieldId": "internship_salary",
           "question": "是否正確？",
           "errorMsgs": [
-            "查該生實習待遇與{{doc_select}}所載不符，請系所修正或說明原因。",
-            "查該生為學習型實習，實習待遇不得填報為工資，請系所修正或說明原因。",
-            "查該生為勞資型實習，實習待遇請優先填報為工資。",
-            "查該生{{doc_select}}，應無實習待遇，請系所修正或說明原因。"
+            {
+              "name": "實習待遇跟佐證資料不同",
+              "template": "查該生實習待遇與{{doc_select}}所載不符，請系所修正或說明原因。"
+            },
+            {
+              "name": "學習型填工資",
+              "template": "查該生為學習型實習，實習待遇不得填報為工資，請系所修正或說明原因。"
+            },
+            {
+              "name": "勞資型填獎學金或津貼",
+              "template": "查該生為勞資型實習，實習待遇請優先填報為工資。"
+            },
+            {
+              "name": "無待遇填有待遇",
+              "template": "查該生{{doc_select}}，應無實習待遇，請系所修正或說明原因。"
+            }
           ]
         },
         {
           "fieldId": "payment_type",
           "question": "是否正確？",
           "errorMsgs": [
-            "查該生{{doc_select}}，實習待遇給付類型應修正為{{correct_input}}",
-            "查該生無實習待遇，給付類型毋須填報，請將該欄位保持空白。"
+            {
+              "name": "給付類型選錯（請幫他選正確的）",
+              "template": "查該生{{doc_select}}，實習待遇給付類型應修正為{{correct_input}}"
+            }
           ]
         },
         {
           "fieldId": "payment_type_other",
           "question": "是否正確？",
           "errorMsgs": [
-            "查該生{{doc_select}}，實習待遇非月薪或時薪，請於{{field_name}}說明實際給付類型。",
-            "查該生{{doc_select}}，實習津貼或獎學金非月給或一次性給付，請於{{field_name}}說明實際給付類型。",
-            "查該生{{doc_select}}，實習待遇給付類型於【給付類型】欄位內已有選項，請於該欄選取後保持本欄位空白。",
-            "其他給付類型之說明超過教育部20字元上限。"
+            {
+              "name": "勞資型給付類型其他說明沒寫",
+              "template": "查該生{{doc_select}}，實習待遇非月薪或時薪，請於{{field_name}}說明實際給付類型。"
+            },
+            {
+              "name": "學習型給付類型其他說明沒寫",
+              "template": "查該生{{doc_select}}，實習津貼或獎學金非月給或一次性給付，請於{{field_name}}說明實際給付類型。"
+            },
+            {
+              "name": "給付類型有選項卻寫在這邊",
+              "template": "查該生{{doc_select}}，實習待遇給付類型於【給付類型】欄位內已有選項，請於該欄選取後保持本欄位空白。"
+            },
+            {
+              "name": "超過20字了",
+              "template": "其他給付類型之說明超過教育部20字元上限。"
+            }
           ]
         },
         {
           "fieldId": "payment_amount",
           "question": "試算是否與計算機結果相同？",
           "errorMsgs": [
-            "實習待遇給付金額試算有疑義，請提供計算式。",
-            "查該生實習薪資有跨年度之情事，惟該生實習期間適用新基本工資之期間較長，爰請以該較長期間所適用之薪資標準填報。",
-            "查該生實習薪資有跨年度之情事，惟該生實習期間適用舊基本工資之期間較長，爰請以該較長期間所適用之薪資標準填報。"
+            {
+              "name": "跟計算機算出來數字不一樣",
+              "template": "實習待遇給付金額試算有疑義，請提供計算式。"
+            },
+            {
+              "name": "第二年度實習時間較長，以第二年度月薪去填",
+              "template": "查該生實習薪資有跨年度之情事，惟該生實習期間適用新基本工資之期間較長，爰請以該較長期間所適用之薪資標準填報。"
+            },
+            {
+              "name": "第一年度實習時間較長，以第一年度月薪去填",
+              "template": "查該生實習薪資有跨年度之情事，惟該生實習期間適用舊基本工資之期間較長，爰請以該較長期間所適用之薪資標準填報。"
+            }
           ]
         },
         {
           "fieldId": "payment_amount",
           "question": "是否高於最低工資法所訂之基本工資？",
           "errorMsgs": [
-            "查該生實習薪資低於最低工資法所訂之基本工資，請系所說明原因。"
+            {
+              "name": "工資低於法律規定下限",
+              "template": "查該生實習薪資低於最低工資法所訂之基本工資，請系所說明原因。"
+            }
           ]
         }
       ]
@@ -1196,28 +1297,40 @@
           "fieldId": "funding_source",
           "question": "資料是否正確？",
           "errorMsgs": [
-            "{{field_name}} 資料有誤，請修正。"
+            {
+              "name": "情境 1",
+              "template": "{{field_name}} 資料有誤，請修正。"
+            }
           ]
         },
         {
           "fieldId": "internship_source",
           "question": "資料是否正確？",
           "errorMsgs": [
-            "{{field_name}} 資料有誤，請修正。"
+            {
+              "name": "情境 1",
+              "template": "{{field_name}} 資料有誤，請修正。"
+            }
           ]
         },
         {
           "fieldId": "emba_alumni_provider",
           "question": "資料是否正確？",
           "errorMsgs": [
-            "資料有誤，請修正。"
+            {
+              "name": "情境 1",
+              "template": "資料有誤，請修正。"
+            }
           ]
         },
         {
           "fieldId": "internship_position_type",
           "question": "資料是否正確？",
           "errorMsgs": [
-            "資料有誤，請修正。"
+            {
+              "name": "情境 1",
+              "template": "資料有誤，請修正。"
+            }
           ]
         }
       ]
