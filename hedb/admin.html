@@ -456,6 +456,15 @@
                                 <span class="text-[10px] text-slate-400 mt-0.5">檢查多份文件的日期/數值是否相符</span>
                             </div>
                         </div>
+                        <div class="p-4 bg-white border border-dashed border-slate-300 rounded-xl cursor-pointer hover:bg-emerald-50 hover:border-emerald-400 transition shadow-sm flex items-center gap-3 group" onclick="addVerificationBlock('field_check')">
+                            <div class="w-10 h-10 bg-emerald-100 text-emerald-600 rounded-lg flex items-center justify-center text-lg group-hover:scale-110 transition-transform">
+                                <i class="fas fa-check-double"></i>
+                            </div>
+                            <div class="flex flex-col">
+                                <span class="font-bold text-slate-700 text-sm">欄位資料檢核</span>
+                                <span class="text-[10px] text-slate-400 mt-0.5">針對特定類型欄位設定是非題</span>
+                            </div>
+                        </div>
                     </div>
                 </aside>
 
@@ -4416,22 +4425,23 @@
                 </div>`;
             }
 
-            // ==========================================
-            // [新增] 1. 收集所有在 doc_check 模組中建立的文件名稱
-            // ==========================================
             let availableDocs = [];
             configData.verificationBlocks.forEach(b => {
                 if (b.type === 'doc_check' && b.docs) {
-                    b.docs.forEach(d => {
-                        if (d.name && d.name.trim() !== '') availableDocs.push(d.name.trim());
-                    });
+                    b.docs.forEach(d => { if (d.name && d.name.trim() !== '') availableDocs.push(d.name.trim()); });
                 }
             });
-            availableDocs = [...new Set(availableDocs)]; // 確保不重複
+            availableDocs = [...new Set(availableDocs)];
 
             let fieldOptionsHtml = '<option value="">-- 無條件 (必交) --</option>';
             if(configData.globalFields) {
                 configData.globalFields.forEach(f => { fieldOptionsHtml += `<option value="${f.id}">${f.label} (${f.id})</option>`; });
+            }
+
+            // 抓取可用的分類群組 (Category / Types) 供是非題模組使用
+            let categoryOptionsHtml = '<option value="">-- 請選擇表單欄位分類 --</option>';
+            if (configData.types) {
+                configData.types.forEach(t => { categoryOptionsHtml += `<option value="${t.id}">${t.name}</option>`; });
             }
 
             configData.verificationBlocks.forEach((block, bIdx) => {
@@ -4478,9 +4488,8 @@
                         }
 
                         const hasExempt = !!doc.exemptField;
-                        const isReq = doc.isRequired !== false; // 預設為 true
+                        const isReq = doc.isRequired !== false; 
 
-                        // [修改] 這裡加入了 onchange 後重新繪製，因為更改名稱會影響 data_match 模組的選單
                         docsHtml += `
                         <div class="bg-white border ${hasExempt ? 'border-amber-300 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2.5 flex flex-col relative doc-item transition-all" data-didx="${dIdx}">
                             <div class="flex justify-between items-center gap-2">
@@ -4489,7 +4498,7 @@
                                     <input type="text" class="w-full border-b border-dashed ${hasExempt ? 'border-amber-300' : 'border-slate-300'} bg-transparent py-1 px-1 text-sm font-bold text-slate-700 focus:border-primary focus:text-primary outline-none transition-colors" value="${doc.name || ''}" placeholder="輸入文件名稱 (如：實習合約書)" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value); renderVerificationView();">
                                 </div>
                                 <div class="flex items-center gap-1.5 flex-shrink-0">
-                                    <label class="flex items-center gap-1 cursor-pointer text-[11px] font-bold ${isReq ? 'text-red-600 bg-red-50 border-red-200' : 'text-slate-400 bg-slate-50 border-slate-200'} border px-2 py-1.5 rounded-md transition-colors whitespace-nowrap" title="取消勾選表示該文件為「選交」，即使沒交也不會出現警告。">
+                                    <label class="flex items-center gap-1 cursor-pointer text-[11px] font-bold ${isReq ? 'text-red-600 bg-red-50 border-red-200' : 'text-slate-400 bg-slate-50 border-slate-200'} border px-2 py-1.5 rounded-md transition-colors whitespace-nowrap" title="取消勾選表示該文件為「選交」">
                                         <input type="checkbox" ${isReq ? 'checked' : ''} onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'isRequired', this.checked)"> 必交
                                     </label>
                                     <button onclick="toggleDocExempt(${bIdx}, ${dIdx})" class="text-xs px-2.5 py-1.5 rounded-md ${hasExempt ? 'bg-amber-100 text-amber-700 hover:bg-amber-200 font-bold' : 'bg-slate-100 text-slate-500 hover:bg-slate-200'} transition flex items-center gap-1" title="設定豁免條件"><i class="fas fa-filter"></i> <span class="hidden sm:inline">條件</span></button>
@@ -4544,25 +4553,16 @@
                     let docsHtml = '';
                     if (!block.docs) block.docs = [];
                     block.docs.forEach((doc, dIdx) => {
-                        
-                        // [新增] 2. 產生對應到可用文件的下拉選單
                         let docSelectOptions = `<option value="">-- 請選擇參與比對的文件 --</option>`;
-                        availableDocs.forEach(dName => {
-                            docSelectOptions += `<option value="${dName}" ${doc.name === dName ? 'selected' : ''}>${dName}</option>`;
-                        });
-                        // 防呆：如果以前存了名字，但現在文件模組那邊被刪掉了
-                        if (doc.name && !availableDocs.includes(doc.name)) {
-                            docSelectOptions += `<option value="${doc.name}" selected>${doc.name} (⚠️ 找不到此文件)</option>`;
-                        }
+                        availableDocs.forEach(dName => { docSelectOptions += `<option value="${dName}" ${doc.name === dName ? 'selected' : ''}>${dName}</option>`; });
+                        if (doc.name && !availableDocs.includes(doc.name)) { docSelectOptions += `<option value="${doc.name}" selected>${doc.name} (⚠️ 找不到此文件)</option>`; }
 
                         docsHtml += `
                         <div class="bg-white border ${doc.isBase ? 'border-primary/50 shadow-sm' : 'border-slate-200 hover:border-slate-300'} rounded-lg p-2.5 flex items-center gap-2 doc-item transition-all" data-didx="${dIdx}">
                             <div class="doc-drag-handle cursor-grab text-slate-400 hover:text-primary flex-shrink-0"><i class="fas fa-grip-vertical"></i></div>
-                            
                             <select class="flex-grow border-b border-dashed ${doc.isBase ? 'border-primary/50 text-primary' : 'border-slate-300 text-slate-700'} bg-transparent py-1 px-1 text-sm font-bold focus:border-primary outline-none transition-colors" onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'name', this.value)">
                                 ${docSelectOptions}
                             </select>
-
                             <label class="flex items-center gap-1.5 cursor-pointer text-[11px] font-bold ${doc.isBase ? 'text-primary bg-sky-50 border-primary/30' : 'text-slate-500 bg-slate-50 border-slate-200'} border px-2 py-1.5 rounded-md transition-colors whitespace-nowrap">
                                 <input type="checkbox" ${doc.isBase ? 'checked' : ''} onchange="updateDocInBlock(${bIdx}, ${dIdx}, 'isBase', this.checked)"> 設為基準標準
                             </label>
@@ -4572,7 +4572,6 @@
 
                     contentHtml = `
                     <div class="lg:w-7/12 xl:w-2/3 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white rounded-bl-2xl">
-                        
                         <div class="flex flex-col mb-5 bg-slate-50/80 p-4 rounded-xl border border-slate-200 shadow-sm">
                             <h4 class="text-sm font-bold text-slate-700 mb-3 flex items-center gap-2"><i class="fas fa-keyboard text-primary"></i> 資料類型與表單對應欄位</h4>
                             <div class="grid grid-cols-1 gap-3">
@@ -4589,23 +4588,17 @@
                                 <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200/80">
                                     <div>
                                         <span class="text-[11px] text-slate-500 font-bold block mb-1"><i class="fas fa-link text-slate-400"></i> 綁定填報欄位 (起)</span>
-                                        <select class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'targetField1', this.value)">
-                                            ${fieldOptionsHtml.replace(`value="${block.targetField1 || ''}"`, `value="${block.targetField1 || ''}" selected`)}
-                                        </select>
+                                        <select class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'targetField1', this.value)">${fieldOptionsHtml.replace(`value="${block.targetField1 || ''}"`, `value="${block.targetField1 || ''}" selected`)}</select>
                                     </div>
                                     <div>
                                         <span class="text-[11px] text-slate-500 font-bold block mb-1"><i class="fas fa-link text-slate-400"></i> 綁定填報欄位 (訖)</span>
-                                        <select class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'targetField2', this.value)">
-                                            ${fieldOptionsHtml.replace(`value="${block.targetField2 || ''}"`, `value="${block.targetField2 || ''}" selected`)}
-                                        </select>
+                                        <select class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'targetField2', this.value)">${fieldOptionsHtml.replace(`value="${block.targetField2 || ''}"`, `value="${block.targetField2 || ''}" selected`)}</select>
                                     </div>
                                 </div>
                                 ` : `
                                 <div class="pt-2 border-t border-slate-200/80">
                                     <span class="text-[11px] text-slate-500 font-bold block mb-1"><i class="fas fa-link text-slate-400"></i> 綁定填報欄位</span>
-                                    <select class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'targetField1', this.value)">
-                                        ${fieldOptionsHtml.replace(`value="${block.targetField1 || ''}"`, `value="${block.targetField1 || ''}" selected`)}
-                                    </select>
+                                    <select class="w-full border border-slate-300 rounded p-2 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockField(${bIdx}, 'targetField1', this.value)">${fieldOptionsHtml.replace(`value="${block.targetField1 || ''}"`, `value="${block.targetField1 || ''}" selected`)}</select>
                                 </div>
                                 `}
                             </div>
@@ -4614,10 +4607,7 @@
                         <div class="flex justify-between items-start mb-4">
                             <div>
                                 <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-not-equal text-primary"></i> 參與比對的文件清單</h4>
-                                <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">
-                                    選項會自動讀取「實習證明文件檢核」模組的內容。<br>
-                                    系統由上至下尋找「基準」，<span class="text-amber-600 font-bold">若某基準在文件模組中設定為「非必交」，且前台未上傳資料，系統將自動略過它，尋找下一順位基準。</span>
-                                </p>
+                                <p class="text-[10px] text-slate-400 mt-1 leading-relaxed">系統由上至下尋找「基準」，<span class="text-amber-600 font-bold">若某基準在文件模組中設定為「非必交」，且前台未上傳資料，系統將自動略過它。</span></p>
                             </div>
                             <button onclick="addDocToBlock(${bIdx})" class="bg-white border border-primary text-primary hover:bg-primary hover:text-white px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"><i class="fas fa-plus"></i> 新增比對文件</button>
                         </div>
@@ -4629,54 +4619,125 @@
                     <div class="lg:w-5/12 xl:w-1/3 p-6 bg-slate-50/50 rounded-br-2xl flex flex-col gap-5">
                         <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100 shadow-sm">
                             <h4 class="text-sm font-bold text-amber-700 mb-2 flex items-center gap-2"><i class="fas fa-shield-alt text-amber-500"></i> 模組全局豁免條件</h4>
-                            <p class="text-[11px] text-amber-600/80 mb-3 leading-relaxed">當符合此條件時，整個模組都將<b>直接跳過檢核比對</b>。</p>
                             <div class="flex flex-col gap-2 bg-white p-3 rounded-lg border border-amber-200/50 shadow-sm">
-                                <div>
-                                    <span class="text-[11px] text-slate-500 font-bold block mb-1">當欄位：</span>
-                                    <select class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockExemptField(${bIdx}, this.value)">
-                                        ${fieldOptionsHtml.replace(`value="${block.exemptField || ''}"`, `value="${block.exemptField || ''}" selected`)}
-                                    </select>
-                                </div>
-                                <div>
-                                    <span class="text-[11px] text-slate-500 font-bold block mb-1">內容為：</span>
-                                    ${blockValControlHtml}
-                                </div>
+                                <div><select class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-primary outline-none bg-white" onchange="updateBlockExemptField(${bIdx}, this.value)">${fieldOptionsHtml.replace(`value="${block.exemptField || ''}"`, `value="${block.exemptField || ''}" selected`)}</select></div>
+                                <div>${blockValControlHtml}</div>
                             </div>
                         </div>
 
                         <div class="bg-white p-4 rounded-xl border border-slate-200 shadow-sm flex flex-col gap-3">
                             <h4 class="text-sm font-bold text-slate-700 mb-1 flex items-center gap-2"><i class="fas fa-bullhorn text-amber-500"></i> 動態提示文字設定</h4>
-                            
                             <div>
                                 <h5 class="text-[10px] font-bold text-slate-500 mb-1">1. 當所有基準文件都缺失時</h5>
-                                <textarea rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none bg-slate-50 focus:bg-white focus:ring-1 focus:ring-primary font-bold text-slate-700 shadow-inner transition resize-none custom-scroll" placeholder="找不到資料的提示" onchange="updateBlockField(${bIdx}, 'msgMissing', this.value)">${block.msgMissing || ''}</textarea>
+                                <textarea rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none bg-slate-50 focus:bg-white focus:ring-1 focus:ring-primary font-bold text-slate-700 shadow-inner transition resize-none custom-scroll" onchange="updateBlockField(${bIdx}, 'msgMissing', this.value)">${block.msgMissing || ''}</textarea>
                             </div>
-                            
                             <div class="pt-2 border-t border-slate-100">
-                                <h5 class="text-[10px] font-bold text-slate-500 mb-1 flex items-center justify-between">
-                                    <span>2. 發現資料不一致時</span>
-                                    <span class="text-primary font-mono scale-90">{{mismatch_details}}</span>
-                                </h5>
-                                <textarea rows="3" class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none bg-slate-50 focus:bg-white focus:ring-1 focus:ring-primary font-bold text-slate-700 shadow-inner transition resize-none custom-scroll" placeholder="不一致的提示" onchange="updateBlockField(${bIdx}, 'msgMismatch', this.value)">${block.msgMismatch || ''}</textarea>
+                                <h5 class="text-[10px] font-bold text-slate-500 mb-1 flex items-center justify-between"><span>2. 發現資料不一致時</span><span class="text-primary font-mono scale-90">{{mismatch_details}}</span></h5>
+                                <textarea rows="3" class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none bg-slate-50 focus:bg-white focus:ring-1 focus:ring-primary font-bold text-slate-700 shadow-inner transition resize-none custom-scroll" onchange="updateBlockField(${bIdx}, 'msgMismatch', this.value)">${block.msgMismatch || ''}</textarea>
                             </div>
-                            
                             <div class="pt-2 border-t border-slate-100">
-                                <h5 class="text-[10px] font-bold text-slate-500 mb-1 flex items-center justify-between">
-                                    <span>3. 比對完全相符時</span>
-                                    <span class="text-primary font-mono scale-90">{{base_val}}</span>
-                                </h5>
-                                <textarea rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none bg-slate-50 focus:bg-white focus:ring-1 focus:ring-primary font-bold text-slate-700 shadow-inner transition resize-none custom-scroll" placeholder="比對成功的提示" onchange="updateBlockField(${bIdx}, 'msgSuccess', this.value)">${block.msgSuccess || ''}</textarea>
+                                <h5 class="text-[10px] font-bold text-slate-500 mb-1 flex items-center justify-between"><span>3. 比對完全相符時</span><span class="text-primary font-mono scale-90">{{base_val}}</span></h5>
+                                <textarea rows="2" class="w-full border border-slate-300 rounded-lg p-2 text-xs outline-none bg-slate-50 focus:bg-white focus:ring-1 focus:ring-primary font-bold text-slate-700 shadow-inner transition resize-none custom-scroll" onchange="updateBlockField(${bIdx}, 'msgSuccess', this.value)">${block.msgSuccess || ''}</textarea>
+                            </div>
+                        </div>
+                    </div>`;
+                }
+                // ==========================================
+                // [新增] 模組 C：欄位資料檢核 (field_check)
+                // ==========================================
+                else if (block.type === 'field_check') {
+                    // 自動抓出屬於使用者所選「分類(targetCategory)」的欄位
+                    let availableFields = [];
+                    if (block.targetCategory && configData.globalFields) {
+                        availableFields = configData.globalFields.filter(f => f.category === block.targetCategory);
+                    }
+
+                    let checksHtml = '';
+                    if (!block.checks) block.checks = [];
+                    block.checks.forEach((chk, cIdx) => {
+                        let fieldOptHtml = '<option value="">-- 選擇檢核欄位 --</option>';
+                        availableFields.forEach(f => {
+                            fieldOptHtml += `<option value="${f.id}" ${chk.fieldId === f.id ? 'selected' : ''}>${f.label}</option>`;
+                        });
+                        // 防呆處理
+                        if (chk.fieldId && !availableFields.find(f => f.id === chk.fieldId)) {
+                            fieldOptHtml += `<option value="${chk.fieldId}" selected>${chk.fieldId} (⚠️ 找不到或已換類別)</option>`;
+                        }
+
+                        checksHtml += `
+                        <div class="bg-white border border-slate-200 hover:border-emerald-300 rounded-lg p-3 flex flex-col gap-2 doc-item transition-all" data-cidx="${cIdx}">
+                            <div class="flex justify-between items-center gap-2">
+                                <div class="doc-drag-handle cursor-grab text-slate-400 hover:text-emerald-500 flex-shrink-0"><i class="fas fa-grip-vertical"></i></div>
+                                <select class="w-1/3 border-b border-dashed border-emerald-400 text-emerald-700 bg-transparent py-1 px-1 text-sm font-bold focus:border-emerald-500 outline-none" onchange="updateCheckInBlock(${bIdx}, ${cIdx}, 'fieldId', this.value)">
+                                    ${block.targetCategory ? fieldOptHtml : '<option value="">請先選擇上方欄位類型</option>'}
+                                </select>
+                                <input type="text" class="flex-grow border-b border-dashed border-slate-300 text-slate-700 bg-transparent py-1 px-1 text-sm font-bold focus:border-emerald-500 outline-none transition-colors" value="${chk.question || ''}" placeholder="檢核問題 (如：資料是否正確？)" onchange="updateCheckInBlock(${bIdx}, ${cIdx}, 'question', this.value)">
+                                <button onclick="removeCheckFromBlock(${bIdx}, ${cIdx})" class="text-slate-400 hover:text-danger p-1.5 rounded hover:bg-red-50 transition flex-shrink-0"><i class="fas fa-times"></i></button>
+                            </div>
+                            <div class="pl-7 flex items-center gap-2 mt-1">
+                                <i class="fas fa-exclamation-triangle text-amber-500 text-[10px]"></i>
+                                <input type="text" class="flex-grow border border-slate-200 rounded p-1.5 text-[11px] text-slate-600 focus:ring-1 focus:ring-emerald-400 outline-none shadow-inner bg-slate-50" value="${chk.errorMsg || ''}" placeholder="錯誤提示 (可用變數: {{field_name}}, {{field_val}})" onchange="updateCheckInBlock(${bIdx}, ${cIdx}, 'errorMsg', this.value)">
+                            </div>
+                        </div>`;
+                    });
+
+                    contentHtml = `
+                    <div class="lg:w-7/12 xl:w-2/3 p-6 border-b lg:border-b-0 lg:border-r border-slate-200 bg-white rounded-bl-2xl">
+                        <div class="flex items-center justify-between mb-5 bg-slate-50/80 p-3 rounded-xl border border-slate-200">
+                            <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-layer-group text-emerald-500"></i> 目標欄位分類</h4>
+                            <select class="border border-slate-300 rounded-lg p-2 text-sm focus:ring-1 focus:ring-emerald-500 outline-none bg-white font-bold text-emerald-600 shadow-sm" onchange="updateBlockField(${bIdx}, 'targetCategory', this.value); renderVerificationView();">
+                                ${categoryOptionsHtml.replace(`value="${block.targetCategory || ''}"`, `value="${block.targetCategory || ''}" selected`)}
+                            </select>
+                        </div>
+
+                        <div class="flex justify-between items-center mb-4">
+                            <div>
+                                <h4 class="text-sm font-bold text-slate-700 flex items-center gap-2"><i class="fas fa-check-circle text-emerald-500"></i> 檢核問題清單</h4>
+                                <p class="text-[10px] text-slate-400 mt-1">前台將顯示為是非題。當檢核人員選擇「錯誤」時，系統會印出設定的提示文字。</p>
+                            </div>
+                            <button onclick="addCheckToBlock(${bIdx})" class="bg-white border border-emerald-500 text-emerald-600 hover:bg-emerald-50 px-3 py-1.5 rounded-lg text-xs font-bold transition shadow-sm flex items-center gap-1"><i class="fas fa-plus"></i> 新增題目</button>
+                        </div>
+                        <div id="block-checks-${bIdx}" class="space-y-3 min-h-[100px] p-4 bg-slate-50/80 rounded-xl border border-slate-200">
+                            ${checksHtml || '<div class="text-center text-xs text-slate-400 py-8 border-2 border-dashed border-slate-200 rounded-lg">請選擇分類並新增檢核問題</div>'}
+                        </div>
+                    </div>
+
+                    <div class="lg:w-5/12 xl:w-1/3 p-6 bg-slate-50/50 rounded-br-2xl flex flex-col gap-5">
+                        <div class="bg-amber-50/60 p-4 rounded-xl border border-amber-100 shadow-sm">
+                            <h4 class="text-sm font-bold text-amber-700 mb-2 flex items-center gap-2"><i class="fas fa-shield-alt text-amber-500"></i> 模組全局豁免條件</h4>
+                            <div class="flex flex-col gap-2 bg-white p-3 rounded-lg border border-amber-200/50 shadow-sm">
+                                <div>
+                                    <span class="text-[11px] text-slate-500 font-bold block mb-1">當欄位：</span>
+                                    <select class="w-full border border-slate-300 rounded p-1.5 text-xs focus:ring-1 focus:ring-emerald-500 outline-none bg-white" onchange="updateBlockExemptField(${bIdx}, this.value)">
+                                        ${fieldOptionsHtml.replace(`value="${block.exemptField || ''}"`, `value="${block.exemptField || ''}" selected`)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <span class="text-[11px] text-slate-500 font-bold block mb-1">內容為：</span>
+                                    ${blockValControlHtml.replace(/ring-primary/g, 'ring-emerald-500')}
+                                </div>
                             </div>
                         </div>
                     </div>`;
                 }
 
+                // 產生外層卡片並配上專屬的主題顏色
+                let isFieldCheck = block.type === 'field_check';
+                let isDataMatch = block.type === 'data_match';
+
+                let borderColor = isDataMatch ? 'border-indigo-300' : (isFieldCheck ? 'border-emerald-300' : 'border-slate-300');
+                let shadow = (isDataMatch || isFieldCheck) ? 'shadow-lg' : 'shadow-md';
+                let headerBg = isDataMatch ? 'bg-indigo-50/80 border-indigo-200 hover:bg-indigo-100' : (isFieldCheck ? 'bg-emerald-50/80 border-emerald-200 hover:bg-emerald-100' : 'bg-slate-50 border-slate-200 hover:bg-slate-100');
+                let iconBg = isDataMatch ? 'bg-indigo-600 text-white' : (isFieldCheck ? 'bg-emerald-600 text-white' : 'bg-slate-200 text-slate-600');
+                let iconClass = isDataMatch ? 'fas fa-not-equal' : (isFieldCheck ? 'fas fa-check-double' : 'fas fa-file-signature');
+                let focusRing = isDataMatch ? 'focus:border-indigo-500' : (isFieldCheck ? 'focus:border-emerald-500' : 'focus:border-primary');
+
                 canvasEl.innerHTML += `
-                <div class="bg-white border border-slate-300 shadow-md rounded-2xl flex flex-col block-item mb-6" data-bidx="${bIdx}">
-                    <div class="bg-slate-50 border-slate-200 hover:bg-slate-100 px-5 py-4 border-b rounded-t-2xl flex justify-between items-center block-drag-handle cursor-grab transition">
+                <div class="bg-white border ${borderColor} ${shadow} rounded-2xl flex flex-col block-item mb-6" data-bidx="${bIdx}">
+                    <div class="${headerBg} px-5 py-4 border-b rounded-t-2xl flex justify-between items-center block-drag-handle cursor-grab transition">
                         <div class="flex items-center gap-3 w-1/2">
-                            <div class="w-8 h-8 bg-slate-200 text-slate-600 rounded flex items-center justify-center flex-shrink-0"><i class="${block.type==='data_match' ? 'fas fa-not-equal' : 'fas fa-file-signature'}"></i></div>
-                            <input type="text" value="${block.title || ''}" onchange="updateBlockField(${bIdx}, 'title', this.value)" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 focus:border-primary outline-none transition px-1">
+                            <div class="w-8 h-8 ${iconBg} rounded flex items-center justify-center flex-shrink-0"><i class="${iconClass}"></i></div>
+                            <input type="text" value="${block.title || ''}" onchange="updateBlockField(${bIdx}, 'title', this.value)" class="w-full font-bold text-lg text-slate-800 bg-transparent border-b-2 border-transparent hover:border-slate-300 ${focusRing} outline-none transition px-1">
                         </div>
                         <button onclick="removeVerificationBlock(${bIdx})" class="text-slate-400 hover:text-danger p-2 rounded-lg hover:bg-red-50 transition font-bold text-sm"><i class="fas fa-trash-alt mr-1"></i> 刪除模組</button>
                     </div>
@@ -4684,6 +4745,7 @@
                 </div>`;
             });
 
+            // 初始化所有拖曳排序功能 (Canvas, Toolbox, Docs, Checks)
             if (!sortableCanvas) {
                 sortableCanvas = Sortable.create(canvasEl, {
                     group: { name: 'verify', put: true }, handle: '.block-drag-handle', animation: 150, ghostClass: 'sortable-ghost',
@@ -4704,7 +4766,7 @@
                     onEnd: (evt) => evt.item.classList.remove('opacity-50')
                 });
             }
-            configData.verificationBlocks.forEach((_, bIdx) => {
+            configData.verificationBlocks.forEach((block, bIdx) => {
                 const docContainer = document.getElementById(`block-docs-${bIdx}`);
                 if (docContainer) {
                     const s = Sortable.create(docContainer, {
@@ -4713,6 +4775,20 @@
                             if (evt.oldIndex !== evt.newIndex) {
                                 const item = configData.verificationBlocks[bIdx].docs.splice(evt.oldIndex, 1)[0];
                                 configData.verificationBlocks[bIdx].docs.splice(evt.newIndex, 0, item);
+                                setUnsaved(true); renderVerificationView();
+                            }
+                        }
+                    });
+                    blockDocSortables.push(s);
+                }
+                const checkContainer = document.getElementById(`block-checks-${bIdx}`);
+                if (checkContainer) {
+                    const s = Sortable.create(checkContainer, {
+                        handle: '.doc-drag-handle', animation: 150, ghostClass: 'sortable-ghost',
+                        onEnd: (evt) => {
+                            if (evt.oldIndex !== evt.newIndex) {
+                                const item = configData.verificationBlocks[bIdx].checks.splice(evt.oldIndex, 1)[0];
+                                configData.verificationBlocks[bIdx].checks.splice(evt.newIndex, 0, item);
                                 setUnsaved(true); renderVerificationView();
                             }
                         }
@@ -4736,15 +4812,19 @@
             } else if (type === 'data_match') {
                 newBlock = {
                     type: type, title: '資料一致性檢核 (如：實習起訖日期)', exemptField: '', exemptValue: '',
-                    matchType: 'daterange', 
-                    targetField1: '', 
-                    targetField2: '', 
+                    matchType: 'daterange', targetField1: '', targetField2: '', 
                     msgMissing: '{{missing_base_docs}} 皆未上傳或無資料，故無法判斷實際狀況，請盡速補齊。',
                     msgMismatch: '{{mismatch_docs}}與「{{base_name}}」內容不同，請系所說明原因。\n{{mismatch_details}}',
                     msgSuccess: '資料一致，依據「{{base_name}}」：{{base_val}}',
-                    // 改為預設給一個空選項，強迫使用者從下拉選單選擇
-                    docs: [
-                        { name: '', isBase: true }
+                    docs: [{ name: '', isBase: true }]
+                };
+            } else if (type === 'field_check') {
+                // 新增：是非題檢核模組
+                newBlock = {
+                    type: type, title: '欄位資料審查 (是非題)', exemptField: '', exemptValue: '',
+                    targetCategory: '', // 對應 configData.types 的欄位分類 (如：實習資訊-機構)
+                    checks: [
+                        { fieldId: '', question: '資料是否正確？', errorMsg: '{{field_name}} 資料有誤，請修正。' }
                     ]
                 };
             }
@@ -4775,6 +4855,25 @@
             configData.verificationBlocks[bIdx].exemptValue = '';
             setUnsaved(true);
             renderVerificationView();
+        }
+
+        // ================= 模組內：是非題項目操作邏輯 =================
+        function addCheckToBlock(bIdx) {
+            if (!configData.verificationBlocks[bIdx].checks) configData.verificationBlocks[bIdx].checks = [];
+            configData.verificationBlocks[bIdx].checks.push({ fieldId: '', question: '資料是否正確？', errorMsg: '⚠️ {{field_name}} 資料有誤，請修正。' });
+            setUnsaved(true);
+            renderVerificationView();
+        }
+
+        function removeCheckFromBlock(bIdx, cIdx) {
+            configData.verificationBlocks[bIdx].checks.splice(cIdx, 1);
+            setUnsaved(true);
+            renderVerificationView();
+        }
+
+        function updateCheckInBlock(bIdx, cIdx, field, val) {
+            configData.verificationBlocks[bIdx].checks[cIdx][field] = (typeof val === 'string') ? val.trim() : val;
+            setUnsaved(true);
         }
 
         // ================= 模組內：文件項目操作邏輯 =================
