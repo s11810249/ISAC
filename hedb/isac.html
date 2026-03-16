@@ -3249,7 +3249,7 @@
                 if(firstErrorId) {
                     const el = document.getElementById(firstErrorId);
                     // ✅ 修正捲動目標：改為尋找新的獨立捲動容器 (.form-body)
-                    const container = el ? el.closest('.form-body') : null;
+                    const container = el ? el.closest('.form-scroll-area') : null;
                     
                     if (el && container) {
                         const paddingBuffer = 20; 
@@ -4258,75 +4258,87 @@
             const visibleFields = fields.filter(f => 
                 !f.isSystem && !CORE_FIELDS.includes(f.id) && f.category !== 'sys_course_info' && f.category !== 'sys_student_info'
             );
-
+        
             if (visibleFields.length === 0) {
                 container.innerHTML = '<div class="text-center text-slate-400 py-10">無須填報欄位</div>';
                 return;
             }
-
+        
             const categories = globalConfig.templateCategories || [];
             const fieldsByCat = {};
             const sortedFields = [...visibleFields].sort((a,b) => (a.order||0) - (b.order||0));
-
+        
             sortedFields.forEach(f => {
                 const cat = f.category || 'uncategorized';
                 if(!fieldsByCat[cat]) fieldsByCat[cat] = [];
                 fieldsByCat[cat].push(f);
             });
-
+        
             const sortedCats = [...categories].sort((a,b) => a.order - b.order);
             if(fieldsByCat['uncategorized']) sortedCats.push({id: 'uncategorized', name: '其他資訊'});
-
-            container.innerHTML = ''; // 清空容器準備放入儀表板
-
-            // 1. 建立分類頁籤按鈕區 (Tab Header)
-            const tabHeader = document.createElement('div');
-            tabHeader.className = 'flex flex-wrap gap-2 mb-6 bg-slate-50 p-2 rounded-xl border border-slate-100 shadow-inner';
+        
+            container.innerHTML = ''; 
+        
+            // ★ 關鍵修改：將外層容器轉換為「滿版、左右排版」且自身不捲動的容器
+            container.className = 'form-body flex flex-row w-full h-full overflow-hidden relative';
+        
+            // 1. 建立左側分類按鈕區 (Sidebar)
+            const tabSidebar = document.createElement('div');
+            // 固定寬度、加上右邊框與獨立捲動
+            tabSidebar.className = 'w-40 md:w-48 flex-shrink-0 border-r border-slate-200 bg-slate-50 flex flex-col overflow-y-auto custom-scroll z-10';
             
-            // 2. 建立資料內容區 (Tab Content)
+            // 2. 建立右側資料內容區 (Content)
             const tabContentContainer = document.createElement('div');
-            tabContentContainer.className = 'relative';
-
+            // 加上 form-scroll-area 標籤供防呆捲動使用，並加上獨立捲動
+            tabContentContainer.className = 'form-scroll-area flex-grow p-6 overflow-y-auto custom-scroll relative pb-24 bg-white';
+        
             let isFirst = true;
-
+        
             sortedCats.forEach(catDef => {
                 const catFields = fieldsByCat[catDef.id];
                 if(!catFields || catFields.length === 0) return;
-
+        
                 // --- 產生切換按鈕 ---
                 const tabBtn = document.createElement('button');
-                const activeClasses = 'bg-white text-primary shadow border-primary/20';
-                const inactiveClasses = 'bg-transparent text-slate-500 hover:bg-slate-200/50 hover:text-slate-700 border-transparent';
                 
-                tabBtn.className = `px-4 py-2 rounded-lg text-sm font-bold border transition-all duration-200 flex-grow sm:flex-grow-0 text-center ${isFirst ? activeClasses : inactiveClasses}`;
-                tabBtn.innerHTML = `<i class="fas fa-folder-open mr-1.5 ${isFirst ? 'text-primary/70' : 'text-slate-400'}"></i>${catDef.name}`;
-
+                // ★ 樣式修改：仿照學生名單，左側藍色粗線條標示目前位置
+                const activeClasses = 'bg-white text-primary font-bold border-l-4 border-primary shadow-sm';
+                const inactiveClasses = 'bg-transparent text-slate-600 hover:bg-slate-200/50 hover:text-slate-800 border-l-4 border-transparent';
+                
+                tabBtn.className = `px-4 py-3 text-sm text-left transition-all duration-200 w-full border-b border-slate-100 ${isFirst ? activeClasses : inactiveClasses}`;
+                tabBtn.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-folder-open ${isFirst ? 'text-primary' : 'text-slate-400'}"></i>
+                        <span class="truncate">${catDef.name}</span>
+                    </div>
+                `;
+        
                 // --- 產生該分類的資料面板 ---
                 const contentPane = document.createElement('div');
                 contentPane.id = `pane-${app.id}-${catDef.id}`;
                 contentPane.className = `category-pane ${isFirst ? 'block animate-fade-in' : 'hidden'}`;
-
+        
                 const grid = document.createElement('div');
                 grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mb-4';
-
+        
                 catFields.forEach(f => {
                     const wrapper = document.createElement('div');
                     const span = (f.colSpan === 4 || f.type === 'address' || f.type === 'list') ? 'col-span-1 md:col-span-2' : 'col-span-1';
                     wrapper.className = `field-group ${span} min-w-0`;
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
-
+        
                     const label = document.createElement('label');
                     label.className = "block text-[12px] font-bold text-slate-500 mb-1 flex items-center";
                     label.innerHTML = `${f.label}`;
-
+        
                     if(f.description) {
                         const formattedDesc = f.description.replace(/\\n|\n/g, '<br>');
                         label.innerHTML += `<div class="tooltip-container"><i class="fas fa-info-circle tooltip-icon text-slate-400 ml-1.5"></i><span class="tooltip-text">${formattedDesc}</span></div>`;
                     }
                     wrapper.appendChild(label);
-
+        
                     let val = app.formData[f.id];
-
+        
                     if (f.type === 'date' && val) {
                         let displayVal = String(val).replace(/-/g, '/');
                         if (f.inputFormat === 'ROC') {
@@ -4340,54 +4352,55 @@
                     else if (f.type === 'checkbox') {
                         val = (val === true || val === 'true') ? '✅ 是 (Yes)' : '❌ 否 (No)';
                     }
-
+        
                     // 唯讀資料卡片
                     const valBox = document.createElement('div');
                     valBox.id = `input-${app.id}-${f.id}`;
                     valBox.classList.add(`app-input-${app.id}-${f.id}`);
                     valBox.className = "w-full bg-slate-50/80 text-slate-800 font-bold border border-slate-200 rounded-lg px-3 py-2 text-[13px] min-h-[38px] break-words whitespace-pre-wrap flex items-center shadow-sm leading-snug";
-
+        
                     if (val === undefined || val === null || String(val).trim() === '') {
                         valBox.innerHTML = '<span class="text-slate-400 font-normal italic text-[12px]">(未填寫)</span>';
                         valBox.classList.add('bg-slate-100/50');
                     } else {
                         valBox.innerText = val;
                     }
-
+        
                     wrapper.appendChild(valBox);
                     grid.appendChild(wrapper);
                 });
                 
                 contentPane.appendChild(grid);
                 tabContentContainer.appendChild(contentPane);
-
+        
                 // --- 綁定頁籤切換事件 ---
                 tabBtn.onclick = () => {
                     // 移除所有按鈕的 active 狀態
-                    Array.from(tabHeader.children).forEach(btn => {
-                        btn.className = `px-4 py-2 rounded-lg text-sm font-bold border transition-all duration-200 flex-grow sm:flex-grow-0 text-center ${inactiveClasses}`;
-                        btn.querySelector('i').className = 'fas fa-folder-open mr-1.5 text-slate-400';
+                    Array.from(tabSidebar.children).forEach(btn => {
+                        btn.className = `px-4 py-3 text-sm text-left transition-all duration-200 w-full border-b border-slate-100 ${inactiveClasses}`;
+                        btn.querySelector('i').className = 'fas fa-folder-open text-slate-400';
                     });
                     // 隱藏所有面板
                     Array.from(tabContentContainer.children).forEach(pane => {
                         pane.classList.remove('block', 'animate-fade-in');
                         pane.classList.add('hidden');
                     });
-
+        
                     // 啟用當前按鈕與面板
-                    tabBtn.className = `px-4 py-2 rounded-lg text-sm font-bold border transition-all duration-200 flex-grow sm:flex-grow-0 text-center ${activeClasses}`;
-                    tabBtn.querySelector('i').className = 'fas fa-folder-open mr-1.5 text-primary/70';
+                    tabBtn.className = `px-4 py-3 text-sm text-left transition-all duration-200 w-full border-b border-slate-100 ${activeClasses}`;
+                    tabBtn.querySelector('i').className = 'fas fa-folder-open text-primary';
                     contentPane.classList.remove('hidden');
                     contentPane.classList.add('block', 'animate-fade-in');
                 };
-
-                tabHeader.appendChild(tabBtn);
+        
+                tabSidebar.appendChild(tabBtn);
                 isFirst = false;
             });
-
-            container.appendChild(tabHeader);
+        
+            // 將左右兩個區塊放入容器中
+            container.appendChild(tabSidebar);
             container.appendChild(tabContentContainer);
-
+        
             // 確保邏輯連動 (隱藏不需要的欄位) 依然有效
             setTimeout(() => evaluateLogic(app), 0);
         }
