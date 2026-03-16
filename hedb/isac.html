@@ -3378,50 +3378,45 @@
         
             const div = document.createElement('div');
             div.id = `content-${appId}`;
-            // 修改：移除 gap-6，改用滿版佈局
             div.className = 'dynamic-tab-content w-full h-full flex flex-col lg:flex-row'; 
             
             // === 左側：系統填報表單區 ===
             const formCol = document.createElement('div');
-            // 修改：高度滿版，加上右邊框區隔
             formCol.className = 'lg:w-1/2 w-full flex flex-col h-full border-r border-slate-200 bg-white relative';
             
             const formHeader = document.createElement('div');
-            // 修改：把 py-4 換成 h-16，強制高度固定
             formHeader.className = 'bg-slate-50 px-6 h-16 border-b border-slate-200 flex items-center justify-between flex-shrink-0 z-10';
-            // 修改：加上 text-lg 確保兩邊字體大小一致
             formHeader.innerHTML = `<h3 class="text-lg font-bold text-primary flex items-center gap-2"><i class="fas fa-columns"></i> 系統填報資料儀表板</h3>`;
             formCol.appendChild(formHeader);
         
             const formContainer = document.createElement('div');
-            // 修改：加上獨立的 overflow-y-auto，這區自己滑動！
             formContainer.className = 'form-body p-6 overflow-y-auto custom-scroll flex-grow relative pb-24'; 
             renderFields(formContainer, app);
             formCol.appendChild(formContainer);
         
             // === 右側：中心檢核作業區 ===
             const verifyCol = document.createElement('div');
-            // 修改：高度滿版
             verifyCol.className = 'lg:w-1/2 w-full flex flex-col h-full bg-slate-50 relative';
             
             const verifyHeader = document.createElement('div');
-            // 修改：把 py-4 換成 h-16，強制高度固定
             verifyHeader.className = 'bg-emerald-50 px-6 h-16 border-b border-emerald-200 flex items-center justify-between flex-shrink-0 z-10';
-            // 修改：加上 text-lg 確保兩邊字體大小一致
+            // ★ 移除「產出報告」按鈕
             verifyHeader.innerHTML = `
                 <h3 class="text-lg font-bold text-emerald-700 flex items-center gap-2"><i class="fas fa-check-double"></i> 中心檢核作業區</h3>
-                <button onclick="generateVerificationReport('${appId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded shadow-sm font-bold transition flex items-center gap-1.5 transform hover:scale-105">
-                    <i class="fas fa-file-export"></i> 產出報告
-                </button>
             `;
             verifyCol.appendChild(verifyHeader);
         
             const verifyContainer = document.createElement('div');
-            // 修改：加上獨立的 overflow-y-auto，這區自己滑動！
-            verifyContainer.className = 'verify-body p-6 overflow-y-auto custom-scroll flex-grow pb-24 space-y-5';
+            verifyContainer.className = 'verify-body p-6 overflow-y-auto custom-scroll flex-grow space-y-5';
             verifyContainer.id = `verify-container-${appId}`;
             renderVerificationPanel(verifyContainer, app);
             verifyCol.appendChild(verifyContainer);
+        
+            // ★ 新增：固定於底部的即時錯誤警告區塊
+            const errorSummaryFooter = document.createElement('div');
+            errorSummaryFooter.id = `error-summary-${appId}`;
+            errorSummaryFooter.className = 'flex-shrink-0 border-t border-slate-200 bg-white p-5 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20 max-h-[30vh] overflow-y-auto custom-scroll';
+            verifyCol.appendChild(errorSummaryFooter);
         
             div.appendChild(formCol);
             div.appendChild(verifyCol);
@@ -3744,7 +3739,6 @@
                     blockDiv.style.opacity = '0.6';
                     blockDiv.style.pointerEvents = 'none';
                     const statusEl = document.getElementById(`v-status-${app.id}-${bIdx}`);
-                    // ★ 新版 Pill Badge
                     if(statusEl) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[11px] font-bold shadow-sm"><i class="fas fa-ban"></i> 無須檢核</span>`;
                     return;
                 } else {
@@ -3861,7 +3855,6 @@
                     resultBox.classList.remove('hidden');
         
                     if (!activeBaseDoc) {
-                        // ★ 新版結果 Banner 設計 (Callout style)
                         resultBox.className = 'text-sm p-4 rounded-lg border-l-4 border-slate-300 bg-slate-50 text-slate-600 shadow-sm mt-2 flex gap-3';
                         const missingBaseNames = block.docs.filter(d=>d.isBase).map(d=>d.name).join(' 及 ');
                         resultBox.innerHTML = `<i class="fas fa-info-circle text-lg text-slate-400 mt-0.5"></i> <div>${(block.msgMissing || '').replace(/\{\{missing_base_docs\}\}/g, missingBaseNames)}</div>`;
@@ -3947,18 +3940,37 @@
                     else statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-bold shadow-sm"><i class="fas fa-check"></i> 全數通過</span>`;
                 }
             });
+        
+            // ★ 關鍵：在此處呼叫即時更新面板
+            if (typeof updateLiveErrorSummary === 'function') {
+                updateLiveErrorSummary(app);
+            }
         }
 
-        // ==========================================
-        // 核心功能：產出檢核報告 (抓取所有錯誤與缺件)
-        // ==========================================
-        window.generateVerificationReport = function(appId) {
-            const student = groupedStudents[currentStudentId];
-            const app = student.applications.find(a => a.id === appId);
-            const blocks = currentYearConfig.verificationBlocks || [];
+        // --- 即時錯誤統計清單與複製功能 ---
+        window.copyLiveErrors = function(btn) {
+            const ul = btn.parentElement.nextElementSibling;
+            if(!ul) return;
+            const textToCopy = Array.from(ul.querySelectorAll('li span')).map(span => '⚠️ ' + span.innerText).join('\n\n');
+            navigator.clipboard.writeText(textToCopy);
             
+            // 按鈕視覺回饋
+            const originalHtml = btn.innerHTML;
+            btn.innerHTML = '<i class="fas fa-check text-emerald-600"></i> 已複製';
+            btn.classList.add('bg-emerald-50', 'border-emerald-200');
+            setTimeout(() => {
+                btn.innerHTML = originalHtml;
+                btn.classList.remove('bg-emerald-50', 'border-emerald-200');
+            }, 2000);
+        };
+        
+        function updateLiveErrorSummary(app) {
+            const summaryDiv = document.getElementById(`error-summary-${app.id}`);
+            if (!summaryDiv) return;
+        
+            const blocks = currentYearConfig.verificationBlocks || [];
             let reportLines = [];
-
+        
             blocks.forEach((block, bIdx) => {
                 let isBlockExempt = false;
                 if (block.exemptField) {
@@ -3974,7 +3986,8 @@
                     }
                 }
                 if (isBlockExempt) return;
-
+        
+                // 1. 文件缺交
                 if (block.type === 'doc_check') {
                     let missing = [];
                     block.docs.forEach((doc, dIdx) => {
@@ -3990,14 +4003,21 @@
                         reportLines.push(msg);
                     }
                 }
-
+        
+                // 2. 資料不一致 / 待輸入
                 if (block.type === 'data_match') {
                     const resultBox = document.getElementById(`v-match-result-${app.id}-${bIdx}`);
-                    if (resultBox && (resultBox.classList.contains('text-red-700') || resultBox.classList.contains('text-amber-800'))) {
-                        reportLines.push(resultBox.innerText.replace(/⚠️\s*/, '')); 
+                    if (resultBox && (resultBox.classList.contains('border-red-500') || resultBox.classList.contains('border-slate-300') || resultBox.classList.contains('border-indigo-400'))) {
+                        const divContent = resultBox.querySelector('div');
+                        if (divContent) {
+                            // 把 HTML 的換行轉為純文字的分號
+                            let text = divContent.innerHTML.replace(/<br\s*[\/]?>/gi, "；").replace(/<[^>]+>/g, '');
+                            reportLines.push(text);
+                        }
                     }
                 }
-
+        
+                // 3. 欄位異常
                 if (block.type === 'field_check') {
                     block.checks.forEach((chk, cIdx) => {
                         const fState = app.verification.fields[`${bIdx}_${cIdx}`];
@@ -4011,43 +4031,45 @@
                                     .replace(/\{\{field_val\}\}/g, fVal)
                                     .replace(/\{\{doc_select\}\}/g, fState.vars.doc || '(未選擇文件)')
                                     .replace(/\{\{correct_input\}\}/g, fState.vars.correct || '(未填寫正確內容)');
-                                reportLines.push(msg);
+                                reportLines.push(msg.replace(/<[^>]+>/g, '')); // 移除 HTML 標籤
                             }
                         }
                     });
                 }
             });
-
+        
+            // --- 渲染畫面 ---
             if (reportLines.length === 0) {
-                Swal.fire({
-                    title: '✅ 檢核通過',
-                    text: '此實習紀錄的「實習文件、資料一致性、欄位正確性」皆未發現錯誤！',
-                    icon: 'success',
-                    confirmButtonColor: '#059669',
-                    customClass: { popup: 'rounded-xl shadow-2xl border border-slate-100' }
-                });
+                summaryDiv.innerHTML = `
+                    <div class="flex items-center gap-3.5 text-emerald-700 bg-emerald-50 px-5 py-3.5 rounded-xl border border-emerald-200">
+                        <div class="w-8 h-8 rounded-full bg-emerald-200/60 flex items-center justify-center flex-shrink-0">
+                            <i class="fas fa-check text-emerald-700"></i>
+                        </div>
+                        <div class="flex flex-col">
+                            <span class="font-bold text-[15px]">目前無任何檢核異常</span>
+                            <span class="text-xs text-emerald-600/80 mt-0.5">太棒了！所有檢核項目皆已通過審查或資料相符。</span>
+                        </div>
+                    </div>
+                `;
             } else {
-                const reportText = reportLines.map(l => '⚠️ ' + l).join('\n\n');
-                Swal.fire({
-                    title: '檢核缺失報告',
-                    html: `
-                        <div class="text-left text-sm text-slate-600 mb-3">請複製以下報告內容回覆給系所修改：</div>
-                        <textarea class="w-full h-64 p-4 border border-slate-300 rounded-lg text-sm bg-slate-50 text-slate-800 font-medium custom-scroll focus:ring-2 focus:ring-emerald-500 outline-none resize-none" id="swal-report-textarea" readonly>${reportText}</textarea>
-                    `,
-                    icon: 'warning',
-                    confirmButtonText: '<i class="fas fa-copy mr-1"></i> 複製報告',
-                    confirmButtonColor: '#059669',
-                    showCancelButton: true,
-                    cancelButtonText: '關閉',
-                    customClass: { popup: 'rounded-xl shadow-2xl border border-slate-100 w-full max-w-2xl' }
-                }).then((res) => {
-                    if (res.isConfirmed) {
-                        navigator.clipboard.writeText(reportText);
-                        showToast('success', '報告已複製到剪貼簿，請貼上回覆給系所');
-                    }
-                });
+                const listHtml = reportLines.map(line => `<li class="flex items-start gap-2.5 text-[13px] leading-relaxed"><i class="fas fa-exclamation-triangle mt-1 text-red-500 flex-shrink-0"></i><span class="font-medium">${line}</span></li>`).join('');
+                summaryDiv.innerHTML = `
+                    <div class="flex flex-col gap-3">
+                        <div class="flex justify-between items-center">
+                            <span class="font-bold text-red-600 text-[15px] flex items-center gap-2">
+                                <i class="fas fa-engine-warning text-lg"></i> 待處理異常與警示 (${reportLines.length})
+                            </span>
+                            <button onclick="copyLiveErrors(this)" class="text-xs bg-white border border-slate-200 hover:bg-slate-50 hover:text-primary hover:border-primary transition px-3 py-1.5 rounded-md text-slate-600 shadow-sm flex items-center gap-1.5 font-bold">
+                                <i class="fas fa-copy"></i> 複製清單
+                            </button>
+                        </div>
+                        <ul class="text-red-800 space-y-3 bg-red-50 p-4 rounded-xl border border-red-100 shadow-inner">
+                            ${listHtml}
+                        </ul>
+                    </div>
+                `;
             }
-        };
+        }
 
         
         function createRocDatePicker(appId, fieldId, initialValue, onChange) {
