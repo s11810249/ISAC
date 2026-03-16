@@ -1036,8 +1036,8 @@
                 <div id="sticky-progress-header" class="hidden bg-white border-b border-slate-200 px-6 py-3 shadow-sm z-20 flex-shrink-0">
                     </div>
                 <div class="flex-grow relative overflow-hidden bg-slate-50">
-                    <div id="form-content-area" class="absolute inset-0 overflow-y-auto custom-scroll p-6 pb-24">
-                        <div id="dynamic-tabs-area"></div>
+                    <div id="form-content-area" class="absolute inset-0 overflow-hidden flex flex-col bg-white">
+                        <div id="dynamic-tabs-area" class="flex-grow h-full"></div>
                     </div>
                 </div>
         </main>
@@ -3248,19 +3248,18 @@
                 // 捲動邏輯 (保持不變)
                 if(firstErrorId) {
                     const el = document.getElementById(firstErrorId);
-                    const container = document.getElementById('form-content-area');
-                    const header = document.getElementById('sticky-progress-header');
+                    // ✅ 修正捲動目標：改為尋找新的獨立捲動容器 (.form-body)
+                    const container = el ? el.closest('.form-body') : null;
                     
                     if (el && container) {
-                        const headerHeight = (header && !header.classList.contains('hidden')) ? header.offsetHeight : 0;
                         const paddingBuffer = 20; 
                         
                         const elRect = el.getBoundingClientRect();
                         const containerRect = container.getBoundingClientRect();
                         const absoluteElTop = elRect.top - containerRect.top + container.scrollTop;
                         
-                        const targetScroll = absoluteElTop - headerHeight - paddingBuffer;
-
+                        const targetScroll = absoluteElTop - paddingBuffer;
+        
                         container.scrollTo({
                             top: targetScroll,
                             behavior: 'smooth'
@@ -3376,32 +3375,37 @@
             const app = student.applications.find(a => a.id === appId);
             
             if (!app.verification) app.verification = { docs: {}, matches: {}, fields: {} };
-
+        
             const div = document.createElement('div');
             div.id = `content-${appId}`;
-            // 使用 lg:flex-row 讓版面在一般筆電上也能左右並排
-            div.className = 'dynamic-tab-content w-full h-full flex flex-col lg:flex-row gap-6'; 
+            // 修改：移除 gap-6，改用滿版佈局
+            div.className = 'dynamic-tab-content w-full h-full flex flex-col lg:flex-row'; 
             
-            // === 左側：系統填報表單區 (調整為 50% 寬度) ===
+            // === 左側：系統填報表單區 ===
             const formCol = document.createElement('div');
-            formCol.className = 'lg:w-1/2 w-full flex flex-col gap-4 h-full relative';
+            // 修改：高度滿版，加上右邊框區隔
+            formCol.className = 'lg:w-1/2 w-full flex flex-col h-full border-r border-slate-200 bg-white relative';
             
             const formHeader = document.createElement('div');
-            formHeader.className = 'bg-white px-5 py-3 rounded-xl border border-slate-200 shadow-sm flex items-center justify-between sticky top-0 z-10 flex-shrink-0';
+            // 修改：移除 rounded-xl, shadow-sm，改為扁平化底色與底部框線，自然固定在頂部
+            formHeader.className = 'bg-slate-50 px-6 py-4 border-b border-slate-200 flex items-center justify-between flex-shrink-0 z-10';
             formHeader.innerHTML = `<h3 class="font-bold text-primary flex items-center gap-2"><i class="fas fa-columns"></i> 系統填報資料儀表板</h3>`;
             formCol.appendChild(formHeader);
-
+        
             const formContainer = document.createElement('div');
-            formContainer.className = 'form-body bg-white p-6 rounded-xl border border-slate-200 shadow-sm overflow-y-auto custom-scroll flex-grow relative'; 
+            // 修改：加上獨立的 overflow-y-auto，這區自己滑動！
+            formContainer.className = 'form-body p-6 overflow-y-auto custom-scroll flex-grow relative pb-24'; 
             renderFields(formContainer, app);
             formCol.appendChild(formContainer);
-
-            // === 右側：中心檢核作業區 (調整為 50% 寬度) ===
+        
+            // === 右側：中心檢核作業區 ===
             const verifyCol = document.createElement('div');
-            verifyCol.className = 'lg:w-1/2 w-full flex flex-col gap-4 h-full relative';
+            // 修改：高度滿版
+            verifyCol.className = 'lg:w-1/2 w-full flex flex-col h-full bg-slate-50 relative';
             
             const verifyHeader = document.createElement('div');
-            verifyHeader.className = 'bg-white px-5 py-3 rounded-xl border border-emerald-200 shadow-sm flex items-center justify-between sticky top-0 z-10 flex-shrink-0';
+            // 修改：移除卡片樣式，改為扁平化底色與底部框線
+            verifyHeader.className = 'bg-emerald-50 px-6 py-4 border-b border-emerald-200 flex items-center justify-between flex-shrink-0 z-10';
             verifyHeader.innerHTML = `
                 <h3 class="font-bold text-emerald-700 flex items-center gap-2"><i class="fas fa-check-double"></i> 中心檢核作業區</h3>
                 <button onclick="generateVerificationReport('${appId}')" class="bg-emerald-600 hover:bg-emerald-700 text-white text-xs px-3 py-1.5 rounded shadow-sm font-bold transition flex items-center gap-1.5 transform hover:scale-105">
@@ -3409,22 +3413,23 @@
                 </button>
             `;
             verifyCol.appendChild(verifyHeader);
-
+        
             const verifyContainer = document.createElement('div');
-            verifyContainer.className = 'verify-body overflow-y-auto custom-scroll flex-grow pb-10 space-y-5';
+            // 修改：加上獨立的 overflow-y-auto，這區自己滑動！
+            verifyContainer.className = 'verify-body p-6 overflow-y-auto custom-scroll flex-grow pb-24 space-y-5';
             verifyContainer.id = `verify-container-${appId}`;
             renderVerificationPanel(verifyContainer, app);
             verifyCol.appendChild(verifyContainer);
-
+        
             div.appendChild(formCol);
             div.appendChild(verifyCol);
-
+        
             setTimeout(() => {
                 if (typeof updateVerificationLogic === 'function') {
                     updateVerificationLogic(app);
                 }
             }, 50);
-
+        
             return div;
         }
         
