@@ -3442,76 +3442,90 @@
             container.innerHTML = '';
             const blocks = currentYearConfig.verificationBlocks || [];
             if (blocks.length === 0) {
-                container.innerHTML = '<div class="text-center text-slate-400 py-10 bg-white rounded-xl border border-slate-200 shadow-sm">此學年度尚未設定檢核模組</div>';
+                container.innerHTML = '<div class="flex flex-col items-center justify-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400"><i class="fas fa-clipboard-check text-4xl mb-3 opacity-50"></i><p class="text-sm font-bold">此學年度尚未設定檢核模組</p></div>';
                 return;
             }
-
-            // 預先收集可用文件 (給下拉選單使用)
+        
             let availableDocs = [];
             blocks.forEach(b => {
                 if (b.type === 'doc_check' && b.docs) {
                     b.docs.forEach(d => { if (d.name) availableDocs.push(d.name.trim()); });
                 }
             });
-
+        
             blocks.forEach((block, bIdx) => {
                 const blockDiv = document.createElement('div');
-                blockDiv.className = 'bg-white rounded-xl shadow-sm border border-slate-200 overflow-hidden transition-all duration-300';
+                // ★ 儀表板卡片風格：純白底、微陰影、柔和圓角
+                blockDiv.className = 'bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.08)] border border-slate-200 overflow-hidden transition-all duration-300 flex flex-col';
                 blockDiv.id = `vblock-${app.id}-${bIdx}`;
                 
-                // 配色主題對應
                 const themeMap = {
-                    'doc_check': { bg: 'bg-blue-50', border: 'border-blue-100', text: 'text-blue-800', icon: 'fa-file-signature' },
-                    'data_match': { bg: 'bg-indigo-50', border: 'border-indigo-100', text: 'text-indigo-800', icon: 'fa-not-equal' },
-                    'field_check': { bg: 'bg-emerald-50', border: 'border-emerald-100', text: 'text-emerald-800', icon: 'fa-check-double' }
+                    'doc_check': { icon: 'fa-folder-open', color: 'text-blue-600', bg: 'bg-blue-50' },
+                    'data_match': { icon: 'fa-balance-scale', color: 'text-indigo-600', bg: 'bg-indigo-50' },
+                    'field_check': { icon: 'fa-spell-check', color: 'text-emerald-600', bg: 'bg-emerald-50' }
                 };
                 const t = themeMap[block.type] || themeMap['doc_check'];
-
+        
                 const header = document.createElement('div');
-                header.className = `${t.bg} px-4 py-3 border-b ${t.border} flex justify-between items-center`;
+                // ★ 標題列：乾淨的灰白底，搭配左側品牌色點綴
+                header.className = `px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center`;
                 header.innerHTML = `
-                    <h4 class="font-bold ${t.text} text-sm flex items-center gap-2"><i class="fas ${t.icon}"></i> ${block.title}</h4>
-                    <div id="v-status-${app.id}-${bIdx}" class="text-xs font-bold"></div>
+                    <div class="flex items-center gap-2.5">
+                        <div class="w-7 h-7 rounded-lg ${t.bg} ${t.color} flex items-center justify-center text-sm shadow-sm border border-white">
+                            <i class="fas ${t.icon}"></i>
+                        </div>
+                        <h4 class="font-bold text-slate-700 text-[15px] tracking-wide">${block.title}</h4>
+                    </div>
+                    <div id="v-status-${app.id}-${bIdx}" class="flex items-center"></div>
                 `;
                 blockDiv.appendChild(header);
-
+        
                 const contentDiv = document.createElement('div');
-                contentDiv.className = 'p-4 space-y-4';
+                contentDiv.className = 'p-5 flex flex-col gap-4';
                 contentDiv.id = `v-content-${app.id}-${bIdx}`;
-
+        
                 // --- 1. 實習證明文件檢核 ---
                 if (block.type === 'doc_check') {
                     if(!app.verification.docs) app.verification.docs = {};
                     const list = document.createElement('div');
-                    list.className = 'space-y-2';
+                    // ★ 清單風格：極簡分隔線
+                    list.className = 'border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100 bg-white';
+                    
                     block.docs.forEach((doc, dIdx) => {
                         const row = document.createElement('div');
-                        row.className = 'flex items-center gap-2 p-2 rounded-lg hover:bg-slate-50 transition cursor-pointer border border-transparent hover:border-slate-200';
+                        row.className = 'flex items-center justify-between p-3 hover:bg-slate-50 transition cursor-pointer group';
                         row.id = `v-doc-row-${app.id}-${bIdx}-${dIdx}`;
                         
                         const cb = document.createElement('input');
                         cb.type = 'checkbox';
-                        cb.className = 'w-4 h-4 text-blue-600 rounded border-slate-300 focus:ring-blue-500 cursor-pointer';
+                        // ★ 勾選框美化
+                        cb.className = 'w-4 h-4 text-blue-600 bg-slate-50 border-slate-300 rounded focus:ring-blue-500 cursor-pointer transition';
                         cb.checked = !!app.verification.docs[doc.name];
                         cb.onchange = (e) => {
                             app.verification.docs[doc.name] = e.target.checked;
                             saveToLocal();
                             updateVerificationLogic(app);
                         };
-
-                        const lbl = document.createElement('label');
-                        lbl.className = 'text-sm text-slate-700 cursor-pointer flex-grow font-bold select-none';
-                        lbl.innerText = doc.name;
-                        if(doc.isRequired === false) lbl.innerHTML += ` <span class="text-[10px] text-slate-400 font-normal bg-slate-100 border border-slate-200 px-1.5 py-0.5 rounded ml-2">選交</span>`;
+        
+                        const tagHtml = doc.isRequired === false 
+                            ? `<span class="text-[10px] font-medium text-slate-500 bg-slate-100 px-2 py-0.5 rounded-full ml-2">選交</span>` 
+                            : `<span class="text-[10px] font-bold text-red-500 bg-red-50 border border-red-100 px-2 py-0.5 rounded-full ml-2">必交</span>`;
+        
+                        const lblContainer = document.createElement('div');
+                        lblContainer.className = 'flex items-center gap-3 flex-grow';
+                        lblContainer.innerHTML = `
+                            <span class="text-sm font-medium text-slate-700 group-hover:text-blue-700 transition">${doc.name}</span>
+                            ${tagHtml}
+                        `;
+                        lblContainer.prepend(cb);
                         
                         const exemptBadge = document.createElement('span');
                         exemptBadge.id = `v-doc-exempt-${app.id}-${bIdx}-${dIdx}`;
-                        exemptBadge.className = 'hidden text-[10px] bg-amber-100 text-amber-700 border border-amber-200 px-2 py-0.5 rounded font-bold';
-                        exemptBadge.innerText = '系統判定免交';
-
+                        exemptBadge.className = 'hidden text-[10px] bg-amber-50 text-amber-600 border border-amber-200 px-2 py-1 rounded-md font-bold shadow-sm';
+                        exemptBadge.innerHTML = '<i class="fas fa-ban mr-1"></i> 免交';
+        
                         row.onclick = (e) => { if(e.target !== cb) cb.click(); };
-                        row.appendChild(cb);
-                        row.appendChild(lbl);
+                        row.appendChild(lblContainer);
                         row.appendChild(exemptBadge);
                         list.appendChild(row);
                     });
@@ -3524,7 +3538,7 @@
                     if(!app.verification.matches[bIdx]) app.verification.matches[bIdx] = {};
                     
                     const inputsContainer = document.createElement('div');
-                    inputsContainer.className = 'space-y-3 bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-inner';
+                    inputsContainer.className = 'grid grid-cols-1 gap-3';
                     
                     block.docs.forEach(doc => {
                         if(!doc.name) return;
@@ -3532,15 +3546,21 @@
                         const mState = app.verification.matches[bIdx][doc.name];
                         
                         const row = document.createElement('div');
-                        row.className = 'flex flex-col gap-1.5';
+                        // ★ 輸入框區塊：現代感底色與框線
+                        row.className = 'bg-slate-50 p-3.5 rounded-lg border border-slate-200 flex flex-col gap-2';
                         
                         const headerRow = document.createElement('div');
-                        headerRow.className = 'flex justify-between items-center text-xs font-bold text-slate-700';
-                        headerRow.innerHTML = `<span><i class="fas fa-file-alt text-indigo-400 mr-1.5"></i>${doc.name} ${doc.isBase ? '<span class="text-[10px] text-indigo-600 bg-indigo-100 border border-indigo-200 px-1.5 py-0.5 rounded ml-2">基準</span>' : ''}</span>`;
+                        headerRow.className = 'flex justify-between items-center';
+                        headerRow.innerHTML = `
+                            <span class="text-xs font-bold text-slate-600 flex items-center gap-2">
+                                <i class="fas fa-file-contract text-slate-400"></i> ${doc.name} 
+                                ${doc.isBase ? '<span class="text-[10px] text-indigo-700 bg-indigo-100 px-1.5 py-0.5 rounded font-bold">基準值</span>' : ''}
+                            </span>
+                        `;
                         
                         const noDataLbl = document.createElement('label');
-                        noDataLbl.className = 'flex items-center gap-1 cursor-pointer text-slate-500 hover:text-red-500 transition select-none bg-white px-2 py-1 rounded border border-slate-200 shadow-sm';
-                        noDataLbl.innerHTML = `<input type="checkbox" class="rounded text-red-500 focus:ring-red-500" ${mState.noData ? 'checked' : ''}> 無資料`;
+                        noDataLbl.className = 'flex items-center gap-1.5 cursor-pointer text-slate-500 hover:text-red-500 transition select-none text-xs font-bold';
+                        noDataLbl.innerHTML = `<input type="checkbox" class="rounded text-red-500 border-slate-300 focus:ring-red-500" ${mState.noData ? 'checked' : ''}> 無資料`;
                         noDataLbl.querySelector('input').onchange = (e) => {
                             mState.noData = e.target.checked;
                             saveToLocal();
@@ -3548,80 +3568,91 @@
                         };
                         headerRow.appendChild(noDataLbl);
                         row.appendChild(headerRow);
-
+        
                         if(!mState.noData) {
                             const inputRow = document.createElement('div');
-                            inputRow.className = 'flex gap-2 items-center';
+                            inputRow.className = 'flex gap-2 items-center mt-1';
                             
                             const createInput = (key, ph) => {
                                 const input = document.createElement('input');
                                 input.type = 'text';
-                                input.className = 'w-full border border-slate-300 rounded-lg p-2 text-xs focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white font-bold text-slate-700 shadow-sm transition';
+                                input.className = 'w-full border border-slate-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 outline-none bg-white font-medium text-slate-800 shadow-sm transition placeholder-slate-300';
                                 input.placeholder = ph;
                                 input.value = mState[key] || '';
                                 input.oninput = (e) => { mState[key] = e.target.value; saveToLocal(); updateVerificationLogic(app); };
                                 return input;
                             };
-
+        
                             if (block.matchType === 'daterange') {
-                                inputRow.appendChild(createInput('val1', '起 (例:2023/07/01)'));
-                                inputRow.innerHTML += '<span class="text-slate-400 font-bold">-</span>';
-                                inputRow.appendChild(createInput('val2', '訖 (例:2023/08/31)'));
+                                inputRow.appendChild(createInput('val1', '起 (例: 112/07/01)'));
+                                inputRow.innerHTML += '<span class="text-slate-300"><i class="fas fa-arrow-right"></i></span>';
+                                inputRow.appendChild(createInput('val2', '訖 (例: 112/08/31)'));
                             } else {
-                                inputRow.appendChild(createInput('val1', '請輸入佐證文件上的資料...'));
+                                inputRow.appendChild(createInput('val1', '請輸入佐證文件上的資料以供比對...'));
                             }
                             row.appendChild(inputRow);
                         }
                         inputsContainer.appendChild(row);
                     });
                     contentDiv.appendChild(inputsContainer);
-
+        
                     const resultBox = document.createElement('div');
                     resultBox.id = `v-match-result-${app.id}-${bIdx}`;
-                    resultBox.className = 'text-xs p-3 rounded-lg border mt-3 hidden transition-all shadow-sm'; 
+                    resultBox.className = 'hidden transition-all'; 
                     contentDiv.appendChild(resultBox);
                 }
-
+        
                 // --- 3. 欄位資料審查 (是非題) ---
                 else if (block.type === 'field_check') {
                     if(!app.verification.fields) app.verification.fields = {};
                     
                     const list = document.createElement('div');
-                    list.className = 'space-y-4';
+                    list.className = 'grid grid-cols-1 gap-4';
                     
                     block.checks.forEach((chk, cIdx) => {
                         const stateKey = `${bIdx}_${cIdx}`;
                         if(!app.verification.fields[stateKey]) app.verification.fields[stateKey] = { status: 'none', errorIdx: 0, vars: {} };
                         const fState = app.verification.fields[stateKey];
-
+        
                         const row = document.createElement('div');
-                        row.className = 'bg-slate-50 p-4 rounded-xl border border-slate-200 shadow-sm';
+                        // ★ 審核項目卡片化
+                        row.className = 'p-4 rounded-xl border border-slate-200 bg-white shadow-sm flex flex-col relative';
                         
                         const fieldDef = currentYearConfig.fields?.find(f => f.id === chk.fieldId);
                         const fLabel = fieldDef ? fieldDef.label : chk.fieldId;
-                        const fVal = app.formData[chk.fieldId] || '(空)';
-
+                        const fVal = app.formData[chk.fieldId] || '(未填寫)';
+        
                         row.innerHTML = `
-                            <div class="text-xs font-bold text-slate-500 mb-2 flex items-center justify-between">
-                                <span><i class="fas fa-cube mr-1.5 text-emerald-400"></i>${fLabel}</span>
-                                <span class="font-mono text-emerald-800 bg-emerald-100 border border-emerald-200 px-2 py-0.5 rounded shadow-inner" id="v-field-val-${app.id}-${stateKey}">${fVal}</span>
+                            <div class="flex items-start justify-between mb-4 gap-4">
+                                <div class="flex flex-col gap-1.5 flex-grow">
+                                    <span class="text-[11px] font-bold text-slate-400 uppercase tracking-widest">${fLabel}</span>
+                                    <div class="bg-slate-50 border border-slate-100 rounded-md px-3 py-2 text-sm font-bold text-slate-800 break-all shadow-inner">
+                                        ${fVal}
+                                    </div>
+                                    <div class="text-sm font-medium text-slate-600 mt-1 flex items-center gap-1.5">
+                                        <i class="fas fa-question-circle text-emerald-500 opacity-70"></i> ${chk.question}
+                                    </div>
+                                </div>
                             </div>
-                            <div class="text-sm font-bold text-slate-800 mb-3">${chk.question}</div>
-                            <div class="flex gap-2">
-                                <button id="btn-pass-${app.id}-${stateKey}" class="flex-1 py-2 rounded-lg border font-bold text-xs transition shadow-sm ${fState.status === 'pass' ? 'bg-emerald-500 text-white border-emerald-600 shadow-inner scale-[0.98]' : 'bg-white text-slate-600 border-slate-300 hover:bg-emerald-50 hover:text-emerald-700 hover:border-emerald-300'}"><i class="fas fa-check mr-1.5"></i> 正確</button>
-                                <button id="btn-fail-${app.id}-${stateKey}" class="flex-1 py-2 rounded-lg border font-bold text-xs transition shadow-sm ${fState.status === 'fail' ? 'bg-red-500 text-white border-red-600 shadow-inner scale-[0.98]' : 'bg-white text-slate-600 border-slate-300 hover:bg-red-50 hover:text-red-700 hover:border-red-300'}"><i class="fas fa-times mr-1.5"></i> 錯誤</button>
+                            
+                            <div class="flex bg-slate-100 p-1 rounded-lg border border-slate-200 shadow-inner w-full">
+                                <button id="btn-pass-${app.id}-${stateKey}" class="flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 flex items-center justify-center gap-1.5 ${fState.status === 'pass' ? 'bg-white text-emerald-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}">
+                                    <i class="fas fa-check-circle"></i> 正確
+                                </button>
+                                <button id="btn-fail-${app.id}-${stateKey}" class="flex-1 py-1.5 rounded-md text-sm font-bold transition-all duration-200 flex items-center justify-center gap-1.5 ${fState.status === 'fail' ? 'bg-white text-red-600 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-700 hover:bg-slate-200/50'}">
+                                    <i class="fas fa-times-circle"></i> 異常
+                                </button>
                             </div>
                         `;
-
+        
                         // 錯誤回報設定區 (點擊錯誤才會出現)
                         const errSection = document.createElement('div');
-                        errSection.className = `flex flex-col gap-3 mt-4 pt-4 border-t border-slate-200 ${fState.status === 'fail' ? 'block' : 'hidden'} animate-fade-in`;
+                        errSection.className = `flex flex-col gap-3 mt-3 pt-3 border-t border-slate-100 ${fState.status === 'fail' ? 'block' : 'hidden'} animate-fade-in`;
                         
                         if (chk.errorMsgs && chk.errorMsgs.length > 1) {
                             const selWrap = document.createElement('div');
                             selWrap.innerHTML = `
-                                <label class="text-[10px] font-bold text-red-500 block mb-1">請選擇錯誤情境：</label>
-                                <select class="w-full border border-red-200 rounded-lg p-2 text-xs focus:ring-2 focus:ring-red-400 outline-none bg-white font-bold text-slate-700 shadow-sm cursor-pointer">
+                                <select class="w-full border border-red-200 rounded-md p-2 text-xs focus:ring-2 focus:ring-red-400 outline-none bg-red-50 font-bold text-red-700 cursor-pointer">
                                     ${chk.errorMsgs.map((e, idx) => `<option value="${idx}" ${fState.errorIdx == idx ? 'selected' : ''}>${e.name}</option>`).join('')}
                                 </select>`;
                             selWrap.querySelector('select').onchange = (e) => {
@@ -3631,42 +3662,42 @@
                             };
                             errSection.appendChild(selWrap);
                         }
-
-                        // 處理互動變數
+        
                         const activeMsg = chk.errorMsgs && chk.errorMsgs.length > 0 ? chk.errorMsgs[fState.errorIdx] : null;
                         if (activeMsg) {
                             const tplDiv = document.createElement('div');
-                            tplDiv.className = 'text-xs text-red-800 bg-red-50 p-3 rounded-lg border border-red-200 leading-loose shadow-inner';
+                            // ★ 錯誤提示框：類似終端機指令的感覺
+                            tplDiv.className = 'text-[13px] text-red-800 bg-red-50 p-3 rounded-md border border-red-200 leading-relaxed shadow-sm';
                             
                             let htmlStr = activeMsg.template
                                 .replace(/\{\{field_name\}\}/g, `<span class="font-bold underline decoration-red-300 underline-offset-2 px-1">${fLabel}</span>`)
                                 .replace(/\{\{field_val\}\}/g, `<span class="font-bold underline decoration-red-300 underline-offset-2 px-1">${fVal}</span>`);
                             
                             const docSelectHtml = `
-                                <select class="border border-red-300 rounded px-2 py-1 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.doc = this.value; saveToLocal()">
-                                    <option value="">-- 請選擇 --</option>
+                                <select class="border border-red-300 rounded px-1.5 py-0.5 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.doc = this.value; saveToLocal()">
+                                    <option value="">-- 選擇文件 --</option>
                                     ${availableDocs.map(d => `<option value="${d}" ${fState.vars.doc === d ? 'selected' : ''}>${d}</option>`).join('')}
                                 </select>`;
                             
-                            let correctHtml = `<input type="text" class="border border-red-300 rounded px-2 py-1 bg-white outline-none w-28 font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400" placeholder="請輸入正確內容" value="${fState.vars.correct || ''}" oninput="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">`;
+                            let correctHtml = `<input type="text" class="border border-red-300 rounded px-2 py-0.5 bg-white outline-none w-32 font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 placeholder-red-300 text-xs" placeholder="輸入正確內容" value="${fState.vars.correct || ''}" oninput="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">`;
                             if (fieldDef && fieldDef.type === 'single_select' && fieldDef.options) {
                                 correctHtml = `
-                                    <select class="border border-red-300 rounded px-2 py-1 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">
-                                        <option value="">-- 請選擇 --</option>
+                                    <select class="border border-red-300 rounded px-1.5 py-0.5 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">
+                                        <option value="">-- 正確選項 --</option>
                                         ${fieldDef.options.map(o => `<option value="${o}" ${fState.vars.correct === o ? 'selected' : ''}>${o}</option>`).join('')}
                                     </select>`;
                             }
-
+        
                             htmlStr = htmlStr.replace(/\{\{doc_select\}\}/g, docSelectHtml);
                             htmlStr = htmlStr.replace(/\{\{correct_input\}\}/g, correctHtml);
                             
                             tplDiv.innerHTML = htmlStr;
                             errSection.appendChild(tplDiv);
                         }
-
+        
                         row.appendChild(errSection);
                         list.appendChild(row);
-
+        
                         row.querySelector(`#btn-pass-${app.id}-${stateKey}`).onclick = () => {
                             fState.status = 'pass'; saveToLocal(); renderVerificationPanel(container, app);
                         };
@@ -3676,11 +3707,11 @@
                     });
                     contentDiv.appendChild(list);
                 }
-
+        
                 blockDiv.appendChild(contentDiv);
                 container.appendChild(blockDiv);
             });
-
+        
             updateVerificationLogic(app);
         }
 
@@ -3693,7 +3724,7 @@
             blocks.forEach((block, bIdx) => {
                 const blockDiv = document.getElementById(`vblock-${app.id}-${bIdx}`);
                 if(!blockDiv) return;
-
+        
                 // 1. 檢查模組全域豁免
                 let isBlockExempt = false;
                 if (block.exemptField) {
@@ -3708,18 +3739,19 @@
                         isBlockExempt = currentValStr === String(block.exemptValue).trim();
                     }
                 }
-
+        
                 if (isBlockExempt) {
-                    blockDiv.style.opacity = '0.5';
+                    blockDiv.style.opacity = '0.6';
                     blockDiv.style.pointerEvents = 'none';
                     const statusEl = document.getElementById(`v-status-${app.id}-${bIdx}`);
-                    if(statusEl) statusEl.innerHTML = `<span class="text-amber-600 bg-amber-100 px-2 py-1 rounded-lg shadow-inner"><i class="fas fa-shield-alt mr-1"></i> 全模組免檢核</span>`;
+                    // ★ 新版 Pill Badge
+                    if(statusEl) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[11px] font-bold shadow-sm"><i class="fas fa-ban"></i> 無須檢核</span>`;
                     return;
                 } else {
                     blockDiv.style.opacity = '1';
                     blockDiv.style.pointerEvents = 'auto';
                 }
-
+        
                 // 2. 更新文件檢核 UI (doc_check)
                 if (block.type === 'doc_check') {
                     let missingCount = 0;
@@ -3727,7 +3759,7 @@
                         const row = document.getElementById(`v-doc-row-${app.id}-${bIdx}-${dIdx}`);
                         const badge = document.getElementById(`v-doc-exempt-${app.id}-${bIdx}-${dIdx}`);
                         if(!row || !badge) return;
-
+        
                         let isExempt = false;
                         if (doc.exemptField) {
                             const depVal = app.formData[doc.exemptField];
@@ -3741,7 +3773,7 @@
                                 isExempt = currentValStr === String(doc.exemptValue).trim();
                             }
                         }
-
+        
                         const cb = row.querySelector('input[type="checkbox"]');
                         if (isExempt) {
                             badge.classList.remove('hidden');
@@ -3757,13 +3789,13 @@
                             if(doc.isRequired !== false && !cb.checked) missingCount++;
                         }
                     });
-
+        
                     const statusEl = document.getElementById(`v-status-${app.id}-${bIdx}`);
                     if(statusEl) {
                         if(missingCount > 0) {
-                            statusEl.innerHTML = `<span class="text-red-500 bg-red-100 px-2 py-1 rounded-lg"><i class="fas fa-exclamation-circle"></i> 缺交 ${missingCount} 項</span>`;
+                            statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold shadow-sm"><i class="fas fa-exclamation-circle"></i> 缺交 ${missingCount} 項</span>`;
                         } else {
-                            statusEl.innerHTML = `<span class="text-blue-600 bg-blue-100 px-2 py-1 rounded-lg"><i class="fas fa-check-circle"></i> 齊全</span>`;
+                            statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-bold shadow-sm"><i class="fas fa-check"></i> 文件齊全</span>`;
                         }
                     }
                 }
@@ -3773,13 +3805,13 @@
                     const resultBox = document.getElementById(`v-match-result-${app.id}-${bIdx}`);
                     const statusEl = document.getElementById(`v-status-${app.id}-${bIdx}`);
                     if(!resultBox) return;
-
+        
                     const mState = app.verification.matches[bIdx] || {};
                     const t1 = String(app.formData[block.targetField1] || "").trim();
                     const t2 = String(app.formData[block.targetField2] || "").trim();
                     let formValStr = t1;
                     if(block.matchType === 'daterange' && t2) formValStr = `${t1}-${t2}`;
-
+        
                     const isDocSubmitted = (docName) => !!app.verification.docs?.[docName];
                     const isDocExempt = (docName) => {
                         let exempt = false;
@@ -3807,7 +3839,7 @@
                         });
                         return req;
                     };
-
+        
                     let activeBaseDoc = null;
                     for (let i = 0; i < block.docs.length; i++) {
                         const doc = block.docs[i];
@@ -3820,50 +3852,51 @@
                             if(exempt) continue;
                             if(!req && !isSubmitted && dState.noData !== false) continue; 
                             if(dState.noData) continue;
-
+        
                             activeBaseDoc = doc;
                             break;
                         }
                     }
-
+        
                     resultBox.classList.remove('hidden');
-
+        
                     if (!activeBaseDoc) {
-                        resultBox.className = 'text-xs p-3 rounded-lg border mt-3 bg-red-50 border-red-200 text-red-700 shadow-inner font-medium';
+                        // ★ 新版結果 Banner 設計 (Callout style)
+                        resultBox.className = 'text-sm p-4 rounded-lg border-l-4 border-slate-300 bg-slate-50 text-slate-600 shadow-sm mt-2 flex gap-3';
                         const missingBaseNames = block.docs.filter(d=>d.isBase).map(d=>d.name).join(' 及 ');
-                        resultBox.innerText = (block.msgMissing || '').replace(/\{\{missing_base_docs\}\}/g, missingBaseNames);
-                        if(statusEl) statusEl.innerHTML = `<span class="text-red-500 bg-red-100 px-2 py-1 rounded-lg"><i class="fas fa-times-circle"></i> 缺基準資料</span>`;
+                        resultBox.innerHTML = `<i class="fas fa-info-circle text-lg text-slate-400 mt-0.5"></i> <div>${(block.msgMissing || '').replace(/\{\{missing_base_docs\}\}/g, missingBaseNames)}</div>`;
+                        if(statusEl) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[11px] font-bold shadow-sm"><i class="fas fa-hourglass-half"></i> 待輸入</span>`;
                         return;
                     }
-
+        
                     const baseState = mState[activeBaseDoc.name] || {};
                     let baseVal = baseState.val1;
                     if(block.matchType === 'daterange' && baseState.val2) baseVal = `${baseState.val1}-${baseState.val2}`;
                     
                     if(!baseVal || baseVal === '-') {
-                        resultBox.className = 'text-xs p-3 rounded-lg border mt-3 bg-slate-50 border-slate-200 text-slate-500 shadow-inner';
-                        resultBox.innerHTML = `<i class="fas fa-keyboard text-indigo-400 mr-1"></i> 請於上方輸入基準文件「<b>${activeBaseDoc.name}</b>」的內容以進行比對`;
-                        if(statusEl) statusEl.innerHTML = `<span class="text-indigo-600 bg-indigo-100 px-2 py-1 rounded-lg"><i class="fas fa-keyboard"></i> 待輸入基準</span>`;
+                        resultBox.className = 'text-sm p-4 rounded-lg border-l-4 border-indigo-400 bg-indigo-50 text-indigo-800 shadow-sm mt-2 flex gap-3';
+                        resultBox.innerHTML = `<i class="fas fa-keyboard text-lg text-indigo-500 mt-0.5"></i> <div>請於上方輸入基準文件「<b>${activeBaseDoc.name}</b>」的內容以進行比對。</div>`;
+                        if(statusEl) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-indigo-50 border border-indigo-200 text-indigo-600 text-[11px] font-bold shadow-sm"><i class="fas fa-keyboard"></i> 等待輸入</span>`;
                         return;
                     }
-
+        
                     let mismatches = [];
                     let details = [];
-
+        
                     if (formValStr && formValStr !== baseVal) {
                         mismatches.push('系統表單欄位');
                         details.push(`系統表單：${formValStr}`);
                     }
-
+        
                     block.docs.forEach(doc => {
                         if(doc.name === activeBaseDoc.name) return;
                         
                         const dState = mState[doc.name] || {};
                         if(dState.noData) return;
-
+        
                         const exempt = isDocExempt(doc.name);
                         if(exempt) return;
-
+        
                         let docVal = dState.val1;
                         if(block.matchType === 'daterange' && dState.val2) docVal = `${dState.val1}-${dState.val2}`;
                         
@@ -3872,26 +3905,26 @@
                             details.push(`${doc.name}：${docVal}`);
                         }
                     });
-
+        
                     if (mismatches.length > 0) {
-                        resultBox.className = 'text-xs p-3 rounded-lg border mt-3 bg-amber-50 border-amber-200 text-amber-800 leading-relaxed shadow-inner font-medium';
+                        resultBox.className = 'text-sm p-4 rounded-lg border-l-4 border-red-500 bg-red-50 text-red-800 shadow-sm mt-2 flex gap-3 font-medium';
                         details.unshift(`${activeBaseDoc.name} (基準)：${baseVal}`);
                         let msg = (block.msgMismatch || '')
                             .replace(/\{\{mismatch_docs\}\}/g, mismatches.join('、'))
                             .replace(/\{\{base_name\}\}/g, activeBaseDoc.name)
                             .replace(/\{\{mismatch_details\}\}/g, details.join('；\n'));
-                        resultBox.innerHTML = msg.replace(/\n/g, '<br>');
-                        if(statusEl) statusEl.innerHTML = `<span class="text-amber-600 bg-amber-100 px-2 py-1 rounded-lg"><i class="fas fa-exclamation-triangle"></i> 資料不一致</span>`;
+                        resultBox.innerHTML = `<i class="fas fa-exclamation-triangle text-lg text-red-500 mt-0.5"></i> <div>${msg.replace(/\n/g, '<br>')}</div>`;
+                        if(statusEl) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold shadow-sm"><i class="fas fa-times"></i> 資料不符</span>`;
                     } else {
-                        resultBox.className = 'text-xs p-3 rounded-lg border mt-3 bg-emerald-50 border-emerald-200 text-emerald-700 shadow-inner font-medium';
+                        resultBox.className = 'text-sm p-4 rounded-lg border-l-4 border-emerald-500 bg-emerald-50 text-emerald-800 shadow-sm mt-2 flex gap-3 font-medium';
                         let msg = (block.msgSuccess || '')
                             .replace(/\{\{base_name\}\}/g, activeBaseDoc.name)
                             .replace(/\{\{base_val\}\}/g, baseVal);
-                        resultBox.innerText = msg;
-                        if(statusEl) statusEl.innerHTML = `<span class="text-emerald-600 bg-emerald-100 px-2 py-1 rounded-lg"><i class="fas fa-check-circle"></i> 資料一致</span>`;
+                        resultBox.innerHTML = `<i class="fas fa-check-circle text-lg text-emerald-500 mt-0.5"></i> <div>${msg}</div>`;
+                        if(statusEl) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-bold shadow-sm"><i class="fas fa-check"></i> 比對一致</span>`;
                     }
                 }
-
+        
                 // 4. Update field_check variables text
                 if (block.type === 'field_check') {
                     const statusEl = document.getElementById(`v-status-${app.id}-${bIdx}`);
@@ -3906,12 +3939,12 @@
                         
                         const valSpan = document.getElementById(`v-field-val-${app.id}-${stateKey}`);
                         if(valSpan) {
-                            valSpan.innerText = app.formData[chk.fieldId] || '(空)';
+                            valSpan.innerText = app.formData[chk.fieldId] || '(未填寫)';
                         }
                     });
-                    if(fails > 0) statusEl.innerHTML = `<span class="text-red-500 bg-red-100 px-2 py-1 rounded-lg"><i class="fas fa-times-circle"></i> 有錯誤 (${fails})</span>`;
-                    else if(none > 0) statusEl.innerHTML = `<span class="text-slate-500 bg-slate-100 px-2 py-1 rounded-lg border border-slate-200"><i class="fas fa-minus-circle"></i> 待審查</span>`;
-                    else statusEl.innerHTML = `<span class="text-emerald-600 bg-emerald-100 px-2 py-1 rounded-lg"><i class="fas fa-check-circle"></i> 全數正確</span>`;
+                    if(fails > 0) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold shadow-sm"><i class="fas fa-exclamation-circle"></i> 發現 ${fails} 個異常</span>`;
+                    else if(none > 0) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-amber-50 border border-amber-200 text-amber-600 text-[11px] font-bold shadow-sm"><i class="fas fa-eye"></i> 待審查 (${none})</span>`;
+                    else statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-bold shadow-sm"><i class="fas fa-check"></i> 全數通過</span>`;
                 }
             });
         }
