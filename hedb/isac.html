@@ -4278,18 +4278,12 @@
             if(fieldsByCat['uncategorized']) sortedCats.push({id: 'uncategorized', name: '其他資訊'});
         
             container.innerHTML = ''; 
-        
-            // ★ 關鍵修改：將外層容器轉換為「滿版、左右排版」且自身不捲動的容器
             container.className = 'form-body flex flex-row w-full h-full overflow-hidden relative';
         
-            // 1. 建立左側分類按鈕區 (Sidebar)
             const tabSidebar = document.createElement('div');
-            // 固定寬度、加上右邊框與獨立捲動
             tabSidebar.className = 'w-40 md:w-48 flex-shrink-0 border-r border-slate-200 bg-slate-50 flex flex-col overflow-y-auto custom-scroll z-10';
             
-            // 2. 建立右側資料內容區 (Content)
             const tabContentContainer = document.createElement('div');
-            // 加上 form-scroll-area 標籤供防呆捲動使用，並加上獨立捲動
             tabContentContainer.className = 'form-scroll-area flex-grow p-6 overflow-y-auto custom-scroll relative pb-24 bg-white';
         
             let isFirst = true;
@@ -4301,15 +4295,16 @@
                 // --- 產生切換按鈕 ---
                 const tabBtn = document.createElement('button');
                 
-                // ★ 樣式修改：仿照學生名單，左側藍色粗線條標示目前位置
-                const activeClasses = 'bg-white text-primary font-bold border-l-4 border-primary shadow-sm';
-                const inactiveClasses = 'bg-transparent text-slate-600 hover:bg-slate-200/50 hover:text-slate-800 border-l-4 border-transparent';
+                // ★ 修正 4：優化選取的樣式，改成微藍底色與更質感的邊框
+                const activeClasses = 'bg-blue-50/70 text-blue-700 border-l-4 border-blue-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]';
+                const inactiveClasses = 'bg-transparent text-slate-600 hover:bg-slate-200/50 hover:text-slate-900 border-l-4 border-transparent';
                 
-                tabBtn.className = `px-4 py-3 text-sm text-left transition-all duration-200 w-full border-b border-slate-100 ${isFirst ? activeClasses : inactiveClasses}`;
+                tabBtn.className = `px-5 py-3.5 text-left transition-all duration-200 w-full border-b border-slate-100 ${isFirst ? activeClasses : inactiveClasses}`;
+                
+                // ★ 修正 3：移除 ICON，並稍微調整文字大小
                 tabBtn.innerHTML = `
-                    <div class="flex items-center gap-2">
-                        <i class="fas fa-folder-open ${isFirst ? 'text-primary' : 'text-slate-400'}"></i>
-                        <span class="truncate">${catDef.name}</span>
+                    <div class="flex items-center">
+                        <span class="truncate text-[15px] ${isFirst ? 'font-bold' : 'font-medium'}">${catDef.name}</span>
                     </div>
                 `;
         
@@ -4319,16 +4314,22 @@
                 contentPane.className = `category-pane ${isFirst ? 'block animate-fade-in' : 'hidden'}`;
         
                 const grid = document.createElement('div');
-                grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-x-5 gap-y-4 mb-4';
+                // 加大 grid 之間的間距，讓大字體不擁擠
+                grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-4';
         
                 catFields.forEach(f => {
                     const wrapper = document.createElement('div');
-                    const span = (f.colSpan === 4 || f.type === 'address' || f.type === 'list') ? 'col-span-1 md:col-span-2' : 'col-span-1';
+                    
+                    // ★ 修正 2：欄位寬度大於 1，就設為全寬 (md:col-span-2)
+                    const isFullWidth = (f.colSpan > 1 || f.type === 'address' || f.type === 'list' || f.colSpan === 4);
+                    const span = isFullWidth ? 'col-span-1 md:col-span-2' : 'col-span-1';
+                    
                     wrapper.className = `field-group ${span} min-w-0`;
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
         
                     const label = document.createElement('label');
-                    label.className = "block text-[12px] font-bold text-slate-500 mb-1 flex items-center";
+                    // ★ 修正 1-A：標題文字放大為 text-sm (14px)，顏色稍微加深
+                    label.className = "block text-sm font-bold text-slate-600 mb-1.5 flex items-center";
                     label.innerHTML = `${f.label}`;
         
                     if(f.description) {
@@ -4353,14 +4354,16 @@
                         val = (val === true || val === 'true') ? '✅ 是 (Yes)' : '❌ 否 (No)';
                     }
         
-                    // 唯讀資料卡片
                     const valBox = document.createElement('div');
                     valBox.id = `input-${app.id}-${f.id}`;
                     valBox.classList.add(`app-input-${app.id}-${f.id}`);
-                    valBox.className = "w-full bg-slate-50/80 text-slate-800 font-bold border border-slate-200 rounded-lg px-3 py-2 text-[13px] min-h-[38px] break-words whitespace-pre-wrap flex items-center shadow-sm leading-snug";
+                    
+                    // ★ 修正 1-B：內容文字放大為 text-base (16px)，並增加 padding 與高度 (min-h-[44px])
+                    valBox.className = "w-full bg-slate-50 text-slate-800 font-bold border border-slate-200 rounded-lg px-4 py-2.5 text-base min-h-[44px] break-words whitespace-pre-wrap flex items-center shadow-sm leading-relaxed";
         
                     if (val === undefined || val === null || String(val).trim() === '') {
-                        valBox.innerHTML = '<span class="text-slate-400 font-normal italic text-[12px]">(未填寫)</span>';
+                        // 空白提示文字也稍微放大為 text-sm
+                        valBox.innerHTML = '<span class="text-slate-400 font-normal italic text-sm">(未填寫)</span>';
                         valBox.classList.add('bg-slate-100/50');
                     } else {
                         valBox.innerText = val;
@@ -4375,10 +4378,10 @@
         
                 // --- 綁定頁籤切換事件 ---
                 tabBtn.onclick = () => {
-                    // 移除所有按鈕的 active 狀態
+                    // 恢復所有按鈕為未選取狀態
                     Array.from(tabSidebar.children).forEach(btn => {
-                        btn.className = `px-4 py-3 text-sm text-left transition-all duration-200 w-full border-b border-slate-100 ${inactiveClasses}`;
-                        btn.querySelector('i').className = 'fas fa-folder-open text-slate-400';
+                        btn.className = `px-5 py-3.5 text-left transition-all duration-200 w-full border-b border-slate-100 ${inactiveClasses}`;
+                        btn.querySelector('span').className = 'truncate text-[15px] font-medium';
                     });
                     // 隱藏所有面板
                     Array.from(tabContentContainer.children).forEach(pane => {
@@ -4387,8 +4390,9 @@
                     });
         
                     // 啟用當前按鈕與面板
-                    tabBtn.className = `px-4 py-3 text-sm text-left transition-all duration-200 w-full border-b border-slate-100 ${activeClasses}`;
-                    tabBtn.querySelector('i').className = 'fas fa-folder-open text-primary';
+                    tabBtn.className = `px-5 py-3.5 text-left transition-all duration-200 w-full border-b border-slate-100 ${activeClasses}`;
+                    tabBtn.querySelector('span').className = 'truncate text-[15px] font-bold';
+                    
                     contentPane.classList.remove('hidden');
                     contentPane.classList.add('block', 'animate-fade-in');
                 };
@@ -4397,11 +4401,9 @@
                 isFirst = false;
             });
         
-            // 將左右兩個區塊放入容器中
             container.appendChild(tabSidebar);
             container.appendChild(tabContentContainer);
         
-            // 確保邏輯連動 (隱藏不需要的欄位) 依然有效
             setTimeout(() => evaluateLogic(app), 0);
         }
         
