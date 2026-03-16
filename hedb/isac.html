@@ -1021,12 +1021,22 @@
                     </div>
 
                     <div class="flex items-center gap-3 flex-shrink-0">
+                        
+                        <div class="relative" id="app-dropdown-container" style="display: none;">
+                            <button id="app-dropdown-btn" onclick="document.getElementById('app-dropdown-menu').classList.toggle('hidden'); event.stopPropagation();" class="bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 hover:border-primary px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition flex items-center justify-between gap-3 whitespace-nowrap min-w-[220px]">
+                                <span id="app-dropdown-text" class="flex items-center gap-2">讀取中...</span>
+                                <i class="fas fa-chevron-down text-[10px] text-slate-400 ml-1"></i>
+                            </button>
+                            <div id="app-dropdown-menu" class="hidden absolute right-0 top-full mt-1.5 w-64 bg-white border border-slate-200 rounded-xl shadow-[0_10px_25px_-5px_rgba(0,0,0,0.1)] z-[100] overflow-hidden flex flex-col py-1">
+                                </div>
+                        </div>
+
                         <button onclick="handleSettingsClick()" class="bg-white border border-slate-300 text-slate-600 hover:text-primary hover:border-primary px-4 py-1.5 rounded-lg text-sm font-bold shadow-sm transition flex items-center gap-2 whitespace-nowrap">
                             <i class="fas fa-eye"></i> 查看歸戶
                         </button>
                     </div>
                 </div>
-
+                
                 <div class="bg-white border-b border-slate-200 px-6 flex gap-2 z-10 overflow-x-auto custom-scroll flex-shrink-0" id="tabs-container">
                 </div>
                 <div id="sticky-progress-header" class="hidden bg-white border-b border-slate-200 px-6 py-3 shadow-sm z-20 flex-shrink-0">
@@ -3081,57 +3091,98 @@
         }
         
         function renderTabs(student) {
-            const container = document.getElementById('tabs-container');
-            container.innerHTML = '';
+            const menu = document.getElementById('app-dropdown-menu');
+            const btnText = document.getElementById('app-dropdown-text');
+            const dropdownContainer = document.getElementById('app-dropdown-container');
             
+            if (!menu || !btnText || !dropdownContainer) return;
+        
+            menu.innerHTML = '';
+            
+            // 如果沒有任何歸戶，隱藏下拉選單
+            if (!student.applications || student.applications.length === 0) {
+                dropdownContainer.style.display = 'none';
+                return;
+            } else {
+                dropdownContainer.style.display = 'block';
+            }
+            
+            let activeAppTextHtml = '';
+        
             student.applications.forEach((app, idx) => {
-                const btn = document.createElement('button');
-                
-                // 1. 判斷是否為當前選中的頁籤，加上 active class
                 const isActive = (app.id === currentActiveAppId);
-                btn.className = isActive ? 'tab-btn active' : 'tab-btn';
+                let label = `實習紀錄 ${idx + 1}`;
                 
-                btn.dataset.tab = app.id;
-                btn.onclick = () => switchTab(app.id);
-                
-                let label = `實習紀錄${idx+1}`;
-                
-                // 2. 計算填報率
+                // 狀態計算邏輯
                 const stats = calculateAppStats(app);
                 let statusHtml = '';
-                
-                // 3. 讀取 ineligible_reporting_check 欄位
                 const isNotRequired = (app.formData['ineligible_reporting_check'] === true || app.formData['ineligible_reporting_check'] === 'true');
         
                 if (isNotRequired) {
-                    statusHtml = '<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-xs text-red-600">無須填報</span>';
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-red-500"></span><span class="text-xs text-red-600 font-bold">無須填報</span>';
                 } else if (stats.percent === 100) {
-                    statusHtml = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-xs text-emerald-600">完成填報</span>';
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-emerald-500"></span><span class="text-xs text-emerald-600 font-bold">完成填報</span>';
                 } else if (stats.percent === 0) {
-                    statusHtml = '<span class="w-2 h-2 rounded-full bg-slate-300"></span><span class="text-xs text-slate-400">尚未填報</span>';
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-slate-300"></span><span class="text-xs text-slate-400 font-bold">尚未填報</span>';
                 } else {
-                    statusHtml = '<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="text-xs text-blue-600">填報中</span>';
+                    statusHtml = '<span class="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span><span class="text-xs text-blue-600 font-bold">填報中</span>';
                 }
                 
                 const courseCount = app.courseIds ? app.courseIds.length : 0;
-                const courseBtnHtml = (isActive && courseCount > 0) 
-                    ? `<span onclick="event.stopPropagation(); showCourseInfo('${student.id}', '${app.id}')" class="ml-2 px-2 py-0.5 rounded bg-white text-slate-500 border border-slate-200 hover:text-primary hover:border-primary hover:bg-slate-50 text-[11px] font-bold transition flex items-center gap-1.5 shadow-sm" title="點擊查看歸戶課程資訊">
-                           <i class="fas fa-book-open"></i> ${courseCount} 門
-                       </span>` 
-                    : (courseCount > 0 ? `<span class="ml-2 text-[10px] text-slate-400 font-normal">(${courseCount}門)</span>` : '');
-
-                btn.innerHTML = `
-                    <div class="flex items-center gap-3">
-                        <div class="flex items-center gap-2 text-sm">
-                            <i class="fas fa-file-alt text-slate-400"></i> ${label} ${courseBtnHtml}
-                        </div>
-                        <div class="flex items-center gap-1.5 opacity-90">
-                            ${statusHtml}
-                        </div>
+                
+                // 建立選單內的每一個選項 (按鈕)
+                const item = document.createElement('button');
+                item.className = `w-full text-left px-4 py-2.5 hover:bg-slate-50 transition flex flex-col gap-1.5 border-b border-slate-50 last:border-0 ${isActive ? 'bg-blue-50/50' : ''}`;
+                
+                item.innerHTML = `
+                    <div class="flex justify-between items-center w-full">
+                        <span class="text-sm font-bold ${isActive ? 'text-primary' : 'text-slate-700'}">
+                            <i class="fas fa-file-alt mr-1.5 opacity-50"></i>${label}
+                        </span>
+                        <span class="text-[10px] text-slate-500 font-medium bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">${courseCount} 門</span>
+                    </div>
+                    <div class="flex items-center gap-1.5">
+                        ${statusHtml}
                     </div>
                 `;
-                container.appendChild(btn);
+                
+                // 點擊後切換並關閉選單
+                item.onclick = (e) => {
+                    e.stopPropagation();
+                    document.getElementById('app-dropdown-menu').classList.add('hidden');
+                    switchTab(app.id);
+                };
+        
+                menu.appendChild(item);
+        
+                // 如果是當前選中的紀錄，將其狀態同步顯示在按鈕最外層
+                if (isActive) {
+                    activeAppTextHtml = `
+                        <div class="flex items-center gap-2">
+                            <i class="fas fa-file-alt text-primary opacity-70"></i>
+                            <span class="text-primary">${label}</span>
+                            <div class="h-3 w-px bg-slate-300 mx-1"></div>
+                            <div class="flex items-center gap-1.5">${statusHtml}</div>
+                        </div>
+                    `;
+                }
             });
+        
+            if (activeAppTextHtml) {
+                btnText.innerHTML = activeAppTextHtml;
+            }
+        
+            // 全域事件：點擊畫面其他地方時，自動關閉下拉選單 (防呆只綁定一次)
+            if (!window.dropdownListenerAdded) {
+                document.addEventListener('click', (e) => {
+                    const dropdownMenu = document.getElementById('app-dropdown-menu');
+                    const dropdownBtn = document.getElementById('app-dropdown-btn');
+                    if (dropdownMenu && dropdownBtn && !dropdownBtn.contains(e.target) && !dropdownMenu.contains(e.target)) {
+                        dropdownMenu.classList.add('hidden');
+                    }
+                });
+                window.dropdownListenerAdded = true;
+            }
         }
         
         // ★ 新增：計算單一歸戶的填報數據 (供頁籤與進度條共用)
@@ -3269,10 +3320,10 @@
         
         function switchTab(tabId) {
             currentActiveAppId = tabId;
-            // 更新按鈕狀態
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-            if(btn) btn.classList.add('active');
+    
+            // ★ 呼叫 renderTabs 刷新下拉選單的顯示文字與勾選狀態
+            const student = groupedStudents[currentStudentId];
+            if(student) renderTabs(student);
             
             // 顯示動態內容區域
             const container = document.getElementById('dynamic-tabs-area');
