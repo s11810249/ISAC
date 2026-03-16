@@ -3437,9 +3437,16 @@
             formCol.appendChild(formHeader);
         
             const formContainer = document.createElement('div');
+            // 注意：原本的 pb-24 保留，確保表單滑到底時不會被警告區塊完全蓋住內容
             formContainer.className = 'form-body p-6 overflow-y-auto custom-scroll flex-grow relative pb-24'; 
             renderFields(formContainer, app);
             formCol.appendChild(formContainer);
+        
+            // ★ 修改：將即時錯誤警告區塊移至左側，接在 formContainer 下方
+            const errorSummaryFooter = document.createElement('div');
+            errorSummaryFooter.id = `error-summary-${appId}`;
+            errorSummaryFooter.className = 'flex-shrink-0 border-t border-slate-200 bg-white p-5 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20 max-h-[30vh] overflow-y-auto custom-scroll';
+            formCol.appendChild(errorSummaryFooter); 
         
             // === 右側：中心檢核作業區 ===
             const verifyCol = document.createElement('div');
@@ -3447,7 +3454,6 @@
             
             const verifyHeader = document.createElement('div');
             verifyHeader.className = 'bg-emerald-50 px-6 h-16 border-b border-emerald-200 flex items-center justify-between flex-shrink-0 z-10';
-            // ★ 移除「產出報告」按鈕
             verifyHeader.innerHTML = `
                 <h3 class="text-lg font-bold text-emerald-700 flex items-center gap-2"><i class="fas fa-check-double"></i> 中心檢核作業區</h3>
             `;
@@ -3458,12 +3464,6 @@
             verifyContainer.id = `verify-container-${appId}`;
             renderVerificationPanel(verifyContainer, app);
             verifyCol.appendChild(verifyContainer);
-        
-            // ★ 新增：固定於底部的即時錯誤警告區塊
-            const errorSummaryFooter = document.createElement('div');
-            errorSummaryFooter.id = `error-summary-${appId}`;
-            errorSummaryFooter.className = 'flex-shrink-0 border-t border-slate-200 bg-white p-5 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20 max-h-[30vh] overflow-y-auto custom-scroll';
-            verifyCol.appendChild(errorSummaryFooter);
         
             div.appendChild(formCol);
             div.appendChild(verifyCol);
