@@ -4280,8 +4280,9 @@
             container.innerHTML = ''; 
             container.className = 'form-body flex flex-row w-full h-full overflow-hidden relative';
         
+            // ★ 質感升級 1：給側邊欄加上內距 (p-3) 與按鈕間距 (gap-1.5)，讓按鈕不再死板貼邊
             const tabSidebar = document.createElement('div');
-            tabSidebar.className = 'w-40 md:w-48 flex-shrink-0 border-r border-slate-200 bg-slate-50 flex flex-col overflow-y-auto custom-scroll z-10';
+            tabSidebar.className = 'w-40 md:w-48 flex-shrink-0 border-r border-slate-200 bg-slate-50/70 flex flex-col overflow-y-auto custom-scroll z-10 p-3 space-y-1.5';
             
             const tabContentContainer = document.createElement('div');
             tabContentContainer.className = 'form-scroll-area flex-grow p-6 overflow-y-auto custom-scroll relative pb-24 bg-white';
@@ -4292,35 +4293,33 @@
                 const catFields = fieldsByCat[catDef.id];
                 if(!catFields || catFields.length === 0) return;
         
-                // --- 產生切換按鈕 ---
                 const tabBtn = document.createElement('button');
                 
-                // ★ 修正 4：優化選取的樣式，改成微藍底色與更質感的邊框
-                const activeClasses = 'bg-blue-50/70 text-blue-700 border-l-4 border-blue-600 shadow-[2px_0_5px_-2px_rgba(0,0,0,0.05)]';
-                const inactiveClasses = 'bg-transparent text-slate-600 hover:bg-slate-200/50 hover:text-slate-900 border-l-4 border-transparent';
+                // ★ 質感升級 2：改成現代化的「浮動圓角卡片」設計
+                // 選取時：純白底色、微陰影、深灰文字、細緻邊框
+                const activeClasses = 'bg-white text-slate-900 shadow-sm border border-slate-200/80 font-bold';
+                // 未選取時：透明底、淺灰文字、Hover時出現極淡灰底
+                const inactiveClasses = 'bg-transparent text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 border border-transparent font-medium';
                 
-                tabBtn.className = `px-5 py-3.5 text-left transition-all duration-200 w-full border-b border-slate-100 ${isFirst ? activeClasses : inactiveClasses}`;
+                // 套用全圓角 (rounded-xl)
+                tabBtn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${isFirst ? activeClasses : inactiveClasses}`;
                 
-                // ★ 修正 3：移除 ICON，並稍微調整文字大小
                 tabBtn.innerHTML = `
                     <div class="flex items-center">
-                        <span class="truncate text-[15px] ${isFirst ? 'font-bold' : 'font-medium'}">${catDef.name}</span>
+                        <span class="truncate text-[15px]">${catDef.name}</span>
                     </div>
                 `;
         
-                // --- 產生該分類的資料面板 ---
                 const contentPane = document.createElement('div');
                 contentPane.id = `pane-${app.id}-${catDef.id}`;
                 contentPane.className = `category-pane ${isFirst ? 'block animate-fade-in' : 'hidden'}`;
         
                 const grid = document.createElement('div');
-                // 加大 grid 之間的間距，讓大字體不擁擠
                 grid.className = 'grid grid-cols-1 md:grid-cols-2 gap-x-6 gap-y-5 mb-4';
         
                 catFields.forEach(f => {
                     const wrapper = document.createElement('div');
                     
-                    // ★ 修正 2：欄位寬度大於 1，就設為全寬 (md:col-span-2)
                     const isFullWidth = (f.colSpan > 1 || f.type === 'address' || f.type === 'list' || f.colSpan === 4);
                     const span = isFullWidth ? 'col-span-1 md:col-span-2' : 'col-span-1';
                     
@@ -4328,7 +4327,6 @@
                     wrapper.id = `wrapper-${app.id}-${f.id}`;
         
                     const label = document.createElement('label');
-                    // ★ 修正 1-A：標題文字放大為 text-sm (14px)，顏色稍微加深
                     label.className = "block text-sm font-bold text-slate-600 mb-1.5 flex items-center";
                     label.innerHTML = `${f.label}`;
         
@@ -4358,11 +4356,9 @@
                     valBox.id = `input-${app.id}-${f.id}`;
                     valBox.classList.add(`app-input-${app.id}-${f.id}`);
                     
-                    // ★ 修正 1-B：內容文字放大為 text-base (16px)，並增加 padding 與高度 (min-h-[44px])
                     valBox.className = "w-full bg-slate-50 text-slate-800 font-bold border border-slate-200 rounded-lg px-4 py-2.5 text-base min-h-[44px] break-words whitespace-pre-wrap flex items-center shadow-sm leading-relaxed";
         
                     if (val === undefined || val === null || String(val).trim() === '') {
-                        // 空白提示文字也稍微放大為 text-sm
                         valBox.innerHTML = '<span class="text-slate-400 font-normal italic text-sm">(未填寫)</span>';
                         valBox.classList.add('bg-slate-100/50');
                     } else {
@@ -4378,20 +4374,15 @@
         
                 // --- 綁定頁籤切換事件 ---
                 tabBtn.onclick = () => {
-                    // 恢復所有按鈕為未選取狀態
                     Array.from(tabSidebar.children).forEach(btn => {
-                        btn.className = `px-5 py-3.5 text-left transition-all duration-200 w-full border-b border-slate-100 ${inactiveClasses}`;
-                        btn.querySelector('span').className = 'truncate text-[15px] font-medium';
+                        btn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${inactiveClasses}`;
                     });
-                    // 隱藏所有面板
                     Array.from(tabContentContainer.children).forEach(pane => {
                         pane.classList.remove('block', 'animate-fade-in');
                         pane.classList.add('hidden');
                     });
         
-                    // 啟用當前按鈕與面板
-                    tabBtn.className = `px-5 py-3.5 text-left transition-all duration-200 w-full border-b border-slate-100 ${activeClasses}`;
-                    tabBtn.querySelector('span').className = 'truncate text-[15px] font-bold';
+                    tabBtn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${activeClasses}`;
                     
                     contentPane.classList.remove('hidden');
                     contentPane.classList.add('block', 'animate-fade-in');
