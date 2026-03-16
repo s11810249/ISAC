@@ -3951,7 +3951,9 @@
         window.copyLiveErrors = function(btn) {
             const ul = btn.parentElement.nextElementSibling;
             if(!ul) return;
-            const textToCopy = Array.from(ul.querySelectorAll('li span')).map(span => '⚠️ ' + span.innerText).join('\n\n');
+            
+            // 修改：改為抓取每一行 <li> 內的所有純文字 (會自動包含我們加上的編號與點)
+            const textToCopy = Array.from(ul.querySelectorAll('li')).map(li => li.innerText).join('\n');
             navigator.clipboard.writeText(textToCopy);
             
             // 按鈕視覺回饋
@@ -4010,7 +4012,6 @@
                     if (resultBox && (resultBox.classList.contains('border-red-500') || resultBox.classList.contains('border-slate-300') || resultBox.classList.contains('border-indigo-400'))) {
                         const divContent = resultBox.querySelector('div');
                         if (divContent) {
-                            // 把 HTML 的換行轉為純文字的分號
                             let text = divContent.innerHTML.replace(/<br\s*[\/]?>/gi, "；").replace(/<[^>]+>/g, '');
                             reportLines.push(text);
                         }
@@ -4031,7 +4032,7 @@
                                     .replace(/\{\{field_val\}\}/g, fVal)
                                     .replace(/\{\{doc_select\}\}/g, fState.vars.doc || '(未選擇文件)')
                                     .replace(/\{\{correct_input\}\}/g, fState.vars.correct || '(未填寫正確內容)');
-                                reportLines.push(msg.replace(/<[^>]+>/g, '')); // 移除 HTML 標籤
+                                reportLines.push(msg.replace(/<[^>]+>/g, '')); 
                             }
                         }
                     });
@@ -4052,9 +4053,17 @@
                     </div>
                 `;
             } else {
-                const listHtml = reportLines.map(line => `<li class="flex items-start gap-2.5 text-[13px] leading-relaxed"><i class="fas fa-exclamation-triangle mt-1 text-red-500 flex-shrink-0"></i><span class="font-medium">${line}</span></li>`).join('');
+                // ★ 核心修改 1：加入 index 自動編號，並使用 leading-snug 縮小文字本身的行高
+                const listHtml = reportLines.map((line, index) => `
+                    <li class="flex items-start gap-2 text-[13px] leading-snug">
+                        <span class="flex-shrink-0 font-bold text-red-700 mt-[1px] w-4 text-right">${index + 1}.</span>
+                        <span class="font-medium">${line}</span>
+                    </li>
+                `).join('');
+                
+                // ★ 核心修改 2：把外層的 space-y-3 改成 space-y-1.5，讓各行緊湊一點
                 summaryDiv.innerHTML = `
-                    <div class="flex flex-col gap-3">
+                    <div class="flex flex-col gap-2.5">
                         <div class="flex justify-between items-center">
                             <span class="font-bold text-red-600 text-[15px] flex items-center gap-2">
                                 <i class="fas fa-engine-warning text-lg"></i> 待處理異常與警示 (${reportLines.length})
@@ -4063,7 +4072,7 @@
                                 <i class="fas fa-copy"></i> 複製清單
                             </button>
                         </div>
-                        <ul class="text-red-800 space-y-3 bg-red-50 p-4 rounded-xl border border-red-100 shadow-inner">
+                        <ul class="text-red-800 space-y-1.5 bg-red-50 p-3.5 rounded-xl border border-red-100 shadow-inner">
                             ${listHtml}
                         </ul>
                     </div>
