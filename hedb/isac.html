@@ -3292,7 +3292,7 @@
             
             // 切換顯示
             document.querySelectorAll('.dynamic-tab-content').forEach(d => d.style.display = 'none');
-            content.style.display = 'block';
+            content.style.display = 'flex';
             updateAppProgress(tabId); 
 
             // ★ 新增：切換頁籤後，確保 Textarea 高度正確展開 (解決同步資料後 scrollHeight 為 0 的問題)
@@ -5568,7 +5568,7 @@
         
             // 確保表單高度正確展開
             setTimeout(() => {
-                const activeContent = document.querySelector('.dynamic-tab-content[style*="display: block"]');
+                const activeContent = document.querySelector('.dynamic-tab-content[style*="display: flex"]'); // ★ 配合上面，改尋找 display: flex
                 if (activeContent) {
                     activeContent.querySelectorAll('textarea.input-stylish').forEach(ta => {
                         ta.style.setProperty('height', '1px', 'important');
