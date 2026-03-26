@@ -3482,13 +3482,27 @@
         // 核心功能：渲染檢核面板
         // ==========================================
         function renderVerificationPanel(container, app) {
+            // 記住目前的頁籤，避免表單重新渲染時跳回第一頁
+            let activeTabIndex = parseInt(container.dataset.activeTab || '0');
+
             container.innerHTML = '';
             const blocks = currentYearConfig.verificationBlocks || [];
             if (blocks.length === 0) {
-                container.innerHTML = '<div class="flex flex-col items-center justify-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400"><i class="fas fa-clipboard-check text-4xl mb-3 opacity-50"></i><p class="text-sm font-bold">此學年度尚未設定檢核模組</p></div>';
+                container.innerHTML = '<div class="flex flex-col items-center justify-center py-12 bg-slate-50 rounded-xl border border-dashed border-slate-300 text-slate-400 w-full m-6"><i class="fas fa-clipboard-check text-4xl mb-3 opacity-50"></i><p class="text-sm font-bold">此學年度尚未設定檢核模組</p></div>';
                 return;
             }
         
+            // ★ 核心修改：改為左右排版結構
+            container.className = 'verify-body flex flex-row w-full h-full overflow-hidden relative bg-white';
+        
+            // 建立側邊欄 (左側選單)
+            const vTabSidebar = document.createElement('div');
+            vTabSidebar.className = 'w-40 md:w-48 flex-shrink-0 border-r border-slate-200 bg-slate-50/70 flex flex-col overflow-y-auto custom-scroll z-10 p-3 space-y-1.5';
+        
+            // 建立內容區 (右側)
+            const vTabContentContainer = document.createElement('div');
+            vTabContentContainer.className = 'verify-scroll-area flex-grow p-6 overflow-y-auto custom-scroll relative bg-slate-50/50';
+
             let availableDocs = [];
             blocks.forEach(b => {
                 if (b.type === 'doc_check' && b.docs) {
@@ -3497,10 +3511,14 @@
             });
         
             blocks.forEach((block, bIdx) => {
-                const blockDiv = document.createElement('div');
-                // ★ 儀表板卡片風格：純白底、微陰影、柔和圓角
-                blockDiv.className = 'bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.08)] border border-slate-200 overflow-hidden transition-all duration-300 flex flex-col';
-                blockDiv.id = `vblock-${app.id}-${bIdx}`;
+                const isActive = (bIdx === activeTabIndex);
+
+                // === 1. 建立左側頁籤按鈕 ===
+                const tabBtn = document.createElement('button');
+                const activeClasses = 'bg-white text-emerald-900 shadow-sm border border-slate-200/80 font-bold';
+                const inactiveClasses = 'bg-transparent text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 border border-transparent font-medium';
+                
+                tabBtn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${isActive ? activeClasses : inactiveClasses}`;
                 
                 const themeMap = {
                     'doc_check': { icon: 'fa-folder-open', color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -3508,9 +3526,27 @@
                     'field_check': { icon: 'fa-spell-check', color: 'text-emerald-600', bg: 'bg-emerald-50' }
                 };
                 const t = themeMap[block.type] || themeMap['doc_check'];
-        
+
+                tabBtn.innerHTML = `
+                    <div class="flex items-center gap-2">
+                        <span class="w-6 h-6 rounded flex justify-center items-center ${t.bg} ${t.color} text-xs flex-shrink-0">
+                            <i class="fas ${t.icon}"></i>
+                        </span>
+                        <span class="truncate text-[14px]">${block.title}</span>
+                    </div>
+                `;
+
+                // === 2. 建立右側對應內容面板 ===
+                const contentPane = document.createElement('div');
+                contentPane.id = `v-pane-${app.id}-${bIdx}`;
+                contentPane.className = `verify-pane flex-col h-full ${isActive ? 'flex animate-fade-in' : 'hidden'}`;
+
+                // 將原本的 blockDiv 包進內容面板，加上 max-w-4xl 防止大螢幕時過寬
+                const blockDiv = document.createElement('div');
+                blockDiv.className = 'bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.08)] border border-slate-200 overflow-hidden transition-all duration-300 flex flex-col w-full max-w-4xl mx-auto';
+                blockDiv.id = `vblock-${app.id}-${bIdx}`;
+                
                 const header = document.createElement('div');
-                // ★ 標題列：乾淨的灰白底，搭配左側品牌色點綴
                 header.className = `px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center`;
                 header.innerHTML = `
                     <div class="flex items-center gap-2.5">
@@ -3750,14 +3786,36 @@
                     });
                     contentDiv.appendChild(list);
                 }
-        
+
                 blockDiv.appendChild(contentDiv);
-                container.appendChild(blockDiv);
+                contentPane.appendChild(blockDiv);
+                vTabContentContainer.appendChild(contentPane);
+
+                // --- 綁定頁籤切換事件 ---
+                tabBtn.onclick = () => {
+                    container.dataset.activeTab = bIdx; // 儲存當前 active 頁籤
+                    
+                    Array.from(vTabSidebar.children).forEach(btn => {
+                        btn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${inactiveClasses}`;
+                    });
+                    Array.from(vTabContentContainer.children).forEach(pane => {
+                        pane.classList.remove('flex', 'animate-fade-in');
+                        pane.classList.add('hidden');
+                    });
+
+                    tabBtn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${activeClasses}`;
+                    contentPane.classList.remove('hidden');
+                    contentPane.classList.add('flex', 'animate-fade-in');
+                };
+
+                vTabSidebar.appendChild(tabBtn);
             });
+
+            container.appendChild(vTabSidebar);
+            container.appendChild(vTabContentContainer);
         
             updateVerificationLogic(app);
         }
-
         // ==========================================
         // 核心功能：動態更新檢核邏輯 (豁免與自動比對)
         // ==========================================
