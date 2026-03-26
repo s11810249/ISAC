@@ -3484,6 +3484,13 @@
         function renderVerificationPanel(container, app) {
             // 記住目前的頁籤，避免表單重新渲染時跳回第一頁
             let activeTabIndex = parseInt(container.dataset.activeTab || '0');
+            
+            // 1. 記住右側滾動條位置，避免重新渲染後跳回最上方
+            let savedScrollTop = 0;
+            const existingScrollArea = container.querySelector('.verify-scroll-area');
+            if (existingScrollArea) {
+                savedScrollTop = existingScrollArea.scrollTop;
+            }
 
             container.innerHTML = '';
             const blocks = currentYearConfig.verificationBlocks || [];
@@ -3514,12 +3521,38 @@
             blocks.forEach((block, bIdx) => {
                 const isActive = (bIdx === activeTabIndex);
 
+                // 計算該區塊的檢核進度
+                let completed = 0;
+                let total = 0;
+                if (block.type === 'doc_check') {
+                    total = block.docs ? block.docs.length : 0;
+                    if (app.verification?.docs) completed = block.docs.filter(d => app.verification.docs[d.name]).length;
+                } else if (block.type === 'data_match') {
+                    total = block.docs ? block.docs.length : 0;
+                    if (app.verification?.matches && app.verification.matches[bIdx]) {
+                        completed = block.docs.filter(d => {
+                            const mState = app.verification.matches[bIdx][d.name];
+                            return mState && (mState.noData || mState.val1 || mState.val2);
+                        }).length;
+                    }
+                } else if (block.type === 'field_check') {
+                    total = block.checks ? block.checks.length : 0;
+                    if (app.verification?.fields) {
+                        completed = block.checks.filter((chk, cIdx) => {
+                            const fState = app.verification.fields[`${bIdx}_${cIdx}`];
+                            return fState && (fState.status === 'pass' || fState.status === 'fail');
+                        }).length;
+                    }
+                }
+                // 進度文字：若全數完成則呈現亮綠色背景
+                const progressHtml = total > 0 ? `<span class="text-[11px] ml-auto font-mono ${completed === total ? 'text-emerald-600 font-bold bg-emerald-100/50 px-1.5 py-0.5 rounded shadow-sm' : 'text-slate-400'}">${completed}/${total}</span>` : '';
+
                 // === 1. 建立左側頁籤按鈕 ===
                 const tabBtn = document.createElement('button');
                 const activeClasses = 'bg-white text-emerald-900 shadow-sm border border-slate-200/80 font-bold';
                 const inactiveClasses = 'bg-transparent text-slate-500 hover:bg-slate-200/60 hover:text-slate-800 border border-transparent font-medium';
                 
-                tabBtn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${isActive ? activeClasses : inactiveClasses}`;
+                tabBtn.className = `px-3 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${isActive ? activeClasses : inactiveClasses}`;
                 
                 const themeMap = {
                     'doc_check': { icon: 'fa-folder-open', color: 'text-blue-600', bg: 'bg-blue-50' },
@@ -3529,14 +3562,15 @@
                 const t = themeMap[block.type] || themeMap['doc_check'];
 
                 tabBtn.innerHTML = `
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-2 w-full">
                         <span class="w-6 h-6 rounded flex justify-center items-center ${t.bg} ${t.color} text-xs flex-shrink-0">
                             <i class="fas ${t.icon}"></i>
                         </span>
-                        <span class="truncate text-[14px]">${block.title}</span>
+                        <span class="truncate text-[13px] flex-grow">${block.title}</span>
+                        ${progressHtml}
                     </div>
                 `;
-
+                
                 // === 2. 建立右側對應內容面板 ===
                 const contentPane = document.createElement('div');
                 contentPane.id = `v-pane-${app.id}-${bIdx}`;
@@ -3713,50 +3747,63 @@
                         const errSection = document.createElement('div');
                         errSection.className = `flex flex-col gap-3 mt-3 pt-3 border-t border-slate-100 ${fState.status === 'fail' ? 'block' : 'hidden'} animate-fade-in`;
                         
-                        if (chk.errorMsgs && chk.errorMsgs.length > 1) {
-                            const selWrap = document.createElement('div');
-                            selWrap.innerHTML = `
-                                <select class="w-full border border-red-200 rounded-md p-2 text-xs focus:ring-2 focus:ring-red-400 outline-none bg-red-50 font-bold text-red-700 cursor-pointer">
-                                    ${chk.errorMsgs.map((e, idx) => `<option value="${idx}" ${fState.errorIdx == idx ? 'selected' : ''}>${e.name}</option>`).join('')}
-                                </select>`;
-                            selWrap.querySelector('select').onchange = (e) => {
-                                fState.errorIdx = e.target.value;
-                                saveToLocal();
-                                renderVerificationPanel(container, app); 
-                            };
+                        // 加上「自訂錯誤」選項
+                        const errorOptionsHtml = chk.errorMsgs ? chk.errorMsgs.map((e, idx) => `<option value="${idx}" ${fState.errorIdx == idx ? 'selected' : ''}>${e.name}</option>`).join('') : '';
+                        const selWrap = document.createElement('div');
+                        selWrap.innerHTML = `
+                            <select class="w-full border border-red-200 rounded-md p-2 text-xs focus:ring-2 focus:ring-red-400 outline-none bg-red-50 font-bold text-red-700 cursor-pointer">
+                                ${errorOptionsHtml}
+                                <option value="custom" ${fState.errorIdx === 'custom' ? 'selected' : ''}>✏️ 自訂錯誤內容...</option>
+                            </select>`;
+                        selWrap.querySelector('select').onchange = (e) => {
+                            fState.errorIdx = e.target.value;
+                            saveToLocal();
+                            renderVerificationPanel(container, app); 
+                        };
+                        
+                        // 顯示選單條件：有預設錯誤選項，或者本身就選擇了 custom
+                        if (!chk.errorMsgs || chk.errorMsgs.length === 0) {
+                            fState.errorIdx = 'custom';
+                        } else {
                             errSection.appendChild(selWrap);
                         }
         
-                        const activeMsg = chk.errorMsgs && chk.errorMsgs.length > 0 ? chk.errorMsgs[fState.errorIdx] : null;
-                        if (activeMsg) {
-                            const tplDiv = document.createElement('div');
-                            // ★ 錯誤提示框：類似終端機指令的感覺
-                            tplDiv.className = 'text-[13px] text-red-800 bg-red-50 p-3 rounded-md border border-red-200 leading-relaxed shadow-sm';
-                            
-                            let htmlStr = activeMsg.template
-                                .replace(/\{\{field_name\}\}/g, `<span class="font-bold underline decoration-red-300 underline-offset-2 px-1">${fLabel}</span>`)
-                                .replace(/\{\{field_val\}\}/g, `<span class="font-bold underline decoration-red-300 underline-offset-2 px-1">${fVal}</span>`);
-                            
-                            const docSelectHtml = `
-                                <select class="border border-red-300 rounded px-1.5 py-0.5 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.doc = this.value; saveToLocal()">
-                                    <option value="">-- 選擇文件 --</option>
-                                    ${availableDocs.map(d => `<option value="${d}" ${fState.vars.doc === d ? 'selected' : ''}>${d}</option>`).join('')}
-                                </select>`;
-                            
-                            let correctHtml = `<input type="text" class="border border-red-300 rounded px-2 py-0.5 bg-white outline-none w-32 font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 placeholder-red-300 text-xs" placeholder="輸入正確內容" value="${fState.vars.correct || ''}" oninput="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">`;
-                            if (fieldDef && fieldDef.type === 'single_select' && fieldDef.options) {
-                                correctHtml = `
-                                    <select class="border border-red-300 rounded px-1.5 py-0.5 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">
-                                        <option value="">-- 正確選項 --</option>
-                                        ${fieldDef.options.map(o => `<option value="${o}" ${fState.vars.correct === o ? 'selected' : ''}>${o}</option>`).join('')}
+                        if (fState.errorIdx === 'custom') {
+                            const customDiv = document.createElement('div');
+                            customDiv.innerHTML = `<textarea class="w-full border border-red-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-400 outline-none bg-white font-medium text-red-800 shadow-sm transition placeholder-red-300 min-h-[60px]" placeholder="請輸入自訂錯誤內容..." oninput="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].customMsg = this.value; saveToLocal()">${fState.customMsg || ''}</textarea>`;
+                            errSection.appendChild(customDiv);
+                        } else {
+                            const activeMsg = chk.errorMsgs && chk.errorMsgs.length > 0 ? chk.errorMsgs[fState.errorIdx] : null;
+                            if (activeMsg) {
+                                const tplDiv = document.createElement('div');
+                                // ★ 錯誤提示框：類似終端機指令的感覺
+                                tplDiv.className = 'text-[13px] text-red-800 bg-red-50 p-3 rounded-md border border-red-200 leading-relaxed shadow-sm';
+                                
+                                let htmlStr = activeMsg.template
+                                    .replace(/\{\{field_name\}\}/g, `<span class="font-bold underline decoration-red-300 underline-offset-2 px-1">${fLabel}</span>`)
+                                    .replace(/\{\{field_val\}\}/g, `<span class="font-bold underline decoration-red-300 underline-offset-2 px-1">${fVal}</span>`);
+                                
+                                const docSelectHtml = `
+                                    <select class="border border-red-300 rounded px-1.5 py-0.5 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.doc = this.value; saveToLocal()">
+                                        <option value="">-- 選擇文件 --</option>
+                                        ${availableDocs.map(d => `<option value="${d}" ${fState.vars.doc === d ? 'selected' : ''}>${d}</option>`).join('')}
                                     </select>`;
+                                
+                                let correctHtml = `<input type="text" class="border border-red-300 rounded px-2 py-0.5 bg-white outline-none w-32 font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 placeholder-red-300 text-xs" placeholder="輸入正確內容" value="${fState.vars.correct || ''}" oninput="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">`;
+                                if (fieldDef && fieldDef.type === 'single_select' && fieldDef.options) {
+                                    correctHtml = `
+                                        <select class="border border-red-300 rounded px-1.5 py-0.5 bg-white outline-none font-bold text-red-600 mx-1 shadow-sm focus:ring-1 focus:ring-red-400 cursor-pointer" onchange="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].vars.correct = this.value; saveToLocal()">
+                                            <option value="">-- 正確選項 --</option>
+                                            ${fieldDef.options.map(o => `<option value="${o}" ${fState.vars.correct === o ? 'selected' : ''}>${o}</option>`).join('')}
+                                        </select>`;
+                                }
+            
+                                htmlStr = htmlStr.replace(/\{\{doc_select\}\}/g, docSelectHtml);
+                                htmlStr = htmlStr.replace(/\{\{correct_input\}\}/g, correctHtml);
+                                
+                                tplDiv.innerHTML = htmlStr;
+                                errSection.appendChild(tplDiv);
                             }
-        
-                            htmlStr = htmlStr.replace(/\{\{doc_select\}\}/g, docSelectHtml);
-                            htmlStr = htmlStr.replace(/\{\{correct_input\}\}/g, correctHtml);
-                            
-                            tplDiv.innerHTML = htmlStr;
-                            errSection.appendChild(tplDiv);
                         }
         
                         row.appendChild(errSection);
@@ -3799,6 +3846,14 @@
             container.appendChild(vTabContentContainer);
         
             updateVerificationLogic(app);
+
+            // 恢復原本的滾動位置
+            if (savedScrollTop > 0) {
+                // 使用 setTimeout 確保 DOM 渲染完成後再設定捲動
+                setTimeout(() => {
+                    vTabContentContainer.scrollTop = savedScrollTop;
+                }, 0);
+            }
         }
         // ==========================================
         // 核心功能：動態更新檢核邏輯 (豁免與自動比對)
