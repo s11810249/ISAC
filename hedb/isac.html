@@ -3492,8 +3492,8 @@
                 return;
             }
         
-            // ★ 核心修改：改為左右排版結構
-            container.className = 'verify-body flex flex-row w-full h-full overflow-hidden relative bg-white';
+            // ★ 核心修改：改為左右排版結構 (加入 min-h-0 確保滾動區域生效)
+            container.className = 'verify-body flex flex-row w-full h-full min-h-0 overflow-hidden relative bg-white';
         
             // 建立側邊欄 (左側選單)
             const vTabSidebar = document.createElement('div');
@@ -3501,7 +3501,8 @@
         
             // 建立內容區 (右側)
             const vTabContentContainer = document.createElement('div');
-            vTabContentContainer.className = 'verify-scroll-area flex-grow p-6 overflow-y-auto custom-scroll relative bg-slate-50/50';
+            // 改為白底，配合無卡片式的全寬設計
+            vTabContentContainer.className = 'verify-scroll-area flex-grow p-6 overflow-y-auto custom-scroll relative bg-white';
 
             let availableDocs = [];
             blocks.forEach(b => {
@@ -3539,28 +3540,12 @@
                 // === 2. 建立右側對應內容面板 ===
                 const contentPane = document.createElement('div');
                 contentPane.id = `v-pane-${app.id}-${bIdx}`;
-                contentPane.className = `verify-pane flex-col h-full ${isActive ? 'flex animate-fade-in' : 'hidden'}`;
+                // 移除 h-full 讓內容能自然往下撐開，這樣外層的 overflow-y-auto 才能正確觸發滾動
+                contentPane.className = `verify-pane flex-col w-full pb-8 ${isActive ? 'flex animate-fade-in' : 'hidden'}`;
 
-                // 將原本的 blockDiv 包進內容面板，加上 max-w-4xl 防止大螢幕時過寬
-                const blockDiv = document.createElement('div');
-                blockDiv.className = 'bg-white rounded-xl shadow-[0_2px_10px_-3px_rgba(0,0,0,0.08)] border border-slate-200 overflow-hidden transition-all duration-300 flex flex-col w-full max-w-4xl mx-auto';
-                blockDiv.id = `vblock-${app.id}-${bIdx}`;
-                
-                const header = document.createElement('div');
-                header.className = `px-5 py-3.5 border-b border-slate-100 bg-slate-50/50 flex justify-between items-center`;
-                header.innerHTML = `
-                    <div class="flex items-center gap-2.5">
-                        <div class="w-7 h-7 rounded-lg ${t.bg} ${t.color} flex items-center justify-center text-sm shadow-sm border border-white">
-                            <i class="fas ${t.icon}"></i>
-                        </div>
-                        <h4 class="font-bold text-slate-700 text-[15px] tracking-wide">${block.title}</h4>
-                    </div>
-                    <div id="v-status-${app.id}-${bIdx}" class="flex items-center"></div>
-                `;
-                blockDiv.appendChild(header);
-        
                 const contentDiv = document.createElement('div');
-                contentDiv.className = 'p-5 flex flex-col gap-4';
+                // 移除原本的卡片 padding，改為全寬、沒有邊框的滿版排列
+                contentDiv.className = 'flex flex-col gap-4 w-full';
                 contentDiv.id = `v-content-${app.id}-${bIdx}`;
         
                 // --- 1. 實習證明文件檢核 ---
@@ -3787,8 +3772,7 @@
                     contentDiv.appendChild(list);
                 }
 
-                blockDiv.appendChild(contentDiv);
-                contentPane.appendChild(blockDiv);
+                contentPane.appendChild(contentDiv);
                 vTabContentContainer.appendChild(contentPane);
 
                 // --- 綁定頁籤切換事件 ---
