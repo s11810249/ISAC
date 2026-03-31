@@ -1365,7 +1365,8 @@
                             id: app.id,
                             studentId: s.id,
                             courseIds: app.courseIds,
-                            formData: app.formData
+                            formData: app.formData,
+                            verification: app.verification || { docs: {}, matches: {}, fields: {} }
                         });
                     });
                 }
@@ -2382,7 +2383,8 @@
                                     id: rowData['App_ID'],
                                     studentId: rowData['Student_ID'],
                                     courseIds: rowData['Course_IDs'] ? rowData['Course_IDs'].toString().split(',') : [],
-                                    formData: rowData['Form_Data'] ? JSON.parse(rowData['Form_Data']) : {}
+                                    formData: rowData['Form_Data'] ? JSON.parse(rowData['Form_Data']) : {},
+                                    verification: rowData['Verification'] ? JSON.parse(rowData['Verification']) : { docs: {}, matches: {}, fields: {} }
                                 });
                             }
                         });
@@ -2754,7 +2756,12 @@
                              if(exists) { validCourseIds.push(cid); exists._app_id = app.id; }
                         });
                         if(validCourseIds.length > 0) {
-                             student.applications.push({ id: app.id, courseIds: validCourseIds, formData: app.formData });
+                             student.applications.push({ 
+                                 id: app.id, 
+                                 courseIds: validCourseIds, 
+                                 formData: app.formData,
+                                 verification: app.verification || { docs: {}, matches: {}, fields: {} }
+                             });
                         }
                     }
                 });
@@ -3425,11 +3432,11 @@
         
             const div = document.createElement('div');
             div.id = `content-${appId}`;
-            div.className = 'dynamic-tab-content w-full h-full flex flex-col lg:flex-row'; 
+            div.className = 'dynamic-tab-content w-full h-full flex flex-col lg:flex-row min-h-0'; 
             
             // === 左側：系統填報表單區 ===
             const formCol = document.createElement('div');
-            formCol.className = 'lg:w-1/2 w-full flex flex-col h-full border-r border-slate-200 bg-white relative';
+            formCol.className = 'lg:w-1/2 w-full flex flex-col h-full border-r border-slate-200 bg-white relative min-h-0 min-w-0';
             
             const formHeader = document.createElement('div');
             formHeader.className = 'bg-slate-50 px-6 h-16 border-b border-slate-200 flex items-center justify-between flex-shrink-0 z-10';
@@ -3445,13 +3452,12 @@
             // ★ 修改：將即時錯誤警告區塊移至左側，接在 formContainer 下方
             const errorSummaryFooter = document.createElement('div');
             errorSummaryFooter.id = `error-summary-${appId}`;
-            // 固定高度為 h-64 (256px)，確保表單操作時底部不會伸縮跳動
             errorSummaryFooter.className = 'flex-shrink-0 border-t border-slate-200 bg-white p-5 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20 h-64 min-h-[256px] overflow-y-auto custom-scroll';
-            formCol.appendChild(errorSummaryFooter);
+            formCol.appendChild(errorSummaryFooter); 
         
             // === 右側：中心檢核作業區 ===
             const verifyCol = document.createElement('div');
-            verifyCol.className = 'lg:w-1/2 w-full flex flex-col h-full bg-slate-50 relative';
+            verifyCol.className = 'lg:w-1/2 w-full flex flex-col h-full bg-slate-50 relative min-h-0 min-w-0';
             
             const verifyHeader = document.createElement('div');
             verifyHeader.className = 'bg-emerald-50 px-6 h-16 border-b border-emerald-200 flex items-center justify-between flex-shrink-0 z-10';
@@ -3486,11 +3492,14 @@
             // 記住目前的頁籤，避免表單重新渲染時跳回第一頁
             let activeTabIndex = parseInt(container.dataset.activeTab || '0');
             
-            // 1. 記住右側滾動條位置，避免重新渲染後跳回最上方
+            // 1. 記住滾動條位置，避免重新渲染後跳回最上方
             let savedScrollTop = 0;
+            let savedSidebarScrollTop = 0;
             const existingScrollArea = container.querySelector('.verify-scroll-area');
-            if (existingScrollArea) {
-                savedScrollTop = existingScrollArea.scrollTop;
+            if (existingScrollArea) savedScrollTop = existingScrollArea.scrollTop;
+            const existingSidebar = container.children[0];
+            if (existingSidebar && existingSidebar.classList.contains('overflow-y-auto')) {
+                savedSidebarScrollTop = existingSidebar.scrollTop;
             }
 
             container.innerHTML = '';
@@ -3509,8 +3518,8 @@
         
             // 建立內容區 (右側)
             const vTabContentContainer = document.createElement('div');
-            // 改為白底，配合無卡片式的全寬設計
-            vTabContentContainer.className = 'verify-scroll-area flex-grow p-6 overflow-y-auto custom-scroll relative bg-white';
+            // 改為白底，配合無卡片式的全寬設計 (加入 min-w-0 避免撐大外層)
+            vTabContentContainer.className = 'verify-scroll-area flex-grow min-w-0 p-6 overflow-y-auto custom-scroll relative bg-white';
 
             let availableDocs = [];
             blocks.forEach(b => {
@@ -3531,9 +3540,9 @@
                 
                 // 去除圖示、支援換行、並準備放置動態進度的容器
                 tabBtn.innerHTML = `
-                    <div class="flex items-start justify-between w-full gap-2">
+                    <div class="flex items-center justify-between w-full gap-2">
                         <span class="text-[14px] leading-snug break-words whitespace-normal text-left flex-grow">${block.title}</span>
-                        <div id="v-tab-progress-${app.id}-${bIdx}" class="flex-shrink-0 mt-0.5"></div>
+                        <div id="v-tab-progress-${app.id}-${bIdx}" class="flex-shrink-0"></div>
                     </div>
                 `;
                 
@@ -3568,7 +3577,8 @@
                         cb.onchange = (e) => {
                             app.verification.docs[doc.name] = e.target.checked;
                             saveToLocal();
-                            updateVerificationLogic(app);
+                            // ★ 修改：觸發整面重繪，以連動隱藏 data_match 裡的非選交欄位
+                            renderVerificationPanel(container, app);
                         };
         
                         const tagHtml = doc.isRequired === false 
@@ -3606,6 +3616,40 @@
                     
                     block.docs.forEach(doc => {
                         if(!doc.name) return;
+
+                        // == 新增：判斷是否為「非必交」且「未打勾」 ==
+                        let req = true;
+                        let exempt = false;
+                        let submitted = !!(app.verification && app.verification.docs && app.verification.docs[doc.name]);
+
+                        (currentYearConfig.verificationBlocks||[]).forEach(b => {
+                            if(b.type === 'doc_check') {
+                                b.docs.forEach(d => {
+                                    if(d.name === doc.name) {
+                                        if(d.isRequired === false) req = false;
+                                        if(d.exemptField) {
+                                            const depVal = app.formData[d.exemptField];
+                                            const isDepCheckbox = currentYearConfig.fields?.find(f => f.id === d.exemptField)?.type === 'checkbox';
+                                            if (isDepCheckbox) {
+                                                exempt = String(depVal === true || depVal === 'true') === String(d.exemptValue).trim();
+                                            } else if (depVal) {
+                                                exempt = String(depVal).trim() === String(d.exemptValue).trim();
+                                            }
+                                        }
+                                    }
+                                });
+                            }
+                        });
+
+                        // 如果免交，或是 (非必交且未打勾)，就不顯示此欄位以防干擾！
+                        if (exempt || (!req && !submitted)) {
+                            // 同時清空它的資料，避免殘留
+                            if (app.verification.matches && app.verification.matches[bIdx] && app.verification.matches[bIdx][doc.name]) {
+                                delete app.verification.matches[bIdx][doc.name];
+                            }
+                            return; 
+                        }
+
                         if(!app.verification.matches[bIdx][doc.name]) app.verification.matches[bIdx][doc.name] = { val1: '', val2: '', noData: false };
                         const mState = app.verification.matches[bIdx][doc.name];
                         
@@ -3736,7 +3780,8 @@
         
                         if (fState.errorIdx === 'custom') {
                             const customDiv = document.createElement('div');
-                            customDiv.innerHTML = `<textarea class="w-full border border-red-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-400 outline-none bg-white font-medium text-red-800 shadow-sm transition placeholder-red-300 min-h-[60px]" placeholder="請輸入自訂錯誤內容..." oninput="groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}').verification.fields['${stateKey}'].customMsg = this.value; saveToLocal()">${fState.customMsg || ''}</textarea>`;
+                            // ★ 加入 updateLiveErrorSummary 確保持續輸入時能反映至清單
+                            customDiv.innerHTML = `<textarea class="w-full border border-red-300 rounded-md p-2 text-sm focus:ring-2 focus:ring-red-400 outline-none bg-white font-medium text-red-800 shadow-sm transition placeholder-red-300 min-h-[60px]" placeholder="請輸入自訂錯誤內容..." oninput="const ap = groupedStudents['${currentStudentId}'].applications.find(a=>a.id==='${app.id}'); ap.verification.fields['${stateKey}'].customMsg = this.value; saveToLocal(); if(typeof updateLiveErrorSummary === 'function') updateLiveErrorSummary(ap);">${fState.customMsg || ''}</textarea>`;
                             errSection.appendChild(customDiv);
                         } else {
                             const activeMsg = chk.errorMsgs && chk.errorMsgs.length > 0 ? chk.errorMsgs[fState.errorIdx] : null;
@@ -3814,12 +3859,10 @@
             updateVerificationLogic(app);
 
             // 恢復原本的滾動位置
-            if (savedScrollTop > 0) {
-                // 使用 setTimeout 確保 DOM 渲染完成後再設定捲動
-                setTimeout(() => {
-                    vTabContentContainer.scrollTop = savedScrollTop;
-                }, 0);
-            }
+            setTimeout(() => {
+                if (savedScrollTop > 0) vTabContentContainer.scrollTop = savedScrollTop;
+                if (savedSidebarScrollTop > 0) vTabSidebar.scrollTop = savedSidebarScrollTop;
+            }, 0);
         }
         // ==========================================
         // 核心功能：動態更新檢核邏輯 (豁免與自動比對)
@@ -4835,8 +4878,18 @@
             Object.values(groupedStudents).forEach(s => { s.courses.forEach(c => { const rowData = { _internal_id: c._internal_id, student_id: s.id }; sysCourseFields.forEach(f => { rowData[f.id] = c[f.id] || ''; }); courseDataSheet.addRow(rowData); }); });
 
             const conSheet = workbook.addWorksheet('_Consolidation_Data', {state: 'hidden'});
-            conSheet.columns = [{header: 'App_ID', key: 'id'}, {header: 'Student_ID', key: 'sid'}, {header: 'Course_IDs', key: 'cids'}, {header: 'Form_Data', key: 'data'}];
-            Object.values(groupedStudents).forEach(s => { s.applications.forEach(app => { conSheet.addRow({ id: app.id, sid: s.id, cids: app.courseIds.join(','), data: JSON.stringify(app.formData) }); }); });
+            conSheet.columns = [{header: 'App_ID', key: 'id'}, {header: 'Student_ID', key: 'sid'}, {header: 'Course_IDs', key: 'cids'}, {header: 'Form_Data', key: 'data'}, {header: 'Verification', key: 'ver'}];
+            Object.values(groupedStudents).forEach(s => { 
+                s.applications.forEach(app => { 
+                    conSheet.addRow({ 
+                        id: app.id, 
+                        sid: s.id, 
+                        cids: app.courseIds.join(','), 
+                        data: JSON.stringify(app.formData),
+                        ver: JSON.stringify(app.verification || {})
+                    }); 
+                }); 
+            });
 
             const logSheet = workbook.addWorksheet('_Audit_Log', {state: 'hidden'});
             logSheet.columns = [{header: 'Time', key: 'time'}, {header: 'Field', key: 'field'}, {header: 'Old_Value', key: 'old'}, {header: 'New_Value', key: 'new'}, {header: 'Student', key: 'student'}, {header: 'App_ID', key: 'app'}];
