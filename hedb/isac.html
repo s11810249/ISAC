@@ -3445,8 +3445,9 @@
             // ★ 修改：將即時錯誤警告區塊移至左側，接在 formContainer 下方
             const errorSummaryFooter = document.createElement('div');
             errorSummaryFooter.id = `error-summary-${appId}`;
-            errorSummaryFooter.className = 'flex-shrink-0 border-t border-slate-200 bg-white p-5 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20 max-h-[30vh] overflow-y-auto custom-scroll';
-            formCol.appendChild(errorSummaryFooter); 
+            // 固定高度為 h-64 (256px)，確保表單操作時底部不會伸縮跳動
+            errorSummaryFooter.className = 'flex-shrink-0 border-t border-slate-200 bg-white p-5 shadow-[0_-5px_15px_-5px_rgba(0,0,0,0.05)] z-20 h-64 min-h-[256px] overflow-y-auto custom-scroll';
+            formCol.appendChild(errorSummaryFooter);
         
             // === 右側：中心檢核作業區 ===
             const verifyCol = document.createElement('div');
@@ -3521,32 +3522,6 @@
             blocks.forEach((block, bIdx) => {
                 const isActive = (bIdx === activeTabIndex);
 
-                // 計算該區塊的檢核進度
-                let completed = 0;
-                let total = 0;
-                if (block.type === 'doc_check') {
-                    total = block.docs ? block.docs.length : 0;
-                    if (app.verification?.docs) completed = block.docs.filter(d => app.verification.docs[d.name]).length;
-                } else if (block.type === 'data_match') {
-                    total = block.docs ? block.docs.length : 0;
-                    if (app.verification?.matches && app.verification.matches[bIdx]) {
-                        completed = block.docs.filter(d => {
-                            const mState = app.verification.matches[bIdx][d.name];
-                            return mState && (mState.noData || mState.val1 || mState.val2);
-                        }).length;
-                    }
-                } else if (block.type === 'field_check') {
-                    total = block.checks ? block.checks.length : 0;
-                    if (app.verification?.fields) {
-                        completed = block.checks.filter((chk, cIdx) => {
-                            const fState = app.verification.fields[`${bIdx}_${cIdx}`];
-                            return fState && (fState.status === 'pass' || fState.status === 'fail');
-                        }).length;
-                    }
-                }
-                // 進度文字：若全數完成則呈現亮綠色背景
-                const progressHtml = total > 0 ? `<span class="text-[11px] ml-auto font-mono ${completed === total ? 'text-emerald-600 font-bold bg-emerald-100/50 px-1.5 py-0.5 rounded shadow-sm' : 'text-slate-400'}">${completed}/${total}</span>` : '';
-
                 // === 1. 建立左側頁籤按鈕 ===
                 const tabBtn = document.createElement('button');
                 const activeClasses = 'bg-white text-emerald-900 shadow-sm border border-slate-200/80 font-bold';
@@ -3554,20 +3529,11 @@
                 
                 tabBtn.className = `px-3 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${isActive ? activeClasses : inactiveClasses}`;
                 
-                const themeMap = {
-                    'doc_check': { icon: 'fa-folder-open', color: 'text-blue-600', bg: 'bg-blue-50' },
-                    'data_match': { icon: 'fa-balance-scale', color: 'text-indigo-600', bg: 'bg-indigo-50' },
-                    'field_check': { icon: 'fa-spell-check', color: 'text-emerald-600', bg: 'bg-emerald-50' }
-                };
-                const t = themeMap[block.type] || themeMap['doc_check'];
-
+                // 去除圖示、支援換行、並準備放置動態進度的容器
                 tabBtn.innerHTML = `
-                    <div class="flex items-center gap-2 w-full">
-                        <span class="w-6 h-6 rounded flex justify-center items-center ${t.bg} ${t.color} text-xs flex-shrink-0">
-                            <i class="fas ${t.icon}"></i>
-                        </span>
-                        <span class="truncate text-[13px] flex-grow">${block.title}</span>
-                        ${progressHtml}
+                    <div class="flex items-start justify-between w-full gap-2">
+                        <span class="text-[14px] leading-snug break-words whitespace-normal text-left flex-grow">${block.title}</span>
+                        <div id="v-tab-progress-${app.id}-${bIdx}" class="flex-shrink-0 mt-0.5"></div>
                     </div>
                 `;
                 
@@ -3862,8 +3828,33 @@
             const blocks = currentYearConfig.verificationBlocks || [];
             
             blocks.forEach((block, bIdx) => {
-                const blockDiv = document.getElementById(`vblock-${app.id}-${bIdx}`);
+                // 修改：因應前一版移除了 vblock，這裡改抓 v-content
+                const blockDiv = document.getElementById(`v-content-${app.id}-${bIdx}`);
                 if(!blockDiv) return;
+
+                // --- 動態計算並更新左側進度 ---
+                let completed = 0;
+                let total = 0;
+                if (block.type === 'doc_check') {
+                    total = block.docs ? block.docs.length : 0;
+                    if (app.verification?.docs) completed = block.docs.filter(d => app.verification.docs[d.name]).length;
+                } else if (block.type === 'data_match') {
+                    total = block.docs ? block.docs.length : 0;
+                    if (app.verification?.matches && app.verification.matches[bIdx]) {
+                        completed = block.docs.filter(d => {
+                            const mState = app.verification.matches[bIdx][d.name];
+                            return mState && (mState.noData || mState.val1 || mState.val2);
+                        }).length;
+                    }
+                } else if (block.type === 'field_check') {
+                    total = block.checks ? block.checks.length : 0;
+                    if (app.verification?.fields) {
+                        completed = block.checks.filter((chk, cIdx) => {
+                            const fState = app.verification.fields[`${bIdx}_${cIdx}`];
+                            return fState && (fState.status === 'pass' || fState.status === 'fail');
+                        }).length;
+                    }
+                }
         
                 // 1. 檢查模組全域豁免
                 let isBlockExempt = false;
@@ -3883,58 +3874,20 @@
                 if (isBlockExempt) {
                     blockDiv.style.opacity = '0.6';
                     blockDiv.style.pointerEvents = 'none';
-                    const statusEl = document.getElementById(`v-status-${app.id}-${bIdx}`);
-                    if(statusEl) statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-slate-100 border border-slate-200 text-slate-500 text-[11px] font-bold shadow-sm"><i class="fas fa-ban"></i> 無須檢核</span>`;
+                    const progressDiv = document.getElementById(`v-tab-progress-${app.id}-${bIdx}`);
+                    if (progressDiv) progressDiv.innerHTML = `<span class="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-400 border border-slate-200 shadow-sm">免檢核</span>`;
                     return;
                 } else {
                     blockDiv.style.opacity = '1';
                     blockDiv.style.pointerEvents = 'auto';
-                }
-        
-                // 2. 更新文件檢核 UI (doc_check)
-                if (block.type === 'doc_check') {
-                    let missingCount = 0;
-                    block.docs.forEach((doc, dIdx) => {
-                        const row = document.getElementById(`v-doc-row-${app.id}-${bIdx}-${dIdx}`);
-                        const badge = document.getElementById(`v-doc-exempt-${app.id}-${bIdx}-${dIdx}`);
-                        if(!row || !badge) return;
-        
-                        let isExempt = false;
-                        if (doc.exemptField) {
-                            const depVal = app.formData[doc.exemptField];
-                            const currentValStr = (depVal !== undefined && depVal !== null) ? String(depVal).trim() : "";
-                            const depFieldDef = currentYearConfig.fields?.find(field => field.id === doc.exemptField);
-                            const isDepCheckbox = (depFieldDef && depFieldDef.type === 'checkbox');
-                            if (isDepCheckbox) {
-                                const boolDep = (depVal === true || depVal === 'true');
-                                isExempt = String(boolDep) === String(doc.exemptValue).trim();
-                            } else if (currentValStr !== "") {
-                                isExempt = currentValStr === String(doc.exemptValue).trim();
-                            }
-                        }
-        
-                        const cb = row.querySelector('input[type="checkbox"]');
-                        if (isExempt) {
-                            badge.classList.remove('hidden');
-                            cb.disabled = true;
-                            cb.checked = false; 
-                            row.style.opacity = '0.5';
-                            row.style.pointerEvents = 'none';
+                    
+                    const progressDiv = document.getElementById(`v-tab-progress-${app.id}-${bIdx}`);
+                    if (progressDiv) {
+                        if (total > 0) {
+                            const isAllDone = (completed === total);
+                            progressDiv.innerHTML = `<span class="text-[11px] font-bold px-2 py-0.5 rounded-full ${isAllDone ? 'bg-emerald-100 text-emerald-700 shadow-sm' : 'bg-slate-100 text-slate-500 border border-slate-200'}">${completed}/${total}</span>`;
                         } else {
-                            badge.classList.add('hidden');
-                            cb.disabled = false;
-                            row.style.opacity = '1';
-                            row.style.pointerEvents = 'auto';
-                            if(doc.isRequired !== false && !cb.checked) missingCount++;
-                        }
-                    });
-        
-                    const statusEl = document.getElementById(`v-status-${app.id}-${bIdx}`);
-                    if(statusEl) {
-                        if(missingCount > 0) {
-                            statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-red-50 border border-red-200 text-red-600 text-[11px] font-bold shadow-sm"><i class="fas fa-exclamation-circle"></i> 缺交 ${missingCount} 項</span>`;
-                        } else {
-                            statusEl.innerHTML = `<span class="flex items-center gap-1.5 px-3 py-1 rounded-full bg-emerald-50 border border-emerald-200 text-emerald-600 text-[11px] font-bold shadow-sm"><i class="fas fa-check"></i> 文件齊全</span>`;
+                            progressDiv.innerHTML = '';
                         }
                     }
                 }
@@ -4168,16 +4121,23 @@
                     block.checks.forEach((chk, cIdx) => {
                         const fState = app.verification.fields[`${bIdx}_${cIdx}`];
                         if (fState && fState.status === 'fail') {
-                            const activeMsg = chk.errorMsgs[fState.errorIdx];
-                            if(activeMsg) {
-                                const fLabel = currentYearConfig.fields?.find(f => f.id === chk.fieldId)?.label || chk.fieldId;
-                                const fVal = app.formData[chk.fieldId] || '(空)';
-                                let msg = activeMsg.template
-                                    .replace(/\{\{field_name\}\}/g, fLabel)
-                                    .replace(/\{\{field_val\}\}/g, fVal)
-                                    .replace(/\{\{doc_select\}\}/g, fState.vars.doc || '(未選擇文件)')
-                                    .replace(/\{\{correct_input\}\}/g, fState.vars.correct || '(未填寫正確內容)');
-                                reportLines.push(msg.replace(/<[^>]+>/g, '')); 
+                            const fLabel = currentYearConfig.fields?.find(f => f.id === chk.fieldId)?.label || chk.fieldId;
+                            const fVal = app.formData[chk.fieldId] || '(空)';
+                            
+                            // 判斷是否為自訂錯誤
+                            if (fState.errorIdx === 'custom') {
+                                let msg = fState.customMsg ? `${fLabel}：${fState.customMsg}` : `${fLabel}：(未填寫自訂錯誤內容)`;
+                                reportLines.push(msg);
+                            } else {
+                                const activeMsg = chk.errorMsgs ? chk.errorMsgs[fState.errorIdx] : null;
+                                if(activeMsg) {
+                                    let msg = activeMsg.template
+                                        .replace(/\{\{field_name\}\}/g, fLabel)
+                                        .replace(/\{\{field_val\}\}/g, fVal)
+                                        .replace(/\{\{doc_select\}\}/g, fState.vars.doc || '(未選擇文件)')
+                                        .replace(/\{\{correct_input\}\}/g, fState.vars.correct || '(未填寫正確內容)');
+                                    reportLines.push(msg.replace(/<[^>]+>/g, '')); 
+                                }
                             }
                         }
                     });
@@ -4514,8 +4474,8 @@
                 tabBtn.className = `px-4 py-3 text-left transition-all duration-200 ease-out w-full rounded-xl ${isFirst ? activeClasses : inactiveClasses}`;
                 
                 tabBtn.innerHTML = `
-                    <div class="flex items-center">
-                        <span class="truncate text-[15px]">${catDef.name}</span>
+                    <div class="flex items-center w-full">
+                        <span class="text-[14px] leading-snug break-words whitespace-normal text-left">${catDef.name}</span>
                     </div>
                 `;
         
